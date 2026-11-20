@@ -9,35 +9,37 @@
 
 | Rule | Check | Value | Target | Runs | Result |
 | --- | --- | --- | --- | --- | --- |
-| `w-cliff` | No cliffs | biggest step w10 +0.46; no wave doubles | no wave 2–10 more than 2× the one before (before floored at 0.25) | tough | PASS |
-| `w-early` | Close calls from wave 3 | fewest w3 1.29 a run (75% of runs have one) | ≥ 1 a run on every wave 3–10 | tough | PASS |
-| `w-budget` | Wave budgets ±15% | furthest w3 ×0.91 of the no-encounter wave | every wave 1–10 within ×0.85–×1.15 of the table × scale as planned (encounters off) | tough+baseline | PASS |
-| `m-stretches` | A danger and a safe stretch | lane 1: hot middle 45%, cold early 23% | each lane's coldest stretch < 25% of its ship hull damage (waves 1–9) | tough | PASS |
-| `g-warning` | Warning time falls 1→10 | w1 8.3 s → w10 5.0 s (slope -0.28 s a wave) | falls: slope < 0 and wave 10 below wave 1 | tough | PASS |
+| `w-cliff` | No cliffs | biggest step w6 +0.50; doubles on w6 (0.13→0.63) | no wave 2–10 more than 2× the one before (before floored at 0.25) | tough | **FLAG** |
+| `w-early` | Close calls from wave 3 | fewest w3 1.54 a run (83% of runs have one) | ≥ 1 a run on every wave 3–10 | tough | PASS |
+| `w-budget` | Wave budgets ±15% | furthest w10 ×0.83 of the no-encounter wave; outside on w4 ×1.16, w10 ×0.83 | every wave 1–10 within ×0.85–×1.15 of the table × scale as planned (encounters off) | tough+baseline | **FLAG** |
+| `m-stretches` | A danger and a safe stretch | lane 1: hot middle 46%, cold early 21% | each lane's coldest stretch < 25% of its ship hull damage (waves 1–9) | tough | PASS |
+| `g-warning` | Warning time falls 1→10 | w1 8.1 s → w10 5.5 s (slope -0.24 s a wave) | falls: slope < 0 and wave 10 below wave 1 | tough | PASS |
 | `w-first` | Wave 1: no ship lost | 0.00 a run | 0 (under 0.1 a run) | tough | PASS |
-| `w-early` | Ships lost waves 1–5 | 0.50 a run | a good player 0–1 (rule w-early) | normal | INFO |
-| `w-boss` | Boss rounds | normal (runs that reached it): r1 0.85 (20), r2 1.50 (20), r3 1.56 (18); tough (every run): 0.96, 1.46, 2.04 | about 2 a round on the bot's scale, rising | normal | INFO |
-| `fun` | Fun: saves a wave (provisional) | saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10 | you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small | normal+forks | **FLAG** |
-| `m-kits` | Kits | counter 3.3 lost 1–10, end 13.1; off-counter 4.3 lost 1–10, end 12.8 | the counter kit clearly better; neither trivial | kits | INFO |
+| `w-early` | Ships lost waves 1–5 | 0.46 a run | a good player 0–1 (rule w-early) | normal | INFO |
+| `w-boss` | Boss rounds | normal (runs that reached it): r1 0.73 (22), r2 1.45 (22), r3 1.91 (22); tough (every run): 0.71, 1.50, 2.29 | about 2 a round on the bot's scale, rising | normal | INFO |
+| `fun` | Fun: saves a wave (provisional) | saves a run: waves 1–7 0.0, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10 | you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small | normal+forks | **FLAG** |
+| `m-kits` | Kits | counter 2.3 lost 1–10, end 13.4; off-counter 2.4 lost 1–10, end 13.1 | the counter kit clearly better; neither trivial | kits | INFO |
 
 ## What to look at
 
+- Cliff: wave 6 loses 0.63 after 0.13. Move budget from it to the wave before, or soften its biggest raid.
+- Budget: wave 4 sends ×1.16 the no-encounter wave; wave 10 sends ×0.83 the no-encounter wave. Encounters should replace launches, not add them.
 - Fun (provisional): no real save for the bot on wave 1, 2, 3, 4, 5, 6, 7, 8, 9, 10. Give it one moment that needs a quick answer: a heavy or a salvo at the danger stretch, a drop that lands under pressure.
-- Hardest of waves 1–10 for the bot: wave 10 (1.08 ships a run, tough runs).
-- Hull damage by stretch (waves 1–9, all lanes): early 23%, middle 45%, late 32%.
+- Hardest of waves 1–10 for the bot: wave 9 (0.67 ships a run, tough runs).
+- Hull damage by stretch (waves 1–9, all lanes): early 21%, middle 46%, late 33%.
 
 ## Ships lost per wave
 
-Normal: won 58%, mean end wave 13.0 (14 = won), 3.3 lost in waves 1–10, 0.50 in waves 1–5. Tough: 3.6 lost in waves 1–10.
+Normal: won 67%, mean end wave 13.2 (14 = won), 2.6 lost in waves 1–10, 0.46 in waves 1–5. Tough: 3.1 lost in waves 1–10.
 
 |  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tough, every run | 0.00 | 0.00 | 0.17 | 0.21 | 0.13 | 0.50 | 0.33 | 0.54 | 0.63 | 1.08 | 0.96 | 1.46 | 2.04 |
-| normal, runs that reached it | 0.00 | 0.00 | 0.17 | 0.21 | 0.13 | 0.50 | 0.33 | 0.54 | 0.63 | 0.78 | 0.85 | 1.50 | 1.56 |
-| normal, mean over all runs | 0.00 | 0.00 | 0.17 | 0.21 | 0.13 | 0.50 | 0.33 | 0.54 | 0.63 | 0.75 | 0.71 | 1.25 | 1.17 |
-| normal, runs that reached it (n) | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 23 | 20 | 20 | 18 |
+| tough, every run | 0.00 | 0.08 | 0.00 | 0.25 | 0.13 | 0.63 | 0.42 | 0.63 | 0.67 | 0.33 | 0.71 | 1.50 | 2.29 |
+| normal, runs that reached it | 0.00 | 0.08 | 0.00 | 0.25 | 0.13 | 0.38 | 0.43 | 0.52 | 0.65 | 0.23 | 0.73 | 1.45 | 1.91 |
+| normal, mean over all runs | 0.00 | 0.08 | 0.00 | 0.25 | 0.13 | 0.38 | 0.42 | 0.50 | 0.63 | 0.21 | 0.67 | 1.33 | 1.75 |
+| normal, runs that reached it (n) | 24 | 24 | 24 | 24 | 24 | 24 | 23 | 23 | 23 | 22 | 22 | 22 | 22 |
 
-Biggest one-wave step up (tough, waves 2–10): wave 10, +0.46.
+Biggest one-wave step up (tough, waves 2–10): wave 6, +0.50.
 
 ## Close calls per wave (tough)
 
@@ -45,8 +47,8 @@ A threat aimed at a ship that came within 1.0 s of impact (the sim's time to imp
 
 |  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| mean a run | 0.0 | 2.0 | 1.3 | 1.9 | 1.5 | 3.7 | 2.9 | 4.1 | 3.4 | 5.2 | 1.2 | 1.9 | 3.5 |
-| runs with ≥ 1 | 4% | 92% | 75% | 63% | 71% | 96% | 96% | 96% | 92% | 100% | 79% | 79% | 100% |
+| mean a run | 0.0 | 1.4 | 1.5 | 2.8 | 2.5 | 3.9 | 2.7 | 2.8 | 4.0 | 4.7 | 0.5 | 0.8 | 1.2 |
+| runs with ≥ 1 | 4% | 83% | 83% | 92% | 92% | 96% | 88% | 83% | 100% | 96% | 42% | 50% | 46% |
 
 ## Wave budget (tough)
 
@@ -54,11 +56,11 @@ Launches a wave: what a launcher sent (bases, trucks, subs, the air), not what s
 
 |  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| launches (card) | 14.0 | 15.2 | 21.1 | 23.1 | 25.2 | 26.1 | 31.5 | 34.8 | 40.0 | 41.8 |
+| launches (card) | 15.0 | 13.2 | 22.5 | 27.0 | 23.6 | 24.4 | 29.7 | 31.3 | 37.5 | 37.1 |
 | launches (encounters off) | 14.0 | 15.3 | 23.3 | 23.2 | 24.5 | 27.2 | 30.8 | 34.3 | 37.9 | 44.9 |
-| **ratio to encounters off** | 1.00 | 0.99 | 0.91 | 1.00 | 1.03 | 0.96 | 1.02 | 1.01 | 1.05 | 0.93 |
+| **ratio to encounters off** | 1.07 | 0.86 | 0.96 | **1.16** | 0.96 | 0.90 | 0.97 | 0.91 | 0.99 | **0.83** |
 | table × scale | 14 | 19 | 25 | 29 | 30 | 33 | 39 | 42 | 48 | 59 |
-| ratio to table × scale | 1.00 | 0.80 | 0.84 | 0.80 | 0.84 | 0.79 | 0.81 | 0.83 | 0.83 | 0.71 |
+| ratio to table × scale | 1.07 | 0.70 | 0.90 | 0.93 | 0.79 | 0.74 | 0.76 | 0.74 | 0.78 | 0.63 |
 
 ## Losses by stretch (tough)
 
@@ -66,10 +68,10 @@ Each lane cut in three by distance along it. Share of ship hull damage / of sink
 
 | Lane | Waves | early hull / sunk | middle hull / sunk | late hull / sunk | Hull pts a run | Hot | Cold |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 1–9 | 23% / 40% | 45% / 32% | 32% / 28% | 71.2 | middle | early |
-| all | 1–9 | 23% / 40% | 45% / 32% | 32% / 28% | 71.2 | middle | early |
-| 1 | 1–13 | 29% / 59% | 41% / 22% | 30% / 20% | 128.8 | middle | early |
-| all | 1–13 | 29% / 59% | 41% / 22% | 30% / 20% | 128.8 | middle | early |
+| 1 | 1–9 | 21% / 19% | 46% / 48% | 33% / 33% | 74.5 | middle | early |
+| all | 1–9 | 21% / 19% | 46% / 48% | 33% / 33% | 74.5 | middle | early |
+| 1 | 1–13 | 19% / 14% | 49% / 62% | 32% / 25% | 118.5 | middle | early |
+| all | 1–13 | 19% / 14% | 49% / 62% | 32% / 25% | 118.5 | middle | early |
 
 ## Warning time per wave (tough)
 
@@ -77,18 +79,18 @@ Mean seconds to impact of each launch as it appeared (threats aimed at a hull, u
 
 |  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| seconds | 8.3 | 6.0 | 7.5 | 6.6 | 6.5 | 5.4 | 5.9 | 5.7 | 5.3 | 5.0 | 4.9 | 5.0 | 4.8 |
-| launches read | 336 | 365 | 507 | 533 | 604 | 598 | 733 | 803 | 947 | 966 | 607 | 786 | 846 |
+| seconds | 8.1 | 6.4 | 7.4 | 6.5 | 5.9 | 5.6 | 5.9 | 6.1 | 5.3 | 5.5 | 5.4 | 5.5 | 5.3 |
+| launches read | 360 | 316 | 538 | 629 | 565 | 565 | 692 | 711 | 886 | 844 | 288 | 312 | 469 |
 
-Slope over waves 1–10: -0.28 s a wave.
+Slope over waves 1–10: -0.24 s a wave.
 
 ## Boss rounds
 
 |  | Round 1 | Round 2 | Round 3 |
 | --- | --- | --- | --- |
-| normal, runs that reached it | 0.85 | 1.50 | 1.56 |
-| runs that reached it | 20 | 20 | 18 |
-| tough, every run | 0.96 | 1.46 | 2.04 |
+| normal, runs that reached it | 0.73 | 1.45 | 1.91 |
+| runs that reached it | 22 | 22 | 22 |
+| tough, every run | 0.71 | 1.50 | 2.29 |
 
 ## Fun: saves and tension (provisional)
 
@@ -96,25 +98,25 @@ Read on the normal runs' logs, over the runs that reached each wave (docs/design
 
 |  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | B1 | B2 | B3 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| runs | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 24 | 23 | 20 | 20 | 18 |
-| **saves a run** | **0.0** | **0.0** | **0.0** | **0.0** | **0.1** | **0.2** | **0.1** | **0.0** | **0.1** | **0.3** | **0.3** | **0.4** | **0.8** |
-| ships saved a run | 0.0 | 0.0 | 0.0 | 0.0 | 0.1 | 0.2 | 0.1 | 0.0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.7 |
-| big (stakes) | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.11 |
-| clutch | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.13 | 0.08 | 0.00 | 0.04 | 0.22 | 0.10 | 0.15 | 0.33 |
-| runs with no save | 100% | 100% | 100% | 100% | 88% | 88% | 96% | 100% | 92% | 74% | 65% | 75% | 44% |
-|   pickup save | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.04 | 0.04 | 0.00 | 0.04 | 0.04 | 0.20 | 0.00 | 0.28 |
-|   cover choice | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.20 | 0.00 |
-|   last-second kill | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-|   kill save | 0.00 | 0.00 | 0.00 | 0.00 | 0.08 | 0.13 | 0.04 | 0.00 | 0.04 | 0.22 | 0.15 | 0.20 | 0.56 |
-| tension peak | 0.19 | 0.36 | 0.39 | 0.53 | 0.51 | 0.77 | 0.57 | 0.73 | 0.79 | 0.70 | 1.23 | 1.23 | 1.41 |
-| peaks | 0.0 | 0.1 | 0.0 | 0.0 | 0.0 | 0.5 | 0.1 | 0.4 | 0.5 | 0.4 | 1.1 | 1.1 | 1.3 |
-| release after a peak (s) | 0.0 | 0.3 | 0.0 | 0.0 | 0.0 | 0.8 | 0.3 | 0.8 | 0.9 | 0.3 | 2.9 | 3.7 | 3.0 |
-| hot share | 0% | 0% | 0% | 0% | 0% | 1% | 0% | 1% | 1% | 1% | 9% | 18% | 18% |
-| calm share | 97% | 90% | 91% | 88% | 86% | 85% | 85% | 82% | 82% | 80% | 73% | 53% | 45% |
-| shape (most runs) | flat 100% | flat 92% | flat 100% | flat 100% | flat 96% | flat 50% | flat 87% | flat 62% | flat 58% | flat 70% | one peak 75% | one peak 75% | one peak 61% |
-| taps follow tension (r) | 0.51 | 0.50 | 0.40 | 0.50 | 0.54 | 0.47 | 0.46 | 0.37 | 0.36 | 0.32 | 0.62 | 0.46 | 0.40 |
+| runs | 24 | 24 | 24 | 24 | 24 | 24 | 23 | 23 | 23 | 22 | 22 | 22 | 22 |
+| **saves a run** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.0** | **0.3** | **0.6** | **1.0** |
+| ships saved a run | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.3 | 0.6 | 0.9 |
+| big (stakes) | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.09 |
+| clutch | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.14 | 0.36 | 0.59 |
+| runs with no save | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 95% | 73% | 59% | 45% |
+|   pickup save | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.00 | 0.00 | 0.18 | 0.27 | 0.55 |
+|   cover choice | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.05 | 0.23 |
+|   last-second kill | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.05 | 0.14 | 0.00 |
+|   kill save | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.04 | 0.05 | 0.09 | 0.14 | 0.23 |
+| tension peak | 0.13 | 0.31 | 0.36 | 0.60 | 0.60 | 0.81 | 0.60 | 0.69 | 0.78 | 0.56 | 0.60 | 0.60 | 1.21 |
+| peaks | 0.0 | 0.1 | 0.0 | 0.3 | 0.2 | 0.4 | 0.2 | 0.4 | 0.5 | 0.1 | 0.2 | 0.2 | 1.0 |
+| release after a peak (s) | 0.0 | 0.0 | 0.0 | 0.4 | 0.3 | 0.7 | 0.3 | 0.5 | 0.8 | 0.1 | 0.8 | 1.0 | 2.8 |
+| hot share | 0% | 0% | 0% | 1% | 0% | 2% | 0% | 1% | 1% | 0% | 2% | 3% | 18% |
+| calm share | 100% | 89% | 91% | 87% | 85% | 86% | 85% | 85% | 84% | 88% | 76% | 60% | 53% |
+| shape (most runs) | flat 100% | flat 96% | flat 100% | flat 75% | flat 83% | flat 67% | flat 83% | flat 65% | flat 52% | flat 91% | flat 82% | flat 82% | one peak 77% |
+| taps follow tension (r) | 0.44 | 0.32 | 0.41 | 0.47 | 0.49 | 0.40 | 0.41 | 0.37 | 0.30 | 0.23 | 0.57 | 0.33 | 0.29 |
 
-saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 239 s of forks and replays.
+saves a run: waves 1–7 0.0, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 220 s of forks and replays.
 
 ## Kits
 
@@ -122,7 +124,7 @@ The bot's taste set to the kit (it takes these first when a draft offers them).
 
 | Kit | Weapons | Won | End wave | Lost 1–10 (normal) | Lost 1–10 (tough) | Boss r1 / r2 / r3 (reached) | Curve 1–10 (tough) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| counter | aegis, gunships, supplyRun | 63% | 13.1 | 3.2 | 3.3 | 0.95 (21) / 1.67 (21) / 1.21 (19) | 0.0 0.0 0.2 0.2 0.1 0.5 0.5 0.6 0.5 0.9 |
-| off-counter | seeker, shield, fullSteam | 58% | 12.8 | 3.7 | 4.3 | 1.20 (20) / 1.40 (20) / 1.53 (19) | 0.0 0.0 0.2 0.2 0.2 0.5 0.4 1.1 0.7 1.0 |
+| counter | aegis, gunships, supplyRun | 54% | 13.4 | 2.3 | 2.3 | 0.57 (23) / 1.39 (23) / 2.61 (23) | 0.0 0.0 0.0 0.2 0.2 0.3 0.3 0.4 0.4 0.5 |
+| off-counter | seeker, shield, fullSteam | 54% | 13.1 | 2.3 | 2.4 | 0.73 (22) / 1.91 (22) / 1.85 (20) | 0.0 0.1 0.0 0.1 0.3 0.3 0.3 0.3 0.7 0.4 |
 
 Read with docs/design/v3-map-report.md (what each number means and the bots' known biases).

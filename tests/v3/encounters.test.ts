@@ -402,8 +402,14 @@ describe('every authored launch is warned of', () => {
       const w = e.waves[e.waves.length - 1];
       const { sc } = wave(e.map, w, true, 9, 90, e.version, lastRev(e));
       const mine = launches(sc).filter((l) => l.enc === e.id && beatLaunch(l));
-      const want = e.beats.reduce((a, b) => a + b.count, 0);
+      const want = e.beats.filter((b) => !isFoe(b.kind)).reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
+      // Log v42 (Saltgate Canal): a truck down a road is its own warning (it
+      // drives in, then raises its launcher): it came, tagged.
+      for (const b of e.beats.filter((x) => 'road' in x.from)) {
+        const trucks = launches(sc).filter((l) => l.enc === e.id && l.kind === b.kind);
+        expect(trucks.length, `${e.id}: its ${b.kind} came`).toBe(b.count);
+      }
       for (const l of mine) {
         if (l.o === 'base') {
           const warn = sc.events.filter((o): o is Extract<TelEvent, { k: 'warn' }> => o.k === 'warn' && o.what === 'raid' && !!o.bases?.includes(l.base!) && o.t <= l.t);
@@ -699,9 +705,12 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     const early = aimed('saltgate', 1, 'saltgate-first-lock', (gg) => {
       gg.map = { ...gg.map, locks: [] };
     });
+    // (Log v42: wave 1's drones come off the west shore, then the east
+    // lock's silo; each from the base it was seen leaving.)
     for (const { th, ships } of early.out) {
       const t = ships.find((s) => s.id === th.target)!;
-      expect(d(t, early.g.map.bases[0])).toBeCloseTo(Math.min(...ships.map((s) => d(s, early.g.map.bases[0]))), 3);
+      const from = [early.g.map.bases[0], early.g.map.bases[3]].reduce((a, b) => (d(b, th) < d(a, th) ? b : a));
+      expect(d(t, from)).toBeCloseTo(Math.min(...ships.map((s) => d(s, from))), 3);
     }
     // Every wave but the jet's (wave 7, down the canal's line of held ships).
     const at = arc('saltgate').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'lock'))).map((a) => a.wave);
@@ -1083,7 +1092,7 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
     const held = (s: { x: number }) => locks.some((l) => s.x >= l.x0 - 120 && s.x <= l.x1);
     let marked = 0;
     let atLock = 0;
-    let salvos = 0;
+    const salvoIds = new Set<number>();
     let killed = false;
     let stalled = false;
     const seen = new Set<number>();
@@ -1108,7 +1117,7 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
           stalled = tr.some((t) => t !== lead && (t.foe?.stall ?? 0) > 0);
         }
       }
-      for (const sh of g.foe.shots) if (sh.from === 'rocketTruck' && sh.t === 0) salvos++;
+      for (const sh of g.foe.shots) if (sh.from === 'rocketTruck' && sh.salvo !== undefined) salvoIds.add(sh.salvo);
     }
     expect(seen.size).toBe(trucksIn(MAP_BOSS.saltgate!.rounds![0]));
     expect(killed).toBe(true);
@@ -1116,7 +1125,7 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
     expect(marked).toBeGreaterThan(0);
     // The ships are mostly at the locks when the trucks are up.
     expect(atLock / marked).toBeGreaterThan(0.5);
-    expect(salvos).toBeGreaterThan(0);
+    expect(salvoIds.size).toBeGreaterThan(0);
   }, 60_000);
 });
 

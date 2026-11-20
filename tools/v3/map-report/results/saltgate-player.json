@@ -38,39 +38,39 @@
   ],
   "normal": {
    "n": 24,
-   "won": 0.583,
-   "endWave": 12.958,
+   "won": 0.667,
+   "endWave": 13.208,
    "lost": {
     "n": 24,
     "mean": [
      0,
+     0.083,
      0,
-     0.167,
-     0.208,
+     0.25,
      0.125,
+     0.375,
+     0.417,
      0.5,
-     0.333,
-     0.542,
      0.625,
-     0.75,
-     0.708,
-     1.25,
-     1.167
+     0.208,
+     0.667,
+     1.333,
+     1.75
     ],
     "reachedMean": [
      0,
+     0.083,
      0,
-     0.167,
-     0.208,
+     0.25,
      0.125,
-     0.5,
-     0.333,
-     0.542,
-     0.625,
-     0.783,
-     0.85,
-     1.5,
-     1.556
+     0.375,
+     0.435,
+     0.522,
+     0.652,
+     0.227,
+     0.727,
+     1.455,
+     1.909
     ],
     "reached": [
      24,
@@ -79,88 +79,94 @@
      24,
      24,
      24,
-     24,
-     24,
-     24,
      23,
-     20,
-     20,
-     18
+     23,
+     23,
+     22,
+     22,
+     22,
+     22
     ]
    },
-   "lost10": 3.25,
-   "lost15": 0.5,
+   "lost10": 2.583,
+   "lost15": 0.458,
    "lostBonus": 0
   },
   "tough": {
    "n": 24,
    "lost": [
     0,
+    0.083,
     0,
-    0.167,
-    0.208,
+    0.25,
     0.125,
-    0.5,
-    0.333,
-    0.542,
     0.625,
-    1.083,
-    0.958,
-    1.458,
-    2.042
+    0.417,
+    0.625,
+    0.667,
+    0.333,
+    0.708,
+    1.5,
+    2.292
    ],
-   "lost10": 3.583,
+   "lost10": 3.125,
    "cliff": {
     "step": {
-     "wave": 10,
-     "up": 0.458
+     "wave": 6,
+     "up": 0.5
     },
-    "doubles": []
+    "doubles": [
+     {
+      "wave": 6,
+      "prev": 0.125,
+      "cur": 0.625
+     }
+    ]
    },
    "close": [
     0.042,
-    1.958,
-    1.292,
-    1.875,
-    1.5,
-    3.667,
-    2.917,
-    4.083,
-    3.417,
-    5.167,
-    1.208,
-    1.917,
-    3.458
+    1.375,
+    1.542,
+    2.792,
+    2.5,
+    3.917,
+    2.708,
+    2.792,
+    4.042,
+    4.667,
+    0.542,
+    0.833,
+    1.167
    ],
    "closeAny": [
     0.042,
+    0.833,
+    0.833,
     0.917,
-    0.75,
-    0.625,
-    0.708,
-    0.958,
-    0.958,
-    0.958,
     0.917,
+    0.958,
+    0.875,
+    0.833,
     1,
-    0.792,
-    0.792,
-    1
+    0.958,
+    0.417,
+    0.5,
+    0.458
    ],
    "launches": [
-    14,
-    15.208,
-    21.125,
-    23.125,
-    25.167,
-    26.125,
-    31.458,
-    34.75,
-    39.958,
-    41.833,
-    26.125,
-    33.667,
-    36.583
+    15,
+    13.208,
+    22.458,
+    27,
+    23.583,
+    24.375,
+    29.708,
+    31.25,
+    37.458,
+    37.125,
+    12,
+    13,
+    20.458
    ],
    "table": [
     14,
@@ -175,16 +181,16 @@
     59
    ],
    "vsTable": [
-    1,
-    0.8,
-    0.845,
-    0.797,
-    0.839,
-    0.792,
-    0.807,
-    0.827,
-    0.832,
-    0.709
+    1.071,
+    0.695,
+    0.898,
+    0.931,
+    0.786,
+    0.739,
+    0.762,
+    0.744,
+    0.78,
+    0.629
    ],
    "baseline": [
     14,
@@ -199,63 +205,63 @@
     44.875
    ],
    "vsBaseline": [
-    1,
-    0.995,
-    0.907,
-    0.996,
-    1.029,
-    0.96,
-    1.023,
-    1.012,
-    1.054,
-    0.932
+    1.071,
+    0.864,
+    0.964,
+    1.163,
+    0.964,
+    0.896,
+    0.966,
+    0.91,
+    0.988,
+    0.827
    ],
    "warning": [
-    8.337,
-    6.015,
-    7.462,
-    6.592,
-    6.486,
-    5.408,
-    5.866,
-    5.748,
-    5.26,
-    5.035,
-    4.867,
-    4.97,
-    4.789
+    8.067,
+    6.37,
+    7.428,
+    6.452,
+    5.854,
+    5.636,
+    5.857,
+    6.111,
+    5.278,
+    5.517,
+    5.36,
+    5.507,
+    5.321
    ],
    "warningN": [
-    336,
-    365,
-    507,
-    533,
-    604,
-    598,
-    733,
-    803,
-    947,
-    966,
-    607,
-    786,
-    846
+    360,
+    316,
+    538,
+    629,
+    565,
+    565,
+    692,
+    711,
+    886,
+    844,
+    288,
+    312,
+    469
    ],
-   "warningSlope": -0.284,
+   "warningSlope": -0.237,
    "stretchCore": [
     {
      "lane": 0,
      "hpShare": [
-      0.234,
-      0.446,
-      0.32
+      0.209,
+      0.462,
+      0.329
      ],
      "sunkShare": [
-      0.4,
-      0.317,
-      0.283
+      0.194,
+      0.478,
+      0.328
      ],
-     "hp": 71.167,
-     "sunk": 2.5,
+     "hp": 74.542,
+     "sunk": 2.792,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -263,17 +269,17 @@
     {
      "lane": -1,
      "hpShare": [
-      0.234,
-      0.446,
-      0.32
+      0.209,
+      0.462,
+      0.329
      ],
      "sunkShare": [
-      0.4,
-      0.317,
-      0.283
+      0.194,
+      0.478,
+      0.328
      ],
-     "hp": 71.167,
-     "sunk": 2.5,
+     "hp": 74.542,
+     "sunk": 2.792,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -283,17 +289,17 @@
     {
      "lane": 0,
      "hpShare": [
-      0.29,
-      0.412,
-      0.298
+      0.194,
+      0.489,
+      0.317
      ],
      "sunkShare": [
-      0.585,
-      0.218,
-      0.197
+      0.137,
+      0.617,
+      0.246
      ],
-     "hp": 128.833,
-     "sunk": 8.042,
+     "hp": 118.458,
+     "sunk": 7.625,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -301,17 +307,17 @@
     {
      "lane": -1,
      "hpShare": [
-      0.29,
-      0.412,
-      0.298
+      0.194,
+      0.489,
+      0.317
      ],
      "sunkShare": [
-      0.585,
-      0.218,
-      0.197
+      0.137,
+      0.617,
+      0.246
      ],
-     "hp": 128.833,
-     "sunk": 8.042,
+     "hp": 118.458,
+     "sunk": 7.625,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -320,19 +326,19 @@
   },
   "boss": {
    "reachedMean": [
-    0.85,
-    1.5,
-    1.556
+    0.727,
+    1.455,
+    1.909
    ],
    "reached": [
-    20,
-    20,
-    18
+    22,
+    22,
+    22
    ],
    "tough": [
-    0.958,
-    1.458,
-    2.042
+    0.708,
+    1.5,
+    2.292
    ]
   },
   "tower": null,
@@ -345,31 +351,31 @@
      "supplyRun"
     ],
     "n": 24,
-    "endWave": 13.125,
-    "won": 0.625,
-    "lost10": 3.208,
-    "lost10Tough": 3.333,
+    "endWave": 13.417,
+    "won": 0.542,
+    "lost10": 2.292,
+    "lost10Tough": 2.292,
     "curveTough": [
      0,
+     0.042,
      0,
      0.167,
-     0.208,
-     0.083,
-     0.458,
-     0.458,
-     0.583,
-     0.5,
-     0.875
+     0.167,
+     0.333,
+     0.25,
+     0.417,
+     0.375,
+     0.542
     ],
     "boss": [
-     0.952,
-     1.667,
-     1.211
+     0.565,
+     1.391,
+     2.609
     ],
     "bossReached": [
-     21,
-     21,
-     19
+     23,
+     23,
+     23
     ]
    },
    {
@@ -380,38 +386,38 @@
      "fullSteam"
     ],
     "n": 24,
-    "endWave": 12.833,
-    "won": 0.583,
-    "lost10": 3.667,
-    "lost10Tough": 4.25,
+    "endWave": 13.125,
+    "won": 0.542,
+    "lost10": 2.25,
+    "lost10Tough": 2.417,
     "curveTough": [
      0,
+     0.083,
      0,
-     0.208,
-     0.167,
-     0.167,
-     0.542,
-     0.417,
-     1.083,
+     0.125,
+     0.25,
+     0.292,
+     0.25,
+     0.333,
      0.708,
-     0.958
+     0.375
     ],
     "boss": [
-     1.2,
-     1.4,
-     1.526
+     0.727,
+     1.909,
+     1.85
     ],
     "bossReached": [
-     20,
-     20,
-     19
+     22,
+     22,
+     20
     ]
    }
   ],
   "fun": {
    "n": 24,
    "dice": 3,
-   "ms": 239253,
+   "ms": 220051,
    "waves": [
     {
      "wave": 1,
@@ -422,16 +428,16 @@
      "clutch": 0,
      "kinds": {},
      "none": 1,
-     "peak": 0.193,
+     "peak": 0.134,
      "peaks": 0,
      "releaseS": 0,
      "hotShare": 0,
-     "calmShare": 0.974,
+     "calmShare": 0.999,
      "shape": "flat",
      "shapes": {
       "flat": 1
      },
-     "tapR": 0.513
+     "tapR": 0.441
     },
     {
      "wave": 2,
@@ -442,17 +448,17 @@
      "clutch": 0,
      "kinds": {},
      "none": 1,
-     "peak": 0.356,
+     "peak": 0.306,
      "peaks": 0.083,
-     "releaseS": 0.292,
-     "hotShare": 0.004,
-     "calmShare": 0.905,
+     "releaseS": 0.042,
+     "hotShare": 0.003,
+     "calmShare": 0.893,
      "shape": "flat",
      "shapes": {
-      "flat": 0.917,
-      "single": 0.083
+      "flat": 0.958,
+      "sawtooth": 0.042
      },
-     "tapR": 0.499
+     "tapR": 0.324
     },
     {
      "wave": 3,
@@ -463,16 +469,16 @@
      "clutch": 0,
      "kinds": {},
      "none": 1,
-     "peak": 0.391,
+     "peak": 0.364,
      "peaks": 0,
      "releaseS": 0,
      "hotShare": 0,
-     "calmShare": 0.908,
+     "calmShare": 0.912,
      "shape": "flat",
      "shapes": {
       "flat": 1
      },
-     "tapR": 0.399
+     "tapR": 0.406
     },
     {
      "wave": 4,
@@ -483,93 +489,21 @@
      "clutch": 0,
      "kinds": {},
      "none": 1,
-     "peak": 0.533,
-     "peaks": 0,
-     "releaseS": 0,
-     "hotShare": 0,
-     "calmShare": 0.881,
+     "peak": 0.605,
+     "peaks": 0.292,
+     "releaseS": 0.438,
+     "hotShare": 0.006,
+     "calmShare": 0.87,
      "shape": "flat",
      "shapes": {
-      "flat": 1
+      "flat": 0.75,
+      "rising": 0.042,
+      "single": 0.208
      },
-     "tapR": 0.497
+     "tapR": 0.467
     },
     {
      "wave": 5,
-     "n": 24,
-     "saves": 0.125,
-     "saved": 0.084,
-     "big": 0,
-     "clutch": 0.042,
-     "kinds": {
-      "kill": 0.083,
-      "pickup": 0.042
-     },
-     "none": 0.875,
-     "peak": 0.506,
-     "peaks": 0.042,
-     "releaseS": 0.042,
-     "hotShare": 0.001,
-     "calmShare": 0.86,
-     "shape": "flat",
-     "shapes": {
-      "flat": 0.958,
-      "single": 0.042
-     },
-     "tapR": 0.545
-    },
-    {
-     "wave": 6,
-     "n": 24,
-     "saves": 0.208,
-     "saved": 0.153,
-     "big": 0,
-     "clutch": 0.125,
-     "kinds": {
-      "pickup": 0.042,
-      "lastSecond": 0.042,
-      "kill": 0.125
-     },
-     "none": 0.875,
-     "peak": 0.765,
-     "peaks": 0.542,
-     "releaseS": 0.833,
-     "hotShare": 0.011,
-     "calmShare": 0.85,
-     "shape": "flat",
-     "shapes": {
-      "flat": 0.5,
-      "sawtooth": 0.042,
-      "single": 0.458
-     },
-     "tapR": 0.468
-    },
-    {
-     "wave": 7,
-     "n": 24,
-     "saves": 0.083,
-     "saved": 0.07,
-     "big": 0,
-     "clutch": 0.083,
-     "kinds": {
-      "pickup": 0.042,
-      "kill": 0.042
-     },
-     "none": 0.958,
-     "peak": 0.573,
-     "peaks": 0.125,
-     "releaseS": 0.292,
-     "hotShare": 0.003,
-     "calmShare": 0.85,
-     "shape": "flat",
-     "shapes": {
-      "flat": 0.875,
-      "single": 0.125
-     },
-     "tapR": 0.455
-    },
-    {
-     "wave": 8,
      "n": 24,
      "saves": 0,
      "saved": 0,
@@ -577,145 +511,207 @@
      "clutch": 0,
      "kinds": {},
      "none": 1,
-     "peak": 0.727,
-     "peaks": 0.375,
-     "releaseS": 0.792,
-     "hotShare": 0.007,
-     "calmShare": 0.825,
+     "peak": 0.597,
+     "peaks": 0.167,
+     "releaseS": 0.333,
+     "hotShare": 0.005,
+     "calmShare": 0.849,
      "shape": "flat",
      "shapes": {
-      "single": 0.375,
-      "flat": 0.625
+      "single": 0.167,
+      "flat": 0.833
+     },
+     "tapR": 0.493
+    },
+    {
+     "wave": 6,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.805,
+     "peaks": 0.417,
+     "releaseS": 0.667,
+     "hotShare": 0.015,
+     "calmShare": 0.864,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.667,
+      "single": 0.25,
+      "sawtooth": 0.083
+     },
+     "tapR": 0.4
+    },
+    {
+     "wave": 7,
+     "n": 23,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.599,
+     "peaks": 0.174,
+     "releaseS": 0.348,
+     "hotShare": 0.005,
+     "calmShare": 0.853,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.826,
+      "single": 0.174
+     },
+     "tapR": 0.413
+    },
+    {
+     "wave": 8,
+     "n": 23,
+     "saves": 0.043,
+     "saved": 0.043,
+     "big": 0,
+     "clutch": 0.043,
+     "kinds": {
+      "pickup": 0.043
+     },
+     "none": 0.957,
+     "peak": 0.688,
+     "peaks": 0.391,
+     "releaseS": 0.522,
+     "hotShare": 0.008,
+     "calmShare": 0.848,
+     "shape": "flat",
+     "shapes": {
+      "single": 0.304,
+      "flat": 0.652,
+      "sawtooth": 0.043
      },
      "tapR": 0.369
     },
     {
      "wave": 9,
-     "n": 24,
-     "saves": 0.083,
-     "saved": 0.07,
+     "n": 23,
+     "saves": 0.043,
+     "saved": 0.029,
      "big": 0,
-     "clutch": 0.042,
+     "clutch": 0,
      "kinds": {
-      "kill": 0.042,
-      "pickup": 0.042
+      "kill": 0.043
      },
-     "none": 0.917,
-     "peak": 0.788,
-     "peaks": 0.458,
-     "releaseS": 0.854,
-     "hotShare": 0.011,
-     "calmShare": 0.825,
+     "none": 0.957,
+     "peak": 0.777,
+     "peaks": 0.478,
+     "releaseS": 0.783,
+     "hotShare": 0.013,
+     "calmShare": 0.836,
      "shape": "flat",
      "shapes": {
-      "flat": 0.583,
-      "rising": 0.042,
-      "single": 0.375
+      "flat": 0.522,
+      "single": 0.478
      },
-     "tapR": 0.362
+     "tapR": 0.296
     },
     {
      "wave": 10,
-     "n": 23,
-     "saves": 0.261,
-     "saved": 0.203,
-     "big": 0.043,
-     "clutch": 0.217,
+     "n": 22,
+     "saves": 0.045,
+     "saved": 0.03,
+     "big": 0,
+     "clutch": 0,
      "kinds": {
-      "pickup": 0.043,
-      "kill": 0.217
+      "kill": 0.045
      },
-     "none": 0.739,
-     "peak": 0.703,
-     "peaks": 0.391,
-     "releaseS": 0.348,
-     "hotShare": 0.012,
-     "calmShare": 0.796,
+     "none": 0.955,
+     "peak": 0.56,
+     "peaks": 0.091,
+     "releaseS": 0.091,
+     "hotShare": 0.001,
+     "calmShare": 0.878,
      "shape": "flat",
      "shapes": {
-      "flat": 0.696,
-      "single": 0.217,
-      "sawtooth": 0.087
+      "flat": 0.909,
+      "single": 0.091
      },
-     "tapR": 0.317
+     "tapR": 0.232
     },
     {
      "wave": 11,
-     "n": 20,
-     "saves": 0.35,
-     "saved": 0.267,
+     "n": 22,
+     "saves": 0.318,
+     "saved": 0.258,
      "big": 0,
-     "clutch": 0.1,
+     "clutch": 0.136,
      "kinds": {
-      "kill": 0.15,
-      "pickup": 0.2
+      "kill": 0.091,
+      "pickup": 0.182,
+      "lastSecond": 0.045
      },
-     "none": 0.65,
-     "peak": 1.227,
-     "peaks": 1.15,
-     "releaseS": 2.9,
-     "hotShare": 0.087,
-     "calmShare": 0.733,
-     "shape": "single",
+     "none": 0.727,
+     "peak": 0.601,
+     "peaks": 0.182,
+     "releaseS": 0.773,
+     "hotShare": 0.016,
+     "calmShare": 0.759,
+     "shape": "flat",
      "shapes": {
-      "single": 0.75,
-      "rising": 0.1,
-      "sawtooth": 0.1,
-      "flat": 0.05
+      "flat": 0.818,
+      "single": 0.182
      },
-     "tapR": 0.621
+     "tapR": 0.566
     },
     {
      "wave": 12,
-     "n": 20,
-     "saves": 0.4,
-     "saved": 0.351,
+     "n": 22,
+     "saves": 0.591,
+     "saved": 0.577,
      "big": 0,
-     "clutch": 0.15,
+     "clutch": 0.364,
      "kinds": {
-      "cover": 0.2,
-      "kill": 0.2
+      "pickup": 0.273,
+      "kill": 0.136,
+      "cover": 0.045,
+      "lastSecond": 0.136
      },
-     "none": 0.75,
-     "peak": 1.23,
-     "peaks": 1.05,
-     "releaseS": 3.725,
-     "hotShare": 0.185,
-     "calmShare": 0.527,
-     "shape": "single",
+     "none": 0.591,
+     "peak": 0.605,
+     "peaks": 0.182,
+     "releaseS": 1,
+     "hotShare": 0.026,
+     "calmShare": 0.6,
+     "shape": "flat",
      "shapes": {
-      "single": 0.75,
-      "flat": 0.05,
-      "pinned": 0.15,
-      "rising": 0.05
+      "flat": 0.818,
+      "single": 0.182
      },
-     "tapR": 0.457
+     "tapR": 0.334
     },
     {
      "wave": 13,
-     "n": 18,
-     "saves": 0.833,
-     "saved": 0.705,
-     "big": 0.111,
-     "clutch": 0.333,
+     "n": 22,
+     "saves": 1,
+     "saved": 0.85,
+     "big": 0.091,
+     "clutch": 0.591,
      "kinds": {
-      "pickup": 0.278,
-      "kill": 0.556
+      "kill": 0.227,
+      "pickup": 0.545,
+      "cover": 0.227
      },
-     "none": 0.444,
-     "peak": 1.414,
-     "peaks": 1.333,
-     "releaseS": 3,
-     "hotShare": 0.183,
-     "calmShare": 0.445,
+     "none": 0.455,
+     "peak": 1.214,
+     "peaks": 0.955,
+     "releaseS": 2.773,
+     "hotShare": 0.184,
+     "calmShare": 0.534,
      "shape": "single",
      "shapes": {
-      "rising": 0.111,
-      "single": 0.611,
-      "sawtooth": 0.111,
-      "pinned": 0.167
+      "single": 0.773,
+      "pinned": 0.182,
+      "flat": 0.045
      },
-     "tapR": 0.398
+     "tapR": 0.291
     }
    ],
    "verdict": {
@@ -733,7 +729,7 @@
     ],
     "chaotic": [],
     "rising": true,
-    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "value": "saves a run: waves 1–7 0.0, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
     "verdict": "FLAG"
    },
    "placebo": null
@@ -742,15 +738,15 @@
    {
     "rule": "w-cliff",
     "name": "No cliffs",
-    "value": "biggest step w10 +0.46; no wave doubles",
+    "value": "biggest step w6 +0.50; doubles on w6 (0.13→0.63)",
     "target": "no wave 2–10 more than 2× the one before (before floored at 0.25)",
-    "verdict": "PASS",
+    "verdict": "FLAG",
     "from": "tough"
    },
    {
     "rule": "w-early",
     "name": "Close calls from wave 3",
-    "value": "fewest w3 1.29 a run (75% of runs have one)",
+    "value": "fewest w3 1.54 a run (83% of runs have one)",
     "target": "≥ 1 a run on every wave 3–10",
     "verdict": "PASS",
     "from": "tough"
@@ -758,15 +754,15 @@
    {
     "rule": "w-budget",
     "name": "Wave budgets ±15%",
-    "value": "furthest w3 ×0.91 of the no-encounter wave",
+    "value": "furthest w10 ×0.83 of the no-encounter wave; outside on w4 ×1.16, w10 ×0.83",
     "target": "every wave 1–10 within ×0.85–×1.15 of the table × scale as planned (encounters off)",
-    "verdict": "PASS",
+    "verdict": "FLAG",
     "from": "tough+baseline"
    },
    {
     "rule": "m-stretches",
     "name": "A danger and a safe stretch",
-    "value": "lane 1: hot middle 45%, cold early 23%",
+    "value": "lane 1: hot middle 46%, cold early 21%",
     "target": "each lane's coldest stretch < 25% of its ship hull damage (waves 1–9)",
     "verdict": "PASS",
     "from": "tough"
@@ -774,7 +770,7 @@
    {
     "rule": "g-warning",
     "name": "Warning time falls 1→10",
-    "value": "w1 8.3 s → w10 5.0 s (slope -0.28 s a wave)",
+    "value": "w1 8.1 s → w10 5.5 s (slope -0.24 s a wave)",
     "target": "falls: slope < 0 and wave 10 below wave 1",
     "verdict": "PASS",
     "from": "tough"
@@ -790,7 +786,7 @@
    {
     "rule": "w-early",
     "name": "Ships lost waves 1–5",
-    "value": "0.50 a run",
+    "value": "0.46 a run",
     "target": "a good player 0–1 (rule w-early)",
     "verdict": "INFO",
     "from": "normal"
@@ -798,7 +794,7 @@
    {
     "rule": "w-boss",
     "name": "Boss rounds",
-    "value": "normal (runs that reached it): r1 0.85 (20), r2 1.50 (20), r3 1.56 (18); tough (every run): 0.96, 1.46, 2.04",
+    "value": "normal (runs that reached it): r1 0.73 (22), r2 1.45 (22), r3 1.91 (22); tough (every run): 0.71, 1.50, 2.29",
     "target": "about 2 a round on the bot's scale, rising",
     "verdict": "INFO",
     "from": "normal"
@@ -806,7 +802,7 @@
    {
     "rule": "fun",
     "name": "Fun: saves a wave (provisional)",
-    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "value": "saves a run: waves 1–7 0.0, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
     "target": "you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small",
     "verdict": "FLAG",
     "from": "normal+forks"
@@ -814,7 +810,7 @@
    {
     "rule": "m-kits",
     "name": "Kits",
-    "value": "counter 3.3 lost 1–10, end 13.1; off-counter 4.3 lost 1–10, end 12.8",
+    "value": "counter 2.3 lost 1–10, end 13.4; off-counter 2.4 lost 1–10, end 13.1",
     "target": "the counter kit clearly better; neither trivial",
     "verdict": "INFO",
     "from": "kits"

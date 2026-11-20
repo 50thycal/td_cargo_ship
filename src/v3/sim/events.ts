@@ -668,7 +668,9 @@ function plan(g: Game, ev: EventRun): EventStep[] {
         ev.roads = T.trucks.map((c) => bankRoad(g, c.lock, c.bank));
         return [
           ...T.trucks.flatMap((c, col) => Array.from({ length: c.count }, (_, i): EventStep => ({ at: B + c.at + i * c.gap, op: 'ctruck', k: col * 100 + i }))),
-          ...steps(T.swarms ?? 0, (k) => 4 + k * 6, 'swarm'),
+          // The swarm comes as the column sets up (and keeps a round going
+          // 15 s or so when its trucks are shot fast).
+          ...steps(T.swarms ?? 0, (k) => 11 + k * 5, 'swarm'),
           ...fireSteps(T),
         ];
       }

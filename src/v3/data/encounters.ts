@@ -3746,7 +3746,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'rocketTruck', count: 1, from: road(0), aim: 'lock', salvos: 2 },
       { at: 0.35, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 9, ballistic: 2 },
+    replaces: { drones: 7, ballistic: 2 },
   },
   {
     id: 'saltgate-both-locks',
@@ -3755,7 +3755,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'Both locks',
     callout: 'Both locks at once',
-    premise: 'A guided missile drops off the silo over the west lock at the ship inside, while drones come off the east lock\'s silo and the west shore.',
+    premise: 'A guided missile drops off the silo over the west lock at the ship inside, while drones come off the east lock\'s silo and the west shore; then a second missile from the east shore at the east lock.',
     decision: 'The first stakes: two locks, two silos right over them, and almost no warning from either.',
     counters: 'The missile the moment it lifts off; the drones as they leave.',
     succeeds: 'A close call at a lock in most runs; a good player loses under half a ship.',
@@ -3768,6 +3768,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
       { at: 0.4, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
       { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.6, kind: 'guided', count: 1, from: base(4), aim: 'lock' },
     ],
     replaces: { drones: 4, ballistic: 4, guided: 1 },
   },
@@ -3777,22 +3778,23 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [4],
     role: 'combine',
     name: 'A cluster over the chamber',
-    callout: 'A cluster missile',
-    premise: 'A cluster missile lifts off over the west lock and splits above the ships waiting in it; swarms come off both shores.',
-    decision: 'The ships in a chamber sit side by side: one cluster that splits there finds several at once.',
-    counters: 'The cluster as it climbs, before it splits; then the swarms.',
-    succeeds: 'The cluster is shot down before it splits in most runs; no ship lost in most runs.',
+    callout: 'Clusters over the locks',
+    premise: 'A cluster missile lifts off over the west lock and splits above the ships waiting in it, then another over the east lock; swarms come off both shores.',
+    decision: 'The ships in a chamber sit side by side: one cluster that splits there finds several at once, and the second comes from the other end of the canal.',
+    counters: 'Each cluster as it climbs, before it splits; then the swarms.',
+    succeeds: 'The clusters are shot down before they split in most runs; a close call at a lock, no ship lost in most runs.',
     notes: {
-      sites: 'The silo over the west lock (580, 240; a cluster), the west shore silo (220, 150) and the east lock\'s silo (1220, 240; swarms).',
-      target: 'The cluster at the ship held at the west lock, the swarms at any ship.',
-      usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells and its cluster (the first torpedo sub comes with the wave).',
+      sites: 'The silo over the west lock (580, 240; a cluster), the east lock\'s silo (1220, 240; a cluster and a swarm), the west shore silo (220, 150; a swarm).',
+      target: 'Each cluster at the ship held at the lock nearest its silo, the swarms at any ship.',
+      usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells, its cluster and a swarm (the signature\'s first truck comes with the wave; log v42: the east lock\'s cluster added).',
     },
     beats: [
       { at: 0.35, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.55, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 2, ballistic: 5, extras: { cluster: 1 } },
+    replaces: { drones: 5, ballistic: 5, extras: { cluster: 1 } },
   },
   {
     id: 'saltgate-two-gates',
@@ -3817,7 +3819,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 11, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
+    replaces: { drones: 6, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
   },
   {
     id: 'saltgate-periscope',
@@ -4094,7 +4096,7 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
 /** Saltgate Canal (log v42; the player's v38 play: waves 1-6 rated 1-2 for
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
-const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.1, 1.1, 0.92, 0.9, 0.9, 0.88, 0.92];
+const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.04, 1.1, 0.88, 0.9, 0.9, 0.92, 0.96];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4491,7 +4493,7 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
       { at: 0, lock: 0, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
       { at: 2, lock: 1, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
       { at: 5, lock: 0, bank: 'south', count: 3, gap: 0.9, salvos: 1 },
-      { at: 8, lock: 1, bank: 'south', count: 3, gap: 0.9, salvos: 1 },
+      { at: 8, lock: 1, bank: 'south', count: 2, gap: 0.9, salvos: 1 },
     ],
     swarms: 1,
     size: 5,
