@@ -5,10 +5,11 @@
 // A signature threat counts with what it fires (an attack helicopter with
 // its rockets). Two shares: of the threats that show (mix.ts's), and of
 // the hits it takes to clear them (each threat by its hit points as it
-// shows: a heavy missile is 8, a drone 1), since a few big threats can be
+// shows: a heavy missile is 8, a drone 1, an armored drone 2 and its plate
+// 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -19,13 +20,15 @@ import { PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
-const maps = (opt('maps')?.split(',') ?? ['island', 'behemoth']) as MapId[];
+const maps = (opt('maps')?.split(',') ?? ['island', 'behemoth', 'needle']) as MapId[];
 const seeds = Number(opt('seeds') ?? 4);
 
 /** Each map's signature (round 9): the kinds that count as it. */
 export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   island: ['attackHeli', 'heliRocket'],
   behemoth: ['heavy', 'strafer'],
+  // The Needle of Bosk (log v35): the Shield Wall's armored drones.
+  needle: ['armored'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -49,7 +52,10 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         const w = out[Math.min(13, g.wave) - 1];
         if (w) w[th.kind] = (w[th.kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
-        if (h) h[th.kind] = (h[th.kind] ?? 0) + th.hp / nSeeds;
+        // An armored drone's plate takes hits too (up to FOE.armored.plate
+        // from the front, the way it flies at its ship): counted with its
+        // hull (log v35, the Needle's walls).
+        if (h) h[th.kind] = (h[th.kind] ?? 0) + (th.hp + (th.kind === 'armored' ? (th.foe?.n ?? 0) : 0)) / nSeeds;
       }
     }
   }

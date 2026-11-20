@@ -169,6 +169,29 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch2-needle.md
+  needle: {
+    problem: 'Open water narrows to a gap one hull wide: the convoy closes into single file and queues at the mouth, right between the two enemy headlands, where one cluster, one shell or one wall of armored drones finds ships nose to tail.',
+    // The headlands fire from point-blank range onto ships bunched nose to
+    // tail, too close for a shot from the carrier to get there first: each
+    // ship's own Point Defense, which in a column covers the ship ahead and
+    // behind; the Thermobaric Shell's blast, which goes round an armored
+    // wall's plates and takes a cluster with what is near it; the Gunship
+    // Pair's rockets at the thickest cluster, the queue. The Frigate Escort
+    // can't follow the convoy through the Needle (its frigates back out of
+    // the narrows), the Seeker Pod's long flight is too late at the mouth,
+    // and the Drone Screen fights one drone at a time (forced, 7.3 ships a
+    // run against 9.6; bots, the player's Armory: docs/design/
+    // v3-ch2-needle.md, Kits). Every weapon is in chapter 2's draft.
+    counters: ['aegis', 'thermo', 'gunships'],
+    offCounter: ['seeker', 'frigate', 'droneScreen'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east across open water, falling into single file as the lane closes to one hull wide, queueing at the mouth and threading the Needle between the headlands.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Shield Wall at the mouth: one block of armored drones from the north shore at one ship, plates forward, banking together (8, 9, then 10 drones, 4, 3 and 5 wide; the event sends 12 every round), each round with a cluster from the north headland over the queue early and a shell into the Needle late (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

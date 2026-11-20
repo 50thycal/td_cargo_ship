@@ -129,6 +129,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // shape the convoy on their own.
   island: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   behemoth: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  // The Needle of Bosk (docs/design/v3-ch2-needle.md): the same, no
+  // command. The lane closes to one hull wide, so the pairs fall into single
+  // file and queue at the mouth on their own: the shape is the problem.
+  needle: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
   // left alone: only Hold is added.

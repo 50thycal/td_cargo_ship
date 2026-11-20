@@ -225,12 +225,19 @@ import type { EncounterSetup } from '../data/encounters';
  *      in place of most of the Wolf Pack's subs (MAP_BOSS, lab; a boss
  *      round's `fire` may send jets). A v33 log with Overdrive,
  *      or a v33 Island or Behemoth card log, no longer replays to the same
- *      game. */
-export const LOG_VERSION = 34;
+ *      game.
+ *  35: the Needle of Bosk rebuilt to the map rules (docs/design/
+ *      v3-ch2-needle.md; lab, under the encounter layer): one encounter a
+ *      wave (NEEDLE_R4), small walls of armored drones from wave 4
+ *      (MAP_SIGNATURE.needle, its new `block`), the Shield Wall's rounds
+ *      (MAP_BOSS.needle; a boss round's `fire` may send a cluster). A v34
+ *      Needle card log no longer replays to the same game; the campaign
+ *      plays as it did. */
+export const LOG_VERSION = 35;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [34];
+export const LOG_REPLAYS: readonly number[] = [35];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

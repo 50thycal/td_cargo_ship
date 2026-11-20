@@ -16,7 +16,7 @@ import { PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
-const maps = (opt('maps')?.split(',') ?? ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth']) as MapId[];
+const maps = (opt('maps')?.split(',') ?? ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle']) as MapId[];
 const seeds = Number(opt('seeds') ?? 3);
 
 export type Mix = Record<'waves' | 'boss', Record<string, number>>;
