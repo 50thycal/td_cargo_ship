@@ -179,9 +179,11 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
     // Chapter 1 (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md): the same.
     kesh: [],
     marrow: [],
-    // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md).
+    // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md,
+    // v3-ch2-needle.md).
     island: [],
     behemoth: [],
+    needle: [],
   };
 
   it('the back-to-back repeats are exactly the known ones', () => {
@@ -200,7 +202,7 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
 
 describe('w-encounter: an encounter on each of waves 1-10 (v1)', () => {
   /** Waves with no v1 encounter, per map (none today). */
-  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [] };
+  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [], needle: [] };
 
   it('the waves without one are exactly the known gaps', () => {
     const found: Record<string, number[]> = {};
@@ -234,6 +236,7 @@ describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
     // a round on the bot's scale).
     expect(MAP_PLANS.island!.boss.botTarget).toBe(2);
     expect(MAP_PLANS.behemoth!.boss.botTarget).toBe(2);
+    expect(MAP_PLANS.needle!.boss.botTarget).toBe(2);
   });
 });
 

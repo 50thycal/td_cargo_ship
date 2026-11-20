@@ -156,7 +156,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -175,6 +175,11 @@ describe('a campaign run has no encounter layer', () => {
       'behemoth-first-tanker', 'behemoth-tanker-shell', 'behemoth-headland', 'behemoth-periscope', 'behemoth-tanker-or-convoy',
       'behemoth-both-sides', 'behemoth-strafe', 'behemoth-wolves', 'behemoth-heavies', 'behemoth-last-run',
     ]);
+    // The Needle of Bosk (docs/design/v3-ch2-needle.md): the same.
+    expect(arc('needle').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands',
+      'needle-way-out', 'needle-strafe', 'needle-heavy', 'needle-crossfire', 'needle-run',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -190,8 +195,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('needle')).toBe(false);
-    expect(encountersFor('needle', 5)).toEqual([]);
+    expect(hasEncounters('archipelago')).toBe(false);
+    expect(encountersFor('archipelago', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -647,7 +652,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle'], e.id).toContain(e.map);
   });
 
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
@@ -883,6 +888,45 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
   }, 90_000);
 });
 
+describe('the Needle of Bosk\'s boss rounds (log v34, MAP_BOSS): the Shield Wall at the mouth rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('one block of armored drones a round, bigger each round, with clusters and shells from the headlands at the queue', () => {
+    const off = playMimic('needle', 201, opts);
+    const old = playMimic('needle', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own block of 12 and nothing else.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => [e.id, e.sent.armored, e.sent.cluster ?? 0, e.sent.ballistic ?? 0])).toEqual([
+      ['shield-wall', 12, 0, 0],
+      ['shield-wall', 12, 0, 0],
+      ['shield-wall', 12, 0, 0],
+    ]);
+    const on = playMimic('needle', 201, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.needle!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['shield-wall', 1], ['shield-wall', 2], ['shield-wall', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.armored)).toEqual(done.map((e) => rounds[e.run! - 1].block));
+    expect(done.map((e) => e.sent.cluster ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'cluster')));
+    expect(done.map((e) => e.sent.ballistic ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'ballistic')));
+    for (const r of rounds) {
+      // The Shield Wall's block leads; what is added goes at the queue (the
+      // ship nearest the headland silo it comes from).
+      expect(r.block!, 'the block leads').toBeGreaterThan(fired(r, 'cluster') + fired(r, 'ballistic'));
+      for (const f of r.fire ?? []) {
+        expect(f.aim).toBe('near');
+        expect([2, 3]).toContain(f.base);
+        expect(MAPS.needle.bases[f.base!].kinds).toContain(f.kind);
+      }
+    }
+    // More each round (a cluster over the queue is worth about four drones).
+    const weight = rounds.map((r) => r.block! + 4 * fired(r, 'cluster') + 2 * fired(r, 'ballistic'));
+    for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+    roundLengths(done);
+  }, 90_000);
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -941,6 +985,36 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     const lane = g.map.channels.find((c) => c.vip)!;
     expect(vipRoute(g)!.y).toBeCloseTo(lane.y!, 0);
     expect(vipRoute(createGame('strait', 1, 4))).toBeNull();
+  });
+
+  it('the Needle of Bosk (log v34): from wave 4 the wave\'s new enemies come as small walls of armored drones, the Shield Wall\'s own', () => {
+    const sig = MAP_SIGNATURE.needle!;
+    expect(sig).toMatchObject({ from: 4, foe: 'armored', foeShare: 1 });
+    expect(sig.block).toBeGreaterThanOrEqual(2);
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('needle', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('needle', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const armored = kinds(on, 'armored');
+        if (w >= 4) {
+          expect(signatureOf('needle', w, on.enc!.setup), `wave ${w}`).toBeDefined();
+          // Each of the wave's new enemies a wall of `block` (no bigger than
+          // the swarm it stands in for), each wall out of one base.
+          expect(armored.length, `wave ${w} seed ${seed}`).toBe(foeCount(w) * Math.min(sig.block!, waveSpec(w, MAPS.needle.threatScale).swarm));
+          expect(new Set(armored.map((l) => l.base)).size, `wave ${w} seed ${seed}`).toBeLessThanOrEqual(foeCount(w));
+          // Launch for launch, no bigger than the shared wave (rule w-budget).
+          expect(planned(on), `wave ${w} seed ${seed}`).toBeLessThanOrEqual(planned(shared) + 2);
+        } else expect(signatureOf('needle', w, on.enc!.setup), `wave ${w}`).toBeUndefined();
+        expect(signatureOf('needle', w, shared.enc!.setup)).toBeUndefined();
+      }
+    // The campaign plays the planner as it was: one of whatever it draws.
+    const camp = createGame('needle', 1, 6);
+    expect(camp.enc).toBeFalsy();
+    expect(kinds(camp, 'armored').length).toBeLessThanOrEqual(foeCount(6));
+    // The other signatures are one enemy each, as before.
+    expect(MAP_SIGNATURE.island!.block).toBeUndefined();
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
