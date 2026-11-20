@@ -68,6 +68,9 @@ export interface ComboJob {
   persona?: string;
   /** Read the tension each second (cheap). */
   tension?: boolean;
+  /** The rack, set after the run is made (a what-if for a tool; the game's
+   *  rack comes from the Armory). */
+  rack?: number;
 }
 
 export interface WaveTension {
@@ -121,6 +124,10 @@ export function playCombo(job: ComboJob): ComboRun {
     ...(plan.encounters ? { encounters: plan.encounters } : {}),
   });
   const g = run.game;
+  if (job.rack) {
+    g.stats = { ...g.stats, rack: job.rack };
+    g.ammo = Math.min(g.ammo, job.rack);
+  }
   if (!job.normal) {
     g.tempo = { ...g.tempo, lossLimit: 999 };
     g.carrierHp = g.stats.carrierHp = 1e6;

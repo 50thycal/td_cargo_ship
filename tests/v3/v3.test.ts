@@ -4,10 +4,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, WEAPON, abilityName, type AbilityId } from '../../src/v3/data/abilities';
-import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, armoryStats, bayItems, cardsFor, drawCards } from '../../src/v3/data/armory';
+import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, LEVEL_COST, armoryStats, bayItems, cardsFor, findCards, levelCost, scrapFor, scrapTally, spendScrap } from '../../src/v3/data/armory';
 import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP, VIEW } from '../../src/v3/data/config';
 import { MAP_ORDER } from '../../src/v3/data/maps';
-import { ARMORY_VERSION, equipArmory, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
+import { ARMORY_VERSION, equipArmory, levelUp, loadProgress, recordResult, runLoadout, type Progress } from '../../src/v3/platform/save';
 import { Bot, runBot, SKILLS } from '../../src/v3/sim/bot';
 import { playMimic } from '../../src/v3/sim/mimic';
 import { replay } from '../../src/v3/sim/playlog';
@@ -85,7 +85,7 @@ function load(g: Game, id: AbilityId, level = 1): void {
 
 describe('the Armory (gun, hull and supply bays, set before a run)', () => {
   const GUN = bayItems('gun');
-  const fresh = (): Progress => ({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION });
+  const fresh = (): Progress => ({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: { gun: null, hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION, scrap: 0, scrapEarned: 0 });
   /** A fixed card draw: always the k-th open upgrade. */
   const draw = (k: number) => (n: number) => Math.min(k, n - 1);
 
@@ -102,6 +102,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(s.pdGap).toBe(0);
     expect(s.repairEvery).toBe(0);
     expect(s.weaponTime).toBe(WEAPON.time);
+    expect(s.refill).toBe(0);
     expect(s.dropShare).toBe(WEAPON.share);
     expect(s.dropPity).toBe(WEAPON.pity);
     expect(s.powerShare).toBe(1);
@@ -109,11 +110,12 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(s.glance).toBe(0);
   });
 
-  it('three bays: the gun bay holds the five gun upgrades, hull and supply three each', () => {
+  it('three bays (the overhaul): Gun 4, Hull 3, Supply 4, Deep Magazine in Supply', () => {
     expect(BAY_ORDER).toEqual(['gun', 'hull', 'supply']);
-    expect(GUN).toEqual(['reload', 'warhead', 'motor', 'magazine', 'fuse']);
+    expect(GUN).toEqual(['reload', 'warhead', 'motor', 'fuse']);
     expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair']);
-    expect(bayItems('supply')).toEqual(['longload', 'drops', 'stockpile']);
+    expect(bayItems('supply')).toEqual(['magazine', 'longload', 'drops', 'stockpile']);
+    expect(BAYS.supply.name).toBe('Supply');
     expect(new Set(BAY_ORDER.map((b) => BAYS[b].color)).size).toBe(3);
   });
 
@@ -133,18 +135,71 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
         if (id === 'reload' || (id === 'repair' && lv > 1)) expect(v).toBeLessThan(prev);
         else expect(v).toBeGreaterThanOrEqual(prev);
         prev = v;
-        // Point Defense also sets its gap, Armor Plating the ships' hull too.
-        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime' };
+        // Deck Guns also set their gap, Long Loads the rack refill.
+        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill' };
         for (const f of fields) if (f !== field[id] && also[id] !== f) expect(s[f]).toBe(base[f]);
       }
     }
   });
 
-  it('stops short of the mash-wins line round 6 found (≤10 rounds, ≥70% reload time)', () => {
-    const top = armoryStats(Object.fromEntries(GUN.map((id) => [id, ARMORY_MAX])));
-    expect(top.rack).toBeLessThanOrEqual(10);
-    expect(top.reload / INTERCEPTOR.reload).toBeGreaterThanOrEqual(0.7 - 1e-9);
+  it('stops short of the mash-wins line round 6 found (11 rounds at −55%), whatever rides together', () => {
+    // Quick Reload (Gun) and Deep Magazine (Supply) can now be equipped
+    // together: 11 rounds at −40% reload.
+    const top = armoryStats({ reload: ARMORY_MAX, fuse: ARMORY_MAX, magazine: ARMORY_MAX });
+    expect(top.rack).toBe(11);
+    expect(top.reload / INTERCEPTOR.reload).toBeCloseTo(0.6, 9);
+    expect(top.reload / INTERCEPTOR.reload).toBeGreaterThan(0.45);
     expect(top.hitDamage).toBe(2);
+  });
+
+  it('the lift, as measured (review ar1): Quick Reload −40%, Stockpile 3.25× and 2.5×, Long Loads refills the rack', () => {
+    const r = (lv: number) => armoryStats({ reload: lv }).reload / INTERCEPTOR.reload;
+    expect([1, 2, 3, 4, 5].map((lv) => Math.round(r(lv) * 100) / 100)).toEqual([0.92, 0.84, 0.76, 0.68, 0.6]);
+    const sp = (lv: number) => armoryStats({ stockpile: lv });
+    expect([1, 2, 3, 4, 5].map((lv) => sp(lv).powerShare)).toEqual([1.45, 1.9, 2.35, 2.8, 3.25]);
+    expect([1, 2, 3, 4, 5].map((lv) => sp(lv).powerTime)).toEqual([1.3, 1.6, 1.9, 2.2, 2.5]);
+    // Long Loads keeps its load time and refills 2, 3, 4, 5 rounds, then the whole rack.
+    expect([1, 2, 3, 4, 5].map((lv) => armoryStats({ longload: lv }).weaponTime)).toEqual([19, 23, 27, 31, 35]);
+    expect([1, 2, 3, 4].map((lv) => armoryStats({ longload: lv }).refill)).toEqual([2, 3, 4, 5]);
+    expect(armoryStats({ longload: 5 }).refill).toBeGreaterThanOrEqual(armoryStats({ magazine: 5 }).rack);
+    expect(ARMORY.longload.show(5)).toContain('whole rack');
+    // Armor Plating is unchanged.
+    expect([1, 2, 3, 4, 5].map((lv) => armoryStats({ plating: lv }).glance)).toEqual([0.08, 0.16, 0.24, 0.32, 0.4]);
+    // No upgrade gets worse at any level than before the overhaul.
+    const before = { reload: [0.94, 0.88, 0.82, 0.76, 0.7], share: [1.15, 1.3, 1.45, 1.6, 1.75], time: [1.1, 1.2, 1.3, 1.4, 1.5], rack: [7, 8, 8, 9, 10] };
+    for (let lv = 1; lv <= 5; lv++) {
+      expect(r(lv)).toBeLessThanOrEqual(before.reload[lv - 1]);
+      expect(sp(lv).powerShare).toBeGreaterThanOrEqual(before.share[lv - 1]);
+      expect(sp(lv).powerTime).toBeGreaterThanOrEqual(before.time[lv - 1]);
+      expect(armoryStats({ magazine: lv }).rack).toBeGreaterThanOrEqual(before.rack[lv - 1]);
+    }
+  });
+
+  it('Deep Magazine: every level is one more round (level 3 used to add nothing)', () => {
+    expect([0, 1, 2, 3, 4, 5].map((lv) => armoryStats({ magazine: lv }).rack)).toEqual([6, 7, 8, 9, 10, 11]);
+  });
+
+  it('the Armory\'s Point Defense is shown as Deck Guns; its id is still pointdef', () => {
+    expect(ARMORY.pointdef.name).toBe('Deck Guns');
+    expect(ARMORY.pointdef.id).toBe('pointdef');
+    expect(Object.values(ARMORY).filter((a) => a.name === 'Point Defense')).toEqual([]);
+    expect(ABILITIES.aegis.name).toBe('Point Defense'); // the weapon keeps its name
+  });
+
+  it('Long Loads: a weapon pickup refills the rack in the run', () => {
+    // [level, rounds after the pickup from an empty rack] (tapping the
+    // pickup fires no round).
+    for (const [lv, want] of [[0, 0], [1, 2], [4, 5], [5, INTERCEPTOR.rack]] as const) {
+      const g = quietGame(1, lv ? { longload: lv } : {});
+      g.levels.flak = 1;
+      g.slots = ['flak'];
+      g.ammo = 0;
+      g.reloadT = 0;
+      g.pickups.push({ id: 961, kind: 'weapon', weapon: 'flak', x: 600, y: 300, age: 0 });
+      tap(g, 600, 300, 20);
+      expect(g.weapon?.id).toBe('flak');
+      expect(Math.floor(g.ammo)).toBe(want);
+    }
   });
 
   it('the run reads the armory', () => {
@@ -161,37 +216,35 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(cardsFor({ wavesCleared: 10, cleared: true }, true)).toBe(3);
   });
 
-  it('a card drawn is a random upgrade not yet maxed, and a card held again adds a level', () => {
-    const levels = {};
-    expect(drawCards(levels, 1, draw(0))).toEqual(['reload']);
-    expect(drawCards(levels, 2, draw(0))).toEqual(['reload', 'reload']);
-    expect(levels).toEqual({ reload: 3 });
-    drawCards(levels, 2, draw(0));
-    expect(levels).toEqual({ reload: 5 });
-    // Maxed: it no longer drops; the next open one does.
-    expect(drawCards(levels, 1, draw(0))).toEqual(['warhead']);
-    // Every level of everything: nothing left to win.
-    const full = Object.fromEntries(ARMORY_ORDER.map((id) => [id, ARMORY[id].max]));
-    expect(drawCards(full, 3, draw(0))).toEqual([]);
-    // Draws spread over the whole Armory.
+  it('a card found is a random upgrade: a new one joins at level 1, one already held is a duplicate (no level)', () => {
+    const levels: Record<string, number> = {};
+    expect(findCards(levels, 1, draw(0))).toEqual([{ id: 'reload', dup: false }]);
+    expect(findCards(levels, 2, draw(0))).toEqual([{ id: 'reload', dup: true }, { id: 'reload', dup: true }]);
+    expect(levels).toEqual({ reload: 1 });
+    // A maxed card can still be found: it pays Scrap.
+    levels.reload = 5;
+    expect(findCards(levels, 1, draw(0))).toEqual([{ id: 'reload', dup: true }]);
+    expect(levels.reload).toBe(5);
+    // Finds spread over the whole Armory.
     const many = {};
     let seed = 7;
     const rnd = (n: number) => ((seed = (seed * 16807) % 2147483647), seed % n);
-    drawCards(many, 30, rnd);
+    findCards(many, 30, rnd);
     expect(Object.keys(many).length).toBeGreaterThan(6);
+    expect(Object.values(many).every((lv) => lv === 1)).toBe(true);
   });
 
-  it('every finished run is recorded, and the cards it won go into the Armory, the first one in a bay equipped', () => {
+  it('every finished run is recorded, and the cards it found go into the Armory, the first one in a bay equipped', () => {
     const p = fresh();
     const quit = recordResult(p, 'strait', { score: 300, wave: 2, cleared: false, wavesCleared: 1 }, draw(0));
     expect(quit.cards).toEqual([]);
-    const lost = recordResult(p, 'strait', { score: 900, wave: 5, cleared: false, wavesCleared: 4 }, draw(6));
-    expect(lost.cards).toEqual(['pointdef']);
+    const lost = recordResult(p, 'strait', { score: 900, wave: 5, cleared: false, wavesCleared: 4 }, draw(5));
+    expect(lost.cards).toEqual([{ id: 'pointdef', dup: false }]);
     expect(p.equipped.hull).toBe('pointdef');
     const won = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, wavesCleared: 10 }, draw(0));
     expect(won.firstClear).toBe(true);
-    expect(won.cards).toEqual(['reload', 'reload', 'reload']);
-    expect(p.armory).toEqual({ pointdef: 1, reload: 3 });
+    expect(won.cards).toEqual([{ id: 'reload', dup: false }, { id: 'reload', dup: true }, { id: 'reload', dup: true }]);
+    expect(p.armory).toEqual({ pointdef: 1, reload: 1 });
     expect(p.equipped.gun).toBe('reload');
     expect(p.cards).toBe(4);
     const again = recordResult(p, 'strait', { score: 9000, wave: 10, cleared: true, wavesCleared: 10 }, draw(0));
@@ -200,21 +253,81 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(p.unlocked).toBe(2);
   });
 
+  it('Scrap: 40 a wave (1-10), 50 a boss round, 150 a clear, 250 a first clear, 100 a duplicate; a lost run keeps all of it', () => {
+    const p = fresh();
+    // Lost in wave 7: six waves cleared, one card (new), all its Scrap kept.
+    const lost = recordResult(p, 'strait', { score: 900, wave: 7, cleared: false, wavesCleared: 6, waves: 6, boss: 0 }, draw(0));
+    expect(lost.scrap).toEqual({ waves: 240, boss: 0, clear: 0, firstClear: 0, duplicates: 0, total: 240 });
+    expect(p.scrap).toBe(240);
+    // Lost in the second boss round: 10 waves and one boss round.
+    const boss = recordResult(p, 'kesh', { score: 900, wave: 12, cleared: false, wavesCleared: 11, waves: 10, boss: 1 }, draw(0));
+    expect(boss.scrap.waves + boss.scrap.boss).toBe(450);
+    expect(boss.scrap.duplicates).toBe(100); // Quick Reload again
+    // A first clear of a map with an ending: 400 + 150 + 150 + 250, three cards (two duplicates).
+    const won = recordResult(p, 'marrow', { score: 9000, wave: 13, cleared: true, wavesCleared: 13, waves: 10, boss: 3 }, draw(0));
+    expect(won.scrap).toEqual({ waves: 400, boss: 150, clear: 150, firstClear: 250, duplicates: 300, total: 1250 });
+    expect(p.scrap).toBe(240 + 550 + 1250);
+    expect(p.scrapEarned).toBe(p.scrap);
+    // The same map again: no first-clear bonus.
+    const again = recordResult(p, 'marrow', { score: 9000, wave: 13, cleared: true, wavesCleared: 13, waves: 10, boss: 3 }, draw(0));
+    expect(again.scrap.firstClear).toBe(0);
+    expect(again.scrap.total - again.scrap.duplicates).toBe(700);
+    // Played on into endless: the waves were banked at the win.
+    const endless = recordResult(p, 'marrow', { score: 9500, wave: 16, cleared: true, wavesCleared: 16, waves: 10, boss: 3, paid: true }, draw(0));
+    expect(endless.scrap.total).toBe(endless.scrap.duplicates);
+  });
+
+  it('scrapTally counts the map\'s waves and boss rounds cleared, not endless waves or a lost wave', () => {
+    const h = (wave: number, outcome = 'cleared') => ({ wave, outcome });
+    expect(scrapTally([h(1), h(2), h(3, 'lost')], 10, 13)).toEqual({ waves: 2, boss: 0 });
+    const full = Array.from({ length: 16 }, (_, k) => h(k + 1));
+    expect(scrapTally(full, 10, 13)).toEqual({ waves: 10, boss: 3 });
+    expect(scrapTally(full.slice(0, 10), 10, 10)).toEqual({ waves: 10, boss: 0 });
+    expect(scrapFor({ waves: 10, boss: 3 }, true, false).total).toBe(700);
+  });
+
+  it('levels 2-5 are bought with Scrap (150 / 300 / 500 / 800), only for a card held, with the Scrap banked', () => {
+    expect(LEVEL_COST.slice(1)).toEqual([150, 300, 500, 800]);
+    const p = fresh();
+    p.armory = { reload: 1 };
+    p.scrap = 149;
+    expect(levelUp(p, 'reload')).toBe(false); // short by 1
+    expect(levelUp(p, 'warhead')).toBe(false); // not held
+    p.scrap = 1750;
+    for (const lv of [2, 3, 4, 5]) {
+      expect(levelUp(p, 'reload')).toBe(true);
+      expect(p.armory.reload).toBe(lv);
+    }
+    expect(p.scrap).toBe(0);
+    p.scrap = 5000;
+    expect(levelUp(p, 'reload')).toBe(false); // maxed
+    expect(p.scrap).toBe(5000);
+    expect(levelCost('reload', 0)).toBeNull();
+    expect(levelCost('reload', 5)).toBeNull();
+    expect(levelCost('reload', 3)).toBe(500);
+    // A tool's career: spend on the loadout first.
+    const lv: Record<string, number> = { reload: 1, plating: 1 };
+    expect(spendScrap(lv, 500, ['plating', 'reload'])).toBe(50);
+    expect(lv).toEqual({ reload: 1, plating: 3 });
+  });
+
   it('a run takes ONE upgrade from each bay: only held cards can be equipped, nothing else rides along', () => {
     const p = fresh();
-    p.armory = { warhead: 2, magazine: 1, pointdef: 1, plating: 1 };
+    p.armory = { warhead: 2, motor: 1, magazine: 1, pointdef: 1, plating: 1 };
     p.equipped = { gun: 'warhead', hull: 'pointdef', supply: null };
     expect(runLoadout(p)).toEqual({ warhead: 2, pointdef: 1 });
     expect(equipArmory(p, 'reload')).toBe(false); // no card for it
-    expect(equipArmory(p, 'magazine')).toBe(true);
-    expect(runLoadout(p)).toEqual({ magazine: 1, pointdef: 1 });
+    expect(equipArmory(p, 'motor')).toBe(true);
+    expect(equipArmory(p, 'magazine')).toBe(true); // Supply now
+    expect(runLoadout(p)).toEqual({ motor: 1, magazine: 1, pointdef: 1 });
     expect(equipArmory(p, 'plating', 'gun')).toBe(false); // not in that bay
+    expect(equipArmory(p, 'magazine', 'gun')).toBe(false);
     const g = createGame('strait', 1, 1, undefined, runLoadout(p));
     expect(g.stats.rack).toBe(INTERCEPTOR.rack + 1);
     expect(g.stats.blast).toBe(INTERCEPTOR.blast);
     expect(g.stats.pdGap).toBeGreaterThan(0);
     expect(equipArmory(p, null, 'gun')).toBe(true);
-    expect(runLoadout(p)).toEqual({ pointdef: 1 });
+    expect(runLoadout(p)).toEqual({ magazine: 1, pointdef: 1 });
   });
 
   it('an empty or broken save loads as a fresh record', () => {
@@ -248,11 +361,50 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
         expect('salvage' in p).toBe(false);
         expect(JSON.parse(store['straitwatch.v3.progress']).armoryV).toBe(ARMORY_VERSION); // cleared for good
       }
-      // A current save keeps its cards.
-      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 1, armory: { reload: 1 }, equipped: { gun: 'reload', hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION });
+      // A current save keeps its cards and its Scrap.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 1, armory: { reload: 1 }, equipped: { gun: 'reload', hull: null, supply: null }, cleared: [], armoryV: ARMORY_VERSION, scrap: 420, scrapEarned: 900 });
       const p = loadProgress();
       expect(p.armory).toMatchObject({ reload: 1 });
       expect(runLoadout(p)).toEqual({ reload: 1 });
+      expect([p.scrap, p.scrapEarned]).toEqual([420, 900]);
+      // Broken Scrap reads as 0.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 0, armory: {}, equipped: {}, cleared: [], armoryV: ARMORY_VERSION, scrap: 'lots' });
+      expect(loadProgress().scrap).toBe(0);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
+  });
+
+  it('a round 7 save (Armory version 2) keeps every level, starts at 0 Scrap, and Deep Magazine moves to Supply', () => {
+    const store: Record<string, string> = {};
+    const ls = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => (store[k] = v), removeItem: (k: string) => delete store[k] };
+    const prev = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = ls;
+    try {
+      const best = { strait: { score: 9000, wave: 10 } };
+      const armory = { reload: 5, warhead: 2, magazine: 3, repair: 4, stockpile: 5, drops: 1 };
+      // The player's usual build: kept exactly.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 4, best, cards: 20, armory, equipped: { gun: 'reload', hull: 'repair', supply: 'stockpile' }, cleared: ['strait'], armoryV: 2, open: [], mapsV: 2 });
+      let p = loadProgress();
+      expect(p.armory).toMatchObject(armory);
+      expect(p.equipped).toEqual({ gun: 'reload', hull: 'repair', supply: 'stockpile' });
+      expect(runLoadout(p)).toEqual({ reload: 5, repair: 4, stockpile: 5 });
+      expect([p.scrap, p.scrapEarned, p.cards, p.unlocked]).toEqual([0, 0, 20, 4]);
+      expect(p.best).toEqual(best);
+      const saved = JSON.parse(store['straitwatch.v3.progress']);
+      expect(saved.armoryV).toBe(ARMORY_VERSION);
+      expect(saved.scrap).toBe(0);
+      // Deep Magazine equipped in the Gun bay, Supply empty: it moves to
+      // Supply, and the Gun bay takes the best gun card held.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 6, armory, equipped: { gun: 'magazine', hull: null, supply: null }, cleared: [], armoryV: 2 });
+      p = loadProgress();
+      expect(p.equipped).toEqual({ gun: 'reload', hull: null, supply: 'magazine' });
+      // ... Supply taken: Supply keeps its own card.
+      store['straitwatch.v3.progress'] = JSON.stringify({ unlocked: 1, best: {}, cards: 6, armory, equipped: { gun: 'magazine', hull: null, supply: 'drops' }, cleared: [], armoryV: 2 });
+      p = loadProgress();
+      expect(p.equipped).toEqual({ gun: 'reload', hull: null, supply: 'drops' });
+      // Loads once: a second load is the same.
+      expect(loadProgress()).toEqual(p);
     } finally {
       (globalThis as { localStorage?: unknown }).localStorage = prev;
     }
