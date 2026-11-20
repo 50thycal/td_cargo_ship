@@ -108,7 +108,7 @@ export interface Debut {
 
 /** A Test Lab map card's run (round 8, the player: each new enemy's
  *  debut is part of the map, banner and all): does this map debut this new
- *  enemy? Then its first sight on the card always gets the "NEW · <chapter>"
+ *  enemy? Then its first sight on the card always gets the "New on <chapter>"
  *  card, even on a device that has met it (the campaign says it once per
  *  device, as before). Only the new enemies (data/foes.ts), not the
  *  original threats. */

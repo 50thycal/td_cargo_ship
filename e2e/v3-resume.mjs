@@ -195,7 +195,7 @@ try {
   const after = await gameNow(page);
   check(after.wave === before.wave && after.score === before.score && after.steps === before.steps && after.lost === before.lost && after.phase === 'wave', `the run is back at the same wave, score and step (${JSON.stringify(after)} vs ${JSON.stringify(before)})`);
   const pausedNow = await page.evaluate(() => ({ btn: document.querySelector('.v2-pause').textContent, line: document.querySelector('.v3-restored')?.textContent, quit: [...document.querySelectorAll('.v2-pause-panel .v2-btn')].map((b) => b.textContent) }));
-  check(pausedNow.btn === '▶' && /Run restored · wave 3/.test(pausedNow.line ?? '') && pausedNow.quit.includes('Resume') && pausedNow.quit.includes('Quit to menu'), `it opens paused with the pause menu up (${JSON.stringify(pausedNow)})`);
+  check(pausedNow.btn === '▶' && /Run restored · wave 3/i.test(pausedNow.line ?? '') && pausedNow.quit.includes('Resume') && pausedNow.quit.includes('Quit to menu'), `it opens paused with the pause menu up (${JSON.stringify(pausedNow)})`);
   await shot(page, '03-resumed-paused');
   const log1 = await page.evaluate(() => window.__v3.log());
   check(log1.id === id && log1.resumes?.length === 1 && log1.resumes[0].step === before.steps && !log1.end && !log1.left, `the same log goes on: id ${log1.id}, resumed at step ${log1.resumes?.[0]?.step}`);

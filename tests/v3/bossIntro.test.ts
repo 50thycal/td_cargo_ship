@@ -43,7 +43,7 @@ describe('the boss intro (log v29, cards since v30)', () => {
   it('the intro (log v30): BOSS ROUND, the convoy restored, the boss, Round 1 of 3, each card readable before the first launch', () => {
     const cards = bossIntroCards('drone-storm', 1, 3, 6, true);
     expect(cards.map((c) => c.key)).toEqual(['boss', 'restore', 'name', 'round']);
-    expect(cards.map((c) => c.title)).toEqual(['Boss round', 'Convoy restored', EVENTS['drone-storm'].name, 'Round 1 of 3']);
+    expect(cards.map((c) => c.title)).toEqual(['Boss round', 'Convoy restored', EVENTS['drone-storm'].name, 'Boss 1/3']);
     expect(cards[1].sub).toBe('6 ships can still be lost');
     expect(cards[3].sub).toBe('Survive the next 3 rounds');
     // One after another, each held EVENT.introCard s (at least 1.5 s to
@@ -61,7 +61,7 @@ describe('the boss intro (log v29, cards since v30)', () => {
     // Rounds 2 and 3: one short card.
     for (const run of [2, 3]) {
       const later = bossIntroCards('hydra-bloom', run, 3, 4, true);
-      expect(later.map((c) => [c.eyebrow, c.title])).toEqual([[EVENTS['hydra-bloom'].name, `Round ${run} of 3`]]);
+      expect(later.map((c) => [c.eyebrow, c.title])).toEqual([[EVENTS['hydra-bloom'].name, `Boss ${run}/3`]]);
       expect(later[0].until).toBeLessThanOrEqual(EVENT.breather);
     }
   });

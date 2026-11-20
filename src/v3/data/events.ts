@@ -489,24 +489,34 @@ export function bossRound(run: number, runs: number): string {
   return `Boss round ${run} of ${runs}`;
 }
 
+/** Round 12 (the player: "just say like 1/3 ... don't have a whole 'round'
+ *  there, the text wraps"): the in-game label of a boss round, short enough
+ *  never to wrap on a phone: "Boss 1/3". The HUD counter, the boss intro's
+ *  round card and the round's outcome card all say it this way; sentences
+ *  (the Test Lab, the encounter notes) keep `bossRound`. */
+export function bossShort(run: number, runs: number): string {
+  return `Boss ${run}/${runs}`;
+}
+
 /** Where a run is, as every counter says it (the 2026-11-20 playtest: "it
  *  should say wave one of ten for all maps not n of thirteen"): "Wave 3 of
- *  10" for the map's ten waves, "Boss · Round 1 of 3" for a run of its
+ *  10" for the map's ten waves, "Boss 1/3" for a run of its
  *  ending (`boss`, or read off the wave number past the ten), "Bonus wave",
  *  and "Wave 14" in endless. `short` is the HUD's two-line form:
- *  [label, count], ["WAVE", "3 of 10"] or ["BOSS", "Round 1 of 3"]. */
+ *  [label, count], ["WAVE", "3 of 10"] or ["BOSS", "1/3"] (round 12: was
+ *  "Round 1 of 3", which wrapped on a phone). */
 export function waveCount(wave: number, o: { boss?: { run: number; runs: number } | null; bonus?: boolean; endless?: boolean } = {}): string {
   const [label, count] = waveCountParts(wave, o);
-  return label === 'BOSS' ? `Boss · ${count}` : label === 'BONUS' ? 'Bonus wave' : `Wave ${count}`;
+  return label === 'BOSS' ? `Boss ${count}` : label === 'BONUS' ? 'Bonus wave' : `Wave ${count}`;
 }
 
 export function waveCountParts(wave: number, o: { boss?: { run: number; runs: number } | null; bonus?: boolean; endless?: boolean } = {}): [string, string] {
   if (o.bonus) return ['BONUS', ''];
-  if (o.boss) return ['BOSS', `Round ${o.boss.run} of ${o.boss.runs}`];
+  if (o.boss) return ['BOSS', `${o.boss.run}/${o.boss.runs}`];
   if (o.endless) return ['WAVE', `${wave}`];
   if (wave <= RULES.wavesToClear) return ['WAVE', `${wave} of ${RULES.wavesToClear}`];
   const runs = endingRuns();
-  if (wave < EVENT_WAVE + runs) return ['BOSS', `Round ${wave - EVENT_WAVE + 1} of ${runs}`];
+  if (wave < EVENT_WAVE + runs) return ['BOSS', `${wave - EVENT_WAVE + 1}/${runs}`];
   return ['WAVE', `${wave}`];
 }
 
@@ -531,11 +541,12 @@ export interface IntroCard {
  *  up one after another through the calm before a boss round. Round 1:
  *  "BOSS ROUND", then the convoy restored and the ships that can still be
  *  lost (`left`; `restored` false: no restore, only the ships left), then
- *  the boss's name, then "Round 1 of 3". Rounds 2 and 3: "Round 2 of 3". */
+ *  the boss's name, then "Boss 1/3". Rounds 2 and 3: "Boss 2/3" (round 12:
+ *  was "Round 1 of 3"). */
 export function bossIntroCards(id: EventId, run: number, runs: number, left: number, restored: boolean): IntroCard[] {
   const d = EVENT.introCard;
   const ships = `${left} ship${left === 1 ? '' : 's'}`;
-  const round = { key: 'round' as const, eyebrow: EVENTS[id].name, title: `Round ${run} of ${runs}` };
+  const round = { key: 'round' as const, eyebrow: EVENTS[id].name, title: bossShort(run, runs) };
   if (run !== 1) return [{ ...round, at: 0, until: d * 1.5 }];
   const cards: Omit<IntroCard, 'at' | 'until'>[] = [
     { key: 'boss', title: 'Boss round' },

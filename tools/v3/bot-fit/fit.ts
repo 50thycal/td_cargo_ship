@@ -51,7 +51,8 @@ export const FIT_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
 
 /** Which of the player's logs the fit reads. */
 export function playerRun(l: PlayLog): 'card' | 'campaign' | null {
-  if (!l.summary || l.device?.ua === 'mimic' || l.dev?.watch) return null;
+  // A Test Lab retry or skip (round 12) is not a whole run from wave 1.
+  if (!l.summary || l.device?.ua === 'mimic' || l.dev?.watch || l.retry) return null;
   if (l.lab?.plays === 'full' && l.v >= 21 && l.summary.wave >= 5 && /^map-/.test(l.lab.card)) return 'card';
   if (!l.lab && !l.freePlay && l.v >= 19 && l.summary.wave >= 5) return 'campaign';
   return null;

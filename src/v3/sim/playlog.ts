@@ -276,12 +276,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      deals four cards; Boilers sails the convoy faster; Lifeboats counts
  *      a wave's first ship sunk as half a loss. A v39 log has none of them
  *      and plays the same game (the map-lab baseline replays unchanged),
- *      but a v40 log that uses one needs this build. */
-export const LOG_VERSION = 40;
-/** The log versions this build replays exactly (40, and 39: the new
- *  upgrades change nothing for a run that has none of them). Tools that
- *  replay logs (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [39, 40];
+ *      but a v40 log that uses one needs this build.
+ *  41: the player's chapter 2 notes (docs/design/v3-playtest-fixes.md,
+ *      "Round 12"): a cluster missile climbs for CLUSTER.armAfter s
+ *      (slower off the rail) and splits only after it; a torpedo sub
+ *      surfaces only at a good site (foes.ts subSite: its shadow clear of
+ *      land, a torpedo line to a lane; the Wolf Pack's packs too), and the
+ *      Needle of Bosk's east sub spot moved; the Gunship Pair's row of
+ *      hovers is kept whole on the screen. A Test Lab "Skip to boss" log
+ *      has a lab `loadout`, and a retry or skip a `retry` record. A v40 log
+ *      with a cluster missile, a torpedo sub or the Gunship Pair no longer
+ *      replays to the same game. */
+export const LOG_VERSION = 41;
+/** The log versions this build replays exactly (only its own: round 12
+ *  changed the game). Tools that replay logs (Map Analytics, the map lab)
+ *  take any of these. */
+export const LOG_REPLAYS: readonly number[] = [41];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
@@ -422,6 +432,15 @@ export interface PlayLog {
    *  is still one run (and replays as one); this only says it was played
    *  in more than one sitting. Never read by replay. */
   resumes?: { at: string; step: number; build: string }[];
+  /** Round 12: a Test Lab run started from another one's end screen or
+   *  pause menu. "Retry wave N" (`wave`, no `skip`): the run `of` replayed
+   *  to the start of its wave N, its inputs up to `step` carried over (they
+   *  were played in run `of`, whose log has them too; only what follows
+   *  `step` is new play). "Skip to boss" (`skip`): a new run from the first
+   *  boss round (`firstWave`) holding the weapons run `of` held (its lab
+   *  setup's `loadout`); `step` is 0. Either way this is not a whole run
+   *  from wave 1: the bot fit leaves it out. Never read by replay. */
+  retry?: { of: string; wave: number; step: number; skip?: boolean };
   commands: LogCommand[];
   summary?: PlaySummary;
   /** Playtest feedback (none of it touches replay; see sim/feedback.ts):

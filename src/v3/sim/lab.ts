@@ -53,6 +53,11 @@ export interface LabSetup {
    *  logs from before rounds: round 1). Not used by the sim. */
   rev?: number;
   round?: number;
+  /** Round 12's "Skip to boss" (a full map run): the weapons the run it
+   *  skipped from held, at their levels, held from the start here in place
+   *  of what the skip ahead drafted (game.ts applyLab). The log's
+   *  `firstWave` is the first boss round. */
+  loadout?: { id: AbilityId; level: number }[];
 }
 
 /** The evidence counted for the card under test. */

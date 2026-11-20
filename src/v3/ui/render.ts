@@ -504,10 +504,15 @@ function drawRack(
   }
 }
 
+/** A hull's half length and half beam as drawn: the supertanker twice the
+ *  length of a freighter. */
+export function shipHull(vip = false): { L: number; B: number } {
+  return vip ? { L: 70, B: 16 } : { L: 34, B: 10 };
+}
+
 function drawShip(ctx: CanvasRenderingContext2D, x: number, y: number, hp: number, id: number, t: number, maxHp: number = SHIP.hp, armored = false, heading = 0, vip = false): void {
   // The supertanker: twice the length, a plain red deck.
-  const L = vip ? 70 : 34;
-  const B = vip ? 16 : 10;
+  const { L, B } = shipHull(vip);
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);
@@ -1425,14 +1430,24 @@ function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
   ctx.strokeStyle = last ? 'rgba(254,202,202,0.9)' : 'rgba(226,232,240,0.85)';
   ctx.fillStyle = `rgba(186,230,253,${(0.16 * (1 - worn * 0.5)).toFixed(3)})`;
   ctx.lineWidth = 2;
-  const bubble = (x: number, y: number, rx: number, ry: number, seed: number) => {
+  const bubble = (x: number, y: number, rx: number, ry: number, seed: number, heading = 0) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(heading);
     ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    if (worn > 0) shieldCracks(ctx, x, y, rx, ry, worn, seed);
+    if (worn > 0) shieldCracks(ctx, 0, 0, rx, ry, worn, seed);
+    ctx.restore();
   };
-  for (const s of g.ships) bubble(s.x, s.y, 46, 22, s.id);
+  // Round 12 (the player: "The shield for the behemoth ship needs to be
+  // updated. It only covers a small [part]"): each bubble fits its hull,
+  // the supertanker's twice as long, and turns with the ship.
+  for (const s of g.ships) {
+    const h = shipHull(s.vip);
+    bubble(s.x, s.y, h.L + 12, h.B + 12, s.id, s.heading);
+  }
   const c = g.map.carrier;
   const crx = CARRIER.halfLength + 22;
   const cry = CARRIER.halfBeam + 20;
