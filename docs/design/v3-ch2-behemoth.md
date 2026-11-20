@@ -1,13 +1,14 @@
 # The Behemoth Run: map card (map rebuild, chapter 2)
 
-**Date:** 2026-11-19. The Behemoth Run (`behemoth`, chapter 2 "The Narrows", the 7th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after chapter 1's Kesh Hook and Lee of Marrow (`docs/design/v3-ch1-kesh.md`, `v3-ch1-marrow.md`) and with the Island (`docs/design/v3-ch2-island.md`). Encounter rev 4; play log v31.
+**Date:** 2026-11-19. The Behemoth Run (`behemoth`, chapter 2 "The Narrows", the 7th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after chapter 1's Kesh Hook and Lee of Marrow (`docs/design/v3-ch1-kesh.md`, `v3-ch1-marrow.md`) and with the Island (`docs/design/v3-ch2-island.md`). Encounter rev 4; play log v31, then v33 (round 9: the signature threat and a new boss, "After round 9").
 
 Code:
 - `src/v3/data/encounters.ts`: `BEHEMOTH_R4` (ten encounters), `BEHEMOTH_BOSS_ROUNDS` and `MAP_BOSS.behemoth`, `REBUILT_MAPS` (via `CHAPTER_TWO_MAPS`), in the chapter 2 block;
 - `src/v3/data/mapPlans.ts`: `MAP_PLANS.behemoth`;
 - `src/v3/data/convoy.ts`: `MAP_CONVOY.behemoth` (the map's own convoy, no command);
 - `src/v3/sim/game.ts`: the new aim `vip` (`aimBeat`), and `replaces.extras` (`makeRoom`): an encounter may stand in for one of the map's own extras;
-- `src/v3/sim/events.ts`: the Wolf Pack reads its rounds from `MAP_BOSS` (`wolfRound`), and a round can add launches of its own (`fire`, `fireSteps`).
+- `src/v3/sim/events.ts`: the Wolf Pack reads its rounds from `MAP_BOSS` (`wolfRound`), and a round can add launches of its own (`fire`, `fireSteps`); from log v33 a round's added launches can be strike jets (`fireStep`), down the tanker's lane when aimed `vip`;
+- `src/v3/data/encounters.ts` `MAP_SIGNATURE` and the wave planner in `src/v3/sim/game.ts` (log v33): from wave 4 the wave's jets fly down the deep lane (`vipRoute`) and its heavies go for the tanker.
 
 Bot reports: `tools/v3/map-report/results/behemoth.md` (no Armory), `behemoth-player.md` (the player's usual Armory, with fun measures and the heat map) and `behemoth-latest.md` (the player's latest Armory: Wide Warhead 5, Point Defense 4, Supply Lines 3; new `--armory=latest`).
 
@@ -95,7 +96,24 @@ One encounter a wave, none repeated. Waves 6–10 send most of their shells as d
 
 Wave 1 loses no ship (all three reports).
 
-## The boss plan: the Wolf Pack by the deep lane
+## The boss plan: a strike on the supertanker (log v33)
+
+Round 9 (the player, r9-ch2-split): the Island's and the Behemoth Run's boss rounds were both a stream of missiles at the ships, and the Shield (chapter 2's boost: no damage from missiles, drones and boats for 15 s) answered both, so the two maps shared their best kit. The Behemoth Run's boss rounds are now led by what the Shield never stops: **strike jets**. The player's example was heavy missiles at the tanker, but the Shield blocks a heavy as it blocks any missile (`shielded` in `src/v3/sim/game.ts`: everything but a jet's guns), so heavies alone would not have split the kit; one heavy a round stays as the tanker's other threat.
+
+The event is still the map's Wolf Pack (its name and card), under encounter rev 4 (`BEHEMOTH_BOSS_ROUNDS`, lab only: the campaign plays the event as it was):
+
+| Round | Jets down the deep lane at the tanker (`aim: 'vip'`) | Jets over the convoy (the densest band) | Heavy at the tanker | Subs (fast torpedo) | Added |
+| --- | --- | --- | --- | --- | --- |
+| before log v33 (rev 4) | – | – | – | 4, 5, then 6 (1, 1, 2) | guided at the tanker and the lead ship |
+| 1 | 4 | 4 | 1 (4 s) | none | |
+| 2 | 5 | 4 | 1 | 1 (1) | |
+| 3 | 6 | 5 | 1 | 1 (1) | 1 guided from the headland at the lead ship |
+
+Jets come in from the edges in turn, each with its warning arrow first (`fire` with kind `strafer`: new, `src/v3/sim/events.ts`), and a jet aimed `vip` flies down the middle of the supertanker's lane (`vipRoute`). A jet's guns take one hit off each hull under its line; the tanker has 8, and a heavy takes 4. `MAP_PLANS.behemoth.boss.botTarget` stays 2 (about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test).
+
+What shows in the boss rounds (`mix.ts`): before, torpedoes 52%, subs 33%, guided missiles 15%; now **jets 75%**, torpedoes 9%, heavies 8%, subs 5%, guided 3%.
+
+### Before log v33: the Wolf Pack by the deep lane
 
 The Wolf Pack is the map's own event: periscopes in two waves of the pack (4 then 3 subs), each sub firing a spread of 2–3 torpedoes, two of them with a fast one. Under encounter rev 4 (`BEHEMOTH_BOSS_ROUNDS`, lab only: the campaign plays the event as it was):
 
@@ -156,6 +174,56 @@ As on chapter 1's maps, the baseline stands in for a player with no upgrades and
 
 **For comparison,** the same card on the map's own convoy with no encounters (`tools/v3/map-report/quick.ts --no-enc`, 16 seeds, the player's Armory) wins 19% and loses 5.1 ships in waves 1–10: the shared chapter 2 waves alone are harder for the bot than the rebuilt map. Most of the difference is shells (the bot's biggest killer on waves 6–10, 2.8 ships a run) and the map's cluster missiles, which the encounters trade for drones.
 
+### After round 9 (log v33)
+
+What changed (the player's round 9; docs/design/v3-combo-diversity.md):
+- **The signature threat, a strike on the supertanker, from wave 4** (`MAP_SIGNATURE.behemoth`, lab only): every jet the wave sends flies down the deep lane at the tanker, and every heavy cruise missile goes for it. The map already had jets from wave 4 and a heavy from wave 5 (its extras); they now aim at the tanker instead of the densest band of ships and the planner's pick. Wave 7's encounter (`behemoth-strafe`) sends its jet down the deep lane and a heavy and a guided missile at the tanker (was two guided). Wave 5's encounter takes the map's first heavy out of the wave (it comes on wave 6), so waves 1–5 stay light.
+- **The boss rounds: a strike on the tanker, led by jets** (above).
+- Overdrive lasts 18 s from level 1 (r9-overdrive-buff).
+
+What shows (`tools/v3/combo-sweep/mixwaves.ts`, 4 seeds, tough; the signature counted as heavies and jets):
+
+| | v32 | v33 |
+| --- | --- | --- |
+| Signature share of waves 4–10, by count / by hits | 6% / 19% | 6% / 19% |
+| The same, waves 6–10 | 6% / 20% | 7% / 22% |
+| Boss rounds | 0% (torpedoes and subs 85%) | **80% / 89%** |
+
+In waves 4–10 the share did not grow: the jets and heavies were already there, and what changed is that they go for the tanker. By count they are 6% of what shows (the 20–30% asked would take four or five jets or heavies more a wave, which the ±15% budget can't hold: an aircraft stands in for a drone swarm); by the hits it takes to clear them (a heavy is 8, a jet 3) about a fifth. See "What is not satisfied".
+
+Bot results (24 seeds, 900–923; `report.ts --kits=plan`), v32 against v33 (v32's Behemoth Run played as v31's):
+
+| The player's Armory | v32 | v33 |
+| --- | --- | --- |
+| Won (normal) | 42% | 54% |
+| Ships lost in waves 1–10 / 1–5 (normal) | 3.0 / 0.71 | 3.8 / 0.54 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.47 / 2.21 / 2.50 | 0.39 / 0.72 / 2.00 |
+| Boss r1 / r2 / r3 (tough) | 0.46 / 2.62 / 3.33 | 0.67 / 1.00 / 2.08 |
+| Tough curve 1–10 | 0 .12 .08 .21 .29 .21 .42 .67 1.17 .83 | 0 .12 .08 .17 .17 .54 .71 1.33 .79 1.54 |
+| `w-cliff` | PASS | FLAG (w6 0.17 → 0.54) |
+| `w-budget` | PASS (w7 ×0.87) | PASS (w7 ×0.88) |
+| Kits (won; lost 1–10) | counter 42%, 3.0; off-counter 29%, 3.8 | counter 50%, 3.5; off-counter 50%, 3.5 |
+
+| The latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3) | v32 | v33 |
+| --- | --- | --- |
+| Won (normal) | 46% | **12%** |
+| Ships lost in waves 1–10 / 1–5 (normal) | 4.1 / 0.62 | 3.8 / 0.58 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.33 / 1.40 / 1.39 | 1.07 / 2.36 / 3.00 |
+| Boss r1 / r2 / r3 (tough) | 0.29 / 1.67 / 1.46 | 2.00 / 3.38 / 3.67 |
+| Checks | `w-cliff` FLAG (w7, w10) | `w-cliff` FLAG (w8, w10) |
+| Kits (won) | counter 54%, off-counter 38% | counter 8%, off-counter 12% |
+
+| No Armory | v32 | v33 |
+| --- | --- | --- |
+| Won; lost 1–10 / 1–5 | 4%; 5.7 / 1.75 | 4%; 5.6 / 1.21 |
+
+On 48 seeds (900–947, `quick.ts`): the player's Armory won 31% → 42% (lost 1–10 4.00 → 3.67, 1–5 0.98 → 0.65, boss 0.86 / 2.21 / 2.24 → 0.91 / 0.79 / 2.21); the latest Armory 42% → 13% (4.58 → 4.21, 0.98 → 0.71, boss 0.28 / 1.44 / 1.22 → 1.25 / 3.14 / 2.71).
+
+- **Waves 1–5 are in the 0.4–0.8 band now** (0.54–0.71; 0.98 on 48 seeds before, over it).
+- **The boss rounds split by Armory.** With the player's usual Armory (Damage Control 4 mends the hulls) they read about 0.7 / 0.8 / 2.1, under target; with the latest (no hull repair, and Point Defense never fires at aircraft) about 1.2 / 2.8 / 2.9, over it. Averaged over the two, about 1.0 / 1.8 / 2.5, near the 1.5 / 2 / 2.5 aimed at. A jet's chip damage adds up on hulls nobody mends. The player said the boss's strength is tuned after the playtest; this is the aim, not the tuning.
+- **The win rate** reads 42–54% with the player's Armory (the bottom of 50–70%) and 12–13% with the latest (far under).
+- **The counter kit (Shield, Frigate Escort, Air Strike) no longer beats the off-counter kit** on the bot report (both 50% with the player's Armory): the Shield no longer answers the boss. See the diversity re-run (docs/design/v3-combo-diversity.md, "Round 9") for what does.
+
 ### Chapter 2 difficulty (rule `m-difficulty`)
 
 With the player's Armory the bot wins 42% (46% with the latest Armory): under the 50–70% aimed for. The waves are not why: they lose 3.0 ships in waves 1–10 (Kesh 3.75, Marrow 3.1 on v29), 0.71 in waves 1–5, and 19 of 24 runs reach the boss. The boss rounds are: the tanker counts three ships, so one sunk tanker is most of a round's target, and rounds 2 and 3 read 2.2 and 2.5 on the bot. That is the target the brief set (about 1.5 / 2 / 2.5), and its sum (6) is the loss limit after the restore; the bot can't win most runs at that target. See "What the player needs to decide".
@@ -169,6 +237,10 @@ From `behemoth-player.md`:
 
 ## What is not satisfied, or uncertain
 
+- **Log v33: the signature is 6% of what shows in waves 4–10, not 20–30%** (about a fifth by the hits it takes); the jets and heavies were already there and now go for the tanker. More of them would break the ±15% wave budget. A question for the player (hub).
+- **Log v33: the jet boss is much harder without hull repair.** With the latest Armory the bot wins 12–13% (was 42–46%); with the usual one 42–54% (was 31–42%). Tuned between the two; the player's playtest decides.
+- **Log v33: the heavies are blocked by the Shield** (it stops everything but jets), so the boss leans on jets for the split, not on the heavies the player named. A question for the player (hub).
+
 - **Win rate under target** (above): 42% against 50–70%, because of the boss target, not the waves.
 - **Boss round 1 is light** (0.47 on the bot; tough 0.46): the round opens with an intro calm, and four subs and two missiles rarely reach the tanker. Rounds 2 and 3 carry the boss. Round 1 read 1.1–1.4 at five subs, but then round 2 read 2.6–3.4.
 - **The tanker makes the boss rounds lumpy.** A sunk tanker is three ships at once, so a round reads 0 or 3+ on most seeds; across the tuning the same numbers read ±0.8 a round from seed set to seed set.
@@ -177,7 +249,10 @@ From `behemoth-player.md`:
 - **The bot's kits are its draft taste.** On the bot report the counter kit wins 42% against 29% off-counter; forced, it loses 8.9 ships a run against the bot's own draft's 12.3.
 - **No player data** on chapter 2 maps yet: the bot's bias here is unknown. On chapter 1 the bot read waves 1–10 about as the player played them on Kesh and about twice as hard on Marrow, and boss rounds 1.4–2.5× as hard.
 
-## The play log (v31)
+## The play log (v31, then v33)
+
+Log v33 (round 9): the signature (jets and heavies at the tanker from wave 4), wave 5's heavy held to wave 6, wave 7's strike, and the boss rounds' strike, all lab only; Overdrive's 18 s at level 1 (campaign and lab). A v32 Behemoth card log no longer replays to the same game. The Test Lab's "Ready to test" lists the Behemoth Run at v33.
+
 
 `LOG_VERSION` 31, `LOG_REPLAYS` `[31]` (`src/v3/sim/playlog.ts`), shared with the Island. The base branch moved to v30 (#178, chapter 1's climb and the boss intro) while this was built, and was merged in. All of chapter 2's change is lab only, under the encounter layer: the campaign plays as it did, and a v30 Behemoth card log played the shared waves. The map-lab baseline's twelve runs differed only in their log version; it was rewritten with `--write` and replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 31.
 
@@ -187,11 +262,12 @@ From `behemoth-player.md`:
   - the ten listed, rev 4, v1 only, none at rev 3;
   - the budget, legality, warning and replay checks cover the map;
   - a launch aimed `vip` goes at the supertanker while it sails; the tanker is the target in every wave;
-  - the Wolf Pack's rounds: the subs, the added missiles (one at least at the tanker each round), rising; a rev 3 log sends the event's own; 15–30 s a round.
+  - the boss rounds (log v33): the subs, jets, heavies and guided missiles each round sends; jets down the tanker's lane and a heavy at the tanker every round; jets outnumber everything the Shield stops; rising; a rev 3 log sends the event's own; 15–30 s a round;
+  - the signature (log v33): from wave 4 the wave's own jets aim at the tanker's lane and its heavies at the tanker, never in the campaign; a jet down the deep lane hits the tanker through the Shield.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command.
 - `e2e/v3-map-cards.mjs`: the hub card says so; `?lab=map-behemoth` opens the full map with encounters rev 4 and no command.
 
 ## What to look for when you play
 
-Watch the tanker. It sails from 5 s into every wave in the lane right under the enemy shore, slower than everything else, and most of the map's aimed fire goes for it: a few drones and a shell on waves 1–2, shells from a periscope beside it on wave 4, guided missiles from the middle silo from wave 5, and one heavy on wave 9 that takes half of it in one hit. Losing it costs three ships, bringing it home repairs every ship and drops a weapon. The convoy below is fired on from the north and, from wave 3, from the enemy headland behind it in the south-east. The question to answer: did protecting the tanker feel like a real choice against the convoy, or did you just ignore one of them? In the boss rounds, subs surface in two packs and fire torpedo spreads while missiles go for the tanker; tell us whether round 1 felt too light and rounds 2–3 too swingy (a sunk tanker is three ships at once).
+Watch the tanker. It sails from 5 s into every wave in the lane right under the enemy shore, slower than everything else, and most of the map's aimed fire goes for it: a few drones and a shell on waves 1–2, shells from a periscope beside it on wave 4, guided missiles from the middle silo from wave 5, and one heavy on wave 9 that takes half of it in one hit. Losing it costs three ships, bringing it home repairs every ship and drops a weapon. The convoy below is fired on from the north and, from wave 3, from the enemy headland behind it in the south-east. The question to answer: did protecting the tanker feel like a real choice against the convoy, or did you just ignore one of them? From wave 4 (log v33) the jets fly straight down the tanker's lane and the heavies go for it. In the boss rounds, strike jets come in pairs, down the tanker's lane and over the convoy, with a heavy at the tanker and a sub or two: the Shield won't stop a jet. Tell us whether the boss felt like a different problem from the Island's, and whether it was fair with your Armory (the bots find it much harder without hull repair).
