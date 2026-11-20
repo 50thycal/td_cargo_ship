@@ -3370,22 +3370,22 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [9],
     role: 'escalate',
     name: 'Crossfire in the Needle',
-    callout: 'Shells from both sides',
-    premise: 'Shells from the north headland straight down into the Needle, a swarm from the south headland, and a periscope east of the gap fires at the ships coming out.',
+    callout: 'Fire into the Needle',
+    premise: 'A shell from the north headland straight down into the Needle, a swarm from the south headland, and a periscope east of the gap fires at the ships coming out.',
     decision: 'The Needle from both sides and the way out beyond it: the ships in the gap can\'t turn aside.',
-    counters: 'The shells as they climb, the swarm, then the sub\'s salvo.',
+    counters: 'The shell as it climbs, the swarm, then the sub\'s salvo.',
     succeeds: 'A close call in the Needle in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The north headland\'s silo (shells), the south headland\'s (swarm), a submarine at the east sub spot (1500, 252), the west silo on the north shore (swarms).',
-      target: 'The shells and the swarm at the ship nearest each headland (in the Needle), the sub\'s shells at the lead ship, the west swarm at any ship.',
+      sites: 'The north headland\'s silo (a shell), the south headland\'s (swarm), a submarine at the east sub spot (1500, 252), the west silo on the north shore (swarms).',
+      target: 'The shell and the swarm at the ship nearest each headland (in the Needle), the sub\'s shells at the lead ship, the west swarms at any ship.',
       usesMap: 'The gap one hull wide, fired into from both headlands, then the water past it, in place of most of the wave\'s shells, its clusters, a heavy and a jet.',
     },
     beats: [
-      { at: 0.45, kind: 'ballistic', count: 2, gap: 0.8, from: base(2), aim: 'near' },
+      { at: 0.45, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
       { at: 0.45, plus: 3.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
     ],
     replaces: { drones: 8, ballistic: 8, guided: 2, extras: { cluster: 3, heavy: 1, strafer: 1 } },
   },
@@ -3402,12 +3402,12 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at the mouth or on the lead ship in most runs; the climax is the hardest wave.',
     notes: {
       sites: 'The north headland\'s silo (cluster), the south headland\'s (swarms), the west silo on the north shore (swarms), the east silo (guided), the climax after the wave\'s own fire.',
-      target: 'The cluster and the first south swarm at the ship nearest each headland, the missile at the lead ship, the other swarms at any ship.',
+      target: 'The cluster at the ship nearest the headland (the queue at the mouth), the missile at the lead ship, the swarms at any ship.',
       usesMap: 'The map\'s problem and both ends of the strait, in place of most of the wave\'s shells and missiles, its heavies, clusters, a jet and a bomber; the climax may reach the safe stretch.',
     },
     beats: [
       { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(2), aim: 'near' },
-      { at: 1, plus: 3, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 1, plus: 3, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 1, plus: 4, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
       { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
@@ -3560,7 +3560,7 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
  *  waves 6-10 are the hardest of chapter 2 for the bot (the headlands'
  *  clusters and shells reach a queue of ships nose to tail), so they send a
  *  tenth less, within ±15% (rule w-budget). */
-const NEEDLE_EASE = [1, 1, 1, 1, 1, 0.92, 0.9, 0.9, 0.9, 0.87];
+const NEEDLE_EASE = [1, 1, 1, 1, 1, 0.92, 0.9, 0.93, 0.9, 0.85];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
