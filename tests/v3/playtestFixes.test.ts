@@ -136,10 +136,10 @@ describe('the wave counter', () => {
   it('reads "Wave N of 10" on every map, and a boss round as one', () => {
     expect(waveCount(3)).toBe('Wave 3 of 10');
     expect(waveCount(10)).toBe('Wave 10 of 10');
-    expect(waveCount(11)).toBe('Boss · Round 1 of 3');
-    expect(waveCount(13)).toBe('Boss · Round 3 of 3');
+    expect(waveCount(11)).toBe('Boss 1/3');
+    expect(waveCount(13)).toBe('Boss 3/3');
     expect(waveCount(14, { endless: true })).toBe('Wave 14');
-    expect(waveCountParts(12, { boss: { run: 2, runs: 3 } })).toEqual(['BOSS', 'Round 2 of 3']);
+    expect(waveCountParts(12, { boss: { run: 2, runs: 3 } })).toEqual(['BOSS', '2/3']);
     expect(waveName(7)).toBe('wave 7');
     expect(waveName(12)).toBe('boss round 2');
   });

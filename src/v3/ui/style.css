@@ -1482,18 +1482,18 @@ body {
   right: 0;
   z-index: 1;
   height: 16px;
-  padding: 0 14px;
+  padding: 0 6px;
   line-height: 16px;
   text-align: center;
   background: color-mix(in srgb, var(--card-color, var(--accent)) 85%, #000);
   color: #071119;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-transform: uppercase;
+  /* Round 12: "New on The Narrows", as written (no capitals). */
   pointer-events: none;
 }
 
@@ -4668,6 +4668,23 @@ a.v3-lab-page {
   color: #10161b;
 }
 
+/* Round 12: Retry wave N and Skip to boss, under the end screen's title. */
+.v3-lab-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 4px 0 6px;
+}
+
+.v3-lab-jumps .v2-btn {
+  min-width: 140px;
+}
+
+.v3-lab-retry {
+  border-color: var(--gold);
+}
+
 /* Done on the draft between a full run's waves: the header's top-right
    corner, out of the way of the cards (it is the test's, not the draft's). */
 .v2-draft-head:has(.v3-draft-done) {
@@ -5310,6 +5327,19 @@ a.v3-lab-page {
   line-height: 1.35;
   resize: none;
   box-shadow: 0 0 0 3px rgb(242 193 78 / 0.18);
+}
+
+.typing .typing-box {
+  -webkit-text-fill-color: #ffffff;
+  opacity: 1;
+}
+
+/* Round 12: a one-line box (the wave rating's note) keeps its line's
+   height at the top of what the keyboard leaves. */
+.typing input.typing-box {
+  height: 48px !important;
+  min-height: 48px;
+  align-self: start;
 }
 
 .typing .typing-box::placeholder {
@@ -6826,6 +6856,12 @@ a.v3-lab-page {
   border: 1px solid var(--panel-edge);
   background: #08131a;
   color: var(--ink);
+  /* Round 12 ("I can't see the text when I'm typing"): iOS paints a text
+     box's text with its own fill unless told; light on the dark box. */
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--gold);
+  color-scheme: dark;
+  opacity: 1;
   font: inherit;
   /* 16 px: anything smaller and iOS zooms the page in on focus. */
   font-size: 16px;

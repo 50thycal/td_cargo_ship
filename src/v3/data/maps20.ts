@@ -184,7 +184,7 @@ const needle: MapDef = {
     runners: [bypass([{ x: -60, y: 105 }, { x: 600, y: 118 }, { x: 850, y: 195 }, { x: 1000, y: 330 }, { x: 1240, y: 330 }, { x: 1350, y: 225 }, { x: 1660, y: 120 }], NEEDLE_BASES.filter((b) => b.y < 400), -1)],
     popups: [{ from: { x: 1190, y: 940 }, to: { x: 1190, y: 545 } }],
   },
-  subSpots: [{ x: 200, y: 208 }, { x: 1500, y: 252 }, { x: 300, y: 718 }],
+  subSpots: [{ x: 200, y: 208 }, { x: 1460, y: 292 }, { x: 300, y: 718 }],
   bomberLines: [210, 735],
   vectors: { trucks: 2, subs: 3, strafers: 4, bombers: 6 },
 };

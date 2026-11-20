@@ -314,7 +314,25 @@ try {
     await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="intensity"] [data-n="5"]').click();
     await page.locator('[data-screen="rate"] [data-wave-rate-note]').click();
     await page.locator('[data-screen="rate"] .v3-wave-rate-text').fill('Swarm from the left');
-    const wr = await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
+    // Round 12 (the player, on an iPhone home-screen app: "I can't see the
+    // text when I'm typing"): typing the note, the box and Next sit in what
+    // the keyboard leaves (stood in for here as 150 px), its text light on
+    // the dark box.
+    await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.setProperty('--vv-h', '150px'));
+    await page.waitForTimeout(150);
+    const rateTyping = await page.evaluate(() => {
+      const box = document.querySelector('[data-screen="rate"] .v3-wave-rate-text');
+      const r = box.getBoundingClientRect();
+      const next = document.querySelector('[data-rate-next]').getBoundingClientRect();
+      const cs = getComputedStyle(box);
+      const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) ?? [0, 0, 0]; return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
+      return { on: !!document.querySelector('.typing'), box: Math.round(r.bottom), h: Math.round(r.height), next: Math.round(next.bottom), ink: lum(cs.webkitTextFillColor || cs.color), bg: lum(cs.backgroundColor) };
+    });
+    check(rateTyping.on && rateTyping.box <= 150 && rateTyping.h >= 30 && rateTyping.next <= 150 && rateTyping.ink - rateTyping.bg > 0.6, `typing the wave's note: the box and Next above the keyboard, light text on a dark box (${JSON.stringify(rateTyping)})`);
+    await page.locator('[data-screen="rate"] .v3-wave-rate-text').blur();
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.removeProperty('--vv-h'));
+    const wr =await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
     check(wr.list?.length === 1 && wr.list[0].wave === 1 && JSON.stringify(wr.list[0].rating) === '{"fun":4,"intensity":5}' && wr.list[0].note === 'Swarm from the left' && wr.steps === steps && wr.phase === 'draft', `the wave's rating lands in the log at once, the game untouched (${JSON.stringify(wr)})`);
     await page.locator('[data-rate-next]').click();
   }
@@ -663,7 +681,7 @@ try {
     await cp.click('[data-lab-bring]');
     check(await cp.evaluate(() => !document.querySelector('.v2-overlay.open') && document.querySelector('.v2-pause').textContent === 'II'), 'Bring one on the pause menu closes it: the game goes on');
     const all = await titlesFor(2500);
-    check(all.some((t) => t.startsWith('NEW:') || t.startsWith('NEW · ')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
+    check(all.some((t) => t.startsWith('NEW:') || t.startsWith('New on ')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
     // Off, from Settings: kept across a reload, and no hint, wave or test card.
     await cp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
     await cp.locator('.v2-settings-btn').tap();
@@ -1057,7 +1075,7 @@ try {
     await lp.waitForSelector('.v2-card', { timeout: 15000 });
     const offer = await lp.evaluate(() => [...document.querySelectorAll('.v2-card')].map((c) => ({ id: c.dataset.upgrade, debut: c.dataset.debut ?? null, tag: c.querySelector('.v3-card-debut')?.textContent ?? null })));
     const debut = offer.filter((o) => o.debut);
-    check(debut.length >= 1 && debut.every((o) => ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'].includes(o.id) && /DARK WATER/i.test(o.tag)), `the first draft in Dark Water deals one of its new weapons, marked on the card (${JSON.stringify(offer)})`);
+    check(debut.length >= 1 && debut.every((o) => ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'].includes(o.id) && /^New on Dark Water$/.test(o.tag)), `the first draft in Dark Water deals one of its new weapons, marked on the card (${JSON.stringify(offer)})`);
     await lp.close();
   }
 
@@ -1404,7 +1422,18 @@ try {
     await lp.waitForSelector('.playing');
     await lp.waitForTimeout(400);
     const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run }));
-    check(/BOSS\s*Round 1 of 3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS Round 1 of 3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS 1/3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    // Round 12 (the player: "just say like 1/3 ... the text wraps"): the
+    // count sits on one line.
+    const countLines = await lp.evaluate(() => {
+      const span = document.querySelector('.v3-hud-wave');
+      const text = [...(span?.childNodes ?? [])].find((n) => n.nodeType === 3);
+      if (!text) return -1;
+      const r = document.createRange();
+      r.selectNodeContents(text);
+      return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size;
+    });
+    check(countLines === 1, `the boss count "1/3" sits on one line (${countLines} lines)`);
     // Log v30 (the player: "have it say 'boss round', then 'live reset',
     // then what it is ... then 'round one', so each text is like a new card
     // pop up"): the intro is a sequence of cards through the calm, each
@@ -1425,9 +1454,9 @@ try {
     }
     const seq = cards.map((c) => `${c.n} ${c.key}: ${c.eyebrow ? `${c.eyebrow} / ` : ''}${c.name}${c.sub ? ` / ${c.sub}` : ''} @${c.t}s`).join(' | ');
     check(cards.map((c) => c.key).join() === 'boss,restore,name,round', `round 11 (log v30): four cards pop up in turn, boss round, the convoy, the boss, the round (${seq})`);
-    check(/^Boss round$/i.test(cards[0]?.name ?? '') && /convoy restored/i.test(cards[1]?.name ?? '') && /\d ships? can still be lost/i.test(cards[1]?.sub ?? '') && cards[2]?.name === 'Afterburner Rush' && /^Round 1 of 3$/.test(cards[3]?.name ?? '') && /Survive the next 3 rounds/.test(cards[3]?.sub ?? ''), `the cards read BOSS ROUND, Convoy restored (the ships that can still be lost), the boss's name, Round 1 of 3 (${seq})`);
+    check(/^Boss round$/i.test(cards[0]?.name ?? '') && /convoy restored/i.test(cards[1]?.name ?? '') && /\d ships? can still be lost/i.test(cards[1]?.sub ?? '') && cards[2]?.name === 'Afterburner Rush' && /^Boss 1\/3$/.test(cards[3]?.name ?? '') && /Survive the next 3 rounds/.test(cards[3]?.sub ?? ''), `the cards read BOSS ROUND, Convoy restored (the ships that can still be lost), the boss's name, Boss 1/3 (${seq})`);
     check(cards.every((c) => c.pop && c.launched === 0), `each card pops in, and nothing flies while they read (${seq})`);
-    // Rounds 2 and 3: one short card each, Round 2 of 3 and Round 3 of 3.
+    // Rounds 2 and 3: one short card each, Boss 2/3 and Boss 3/3 (round 12).
     const later = new Set();
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => {
@@ -1443,7 +1472,7 @@ try {
       if (ph.phase !== 'wave' && ph.phase !== 'draft') break;
       await lp.waitForTimeout(100);
     }
-    check(later.has('Afterburner Rush / Round 2 of 3') && later.has('Afterburner Rush / Round 3 of 3'), `rounds 2 and 3 open on a short card each (${[...later].join(' | ')})`);
+    check(later.has('Afterburner Rush / Boss 2/3') && later.has('Afterburner Rush / Boss 3/3'), `rounds 2 and 3 open on a short card each (${[...later].join(' | ')})`);
     await lp.waitForSelector('[data-screen="result"]');
     const resEv = await lp.evaluate(() => { const e = document.querySelector('[data-result-event]'); return `${e?.dataset.resultEvent} | ${e?.dataset.resultEnding}`; });
     check(resEv === 'rush:clean rush:clean rush:clean | clean', `the result screen lists the three runs and the ending as a whole (${resEv})`);
@@ -1463,6 +1492,44 @@ try {
     check(wonFailed === 2 && wonArrived, `a won run whose sends failed twice still arrives with the next save (${JSON.stringify(posts)})`);
     check(quit, 'leaving the app mid-wave (no pagehide) seals the run as a quit');
     await lc.close();
+  }
+
+  // ---- Round 12: the Test Lab's Retry wave N and Skip to boss ----
+  // The player: "when I fail like this in the test lab have an option to
+  // reset that wave so I can try again or I can also skip forward to the
+  // boss wave". On the pause menu and the end screen of a test; each starts
+  // a new log marked `retry`.
+  {
+    const rp = await browser.newPage({ viewport: { width: 874, height: 402 }, hasTouch: true });
+    const errs = [];
+    rp.on('pageerror', (e) => errs.push(e.message));
+    await rp.goto(`${BASE_URL}/v3.html?lab=map-island&seed=11`, { waitUntil: 'networkidle' });
+    await rp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
+    await rp.reload({ waitUntil: 'networkidle' });
+    await rp.waitForSelector('.lab-on');
+    await rp.waitForTimeout(800);
+    await labMenu(rp);
+    const pauseJumps = await rp.evaluate(() => ({ retry: document.querySelector('.v2-pause-panel [data-lab-retry]')?.textContent, skip: !!document.querySelector('.v2-pause-panel [data-lab-skip]') }));
+    check(pauseJumps.retry === 'Retry wave 1' && pauseJumps.skip, `a full map test's pause menu has Retry wave 1 and Skip to boss (${JSON.stringify(pauseJumps)})`);
+    const first = await rp.evaluate(() => window.__v3.log().id);
+    await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await rp.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    const skipped = await rp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { wave: g.wave, event: g.event?.run, runs: g.event?.runs, retry: l.retry, first: l.firstWave, lab: !!l.lab?.loadout, on: document.querySelector('.v2-root').classList.contains('lab-on'), hud: document.querySelector('.v3-hud-wave')?.dataset.waveCount }; });
+    check(skipped.wave === 11 && skipped.event === 1 && skipped.runs === 3 && skipped.retry?.skip === true && skipped.retry?.of === first && skipped.first === 11 && skipped.lab && skipped.on && skipped.hud === 'BOSS 1/3', `Skip to boss: a new log from boss round 1, marked as a skip of the run before, still in the Test Lab (${JSON.stringify(skipped)})`);
+    await rp.waitForTimeout(1500);
+    await labMenu(rp);
+    const second = await rp.evaluate(() => window.__v3.log().id);
+    const retryLabel = await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-retry]')?.textContent);
+    check(retryLabel === 'Retry the boss rounds' && !(await rp.$('.v2-pause-panel [data-lab-skip]')), `in the boss rounds: Retry the boss rounds, no Skip (${retryLabel})`);
+    // Done, then Retry from the end screen.
+    await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-done]').click());
+    await rp.waitForSelector('[data-screen="lab-verdict"] [data-lab-jumps] [data-lab-retry]');
+    await rp.evaluate(() => document.querySelector('[data-lab-jumps] [data-lab-retry]').click());
+    await rp.waitForFunction(() => window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    const retried = await rp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { wave: g.wave, waveT: g.waveT, retry: l.retry, levels: g.levels }; });
+    check(retried.wave === 11 && retried.waveT < 2 && retried.retry?.of === second && retried.retry?.wave === 11 && !retried.retry?.skip, `Retry from the end screen: boss round 1 again from its start, a new log marked as a retry of the run before (${JSON.stringify(retried)})`);
+    check(errs.length === 0, `no page errors in the Test Lab jumps (${errs.join('; ')})`);
+    await rp.close();
   }
 } finally {
   await browser.close();

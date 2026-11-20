@@ -9,6 +9,67 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
+## Round 12: your chapter 2 notes (log v41)
+
+Your five chapter 2 Test Lab runs of 2026-11-20 (log v40: Saltgate, the Archipelago, the Needle, the Behemoth Run, the Island). Nine notes, all built. Your note on the Shield shielding every ship is left as it is: you took it back ("it works good how it is").
+
+| # | Your note | What changed |
+| --- | --- | --- |
+| 1 | "just say like 1/3 ... the text wraps" | A boss round reads **Boss 1/3**: the HUD counter ("BOSS 1/3"), the boss intro's round card and the round's outcome card. Sentences (the Test Lab, the encounter notes) still say "boss round 1 of 3". |
+| 2 | Cluster missiles "immediately break into the cluster munitions" | A cluster missile now **climbs for 1.3 s** before it can split (`CLUSTER.armAfter`), off the rail at 45% of its pace up to full. One launched next to its ships is a missile in the air for 1.3 s; it splits as soon as it is armed and in range. A far launch splits where it did. |
+| 3 | Drone Screen's "(none while nothing is on screen)" | Gone from the card. |
+| 4 | "NEW · The Narrows" | Reads **New on The Narrows** (New on Dark Water, New on Open War): the draft cards' band and the new enemies' first-sight notices. |
+| 5 | Subs "overlap on the land" and "the land is blocking it" | Audited (below). A torpedo sub now surfaces only at a **good site**: its whole shadow clear of land with 12 px to spare, and a torpedo line over open water to at least 3 of 9 points down a lane. The Needle's east spot moved. |
+| 6 | "The shield for the behemoth ship ... only covers a small [part]" | Each Shield bubble fits its hull and turns with the ship: the supertanker's is twice as long (82 × 28 px against 46 × 22). |
+| 7 | "the level three helicopters ... overlap each other" | That is your **Gunship Pair at level 3** (your Behemoth run had it at 3). Each helicopter's hover was pushed in from the screen's edge on its own, so with the convoy coming in at the edge two or three hovered on one spot. The row of hovers now slides in whole, 270 px apart. (The enemy attack helicopters were checked too: none came within 230 px of another, so they are as they were.) |
+| 8 | "I can't see the text when I'm typing" (the wave rating's note, iPhone home-screen app) | The wave rating's note box is now typed like the other notes: the screen fits itself to what the keyboard leaves, the box and Next at its top, scrolled into view. Its text is drawn light on the dark box on iOS too (`-webkit-text-fill-color`). |
+| 9 | "an option to reset that wave ... or skip forward to the boss wave" | The Test Lab's pause menu and end screen have **Retry wave N** and **Skip to boss** (below). |
+
+### Retry wave N and Skip to boss (Test Lab only)
+
+- **Retry wave N:** the wave in play, or the one just lost, from its start, as it was: the same weapons, ships, score and Scrap. The run is replayed to the wave's start, as dev mode's retry does. In the boss rounds it says **Retry the boss rounds** (they follow on with no draft between, so the retry goes back to boss round 1).
+- **Skip to boss:** on a map card's full run before wave 11. A new run from boss round 1, holding the weapons you hold now, at their levels.
+- **The logs stay honest:** either one seals the run you were on (lost, or left) and keeps it with the card's tests. The new run has a new log marked `retry` (the run it came from, the wave, and `skip` for a skip). The bot fit leaves a retried or skipped log out. A skip's log carries its loadout in its lab setup, so it replays exactly.
+- Not in the campaign or Free Play.
+
+### The torpedo sub audit
+
+`npx vite-node tools/v3/sub-audit/audit.ts -- --all` checks every map's sub spots, and the Behemoth Run's Wolf Pack water, as the game now does. `--play=N` also plays N seeds of each chapter 2 map (the "you" bot, your Armory, every wave) and checks every sub that surfaced. `tests/v3/round12.test.ts` holds the same line for every map.
+
+| Map | Where | What was wrong | Now |
+| --- | --- | --- | --- |
+| The Island | its 4 spots | nothing: all clear, each with a line to 9/9 | as it was |
+| The Behemoth Run | its 4 spots | nothing | as it was |
+| The Behemoth Run | Wolf Pack water (1400, 738) | land under the sub's shadow | the packs take the good water first |
+| The Needle of Bosk | east spot (1500, 252) | a torpedo line to 2/9 of the lane (the land blocks it) | moved to (1460, 292): 3/9, clear |
+| Saltgate Canal | east spot (1480, 610) | a line to 2/9 of the canal | a sub passes it over (the west spot sees 3/9) |
+| Saltgate Canal | the boss rounds' subs at (400, 610) | land under the shadow, and a line to 2/9 | **left for the Saltgate rework**: 12 of 78 subs in 4 bot runs, all in the boss rounds |
+
+- Every other map's spots pass (chapters 1, 3 and 4 too; the Sharra Delta has none).
+- Saltgate's data and its boss's sub placement are being reworked in parallel, so this round changes neither. The regular waves' subs there now pass over the east spot, through the shared code. The test lists that one spot as known.
+
+### The bot on chapter 2 (your Armory, 24 seeds, every wave played under the normal loss limit)
+
+`npx vite-node tools/v3/map-report/quick.ts -- --map=<map> --seeds=24`. Before = log v40 (#202); after = log v41.
+
+| Map | Won, before | Won, after | Lost waves 1–5, before | after | Lost waves 1–10, before | after |
+| --- | --- | --- | --- | --- | --- | --- |
+| The Island | 38% | 42% | 0.46 | 0.46 | 4.25 | 4.38 |
+| The Behemoth Run | 50% | 58% | 0.54 | 0.42 | 4.21 | 3.79 |
+| The Needle of Bosk | 58% | 58% | 0.67 | 0.42 | 3.33 | 3.17 |
+| The Archipelago | 46% | 42% | 0.46 | 0.46 | 4.33 | 4.25 |
+| Saltgate Canal | 58% | 46% | 0.50 | 0.71 | 3.25 | 3.67 |
+
+- Waves 1–5 barely moved (under a quarter of a ship either way); at 24 seeds a gap of 10% won is noise.
+- **Saltgate Canal is the one that moved:** checked again on 48 more seeds (`--seeds=48 --from=924`): won 52% → 42%, waves 1–5 0.50 → 0.65, waves 1–10 3.54 → 4.21. With the cluster climb turned off (subs only) it reads 48%, so about half is the subs (they now always come up at the west spot, which sees the canal) and half the clusters (Saltgate's own clusters, off the lock silos at the ships in the locks, now fly a little closer before they split). It is still mid-pack for chapter 2. Saltgate is being reworked in parallel, so it is left for that rework to tune.
+
+### Checks
+
+- `npx tsc --noEmit`: clean. `npx vitest run --exclude '.claude/**'`: all pass. New: `tests/v3/round12.test.ts` (the cluster's climb, the sub audit on every map, the Gunship row, the Shield's fit, Retry and Skip both replaying exactly). The boss-round tests for the Archipelago and Saltgate moved to seeds where the bot still sees all three rounds (225 and 219).
+- The map-lab baseline is rewritten at v41 and replays exactly.
+- **e2e** on `vite preview`: `v3.mjs` (249 checks; new: the boss count on one line, the wave note above the keyboard, Retry and Skip), `v3-audio`, `v3-map-cards`, `v3-map-lab`, `v3-convoy`, `v3-resume` and `v3-encounters` pass. `v3-resume` had one check failing on the base already (it looked for "wave 3" after the counter became "Wave 3 of 10"): now case-blind.
+- Screenshots e2e overwrote are restored, except `img/rate-review/lab-end-top.png`, which now shows "BOSS 3/3".
+
 ## 1. The NEW tag sits on top of the card
 
 > "the label should be on top of the card and not overlapped on the middle of card"

@@ -1949,19 +1949,25 @@ export interface FreePlaySetup {
   enemies?: FoeSetting;
 }
 
-/** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
-export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
-
-export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
+/** Hold these weapons, in slot order, at their levels (1–3), in place of
+ *  whatever is held (Free Play's setup; a Test Lab "Skip to boss"). */
+export function holdWeapons(g: Game, weapons: { id: AbilityId; level: number }[]): void {
   g.levels = {};
   g.slots = [];
   // A weapon cut since the setup was saved (or logged) is left out
   // (Test Lab round 5 cut Overclock and Time Warp).
-  for (const w of setup.weapons.filter((o) => knownWeapon(o.id)).slice(0, MAX_SLOTS)) {
+  for (const w of weapons.filter((o) => knownWeapon(o.id)).slice(0, MAX_SLOTS)) {
     if (g.slots.includes(w.id)) continue;
     g.levels[w.id] = Math.max(1, Math.min(ABILITY_MAX, Math.floor(w.level)));
     g.slots.push(w.id);
   }
+}
+
+/** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
+export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
+
+export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
+  holdWeapons(g, setup.weapons);
   if (setup.frequentDrops) {
     g.stats = { ...g.stats, dropPity: Math.min(g.stats.dropPity, FREE_PLAY_DROPS.pity), dropShare: g.stats.dropShare * FREE_PLAY_DROPS.share };
   }
@@ -2214,6 +2220,8 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
  *  wave for wave, on the same seed. */
 export function applyLab(g: Game, setup: LabSetup): void {
   setUpLab(g, setup);
+  // Round 12's "Skip to boss": the weapons the run skipped from held.
+  if (setup.loadout) holdWeapons(g, setup.loadout);
   if (!g.lab?.full) replanWave(g);
 }
 
@@ -4072,11 +4080,21 @@ function updatePassives(g: Game, dt: number): void {
   const gw = held(g, 'gunships');
   if (!gw) for (const h of g.helis) h.leaving = true;
   const mid = g.ships.length ? { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length } : { x: c.x, y: c.y - 120 };
+  // Round 12 (the player: "the level three helicopters ... overlap each
+  // other"): the row of hovers is kept whole on the screen. Each was
+  // clamped to the edge on its own, so with the convoy coming in at the
+  // screen's edge two (or all three) hovered on the same spot. Now the row
+  // slides in from the edge instead, each in its place in the row (its
+  // rank among those staying, so a gap left by one leaving closes).
+  const row = g.helis.filter((o) => !o.leaving).sort((a, b) => a.slot - b.slot || a.id - b.id);
+  const n = row.length;
+  const pitch = AB.gunships.spread * 1.8;
+  const half = ((n - 1) / 2) * pitch;
+  const cx = clamp(mid.x, 60 + half, VIEW.width - 60 - half);
   for (const h of g.helis) {
-    const n = g.helis.filter((o) => !o.leaving).length;
     const want = h.leaving
       ? { x: h.x < VIEW.width / 2 ? -200 : VIEW.width + 200, y: h.y }
-      : { x: clamp(mid.x + (h.slot - (n - 1) / 2) * AB.gunships.spread * 1.8, 60, VIEW.width - 60), y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
+      : { x: cx + (row.indexOf(h) - (n - 1) / 2) * pitch, y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
     flyHeli(g, h, want, dt);
     if (h.leaving) continue;
     h.fireT -= dt;
@@ -5777,12 +5795,17 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         ? GUIDED.boostFrom + (1 - GUIDED.boostFrom) * (th.age / GUIDED.boost)
         : th.kind === 'supersonic'
           ? supersonicPace(th.age)
-          : 1;
+          : th.kind === 'cluster'
+            ? clusterPace(th.age)
+            : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
-    if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
-      splitCluster(g, th);
+    if (th.kind === 'cluster' && th.target !== CARRIER_TARGET) {
+      // Round 12: armed only after its climb (CLUSTER.armAfter); until then
+      // it is a missile in the air, nothing to split and nothing to hit
+      // (its own damage is 0: only its bomblets do harm).
+      if (clusterArmed(th) && d < CLUSTER.splitRange) splitCluster(g, th);
     } else {
       checkImpact(g, th);
     }
@@ -6043,6 +6066,17 @@ export function child(g: Game, parent: Threat, kind: ThreatKind, target: number,
   };
   if (g.tel) g.tel.spawn(g, th, 'child', parent);
   return th;
+}
+
+/** Round 12: a cluster's pace through its climb off the rail, from
+ *  CLUSTER.climbFrom up to full at CLUSTER.armAfter. */
+export function clusterPace(age: number): number {
+  return age >= CLUSTER.armAfter ? 1 : CLUSTER.climbFrom + (1 - CLUSTER.climbFrom) * (age / CLUSTER.armAfter);
+}
+
+/** Round 12: a cluster can split only once it has flown CLUSTER.armAfter s. */
+export function clusterArmed(th: Threat): boolean {
+  return th.age >= CLUSTER.armAfter;
 }
 
 /** A cluster that reaches its split range becomes bomblets aimed at the ships

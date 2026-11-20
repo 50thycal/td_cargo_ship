@@ -537,12 +537,70 @@ function waterSpot(g: Game, rng: RNG): Point {
   return { x: rng.range(260, VIEW.width - 260), y };
 }
 
+/** Round 12 (the player: "sometimes they kinda overlap on the land and
+ *  they don't have the best attack sites because the land is blocking
+ *  it"): the room a surfaced torpedo sub takes, its shadow (ui/foes.ts
+ *  drawTorpedoSub: a hull 56 px each way of a point 8 px astern, 12 px
+ *  either side, blurred 10 px more; it lies east-west) with `margin` px of
+ *  open water round it. */
+export const SUB_ROOM = { back: 74, front: 58, half: 17, margin: 12 } as const;
+
+/** Is the sub's whole shadow at `p`, and `margin` px round it, on open
+ *  water? (Sampled every 6 px over the hull's ellipse, and round its rim.) */
+export function subClear(g: Game, p: Point, margin: number = SUB_ROOM.margin): boolean {
+  const rx = (SUB_ROOM.back + SUB_ROOM.front) / 2 + margin;
+  const ry = SUB_ROOM.half + margin;
+  const cx = p.x + (SUB_ROOM.front - SUB_ROOM.back) / 2;
+  for (let dy = -ry; dy <= ry; dy += 6) {
+    for (let dx = -rx; dx <= rx; dx += 6) {
+      if ((dx / rx) ** 2 + (dy / ry) ** 2 > 1) continue;
+      if (onLand(g, cx + dx, p.y + dy)) return false;
+    }
+  }
+  for (let k = 0; k < 32; k++) {
+    const a = (k / 32) * Math.PI * 2;
+    if (onLand(g, cx + Math.cos(a) * rx, p.y + Math.sin(a) * ry)) return false;
+  }
+  return true;
+}
+
+/** How much of the lanes a sub at `p` has a torpedo line to: the most, over
+ *  the map's lanes, of nine points down a lane's middle (on the screen) it
+ *  can reach over open water all the way (torpedoWet). */
+export function subLaneSight(g: Game, p: Point): number {
+  let best = 0;
+  for (const ch of g.map.channels) {
+    const L = laneLength(ch);
+    let n = 0;
+    for (let k = 1; k < 10; k++) {
+      const o = laneAt(ch, (L * k) / 10, 0);
+      if (o.x > 0 && o.x < VIEW.width && o.y > 0 && o.y < VIEW.height && torpedoWet(g, p, o)) n += 1;
+    }
+    best = Math.max(best, n);
+  }
+  return best;
+}
+
+/** Round 12: the fewest lane points (of nine) a sub spot must have a
+ *  torpedo line to. */
+export const SUB_SIGHT = 3;
+
+/** Round 12: a good place for a torpedo sub to surface: its shadow clear of
+ *  land (subClear) and a torpedo line to a good stretch of a lane. */
+export function subSite(g: Game, p: Point): boolean {
+  return subClear(g, p) && subLaneSight(g, p) >= SUB_SIGHT;
+}
+
 /** Where a Torpedo Sub surfaces (round 8): a water spot with a straight
  *  run of open water to some stretch of a lane, so its torpedoes have ships
  *  to go for without crossing land (on Saltgate Canal some of the open
- *  water lies behind the banks). Any water spot if none has. */
+ *  water lies behind the banks). Any water spot if none has. Round 12: only
+ *  a good site (subSite: its shadow clear of land, a torpedo line to a
+ *  lane) while the map has one. */
 export function subSpot(g: Game, rng: RNG): Point {
-  const cands = g.map.subSpots.length ? rng.shuffle([...g.map.subSpots]) : Array.from({ length: 6 }, () => waterSpot(g, rng));
+  const all = g.map.subSpots.length ? rng.shuffle([...g.map.subSpots]) : Array.from({ length: 6 }, () => waterSpot(g, rng));
+  const good = all.filter((p) => subSite(g, p));
+  const cands = good.length ? good : all;
   // The spot with the most ships in reach over open water now; with none
   // in reach anywhere (no convoy yet), one that sees a lane.
   const ships = targetable(g);

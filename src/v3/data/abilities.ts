@@ -284,7 +284,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hornet Nest',
     answers: 'Drones',
     levels: [
-      'A drone lifts off the carrier every 1.2 s and rams the threat closest to your ships, 1 hit (none while nothing is on screen)',
+      'A drone lifts off the carrier every 1.2 s and rams the threat closest to your ships, 1 hit',
       'Launch rate +33% (a drone every 0.9 s)',
       'Launch rate +29% (every 0.7 s); each ram bursts, hitting everything around it',
     ],

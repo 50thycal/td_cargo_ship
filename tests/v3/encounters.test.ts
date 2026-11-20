@@ -1005,9 +1005,9 @@ describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid fr
       ['supply-raid', 30, 6, 0, 0],
       ['supply-raid', 30, 6, 0, 0],
     ]);
-    // Seed 218: the tryhard bot, starting at the boss with no weapon, sees
-    // all three rounds.
-    const on = playMimic('archipelago', 218, { ...opts, encounters: VER('v1') });
+    // Seed 225 (218 before log v41, round 12's cluster climb): the tryhard
+    // bot, starting at the boss with no weapon, sees all three rounds.
+    const on = playMimic('archipelago', 225, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.archipelago!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['supply-raid', 1], ['supply-raid', 2], ['supply-raid', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
