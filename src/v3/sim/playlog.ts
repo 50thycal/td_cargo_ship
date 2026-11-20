@@ -18,6 +18,7 @@ import {
   continueEndless,
   createGame,
   pickUpgrade,
+  rerollDraft,
   focusHold,
   labBring,
   press,
@@ -267,12 +268,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      Shield boost breaks after AB.shield.hits = 2 / 3 / 4 hits at level
  *      1 / 2 / MAX (was 1 / 2 / 3; campaign and lab). A v38 log that drew
  *      the Shield no longer replays to the same game. (The Effort rating
- *      added beside it is not sim input.) */
-export const LOG_VERSION = 39;
-/** The log versions this build replays exactly (only its own: round 11
- *  changed the game). Tools that replay logs (Map Analytics, the map lab)
- *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [39];
+ *      added beside it is not sim input.)
+ *  40: four new Armory upgrades (docs/design/v3-armory-overhaul.md, "The
+ *      four new upgrades"): `armory` can name boilers, lifeboats,
+ *      quartermaster and salvage; Quartermaster's draft re-roll is a new
+ *      command ('x') and deals from the draft's own dice, and its level 5
+ *      deals four cards; Boilers sails the convoy faster; Lifeboats counts
+ *      a wave's first ship sunk as half a loss. A v39 log has none of them
+ *      and plays the same game (the map-lab baseline replays unchanged),
+ *      but a v40 log that uses one needs this build. */
+export const LOG_VERSION = 40;
+/** The log versions this build replays exactly (40, and 39: the new
+ *  upgrades change nothing for a run that has none of them). Tools that
+ *  replay logs (Map Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [39, 40];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
@@ -348,6 +357,7 @@ export type LogCommand =
   | [number, 'm', FormationId] // formation
   | [number, 'k', CommandId] // a lab convoy command: rush, disperse, hold (sim/convoy.ts)
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
+  | [number, 'x'] // Quartermaster: the draft dealt again
   | [number, 'e'] // continue into endless
   | [number, 's', number] // game speed (UI only; kept for context)
   | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
@@ -651,7 +661,13 @@ export class Recorder {
     if ((this.game.phase as Phase) === 'wave') this.mark = { wave: this.game.wave, steps: this.game.steps, commands: this.log.commands.length };
   }
 
-  /** Set off an ability. Only a use that went off is logged. */
+  /** Quartermaster: deal the draft again (only a re-roll that happened is
+   *  logged). */
+  reroll(): boolean {
+    if (this.game.phase !== 'draft' || this.game.rerolls <= 0) return false;
+    this.log.commands.push([this.game.steps, 'x']);
+    return rerollDraft(this.game);
+  }
 
 
   endless(): void {
@@ -769,6 +785,9 @@ export function applyCommand(g: Game, c: LogCommand): void {
       break;
     case 'u':
       pickUpgrade(g, c[2], c[3]);
+      break;
+    case 'x':
+      rerollDraft(g);
       break;
     case 'e':
       continueEndless(g);

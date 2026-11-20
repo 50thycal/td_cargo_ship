@@ -91,6 +91,28 @@ The player's latest Armory (Wide Warhead 5, Deck Guns 4, Supply Lines 3) plays e
 
 `npx tsc --noEmit`; `npx vitest run --exclude '.claude/**'` (new tests in `tests/v3/v3.test.ts`: the lift values and no level worse, Deep Magazine's rounds, Deck Guns, the rack refill in play, finding cards, Scrap earning, spending and costs, the version 2 save migration); `npm run v3:map-lab -- baseline` (rewritten for 33, replays exactly); `e2e/v3.mjs` (the save migration, the Armory with Scrap: levels a card, checks the cost and the greyed next level, equips, Deck Guns, the HUD's Scrap, a lost run's Scrap on the result screen).
 
+## The four new upgrades (2026-11-20, LOG_VERSION 40)
+
+The player on the review page: "Do life boat, salvage crew, boiler and quarter master". Branch `claude/v3-armory-new`. The Armory is now 15 cards: **Gun** 4, **Hull** 5 (+ Boilers, Lifeboats), **Supply** 6 (+ Quartermaster, Salvage Crews). Each has five levels, is found like any card and levelled with the same Scrap (150 / 300 / 500 / 800). Measured in `tools/v3/armory-ideas/new-upgrades.md`.
+
+| Upgrade | Bay | Level 1 → 5 | Ships saved at level 5 (alone; on the player's Armory) |
+| --- | --- | --- | --- |
+| Boilers | Hull | the convoy sails 104% → 120%; level 5 doubles Full Steam (the power-up and the boost) | 2.5 kit / 1.5 own draft; −0.6 (nothing) |
+| Lifeboats | Hull | the first ship sunk in a wave counts as half a loss, in 2 / 4 / 6 / 8 waves a run, every wave at level 5 | no ship saved; 3.6 off the loss tally; the player's build wins 62% of runs, not 45% |
+| Quartermaster | Supply | re-roll the weapon draft 1 / 2 / 3 / 4 / 4 times a run; level 5 deals four cards | 2.5 own draft; 0.9 |
+| Salvage Crews | Supply | +10% Scrap a level (+50%) | none, by design; 528 → 792 Scrap a run |
+
+- **Boilers and Quartermaster land under the 5–8 band**, and their own numbers can't lift them: 130% and 150% speed save 4.3 and 4.7 alone and nothing on the player's build; 4, 6 or 10 re-rolls save the same (the bot spends 1.8). Kept at the brainstorm's numbers (Quartermaster's re-rolls spread so every level counts); a second job for Boilers is the player's call.
+- **Lifeboats' half loss.** The ship still sinks (score, "ships sunk", the wave records); only the run's loss count takes half of it (`shipsSunk()` = sunk − restored − the boats' halves). The HUD's SUNK pips fill half a pip for it (two halves make a whole one), "LIFEBOATS · ½ LOSS" floats over the wreck, and the result screen says "N ships sunk · k by lifeboat (½)". The last-ship warning comes at one ship or less left (half a ship left is still the last). A VIP tanker (3 losses) counts 1.5. Each boss round is its own wave (one boat each); a bonus wave shares the number, and the boat, of the wave it follows. The convoy restored before the boss rounds wipes the halves with the losses they were of; boats already used stay used.
+- **Quartermaster's re-roll.** A **Re-roll** button in the draft's top-left corner with the re-rolls left ("4 left"), greyed at none, only on a run that has the card. A re-roll deals the hand again from the draft's own dice (a new log command, `'x'`, so a log replays it), from weapons the old hand did not show when enough are open; a Test Lab draft still deals its tested weapon first. Four cards (five with Resupply) sit in one row. The bots (watch mode, the personas, `sim/bot.ts`) re-roll a hand with no weapon they hold to level and none of their four favourites for a free slot, while a new hand could still bring one.
+- **Salvage Crews** multiplies the run's own Scrap (waves, boss rounds, the clear, a first clear), not a repeat card's 100; the result's ledger has a "salvage crews" line, and the HUD's Scrap counts it.
+- **Saves and logs.** The Armory save stays version 3: a save without the new ids loads them at level 0, everything else kept. LOG_VERSION 40 (new armory ids, the `'x'` command); 40 still replays 39 (`LOG_REPLAYS = [39, 40]`): a run without the new upgrades is the same game, and the map-lab baseline replays unchanged but for its version (the state hash leaves out the new fields at their defaults).
+- **Art:** a steaming ship (Boilers), a crew rowing clear with ½ (Lifeboats), a fan of cards and a turning arrow (Quartermaster), a crane lifting a crate (Salvage Crews), in the bay's colour like the others. Hull's five and Supply's six cards fit one row on a phone; on a short phone the blurb is cut to two lines so the bar stays on screen.
+
+![The Supply bay with Quartermaster and Salvage Crews](img/armory/phone-supply.png)
+
+Checks: `npx tsc --noEmit`; `npx vitest run` (new `tests/v3/armoryNew.test.ts`: each upgrade's numbers, Boilers' speed and Full Steam and Saltgate's lock clocks, Lifeboats' half loss and the run's end, the boats a level and the restore, Quartermaster's four cards, the re-roll's determinism, its log replay and the bots' rule, Salvage's Scrap, an old save); `npm run v3:map-lab -- baseline`; `e2e/v3.mjs` (Hull 5 / Supply 6 cards fit a phone, the half pip, the Re-roll button deals a new hand, logged, and the run replays); `e2e/v3-armory-shots.mjs` (the screenshots here, with Boilers and Quartermaster held).
+
 ## The short version
 
 - **Keep all 11 upgrades.** None is useless once lifted. Long Loads gets a new job (its own number can’t lift it); Deep Magazine’s dead level 3 gets a round; the Armory’s Point Defense is renamed (it clashes with the weapon).

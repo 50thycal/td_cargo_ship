@@ -33,8 +33,9 @@ function findChromium() {
 const SAVE = {
   unlocked: 5,
   best: {},
-  cards: 14,
-  armory: { reload: 5, warhead: 2, fuse: 1, plating: 3, pointdef: 1, repair: 4, magazine: 2, longload: 1, stockpile: 5 },
+  cards: 16,
+  // (Boilers and Quartermaster: two of the four new upgrades, found.)
+  armory: { reload: 5, warhead: 2, fuse: 1, plating: 3, pointdef: 1, repair: 4, boilers: 1, magazine: 2, longload: 1, stockpile: 5, quartermaster: 2 },
   equipped: { gun: 'reload', hull: 'repair', supply: 'stockpile' },
   cleared: ['strait', 'kesh', 'marrow', 'gauntlet'],
   armoryV: 3,
@@ -68,12 +69,14 @@ for (const [w, h, tag] of [[844, 390, 'phone'], [667, 375, 'small'], [1280, 720,
   await page.waitForTimeout(300);
   if (!(await fits(page))) errors.push(`${tag}: the Armory overflows`);
   await page.screenshot({ path: `${SHOT_DIR}/${tag}-gun-ready.png` });
-  // Hull: Armor Plating 3 → 4 costs 500: short.
+  // Hull (five cards with Boilers and Lifeboats): Armor Plating 3 → 4 costs 500: short.
   await page.locator('[data-bay="hull"]').tap();
   await page.locator('.v3-armory-card[data-armory="plating"]').tap();
   await page.waitForTimeout(300);
+  if (!(await fits(page))) errors.push(`${tag}: the Hull bay overflows`);
   await page.screenshot({ path: `${SHOT_DIR}/${tag}-hull-short.png` });
-  // Supply: Deep Magazine (moved here), Long Loads, Supply Lines, Stockpile.
+  // Supply: Deep Magazine (moved here), Long Loads, Supply Lines, Stockpile,
+  // Quartermaster and Salvage Crews: six cards.
   await page.locator('[data-bay="supply"]').tap();
   await page.locator('.v3-armory-card[data-armory="magazine"]').tap();
   await page.waitForTimeout(300);

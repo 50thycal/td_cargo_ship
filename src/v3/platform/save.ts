@@ -196,12 +196,13 @@ export interface RunResult {
  *  (at random: the player doesn't choose them). `run.waves` / `run.boss`:
  *  the map's waves and boss rounds cleared (scrapTally); `run.paid`: the
  *  run's waves were banked already (a cleared map played on into endless
- *  is recorded again when it ends: only its new cards count then).
+ *  is recorded again when it ends: only its new cards count then);
+ *  `run.salvage`: the Salvage Crews level the run took.
  *  `pick(k)` returns an integer in [0, k). */
 export function recordResult(
   p: Progress,
   map: MapId,
-  run: { score: number; wave: number; cleared: boolean; wavesCleared: number; waves?: number; boss?: number; paid?: boolean },
+  run: { score: number; wave: number; cleared: boolean; wavesCleared: number; waves?: number; boss?: number; paid?: boolean; salvage?: number },
   pick: (k: number) => number = (k) => Math.floor(Math.random() * k),
 ): RunResult {
   const prev = p.best[map];
@@ -219,7 +220,8 @@ export function recordResult(
   // A first card in a bay with nothing equipped goes straight in.
   for (const c of cards) if (!c.dup && !p.equipped[ARMORY[c.id].bay]) p.equipped[ARMORY[c.id].bay] = c.id;
   const tally = run.paid ? { waves: 0, boss: 0 } : { waves: run.waves ?? Math.min(run.wavesCleared, RULES.wavesToClear), boss: run.boss ?? 0 };
-  const scrap = scrapFor(tally, run.cleared && !run.paid, firstClear, cards.filter((c) => c.dup).length);
+  // Salvage Crews: the level the run took (its share of the run's Scrap).
+  const scrap = scrapFor(tally, run.cleared && !run.paid, firstClear, cards.filter((c) => c.dup).length, run.salvage ?? 0);
   p.scrap = scrapOf(p.scrap) + scrap.total;
   p.scrapEarned = scrapOf(p.scrapEarned) + scrap.total;
   saveProgress(p);

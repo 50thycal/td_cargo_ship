@@ -22,6 +22,8 @@ import {
   release,
   createGame,
   pickUpgrade,
+  rerollDraft,
+  rerollWorth,
   step,
   tap,
   timeToImpact,
@@ -77,6 +79,8 @@ export class Bot {
       // Level what it holds first (evolutions are the payoff), then its
       // favourite new weapon.
       const prefer = this.skill.prefer ?? ABILITY_ORDER;
+      // Quartermaster: a hand with nothing it wants is dealt again.
+      while (rerollWorth(g, prefer.slice(0, 4)) && rerollDraft(g));
       const pick = g.offer
         .filter((id) => canTake(g.levels, id))
         .sort((a, b) => held(g, b) - held(g, a) || rank(prefer, a) - rank(prefer, b))[0];

@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-Overnight: your playtest notes, round 9 and all three new chapter 2 maps (The Needle of Bosk, The Archipelago, Saltgate Canal) are built. Chapter 2 is five of five. Next for you: play chapter 2 from Test Lab → Ready to test, and two quick questions (Air Strike, Saltgate).
+Overnight: all of chapter 2 is rebuilt (five of five), Shield takes 2 / 3 / 4 hits, the run review asks your Effort, and the four new Armory upgrades are in. Next for you: play chapter 2 from Test Lab → Ready to test, and five quick questions.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.

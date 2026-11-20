@@ -110,11 +110,11 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(s.glance).toBe(0);
   });
 
-  it('three bays (the overhaul): Gun 4, Hull 3, Supply 4, Deep Magazine in Supply', () => {
+  it('three bays (the overhaul, and the four new upgrades): Gun 4, Hull 5, Supply 6, Deep Magazine in Supply', () => {
     expect(BAY_ORDER).toEqual(['gun', 'hull', 'supply']);
     expect(GUN).toEqual(['reload', 'warhead', 'motor', 'fuse']);
-    expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair']);
-    expect(bayItems('supply')).toEqual(['magazine', 'longload', 'drops', 'stockpile']);
+    expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair', 'boilers', 'lifeboats']);
+    expect(bayItems('supply')).toEqual(['magazine', 'longload', 'drops', 'stockpile', 'quartermaster', 'salvage']);
     expect(BAYS.supply.name).toBe('Supply');
     expect(new Set(BAY_ORDER.map((b) => BAYS[b].color)).size).toBe(3);
   });
@@ -124,6 +124,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     const field = {
       reload: 'reload', warhead: 'blast', motor: 'interceptorSpeed', magazine: 'rack', fuse: 'contact',
       plating: 'glance', pointdef: 'pdRange', repair: 'repairEvery', longload: 'weaponTime', drops: 'dropShare', stockpile: 'powerShare',
+      boilers: 'convoySpeed', lifeboats: 'lifeboats', quartermaster: 'rerolls', salvage: 'salvage',
     } as const;
     const fields = Object.values(field);
     for (const id of ARMORY_ORDER) {
@@ -136,7 +137,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
         else expect(v).toBeGreaterThanOrEqual(prev);
         prev = v;
         // Deck Guns also set their gap, Long Loads the rack refill.
-        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill' };
+        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill', boilers: 'steamTime', quartermaster: 'draftCards' };
         for (const f of fields) if (f !== field[id] && also[id] !== f) expect(s[f]).toBe(base[f]);
       }
     }
@@ -257,7 +258,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     const p = fresh();
     // Lost in wave 7: six waves cleared, one card (new), all its Scrap kept.
     const lost = recordResult(p, 'strait', { score: 900, wave: 7, cleared: false, wavesCleared: 6, waves: 6, boss: 0 }, draw(0));
-    expect(lost.scrap).toEqual({ waves: 240, boss: 0, clear: 0, firstClear: 0, duplicates: 0, total: 240 });
+    expect(lost.scrap).toEqual({ waves: 240, boss: 0, clear: 0, firstClear: 0, duplicates: 0, salvage: 0, total: 240 });
     expect(p.scrap).toBe(240);
     // Lost in the second boss round: 10 waves and one boss round.
     const boss = recordResult(p, 'kesh', { score: 900, wave: 12, cleared: false, wavesCleared: 11, waves: 10, boss: 1 }, draw(0));
@@ -265,7 +266,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(boss.scrap.duplicates).toBe(100); // Quick Reload again
     // A first clear of a map with an ending: 400 + 150 + 150 + 250, three cards (two duplicates).
     const won = recordResult(p, 'marrow', { score: 9000, wave: 13, cleared: true, wavesCleared: 13, waves: 10, boss: 3 }, draw(0));
-    expect(won.scrap).toEqual({ waves: 400, boss: 150, clear: 150, firstClear: 250, duplicates: 300, total: 1250 });
+    expect(won.scrap).toEqual({ waves: 400, boss: 150, clear: 150, firstClear: 250, duplicates: 300, salvage: 0, total: 1250 });
     expect(p.scrap).toBe(240 + 550 + 1250);
     expect(p.scrapEarned).toBe(p.scrap);
     // The same map again: no first-clear bonus.

@@ -277,9 +277,10 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 39 (the Shield takes 2 / 3 / 4 hits; after 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(39);
-    expect(LOG_REPLAYS).toEqual([39]);
+  it('the log is version 40 (four new Armory upgrades; after 39, the Shield takes 2 / 3 / 4 hits, 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest); 40 and 39 replay here (a run without the new upgrades plays as before)', () => {
+    expect(LOG_VERSION).toBe(40);
+    expect(LOG_REPLAYS).toEqual([39, 40]);
+    expect(replaysHere(40)).toBe(true);
     expect(replaysHere(39)).toBe(true);
     expect(replaysHere(38)).toBe(false);
     expect(replaysHere(37)).toBe(false);

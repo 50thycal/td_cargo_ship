@@ -7894,3 +7894,102 @@ a.v3-lab-page {
   background: var(--amber);
   box-shadow: 0 0 10px rgb(255 181 71 / 0.55);
 }
+
+/* ---- The four new Armory upgrades (docs/design/v3-armory-overhaul.md) --- */
+
+/* Five cards in the Hull bay, six in Supply: one row, a little tighter. */
+.v3-armory-cards.n5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.v3-armory-cards.n6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.v3-armory-cards.n6 .v3-armory-card {
+  padding: 7px 7px 8px;
+}
+
+.v3-armory-cards.n6 .v2-card-name {
+  font-size: 13px;
+}
+
+.v3-armory-cards.n6 .v2-card-text,
+.v3-armory-cards.n6 .v3-card-stat {
+  font-size: 10.5px;
+}
+
+/* Quartermaster 5 deals four cards (five with Resupply). */
+.v2-card-row:has(> :nth-child(4)) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.v2-card-row:has(> :nth-child(5)) {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* Quartermaster's re-roll: the draft head's top-left corner (Done, on a
+   test's run, is top-right), with the re-rolls left. */
+.v2-draft-head:has(.v3-reroll) {
+  position: relative;
+  align-self: stretch;
+}
+
+.v2-draft-head .v3-reroll {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--amber);
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+}
+
+.v2-draft-head .v3-reroll span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-draft-head .v3-reroll:disabled {
+  opacity: 0.45;
+}
+
+/* Lifeboats: a ship that counted as half a loss fills half a pip. */
+.v2-hud-lost i.half {
+  border-color: var(--danger);
+  background: linear-gradient(90deg, var(--danger) 50%, transparent 50%);
+}
+
+/* A short phone (≤ 430 px high) with five or six cards a row: smaller art
+   and a two-line blurb, so the bar under the row stays on screen. */
+@media (max-height: 430px) {
+  .v3-armory .v3-armory-cards.n5 .v3-armory-card .v2-card-art,
+  .v3-armory .v3-armory-cards.n6 .v3-armory-card .v2-card-art {
+    height: 38px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v2-card-text,
+  .v3-armory .v3-armory-cards.n6 .v2-card-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 10px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v3-armory-card .v2-card-name,
+  .v3-armory .v3-armory-cards.n6 .v3-armory-card .v2-card-name {
+    font-size: 12px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v3-card-stat,
+  .v3-armory .v3-armory-cards.n6 .v3-card-stat,
+  .v3-armory .v3-armory-cards.n5 .v3-card-stat b,
+  .v3-armory .v3-armory-cards.n6 .v3-card-stat b {
+    font-size: 10px;
+  }
+}

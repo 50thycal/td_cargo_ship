@@ -1821,7 +1821,7 @@ export class App {
           // round 7's (restoreConvoy, under ENDING.threeRuns): with it off,
           // the second card reads the losses left as they are.
           if (!ev.bonus && ev.runs && ev.runs > 1 && ev.run) {
-            const left = Math.max(0, g.tempo.lossLimit - (g.lost - g.lossBase));
+            const left = Math.max(0, Math.ceil(g.tempo.lossLimit - shipsSunk(g)));
             const restored = g.events.some((e) => e.kind === 'restore');
             this.startBossIntro(g, ev.id, bossIntroCards(ev.id, ev.run, ev.runs, left, restored));
           } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '');
@@ -2187,7 +2187,7 @@ export class App {
   /** The Scrap a run has earned so far from its waves, boss rounds and the
    *  clear (the first-clear bonus and duplicate cards come at the end). */
   private runScrap(g: Game): ScrapEarned {
-    return scrapFor(scrapTally(g.history, RULES.wavesToClear, lastWave(g)), g.cleared, false);
+    return scrapFor(scrapTally(g.history, RULES.wavesToClear, lastWave(g)), g.cleared, false, 0, armoryLevel(g.armory, 'salvage'));
   }
 
   /** The counter's two lines for the game in play (data/events.ts
@@ -2209,9 +2209,13 @@ export class App {
 
   private renderHud(g: Game): void {
     if (this.commandBtns.length) this.renderCommands(g);
+    // Lifeboats (Armory): a ship that counted as half a loss fills half a
+    // pip; two halves make a whole one.
     const sunk = shipsSunk(g);
+    const whole = Math.floor(sunk + 1e-9);
+    const half = sunk - whole > 0.25;
     const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
-      i < sunk ? '<i class="lost"></i>' : i === sunk && this.danger ? '<i class="next"></i>' : '<i></i>',
+      i < whole ? '<i class="lost"></i>' : i === whole && half ? `<i class="half${this.danger ? ' next' : ''}"></i>` : i === whole && this.danger ? '<i class="next"></i>' : '<i></i>',
     ).join('');
     // A bonus wave is not one of the map's: the counter says so. A run of
     // the map's ending is a boss round (round 11): "BOSS 1/3".
@@ -2225,7 +2229,7 @@ export class App {
       // Scrap so far (the Armory overhaul): a read-out like the score,
       // nothing to tap. Only a run that banks it shows it.
       (scrap !== null ? `<span class="v3-hud-scrap" data-scrap="${scrap}"><b>SCRAP</b>${scrap.toLocaleString()}</span>` : '') +
-      `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
+      `<span class="v2-hud-lost" data-sunk="${sunk}"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
@@ -2293,11 +2297,16 @@ export class App {
   private openDraft(g: Game): void {
     this.showDraft(g);
     this.audio.ui('draft.open');
+    this.armDraft();
+    if (this.bot && this.control === 'bot') this.botDraft(g);
+  }
+
+  /** A hand just dealt (the draft, or Quartermaster's re-roll) takes taps
+   *  once armed (style.css: no pointer events before). */
+  private armDraft(): void {
     this.draftShownAt = performance.now();
-    // Cards take taps once armed (style.css: no pointer events before).
     const panel = this.overlay.querySelector<HTMLElement>('.v2-draft');
     setTimeout(() => panel && (panel.dataset.armed = '1'), DRAFT_ARM_MS);
-    if (this.bot && this.control === 'bot') this.botDraft(g);
   }
 
   /** Hold the field for a moment before the next screen. Watching the bot
@@ -2379,7 +2388,8 @@ export class App {
    *  quarter of its hull. The screen's edge beats red and the last empty
    *  pip blinks; a banner says so once, on the way in. */
   private syncDanger(g: Game): void {
-    const lastShip = g.tempo.lossLimit - shipsSunk(g) === 1;
+    // (Lifeboats: half a ship left is still the last one.)
+    const lastShip = g.tempo.lossLimit - shipsSunk(g) <= 1;
     const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
     // The last ship gets its alert; a critical carrier's klaxon is a loop
@@ -2793,6 +2803,7 @@ export class App {
       ['map cleared', scrap.clear],
       ['first clear', scrap.firstClear],
       ['repeat cards', scrap.duplicates],
+      ['salvage crews', scrap.salvage],
     ];
     const ledger = el('p', 'v3-scrap-ledger');
     ledger.dataset.scrap = String(scrap.total);
@@ -3915,11 +3926,21 @@ export class App {
   private botDraft(g: Game): void {
     const bot = this.bot;
     if (!bot) return;
-    const choice = bot.choose(g);
     const wave = g.wave;
     const live = () => this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot';
     // The whole hand is dealt before the bot's pick shows, at any speed.
     const dealt = (DEAL_MS + DEAL_STAGGER_MS * (g.offer.length - 1)) * this.dealScale();
+    // Quartermaster: a hand with nothing it wants, it deals again.
+    if (bot.wantsReroll(g)) {
+      setTimeout(() => {
+        if (!live() || !this.rec?.reroll()) return;
+        this.showDraft(g);
+        this.armDraft();
+        this.botDraft(g);
+      }, dealt + 700 / Math.sqrt(this.speed));
+      return;
+    }
+    const choice = bot.choose(g);
     setTimeout(() => {
       if (!live()) return;
       this.overlay.querySelector(`[data-upgrade="${choice.id}"]`)?.classList.add('bot-pick');
@@ -4210,6 +4231,23 @@ export class App {
       done.classList.add('v3-draft-done');
       head.append(done);
     }
+    // Quartermaster (Armory): deal the hand again, a few times a run. Only
+    // on a run that has it; greyed once they are spent.
+    if (g.stats.rerolls > 0 && !swapping) {
+      const left = g.rerolls;
+      const watching = !!this.bot && this.control === 'bot';
+      const reroll = button('', 'v2-btn v3-reroll', () => {
+        if (this.picking || g.phase !== 'draft' || !this.rec?.reroll()) return;
+        this.audio.ui('card.swap');
+        this.showDraft(g);
+        this.armDraft();
+      });
+      reroll.innerHTML = `${chromeSvg('refresh', 14)}<b>Re-roll</b><span>${left ? `${left} left` : 'none left'}</span>`;
+      reroll.dataset.reroll = String(left);
+      reroll.disabled = !left || watching || !!this.playback;
+      reroll.setAttribute('aria-label', left ? `Re-roll the cards: ${left} re-roll${left === 1 ? '' : 's'} left this run` : 'No re-rolls left this run');
+      head.append(reroll);
+    }
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
     // "Rate the wave you just played" (docs/design/v3-rate-and-review.md) is
@@ -4241,7 +4279,7 @@ export class App {
     // map that went on into endless banked them at its win.
     const tally = scrapTally(g.history, RULES.wavesToClear, lastWave(g));
     const paid = this.banked.has(g);
-    const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared, ...tally, paid });
+    const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared, ...tally, paid, salvage: armoryLevel(g.armory, 'salvage') });
     if (res) this.banked.add(g);
     if (res) {
       submitBest(g.map.id, g.score);
@@ -4266,7 +4304,7 @@ export class App {
     stats.innerHTML =
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
-      `<span><b>${g.lost}</b>ships sunk</span>` +
+      `<span><b>${g.lost}</b>ships sunk${g.boatsUsed ? ` · ${g.boatsUsed} by lifeboat (½)` : ''}</span>` +
       `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>` +
       // The run's Scrap (the Armory overhaul), banked win or lose.
       (res ? `<span class="v3-scrap-stat" data-scrap="${res.scrap.total}"><b>+${res.scrap.total.toLocaleString()}</b>scrap</span>` : '');

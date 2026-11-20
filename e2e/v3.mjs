@@ -174,7 +174,7 @@ try {
   check(saved.equipped.gun === 'warhead' && saved.equipped.hull === 'pointdef' && saved.armory.warhead === 2, `equipped one card from each bay (${JSON.stringify(saved.equipped)})`);
   check(!('salvage' in saved) && !(await page.locator('[data-buy]').count()), 'no salvage, no old Upgrade buttons');
   await page.click('[data-bay="supply"]');
-  check((await page.locator('.v3-armory-card').count()) === 4 && (await page.locator('.v3-armory-card:disabled').count()) === 3 && !(await page.locator('.v3-armory-card[data-armory="magazine"]').isDisabled()), 'the Supply bay: four cards, Deep Magazine held');
+  check((await page.locator('.v3-armory-card').count()) === 6 && (await page.locator('.v3-armory-card:disabled').count()) === 5 && !(await page.locator('.v3-armory-card[data-armory="magazine"]').isDisabled()), 'the Supply bay: six cards (Quartermaster and Salvage Crews new), Deep Magazine held');
   await page.click('[data-screen="armory"] [data-back]');
   await page.waitForSelector('[data-screen="menu"]');
 
@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 39 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 40 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -1061,6 +1061,66 @@ try {
     await lp.close();
   }
 
+  // ---- The four new Armory upgrades: Quartermaster's re-roll, Lifeboats' half pips ----
+  {
+    const qp = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true });
+    const errs = [];
+    qp.on('pageerror', (e) => errs.push(e.message));
+    await qp.goto(`${BASE_URL}/v3.html?seed=5`, { waitUntil: 'networkidle' });
+    await qp.evaluate(() => {
+      localStorage.clear();
+      // A save from before the new upgrades, with them added by hand: they
+      // load like any card.
+      localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, cards: 3, armory: { warhead: 1, lifeboats: 5, quartermaster: 5 }, equipped: { gun: 'warhead', hull: 'lifeboats', supply: 'quartermaster' }, cleared: [], armoryV: 3, scrap: 0, scrapEarned: 0, open: [], mapsV: 2 }));
+    });
+    await qp.reload({ waitUntil: 'networkidle' });
+    await qp.locator('.v3-armory-btn').tap();
+    await qp.waitForSelector('[data-screen="armory"]');
+    await qp.locator('[data-bay="hull"]').tap();
+    const hull = await qp.evaluate(() => [...document.querySelectorAll('.v3-armory-card')].map((c) => c.dataset.armory).join());
+    await qp.locator('[data-bay="supply"]').tap();
+    const supply = await qp.evaluate(() => [...document.querySelectorAll('.v3-armory-card')].map((c) => c.dataset.armory).join());
+    const fit = await qp.evaluate(() => [...document.querySelectorAll('.v3-armory-card')].every((c) => { const b = c.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 0.5; }));
+    check(hull === 'plating,pointdef,repair,boilers,lifeboats' && supply === 'magazine,longload,drops,stockpile,quartermaster,salvage' && fit, `the Hull bay has five cards and Supply six, in one row on a phone (${hull} | ${supply})`);
+    await qp.screenshot({ path: `${SHOT_DIR}/02c-armory-supply-new.png` });
+    await qp.click('[data-screen="armory"] [data-back]');
+    await qp.waitForSelector('[data-screen="menu"]');
+    await qp.click('[data-map="strait"]');
+    await qp.waitForSelector('[data-start]');
+    await qp.click('[data-start]');
+    await qp.waitForSelector('.playing');
+    const st = await qp.evaluate(() => { const g = window.__v3.game(); return { rerolls: g.rerolls, cards: g.stats.draftCards, boats: g.stats.lifeboats }; });
+    check(st.rerolls === 4 && st.cards === 4 && st.boats > 6, `the run has Quartermaster 5 (4 re-rolls, 4 cards) and Lifeboats 5 (${JSON.stringify(st)})`);
+    // Lifeboats: a ship that counted half fills half a pip (set by hand: the
+    // sim's own half loss is in the unit tests).
+    await qp.evaluate(() => { const g = window.__v3.game(); g.lost = 1; g.lossCredit = 0.5; });
+    await qp.waitForFunction(() => document.querySelector('.v2-hud-lost')?.dataset.sunk === '0.5');
+    check((await qp.locator('.v2-hud-lost i.half').count()) === 1 && (await qp.locator('.v2-hud-lost i.lost').count()) === 0, 'the HUD shows a half loss as half a pip');
+    await qp.evaluate(() => { const g = window.__v3.game(); g.lost = 0; g.lossCredit = 0; g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
+    await qp.waitForSelector('.v2-card, [data-rate-skip]', { timeout: 15000 });
+    if (await qp.$('[data-rate-skip]')) await qp.click('[data-rate-skip]');
+    await qp.waitForSelector('.v2-card', { timeout: 15000 });
+    await qp.waitForTimeout(700);
+    const hand = () => qp.evaluate(() => [...document.querySelectorAll('.v2-card-row .v2-card')].map((c) => c.dataset.upgrade).filter((id) => id !== 'resupply'));
+    const before = await hand();
+    const btn = qp.locator('.v2-draft [data-reroll]');
+    check(before.length === 4 && (await btn.getAttribute('data-reroll')) === '4' && /4 left/.test(await btn.textContent()), `the draft deals four cards and offers a Re-roll with 4 left (${before.join()})`);
+    await qp.screenshot({ path: `${SHOT_DIR}/10b-draft-reroll.png` });
+    await btn.tap();
+    await qp.waitForTimeout(700);
+    const after = await hand();
+    const log = await qp.evaluate(() => { const l = window.__v3.log(); return { x: l.commands.filter((c) => c[1] === 'x').length, v: l.v, left: window.__v3.game().rerolls }; });
+    check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 3 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '3', `a re-roll deals a new hand, logged, 3 left (${after.join()}; ${JSON.stringify(log)})`);
+    // The new hand takes a tap once dealt (its replay is in the unit tests:
+    // this run's wave was cleared by hand, which no log holds).
+    await qp.locator('.v2-card:not([disabled])').first().tap();
+    await qp.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
+    const took = await qp.evaluate(() => Object.keys(window.__v3.game().levels));
+    check(took.length === 1 && after.includes(took[0]), `a card from the re-rolled hand is taken (${took.join()})`);
+    check(!errs.length, `no page errors (${errs.join(' | ')})`);
+    await qp.close();
+  }
+
   // ---- The enemy build: new enemies by chapter, Free Play's Enemies line ----
   {
     const ep = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 1, hasTouch: true });
@@ -1160,7 +1220,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 39 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 40 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

@@ -401,6 +401,32 @@ const ARMORY_SCENES: Record<ArmoryId, Scene> = {
     [[34, 40, 'M-5 -6 H5 V1 Q5 6 0 8 Q-5 6 -5 1 Z'], [60, 30, 'M2 -8 L-4 1 H0 L-2 8 L4 -1 H0 Z'], [86, 40, 'M0 -6 V0 L4 3']]
       .map(([x, y, d]) => `<circle cx="${x}" cy="${y}" r="13" fill="#10202b" stroke="${c}" stroke-width="2"/><path transform="translate(${x} ${y})" d="${d}" fill="${INK}" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`)
       .join('') + `<text x="54" y="66" font-size="10" font-weight="800" fill="${c}" font-family="system-ui">×3</text>`,
+  // A ship under way: a smoke plume from its funnel and a long bow wake.
+  boilers: (c) =>
+    sea(64) + ship(58, 56, 1.7) +
+    `<rect x="52" y="34" width="6" height="10" rx="1" fill="#3c454f"/>` +
+    [[56, 28, 5], [48, 20, 6.5], [37, 13, 8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#9aa7b0" opacity="0.55"/>`).join('') +
+    `<path d="M90 60 Q100 56 108 60 M88 64 Q102 60 114 64" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>` +
+    [16, 24].map((x) => `<path d="M${x} 50 H${x + 14}" stroke="${c}" stroke-width="1.4" opacity="0.6" stroke-linecap="round"/>`).join(''),
+  // A sinking ship's crew rowing clear in a lifeboat: ½.
+  lifeboats: (c) =>
+    sea(60) +
+    `<g transform="translate(36 52) rotate(-24)"><path d="M-22 0 H18 L22 -5 H-18 Z" fill="#5b6b78"/><path d="M-22 0 H18 L14 5 H-21 Z" fill="${HULL}"/></g>` +
+    `<path d="M64 60 Q66 66 84 66 Q98 66 100 60 Z" fill="${c}"/>` +
+    [72, 80, 88].map((x) => `<circle cx="${x}" cy="56" r="2.6" fill="${INK}"/>`).join('') +
+    `<path d="M64 62 L56 70 M100 62 L108 70" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<text x="80" y="34" font-size="20" font-weight="800" fill="${c}" font-family="system-ui" text-anchor="middle">½</text>`,
+  // Three draft cards fanned out, a circular arrow: deal again.
+  quartermaster: (c) =>
+    [-14, 0, 14].map((deg, k) => `<g transform="translate(${46 + k * 14} 40) rotate(${deg})"><rect x="-11" y="-17" width="22" height="32" rx="3" fill="#10202b" stroke="${k === 1 ? INK : c}" stroke-width="1.8"/></g>`).join('') +
+    `<path d="M92 20 A12 12 0 1 1 82 14" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/><path d="M80 9 L84 15 L77 17 Z" fill="${c}"/>`,
+  // A crane hook lifting a crate of scrap off the water.
+  salvage: (c) =>
+    sea(62) +
+    `<path d="M60 4 V26" stroke="${INK}" stroke-width="1.6"/><path d="M60 26 q-5 0 -5 5 q0 5 5 5" fill="none" stroke="${INK}" stroke-width="2"/>` +
+    `<path d="M44 40 H76 L72 58 H48 Z" fill="#10202b" stroke="${c}" stroke-width="2"/>` +
+    `<path d="M50 46 L58 52 M62 44 L68 54 M54 54 L66 47" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<text x="96" y="30" font-size="14" font-weight="800" fill="${c}" font-family="system-ui" text-anchor="middle">+%</text>`,
 };
 
 /** An Armory card's illustration as an SVG string, in its bay's colour. */
