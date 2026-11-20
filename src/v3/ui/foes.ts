@@ -547,40 +547,57 @@ function drawPeriscope(ctx: CanvasRenderingContext2D, g: Game, x: number, y: num
   ctx.fill();
 }
 
-/** The torpedo sub, up: a dark hull with its tower, and a ring that empties
- *  as its time on top runs out. */
+/** The torpedo sub (the 2026-11-20 playtest: "should just stay under water
+ *  with the periscope showing and a rough shadow of the sub"): a dark shape
+ *  under the water, its periscope up and a wake off it. Nothing to shoot:
+ *  only its torpedoes can be (sim/game.ts released). It fades as it dives
+ *  away after its last torpedo. */
 function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
-  const left = 1 - Math.min(1, (th.foe?.t ?? 0) / (th.foe?.up ?? FOE.torpedoSub.up));
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(th.x, th.y, 40, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.strokeStyle = '#7dd3fc';
-  ctx.beginPath();
-  ctx.arc(th.x, th.y, 40, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2);
-  ctx.stroke();
+  const up = th.foe?.up ?? FOE.torpedoSub.up;
+  const t = th.foe?.t ?? 0;
+  // In over the first half second, out over the last.
+  const k = Math.max(0, Math.min(1, t / 0.5, (up - t) / 0.6));
+  const a = th.heading;
   ctx.save();
   ctx.translate(th.x, th.y);
-  ctx.fillStyle = 'rgba(200,230,255,0.25)';
+  ctx.globalAlpha = k;
+  // The shadow: a long hull and its sail, blurred at the edge.
+  ctx.rotate(a);
+  for (const [grow, alpha] of [[8, 0.12], [4, 0.2], [0, 0.32]] as const) {
+    ctx.fillStyle = `rgba(2,10,18,${alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(-6, 0, 40 + grow, 9 + grow * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(2,10,18,0.32)';
   ctx.beginPath();
-  ctx.ellipse(0, 0, 38, 12, 0, 0, Math.PI * 2);
+  ctx.ellipse(4, 0, 9, 5, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#334155';
-  ctx.strokeStyle = '#0b1117';
-  ctx.lineWidth = 2;
+  ctx.rotate(-a);
+  // The wake: a V of foam trailing the periscope, shimmering.
+  const px = Math.cos(a) * 4;
+  const py = Math.sin(a) * 4;
+  for (let r = 0; r < 3; r++) {
+    const u = (g.t * 0.8 + r / 3) % 1;
+    const len = 10 + u * 30;
+    ctx.strokeStyle = `rgba(220,240,255,${(0.55 * (1 - u)).toFixed(3)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (const side of [-1, 1]) {
+      ctx.moveTo(px, py);
+      ctx.lineTo(px - Math.cos(a + side * 0.4) * len, py - Math.sin(a + side * 0.4) * len);
+    }
+    ctx.stroke();
+  }
+  // The periscope: a dark mast with its head turned, a red glint.
+  ctx.fillStyle = '#1f2933';
+  ctx.fillRect(px - 2, py - 14, 4, 14);
+  ctx.fillRect(px - 2, py - 14, 8, 4);
+  ctx.fillStyle = 'rgba(255,77,61,0.9)';
   ctx.beginPath();
-  ctx.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2);
+  ctx.arc(px + 6, py - 12, 2.5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#475569';
-  ctx.beginPath();
-  ctx.roundRect(-6, -7, 13, 14, 3);
-  ctx.fill();
-  ctx.stroke();
   ctx.restore();
-  hpPips(ctx, th.x, th.y - 30, th.hp, th.maxHp ?? THREATS.torpedoSub.hp);
-  void g;
 }
 
 /** The torpedo's line on the water: dashed to where it meets its ship (an
@@ -861,6 +878,9 @@ function drawScavenger(ctx: CanvasRenderingContext2D, g: Game, th: Threat, headi
   }
   ctx.lineCap = 'butt';
   ctx.restore();
+  // Its hits left (the 2026-11-20 playtest gave it more than one).
+  const max = th.maxHp ?? THREATS.scavenger.hp;
+  if (max > 1) hpPips(ctx, th.x, th.y - 34, th.hp, max);
 }
 
 /** A pickup a Scavenger's ring locks (round 8): dimmed under a dark veil,

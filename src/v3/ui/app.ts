@@ -2237,6 +2237,33 @@ export class App {
     }
   }
 
+  /** Between a wave's end and its draft: the optional "Rate wave N"
+   *  screen (the 2026-11-20 playtest: "move this mid round review to be its
+   *  own page as I miss it at the bottom of the draft page"), where the
+   *  draft showed its row (waveRateEl). Skip or Next goes on to the draft;
+   *  each tap is in the log already. Anywhere else, the draft at once. */
+  private openWaveRate(g: Game): void {
+    const skipped = g.history[g.history.length - 1]?.wave !== g.wave;
+    const row = this.waveRateEl(g, skipped);
+    if (!row) {
+      this.openDraft(g);
+      return;
+    }
+    const wave = g.wave;
+    const go = () => {
+      if (this.game === g && g.phase === 'draft' && g.wave === wave && this.overlay.dataset.screen === 'rate') this.openDraft(g);
+    };
+    const head = el('div', 'v2-draft-head');
+    head.append(el('span', 'v2-draft-eyebrow', `Wave ${wave} cleared`), el('h2', '', `Rate wave ${wave}`), el('p', 'v2-sub v3-rate-sub', 'Optional: tap what fits, it is saved as you go.'));
+    const skip = button('Skip', 'v2-btn v3-rate-skip', go);
+    skip.dataset.rateSkip = '1';
+    const next = button('Next', 'v2-btn primary v3-rate-next', go);
+    next.dataset.rateNext = '1';
+    const actions = el('div', 'v3-rate-actions');
+    actions.append(skip, next);
+    this.showOverlay('v3-rate', [head, row, actions]);
+  }
+
   private openDraft(g: Game): void {
     this.showDraft(g);
     this.audio.ui('draft.open');
@@ -2317,7 +2344,7 @@ export class App {
       // and a draft never covers a verdict sheet already up (Done tapped as
       // the wave ended).
       if (this.labRun && labDone(g)) this.showLabVerdict('length');
-      else if (g.phase === 'draft' && this.overlay.dataset.screen !== 'lab-verdict') this.openDraft(g);
+      else if (g.phase === 'draft' && this.overlay.dataset.screen !== 'lab-verdict') this.openWaveRate(g);
     } else if (this.labRun) this.showLabVerdict(b.kind === 'lost' ? 'lost' : 'length');
     else this.showResult(g, b.kind === 'won');
   }
@@ -4159,14 +4186,14 @@ export class App {
     }
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
-    // "Rate the wave you just played" (docs/design/v3-rate-and-review.md):
-    // optional, under the cards; each tap goes into the log at once.
-    const rate = this.waveRateEl(g, skipped);
-    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : []), ...(rate ? [rate] : [])]);
+    // "Rate the wave you just played" (docs/design/v3-rate-and-review.md) is
+    // its own screen before this one now (openWaveRate).
+    this.showOverlay('v2-draft', [head, ...more, row, loadoutRow, ...(rule ? [rule] : [])]);
     this.overlay.querySelector<HTMLElement>('.v2-panel')?.style.setProperty('--deal-k', String(this.dealScale()));
   }
 
-  /** The draft's optional rating of the wave just played: only for a run
+  /** The optional rating of the wave just played (its own screen before
+   *  the draft, openWaveRate): only for a run
    *  the player is playing (not a replay, not the bot's turn at the
    *  controls, not a wave a dev stride skipped), with playtest notes on.
    *  Campaign, Free Play and the Test Lab alike. */

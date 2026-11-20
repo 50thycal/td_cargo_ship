@@ -665,7 +665,11 @@ export const AB = {
   // now; level 2 refills a round a block, MAX lasts 18 s and reflects (the
   // sweep: 20 s and a refill from level 2 won 52% at MAX, top of the table;
   // this, 41%).
-  shield: { time: [1, 1, 1.2], refund: [0, 1, 1], bounce: 110, burst: 70 },
+  // The 2026-11-20 playtest ("Shield is too OP; the shield should break
+  // after x amount of hits, not damage but actual hits"): it breaks after
+  // `hits` hits stopped, a level (log v34). Tuned on the combo sweep's
+  // singles on the chapter 2 maps (docs/design/v3-playtest-fixes.md).
+  shield: { time: [1, 1, 1.2], refund: [0, 1, 1], hits: [4, 5, 6], bounce: 110, burst: 70 },
   /** Hyper Overdrive (Overdrive MAX): every shot fires twice, the second
    *  `twin` px to the side of the first (from its own muzzle) so both show
    *  (Test Lab round 5: "it should clearly show two projectiles"). */

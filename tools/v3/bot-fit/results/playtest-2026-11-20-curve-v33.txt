@@ -1,0 +1,48 @@
+
+== island mirror, the player's seed (v3-20261120000322-77396, 16 runs): won 0.44, lost 1-5 0.19, 6-10 4.38, 1-10 4.56; first hot wave 5.5
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.06 0.00 0.06 0.06 0.06 1.75 0.88 0.87 1.08 0.78 2.44 1.00
+peak     0.15 0.42 0.41 0.42 0.44 1.10 1.52 1.14 0.99 1.13 1.21 1.78 1.22
+peaks    0.00 0.06 0.06 0.06 0.13 1.13 2.88 1.81 1.87 1.92 1.11 1.22 1.22
+hot      0.00 0.00 0.00 0.00 0.00 0.04 0.11 0.06 0.05 0.06 0.11 0.38 0.20
+shape       f    f    f    f    f    1    s    1    1    s    1    p    1
+sunk by w1  | w2 drone 0.06 | w3  | w4 drone 0.06 | w5 drone 0.06 | w6 ballistic 0.06 | w7 ballistic 0.75, drone 0.31, bomber 0.25 | w8 heavy 0.25, ballistic 0.19, strafer 0.19 | w9 ballistic 0.38, drone 0.25, bomber 0.13 | w10 ballistic 0.56, guided 0.13, strafer 0.13
+n          16   16   16   16   16   16   16   16   15   13    9    9    9
+(12 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== marrow mirror, the player's seed (v3-20261120035031-61174, 16 runs): won 0.94, lost 1-5 0.38, 6-10 1.19, 1-10 1.56; first hot wave 3.75; tower falls (median) w11
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.06 0.31 0.06 0.38 0.19 0.44 0.13 0.00 0.00 0.27
+peak     0.06 0.25 0.66 1.25 0.72 0.90 0.70 0.84 0.66 0.66 0.37 0.38 0.68
+peaks    0.00 0.00 0.25 1.06 0.50 0.75 0.31 0.63 0.56 0.25 0.00 0.00 0.40
+hot      0.00 0.00 0.01 0.05 0.01 0.03 0.01 0.02 0.01 0.00 0.00 0.00 0.07
+shape       f    f    f    1    1    1    f    1    f    f    f    f    f
+sunk by w1  | w2  | w3  | w4 ballistic 0.06 | w5 ballistic 0.25, strafer 0.06 | w6 ballistic 0.06 | w7 supersonic 0.25, hydra 0.06, guided 0.06 | w8 ballistic 0.13, strafer 0.06 | w9 supersonic 0.13, strafer 0.06, bomber 0.06 | w10 strafer 0.06, hydra 0.06
+n          16   16   16   16   16   16   16   16   16   16   15   15   15
+(38 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== behemoth mirror, the player's seed (v3-20261120040209-61175, 16 runs): won 0.31, lost 1-5 2.5, 6-10 3.15, 1-10 5.06; first hot wave 5.63
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.00 2.50 0.23 0.33 0.50 0.67 1.82 0.86 0.71 1.43
+peak     0.06 0.27 0.37 0.53 1.27 0.76 0.72 0.94 1.02 1.06 0.55 0.86 1.09
+peaks    0.00 0.06 0.00 0.00 0.69 0.38 0.58 1.00 1.25 1.45 0.14 1.00 0.86
+hot      0.00 0.00 0.00 0.00 0.10 0.01 0.02 0.04 0.05 0.05 0.00 0.08 0.12
+shape       f    f    f    f    1    f    f    1    1    1    f    1    1
+sunk by w1  | w2  | w3  | w4  | w5 drone 0.63, guided 0.56, ballistic 0.19 | w6 torpedoSub 0.13, ballistic 0.06 | w7 cluster 0.13, rocketTruck 0.06, guided 0.06 | w8 strafer 0.13, bomber 0.13, torpedoSub 0.06 | w9 strafer 0.19, ballistic 0.13, cluster 0.13 | w10 guided 0.44, ballistic 0.31, drone 0.19
+n          16   16   16   16   16   13   12   12   12   11    7    7    7
+(20 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== kesh mirror, the player's seed (v3-20261120040945-61176, 16 runs): won 0.63, lost 1-5 0.06, 6-10 1.88, 1-10 1.94; first hot wave 3.5
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.00 0.06 0.06 0.44 0.19 0.31 0.88 0.56 0.69 2.19
+peak     0.03 0.24 0.89 1.51 1.11 0.57 0.68 0.73 0.91 1.35 1.46 1.78 2.20
+peaks    0.00 0.00 0.56 0.81 0.81 0.06 0.44 0.31 0.56 1.00 1.19 1.19 1.13
+hot      0.00 0.00 0.03 0.04 0.03 0.00 0.01 0.01 0.03 0.04 0.22 0.25 0.37
+shape       f    f    1    1    1    f    f    f    1    1    1    1    p
+sunk by w1  | w2  | w3  | w4  | w5 ballistic 0.06 | w6 ballistic 0.06 | w7 strafer 0.13, ballistic 0.13, guided 0.13 | w8 ballistic 0.13, strafer 0.06 | w9 supersonic 0.19, guided 0.06, hydra 0.06 | w10 guided 0.56, ballistic 0.13, sprinter 0.13
+n          16   16   16   16   16   16   16   16   16   16   16   16   16
+(45 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+real	1m57.529s
+user	1m39.555s
+sys	0m1.181s
