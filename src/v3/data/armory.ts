@@ -269,7 +269,7 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     name: 'Lifeboats',
     blurb: 'The first ship sunk in a wave counts as half a loss',
     max: ARMORY_MAX,
-    show: (l) => (!l ? 'none' : LIFEBOATS[l] >= LIFEBOATS_ALL ? 'every wave' : `${LIFEBOATS[l]} waves a run`),
+    show: (l) => (!l ? 'none' : LIFEBOATS[l] >= LIFEBOATS_ALL ? 'half a loss, every wave' : `half a loss, ${LIFEBOATS[l]} waves a run`),
   },
   quartermaster: {
     id: 'quartermaster',

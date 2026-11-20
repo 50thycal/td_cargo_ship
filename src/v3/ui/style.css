@@ -7966,3 +7966,30 @@ a.v3-lab-page {
   border-color: var(--danger);
   background: linear-gradient(90deg, var(--danger) 50%, transparent 50%);
 }
+
+/* A short phone (≤ 430 px high) with five or six cards a row: smaller art
+   and a two-line blurb, so the bar under the row stays on screen. */
+@media (max-height: 430px) {
+  .v3-armory .v3-armory-cards.n5 .v3-armory-card .v2-card-art,
+  .v3-armory .v3-armory-cards.n6 .v3-armory-card .v2-card-art {
+    height: 38px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v2-card-text,
+  .v3-armory .v3-armory-cards.n6 .v2-card-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 10px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v3-armory-card .v2-card-name,
+  .v3-armory .v3-armory-cards.n6 .v3-armory-card .v2-card-name {
+    font-size: 12px;
+  }
+  .v3-armory .v3-armory-cards.n5 .v3-card-stat,
+  .v3-armory .v3-armory-cards.n6 .v3-card-stat,
+  .v3-armory .v3-armory-cards.n5 .v3-card-stat b,
+  .v3-armory .v3-armory-cards.n6 .v3-card-stat b {
+    font-size: 10px;
+  }
+}

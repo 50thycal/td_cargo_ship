@@ -2250,7 +2250,12 @@ export function rerollDraft(g: Game): boolean {
 export function rerollWorth(g: Game, preferred: readonly AbilityId[]): boolean {
   if (g.phase !== 'draft' || g.rerolls <= 0) return false;
   const room = loadout(g.levels).length < MAX_SLOTS;
-  return !g.offer.some((id) => id !== 'resupply' && canTake(g.levels, id) && ((g.levels[id] ?? 0) > 0 || (room && preferred.includes(id))));
+  const wanted = (id: CardId) => id !== 'resupply' && canTake(g.levels, id) && ((g.levels[id] ?? 0) > 0 || (room && preferred.includes(id)));
+  if (g.offer.some(wanted)) return false;
+  // Only while a new hand could bring one: a held weapon still to level,
+  // or a favourite still in the draft with a slot free.
+  const pool = draftPool(chapterOf(g.map.id));
+  return ABILITY_ORDER.some((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && wanted(id));
 }
 
 /** The draft's hand: `size` cards (3; Quartermaster 5: 4), avoiding the
