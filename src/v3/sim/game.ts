@@ -1178,9 +1178,14 @@ function startWave(g: Game): void {
   const signed = sig?.foe ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
+    // The swarm it stands in for (log v34: a signature block is no bigger).
+    const swarm = units.find((u) => u.kind === 'drone')?.size ?? 1;
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
-    units.push({ kind: FOES[k < signed ? sig!.foe! : id].kind, size: 1 });
+    // The Needle of Bosk (log v34, MAP_SIGNATURE `block`): a small wall of
+    // armored drones out of one base, in place of that swarm.
+    const size = k < signed && sig!.block ? Math.max(1, Math.min(sig!.block, swarm)) : 1;
+    units.push({ kind: FOES[k < signed ? sig!.foe! : id].kind, size });
   }
   // The lab's authored encounters: what each will send comes out of the
   // wave as it now stands (after the aircraft and the new enemies took
