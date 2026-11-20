@@ -42,11 +42,16 @@ Bases and spots are counted from 1, as the pause screen counts them.
 | East Sea (spot 2) | (1480, 610) | sub salvos, torpedo subs | The signature's torpedo subs, at the ships leaving lock B; shells into lock B (w6). |
 | Coast road, pop-up roads, air line | The enemy shore; caves by each lock's exit (690 and 1330, down to the bank); y 610 | trucks, strafers, bombers | The shared waves' own; the jet down the canal from the west (w7); a truck's clusters go for the locks too (the signature). |
 
-WARNING_LINE
+Warning time falls from 8.3 s on wave 1 to 5.0 s on wave 10 (−0.28 s a wave, rule `g-warning`), and 4.8–5.0 s in the boss rounds. Wave 1's drones come the long way, over the West Sea from the west shore; from wave 3 the lock silos fire from 200 px, and the shortest warning on the map is a guided missile off the west lock's silo into the chamber below it. Before the rebuild the warning fell further, 9.0 to 3.8 s, because the shared waves' shells and heavies came at the queues from the far silos and the subs.
 
 ## The stretches
 
-STRETCH_LINES
+The bot report cuts the lane into thirds along it: the early third is the West Sea and the queue at lock A's entry gate (the ships wait at x 456, short of the chamber); the middle is lock A's chamber and the Bitter Lake; the late third is lock B and the East Sea.
+
+- **Danger: the middle**, lock A's chamber and the lake: 45% of the hull damage in waves 1–9 (the player's Armory; 41% with the latest Armory, 45% with none). The guided missiles and clusters off the west lock's silo land there, on the ships waiting in the chamber, and the swarms aimed halfway along cross it.
+- **Safe: the West Sea**, the early third: 23% of the hull damage (passes, under the 25% line; 24% with the latest Armory; 26% with none, over it). The encounters' swarms from the west shore go at any ship, not the ships coming in, and only wave 9's periscope aims there. It is safe by damage, not by sinkings: 40% of the ships sunk in waves 1–9 sink there (59% over every wave), because the signature's torpedo subs in the West Sea sink the ships queueing for lock A outright.
+- `MAP_PLANS.saltgate.stretches` says danger middle, safe early (the map as it was: hot early 55%, cold late 20%: the shared waves' fire found the queue at lock A first).
+- The danger stretch is the carrier's own third (the carrier anchors in the lake at x 880; lock A's chamber is 220–380 px west of it, rule `m-carrier` asks for the danger stretch not to be the closest). The reach is short; the warning is what is missing: the silo over the lock is 200 px from the chamber.
 
 ## The convoy
 
@@ -61,21 +66,64 @@ The player's round 9 (r9-map-signature): each map gets a threat of its own in wa
 
 How much of waves 4–10 it is (`tools/v3/combo-sweep/mixwaves.ts`, 4 seeds, the "you" bot drafting for itself, tough; subs with their torpedoes, clusters with their bomblets):
 
-MIX_TABLE
+| | Waves 4–10 | Waves 6–10 | Boss rounds |
+| --- | --- | --- | --- |
+| Share of the threats that show | 24% | 26% | 38% |
+| Share of the hits it takes to clear them | **23%** | 23% | 27% |
 
 About a fifth to a quarter by hits (the Island's helicopters 22%, the Behemoth's jets and heavies 20%, the Needle's walls about a quarter, the Archipelago's motherships 25%, by the same tool). The torpedo subs alone are 10% by hits, and that counts a sub's 3 hit points though nothing can hit it.
 
 ## The counters
 
-COUNTERS
+- **Counter kit: Point Defense, Gunship Pair, Supply Run.** The fire comes point-blank off the lock silos and from the seas at ships that cannot move: each ship's own Point Defense needs no warning and no reach; the Gunship Pair's rockets go for the thickest bunch of ships, a full chamber; Supply Run keeps the rack full through the long waits at the gates.
+- **Off-counter kit: Seeker Pod, Shield, Full Steam.** The Seeker's long flight is too late for a silo 200 px from its target; the Shield breaks after its 1–3 hits, and a cluster over a full chamber spends them at once; Full Steam hurries the ships only between the gates (they spend most of the crossing waiting at them).
+- Every weapon is in chapter 2's draft.
+
+How they compare (the player's Armory):
+
+| | Ships lost, all 13 waves | Won |
+| --- | --- | --- |
+| Counter kit, forced (combo sweep's `check-one.ts`, 16 seeds) | **6.6** ±0.6 | 75% |
+| Off-counter kit, forced (16 seeds) | 10.3 ±1.0 | 38% |
+| The bot drafting for itself (combo sweep singles, 12 seeds) | see "Loadouts" | |
+| Counter kit as the bot's taste (bot report, 24 seeds) | 3.2 in waves 1–10 (3.3 tough) | 63% |
+| Off-counter kit as taste (bot report) | 3.7 in waves 1–10 (4.3 tough) | 58% |
+| With the latest Armory, as taste: counter / off-counter | 4.5 / 5.3 in waves 1–10 | 25% / 4% |
+
+Forced, the counter kit loses 3.7 ships fewer and wins twice as often. As the bot's taste the gap is smaller (63% against 58%; a ship fewer on the tough runs). Two kits tried first: Point Defense + Railgun + Scattergun against Thermobaric Shell + Tesla Arc + Full Steam read 7.7 against 8.6 forced but won 56% against 63%, so they were not used. Full Steam is in the map's best kit below (with Air Strike and the Gunship Pair): it is weak alone (9.1) and the off-counter kit as a whole is clearly worse, but it is not useless here.
 
 ## Loadouts on this map (combo sweep singles)
 
-SINGLES
+Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 38; `npm run v3:combo-sweep -- --stage=singles --maps=saltgate --out=tools/v3/combo-sweep/results/v38-ch2`). Ships lost over all 13 waves:
+
+- **Strong:** **Point Defense 5.8**, Scattergun 6.0, Air Strike 6.3, Frigate Escort 6.8, Drone Screen 6.9.
+- **Middling:** Thermobaric 7.5, Railgun 7.8, Gravity Well, Gunship Pair and Overdrive 8.3, Shrapnel 8.4, Shield 8.7, Full Steam 9.1, Boomerang 9.3, Tesla 9.5, Flak 9.6.
+- **Weak:** Seeker Pod 10.6, Supply Run alone 11.6, the Charge Lance (the bot charges it poorly) and the Laser Cutter (the bot can't swipe).
+- Singles are 12 seeds (a standard error of about a ship): Point Defense, the Scattergun and Air Strike are a tie at the top. On an earlier build of these encounters (before the swarms stopped aiming at the ships coming in, and before the boss's third sub) the order was Point Defense 5.8, then the Railgun and Scattergun 6.5, Air Strike 6.8.
 
 ## Diversity: are Saltgate's best kits its own?
 
-DIVERSITY
+The player's rule for this rebuild: Saltgate's best kits and its best weapon alone must differ from the other four chapter 2 maps', and Air Strike, already the best single on three of them, should not become a fourth's. Saltgate was swept at version 38 the same way the others were at 37: singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16 (`tools/v3/combo-sweep/diversity.ts`, results in `tools/v3/combo-sweep/results/v38-ch2/`; docs/design/v3-combo-diversity.md, "Saltgate Canal"). The other four maps play the same game at 38 as at 37 (this build changes nothing of theirs), so they are compared from their version 37 sweep (`results/v37-ch2/`).
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Island (v37) | **Air Strike + Thermobaric Shell + Point Defense** 6.6 | Air Strike + Point Defense + Gunship Pair 7.8 | Flak Cannon + Drone Screen + Gunship Pair 8.4 | Air Strike + Point Defense + Drone Screen 8.4 | Railgun + Tesla Arc + Overdrive 8.6 |
+| The Behemoth Run (v37) | **Air Strike + Drone Screen + Supply Run** 4.0 | Air Strike + Drone Screen + Full Steam 4.7 | Frigate Escort + Gravity Well + Shield 5.2 | Air Strike + Gravity Well + Drone Screen 5.6 | Thermobaric Shell + Flak Cannon + Full Steam 5.9 |
+| The Needle of Bosk (v37) | **Scattergun + Railgun + Supply Run** 5.3 | Shrapnel Shell + Gravity Well + Gunship Pair 6.2 | Shrapnel Shell + Railgun + Supply Run 6.9 | Shrapnel Shell + Flak Cannon + Gunship Pair 7.3 | Gravity Well + Railgun + Supply Run 7.3 |
+| The Archipelago (v37) | **Air Strike + Shrapnel Shell + Gravity Well** 3.2 | Air Strike + Frigate Escort + Gunship Pair 3.6 | Air Strike + Shrapnel Shell + Overdrive 3.8 | Air Strike + Overdrive + Full Steam 3.8 | Air Strike + Frigate Escort + Seeker Pod 3.9 |
+| **Saltgate Canal (v38)** | **Air Strike + Gunship Pair + Full Steam** 5.6 ±0.7, won 81% | Air Strike + Thermobaric Shell + Point Defense 6.0 | Frigate Escort + Point Defense + Supply Run 6.3 | Air Strike + Flak Cannon + Point Defense 7.1 | Air Strike + Frigate Escort + Thermobaric Shell 7.3 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, Saltgate against the Island / the Behemoth Run / the Needle / the Archipelago | **0.11** (one kit shared: Air Strike + Thermobaric Shell + Point Defense, the Island's #1 and Saltgate's #2) / **0** / **0** / **0** |
+| The same, Saltgate against itself (two halves of its seeds) | 0.67 |
+| #1 kit | its own (no other map's top 5 has it) |
+| Best weapon alone | **Point Defense** 5.8 (Scattergun 6.0, Air Strike 6.3 next); the Island, the Behemoth Run and the Archipelago: Air Strike; the Needle: the Gunship Pair |
+| Rank correlation of the weapons alone, Saltgate against the Island / the Behemoth Run / the Needle / the Archipelago | 0.70 / 0.84 / 0.35 / 0.60 |
+
+- **Saltgate's kits are its own, but for one:** its #1 kit is no other map's, and four of its five are its own. Its #2 is the Island's #1 (Air Strike + Thermobaric Shell + Point Defense): both maps have silos point-blank over the ships, and Point Defense answers both. Against the noise (0.67 for Saltgate against itself) one shared kit of five is small; the Needle had the same overlap with the Island (0.11) when it was built.
+- **Its best weapon alone is not Air Strike:** Point Defense, by half a ship over the Scattergun and a ship over Air Strike, which is a tie on 12 seeds. Air Strike is in four of the five best kits, as on the Archipelago and the Behemoth Run.
+- **The weapons alone rank much as on the Behemoth Run** (0.84): both maps hold their ships still or slow under fire, and the same aimed and point-blank weapons lead.
 
 ## The debut
 
@@ -98,7 +146,7 @@ One encounter a wave, none repeated. Every shell the shared wave would send from
 | 9 | escalate | Gate by gate (`saltgate-gate-by-gate`) | west lock silo, 1 guided; West Sea sub, 3 shells; east lock silo 4 + 5 + 5 and west shore 5 drones | the west lock; the ships coming in; halfway along; in place of the shells, guided missiles, a cluster and the heavy |
 | 10 | climax | Through both locks (`saltgate-climax`), the clusters after the wave's own fire (`at: 1`) | a cluster off each lock silo, 4 s apart; five swarms of 4 all wave | both locks; halfway along; any ship; in place of the shells, most guided missiles, the heavy, the clusters, a supersonic and a jet |
 
-WAVE1_LINE
+Wave 1 loses no ship (all three reports).
 
 ## The boss plan: Run the Canal, rising
 
@@ -117,15 +165,77 @@ The subs are most of the boss's teeth: with the event as it was, its two subs al
 
 ## Bot results, before and after (24 seeds, 900–923)
 
-RESULTS
+"Before" is the map card as it was: today's convoy controls, no encounters, the event as it was, at game version 37 (`tools/v3/map-report/results/saltgate-before*.md`). "After" is this build (log v38). Commands: `npx vite-node tools/v3/map-report/report.ts -- --map=saltgate --seeds=24 --kits=plan [--armory=player | --armory=latest] [--no-fun]`.
+
+### The player's Armory (Quick Reload 5, Damage Control 4, Stockpile 5)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 42% | **58%** |
+| Mean end wave | 11.3 | 13.0 |
+| Ships lost in waves 1–10 (normal) | 4.9 | 3.3 |
+| Ships lost in waves 1–5 (normal) | 0.58 | **0.50** |
+| Boss r1 / r2 / r3 (normal, reached) | 0.36 / 0.18 / 0.36 (11 runs) | **0.85 / 1.50 / 1.56** (20, 20, 18) |
+| Boss r1 / r2 / r3 (tough) | 1.25 / 0.79 / 1.17 | 0.96 / 1.46 / 2.04 |
+| Tough curve 1–10 | 0 0 .54 0 .04 .71 .54 .96 1.21 1.50 | 0 0 .17 .21 .13 .50 .33 .54 .63 1.08 |
+| `w-cliff` | **FLAG** (w3 0 → 0.54, w6 0.04 → 0.71) | PASS (biggest step w10 +0.46) |
+| `w-early` close calls from w3 | PASS (fewest w4 3.83) | PASS (fewest w3 1.29, 75% of runs) |
+| `w-budget` | PASS | PASS (furthest w3 ×0.91) |
+| `m-stretches` | PASS (hot early 55%, cold late 20%) | PASS: hot middle 45%, cold early 23% |
+| `g-warning` | PASS: 9.0 → 3.8 s | PASS: 8.3 → 5.0 s |
+| `w-first` | PASS | PASS |
+
+The record report is 24 seeds; the tuning reads on 96 (900–995, `quick.ts`): won **55%** (56% and 54% on the two halves), ships lost in waves 1–10 3.4, in waves 1–5 **0.53**, boss rounds **0.95 / 1.54 / 1.78** (normal, reached). The sim is chaotic: moving one swarm's aim moved later waves and the boss by up to ±0.4 of a ship on the same seeds.
+
+### The player's latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 0% | **25%** |
+| Ships lost in waves 1–10 / 1–5 (normal) | 6.4 / 1.38 | 5.3 / 1.13 |
+| Boss r1 / r2 / r3 (normal, reached) | 4.00 / 1.00 / 1.00 (1 run) | 1.00 / 2.00 / 1.80 (10 runs) |
+| Boss r1 / r2 / r3 (tough) | 0.79 / 0.67 / 0.92 | 0.96 / 2.79 / 3.50 |
+| Tough curve 1–10 | 0 0 .50 .13 .79 1.17 2.71 4.33 8.83 8.79 (27.3) | 0 0 .08 .38 .67 .67 .67 2.13 1.58 1.54 (7.7) |
+| Checks | `w-cliff` **FLAG** (w5, w7, w9) | `w-cliff` **FLAG** (w7 0.67 → w8 2.13); the rest PASS |
+| Kits (won; lost 1–10) | | counter 25%, 4.5; off-counter 4%, 5.3 |
+
+### Baseline (no Armory)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 0% | 0% |
+| Ships lost in waves 1–10 / 1–5 (normal) | 5.7 / 2.71 | 5.9 / 1.38 |
+| Boss r1 / r2 / r3 (tough) | 1.58 / 1.71 / 1.58 | 1.42 / 5.13 / 5.75 |
+| Tough curve 1–10 | 0 .08 .63 .33 2.25 4.29 3.88 10.96 12.21 16.17 (50.8) | 0 0 .08 .50 .79 .96 1.79 1.92 2.63 3.21 (11.9) |
+| `w-cliff` | **FLAG** (w3, w5, w8) | PASS |
+| `m-stretches` | PASS (hot early 57%, cold late 16%) | **FLAG** (hot middle 45%, cold early 26%) |
+
+As on the other maps, the baseline stands in for a player with no upgrades and is far harder; the encounters are lab only. Without an Armory the map as it was collapsed from wave 5 (50.8 ships lost on the tough runs over waves 1–10, against 11.9 now): its shells and heavies landed on ships held still at the locks.
+
+### Chapter 2 difficulty (rule `m-difficulty`)
+
+With the player's Armory the bot wins 58% on the record's 24 seeds and 55% on 96, inside the 50–70% asked; waves 1–5 lose 0.50–0.53 (in the 0.4–0.8 band), waves 1–10 3.3–3.4 (the lowest of chapter 2: the Archipelago 3.9–4.3), and the boss rounds read 0.85–0.95 / 1.50–1.54 / 1.56–1.78 (normal, reached) and 0.96 / 1.46 / 2.04 on the tough runs: rising, the chapter's toughest third round, under the asked 1.5 / 2 / 2.5 in rounds 1 and 3. With the latest Armory the bot wins 25% (0% before).
 
 ## Fun measures (provisional, `src/v3/sim/funMetrics.ts`)
 
-FUN
+From `saltgate-player.md`:
+- **Tension climbs slowly:** its peak is 0.19, 0.36, 0.39, 0.53, 0.51 on waves 1–5, 0.57–0.79 on waves 6–10, flat in most runs before wave 6 (one peak in half the runs from wave 6). Boss rounds 1.23 / 1.23 / 1.41, one peak in most runs: the boss is where the map gets tense.
+- **Close calls** from wave 2: 1.3–5.2 a run on every wave 3–10; wave 3 is the lowest (1.3, 75% of runs).
+- **Saves:** 0–0.3 a run on waves 1–10, 0.3 / 0.4 / 0.8 in the boss rounds (the fun check flags it, as on every chapter 2 map).
+- Waves 1–5 read flatter than the Archipelago's (its wave 5 peak 1.01).
 
 ## What is not satisfied, or uncertain
 
-UNCERTAIN
+- **The latest Armory reads hard here:** the bot wins 25% (0% before), loses 1.13 ships in waves 1–5 and flags a cliff at wave 8 (two clusters over the locks and the wave's subs). It has no Damage Control, which may matter more on a map where ships sit under fire (not measured). The targets are set on the usual Armory.
+- **One of the five best kits is the Island's #1** (Air Strike + Thermobaric Shell + Point Defense, Saltgate's #2). The other four and the #1 are Saltgate's own; the best single is not Air Strike (Point Defense), but Air Strike is in four of the five best kits and only a ship behind Point Defense alone.
+- **The signature is two things.** The torpedo subs alone were 10% of waves 4–10 by hits (on an earlier build), and as every new enemy they were too deadly for the bot (a torpedo sinks a cargo ship). With the wave's clusters aimed at the locks it is 23%. If you'd rather a single-threat signature, the subs alone at a fifth of the hits would need a sub that fires more, slower torpedoes, or fewer of the wave's other launches.
+- **The safe stretch is safe by damage, not by sinkings:** the West Sea takes 23% of the hull damage but 40% of the sinkings in waves 1–9: the torpedo subs there sink the ships queueing for lock A.
+- **The danger stretch is the carrier's own third** (lock A's chamber and the lake), against rule `m-carrier`'s letter: the problem is warning, not reach.
+- **The convoy sails the campaign's schedule (flow 1)**, not the other chapter 2 maps' flow 2: at flow 2 the queues at the gates made the boss much harder for the bot.
+- **The boss is under the asked 1.5 / 2 / 2.5 in rounds 1 and 3 on normal runs** (0.95 / 1.54 / 1.78 on 96 seeds), and rounds can run a little over 30 s for a bot with no weapon (the tryhard bot, starting at the boss: 31–36 s on 3 of 16 seeds; 24–25 s on the test's seed). The subs are most of its teeth; their torpedoes are the thing to shoot.
+- **Wave 7 aims nothing at a lock:** its jet flies down the canal's line of held ships, and its cluster was dropped to take out a cliff (0.29 → 0.88).
+- **The map's threat scale is 0.9**, the lowest in chapter 2 (the Archipelago 1.1): the rebuild keeps it (it is the campaign's), so its waves send fewer launches than its neighbours; the locks make up the difference.
+- **No player data** on Saltgate since the locks were fixed (the player's note "the gates for the canal did not work"). On chapter 1 the bot read boss rounds 1.4–2.5× as hard as the player did.
 
 ## The play log (v38)
 
@@ -133,7 +243,10 @@ UNCERTAIN
 
 ## Questions for the player
 
-QUESTIONS
+- **The signature is torpedo subs (half the new enemies) and the wave's clusters aimed at the locks. Keep both, or subs only?** Recommended: keep both; subs alone are a tenth of the hits and, as every new enemy, sank too many ships for the bot.
+- **Air Strike + Thermobaric Shell + Point Defense is a best kit on both Saltgate (#2) and the Island (#1). Accept one shared kit of five?** Recommended: accept; the #1 kit and the best single are Saltgate's own, and the overlap is under the noise.
+- **Saltgate's convoy sails the campaign's schedule (flow 1), the other chapter 2 maps' flow 2. Keep it?** Recommended: keep; the locks already bunch the ships, and at flow 2 the boss was much harder.
+- **Boss rounds under the asked 1.5 / 2 / 2.5 in rounds 1 and 3 (0.95 / 1.54 / 1.78), with the bot winning 55%: keep, or raise them and accept fewer wins?** Recommended: keep, and judge from your play.
 
 ## Tests
 
@@ -150,4 +263,6 @@ QUESTIONS
 
 ## What to look for when you play
 
-LOOK
+Watch the gates. The ships sail into a lock, the gate shuts behind them and they sit still while it fills (the gate light and the countdown say how long), right under a silo on the enemy bank. Wave 1 sends a few drones over the West Sea at the first ships waiting in the west lock; wave 2 a shell into the chamber; from wave 3 the silo over the west lock fires a missile straight down into it, with almost no warning. From wave 4 a periscope comes up in the sea at one end of the canal each wave (two on wave 10): the sub is out of reach, so shoot its two slow torpedoes before they reach the ships queueing at the gate. The wave's cluster missiles go for the ships in a chamber and split over them. The Bitter Lake by your carrier is quiet except when a missile or a swarm finds the chamber at its west end. In the boss rounds Run the Canal comes in its three phases, three subs as the round opens, a gunship over the far bank, then a block of armored drones, with clusters over the locks; the third round has two gunships, one over each lock. The question to answer: did the locks feel like the problem, ships you could not move sitting under fire, and was there time to answer a missile from the silo right over the chamber?
+
+(This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)
