@@ -1072,9 +1072,11 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
     expect(done.map((e) => e.sent.rocketTruck)).toEqual(rounds.map(trucks));
     for (const kind of ['torpedoSub', 'attackHeli', 'armored'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual([0, 0, 0]);
     expect(done.map((e) => e.sent.drone)).toEqual(rounds.map((r) => r.swarms! * r.size!));
-    // Rising: more trucks each round; round 1 one column, round 2 both
-    // banks, round 3 both locks, with clusters.
-    for (let k = 1; k < rounds.length; k++) expect(trucks(rounds[k]), `round ${k + 1}`).toBeGreaterThan(trucks(rounds[k - 1]));
+    // Rising: round 1 one column; round 2 as many trucks, split over both
+    // banks (two columns to cover at once: the harder round for the bot);
+    // round 3 the most, at both locks, with clusters.
+    expect(trucks(rounds[1])).toBeGreaterThanOrEqual(trucks(rounds[0]));
+    expect(trucks(rounds[2])).toBeGreaterThan(trucks(rounds[1]));
     expect(rounds[0].trucks!.length).toBe(1);
     expect(new Set(rounds[1].trucks!.map((c) => c.bank))).toEqual(new Set(['north', 'south']));
     expect(new Set(rounds[2].trucks!.map((c) => c.lock))).toEqual(new Set([0, 1]));
