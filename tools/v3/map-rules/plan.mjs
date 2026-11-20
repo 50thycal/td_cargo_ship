@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-20',
-  headline: 'Your chapter 2 play is in: all five Keep. Building now: your notes (log v41) and Saltgate’s truck-assault boss (log v42). Three new questions below: the flat early waves, the Lifeboats rework and Quartermaster’s levels.',
+  headline: 'Your chapter 2 notes (log v41) and Saltgate’s new truck-assault boss, the Gatecrashers (log v42), are in. Next for you: play the Gatecrashers, and three questions (early waves, Lifeboats, Quartermaster).',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -134,9 +134,11 @@ export const STATUS = {
     { n: 202, title: 'Armory: Boilers, Lifeboats, Quartermaster, Salvage Crews (log v40)', state: 'merged' },
     { n: 203, title: 'Hub update', state: 'merged' },
     { n: 204, title: 'Your chapter 2 notes (log v41): boss label, clusters, subs, shields, Retry / Skip to boss', state: 'merged' },
+    { n: 205, title: 'Saltgate: the Gatecrashers truck-assault boss, no subs (log v42)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Merged #205 (log v42): Saltgate’s new boss, the Gatecrashers (your idea). Columns of Rocket Trucks drive in along both banks and fire at the ships held in the locks; each truck takes 4 hits, raises its launcher for 2.4 s with a dashed red line to the ship it will hit, and a wreck stalls the trucks behind it. Round 1: 8 trucks down the enemy bank; round 2: 8 over both banks; round 3: a charge of 13 at both locks, the last of each column firing a cluster into the chamber. No torpedo subs on Saltgate any more: the signature is Rocket Trucks at the locks from wave 4. Early waves have more going on (a second drone swarm in wave 1, a truck in waves 2 and 5, a second missile in wave 3). Bot with your Armory: won 62–67%, boss rounds about 1.0 / 1.6 / 1.8; waves 1–5 lose 0.23–0.29 (the bot kills every early truck before it fires). Saltgate’s best kits now share nothing with the other four maps. It runs in the Test Lab; the campaign still plays the old boss until you OK it.' },
     { date: '2026-11-20', what: 'Merged #204 (log v41): your chapter 2 notes. Boss rounds read “Boss 1/3”. Cluster missiles can’t split for their first 1.3 s and leave the launcher slowly, so one fired next to the ships can be shot. “New on The Narrows”. The Drone Screen card lost its dev text. Subs only surface on clear water with a torpedo line to the lane (a new check covers every map; the Needle’s east spot moved). Shield bubbles fit each hull (the supertanker’s is twice as long). The overlapping helicopters were your own Gunship Pair at level 3; they now fly 270 px apart. The wave note stays above the keyboard with readable text. Test Lab: Retry wave N and Skip to boss in the pause menu and on the end screen (the retried run gets its own log and the bot fit skips it). Bot with your Armory: four maps about the same; Saltgate about 10 points harder (52% → 42%), being tuned in its rework.' },
     { date: '2026-11-20', what: 'Your chapter 2 runs read (all five Keep, difficulty right, effort 3–4; you lost in the boss rounds). Building now: your notes as one fix round (log v41): a shorter boss label (“Boss 1/3”), cluster missiles fly long enough to be shot before they split, the sub spawn audit (no subs over land, clear torpedo lines), the Behemoth shield bubble sized to the tanker, helicopters spaced apart, the note field kept visible while typing, “New on The Narrows”, the Drone Screen dev text gone, and Retry wave / Skip to boss in the Test Lab. Also building: Saltgate’s new boss, a mass truck assault on the ships bunched at the locks, and no subs on Saltgate (log v42). Left as they are: Air Strike and Boilers. Three new questions: the flat early waves, the Lifeboats rework, Quartermaster’s levels.' },
     { date: '2026-11-20', what: 'Merged #202 (log v40): the four new Armory upgrades you picked. Boilers (Hull): the convoy sails 4% faster a level, level 5 doubles Full Steam. Lifeboats (Hull): the first ship sunk in a wave counts as half a loss (2 / 4 / 6 / 8 waves a run, every wave at level 5); the SUNK pips fill by halves. Quartermaster (Supply): a Re-roll button on the weapon draft, 1 / 2 / 3 / 4 / 4 re-rolls a run, and level 5 deals 4 cards. Salvage Crews (Supply): +10% Scrap a level (528 → 792 Scrap a run at level 5). Measured alone at level 5 (ships saved a run; the others sit at 5–8): Boilers 1.5–2.5, Quartermaster about 2.5 for the bot, Lifeboats saves no ships but takes 3.5 off the loss tally and lifts wins 45–52% → 62% on your build. Three questions in Needs you.' },
@@ -200,6 +202,12 @@ export const NEEDS = [
     title: 'Quartermaster: something new at every level. This path?',
     text: 'Your ideas: re-rolls, a free bomb, an automatic weapon level-up.',
     options: ['L1 one re-roll · L2 two re-rolls · L3 a free bomb at the start of the boss · L4 three re-rolls · L5 four cards in the draft and one free weapon level-up a run (recommended)', 'Re-rolls only, one more each level (1 to 5)', 'L1–L4 re-rolls 1–4, L5 a free weapon level-up instead of the 4th card'],
+  },
+  {
+    id: 'r13-saltgate-trucks',
+    kind: 'item',
+    title: 'Play Saltgate Canal’s new boss, the Gatecrashers',
+    text: 'Test Lab → Ready to test → Saltgate Canal (or Skip to boss from the pause menu). Columns of Rocket Trucks drive in along both banks toward the ships waiting in the locks: shoot them on the way in. A dashed red line shows which ship a truck is about to hit. No subs on Saltgate now. Also try the new Retry wave and Skip to boss buttons, and check the wave-note field stays visible while you type. Approve (with a note) or Change; say if the Gatecrashers should replace the old boss in the campaign too.',
   },
 ];
 
