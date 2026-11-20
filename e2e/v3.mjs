@@ -426,7 +426,15 @@ try {
   await page.waitForSelector('[data-screen="review"]');
   const band = await page.evaluate(() => { const b = document.querySelector('.v3-timeline .v3-tl-wave[data-wave="1"]'); return b ? { rated: b.classList.contains('rated'), text: b.querySelector('.v3-tl-rate')?.textContent, data: b.dataset.waveRating, title: b.title } : null; });
   check(band?.rated && band.text === '♥4' && band.data === 'F4 I5' && /Swarm from the left/.test(band.title), `the review's timeline shows wave 1's draft rating on its band (${JSON.stringify(band)})`);
+  // Round 11: the run's rating asks Effort too (how hard the player tried),
+  // and it lands in the log's rating with the others.
+  const runAxes = await page.evaluate(() => [...document.querySelectorAll('[data-screen="review"] .v3-rating [data-axis]')].map((a) => `${a.dataset.axis}:${a.querySelector('.v3-rating-head span')?.textContent}`));
+  check(runAxes.map((a) => a.split(':')[0]).join() === 'difficulty,fun,intensity,effort' && runAxes[3] === 'effort:1 casual / not really trying · 5 full focus, all-out', `the run's rating rows: ${runAxes.join(' | ')}`);
+  await page.click('[data-screen="review"] [data-axis="fun"] [data-n="3"]');
+  await page.click('[data-screen="review"] [data-axis="effort"] [data-n="2"]');
   await page.click('.v3-review-done');
+  const runRating = await page.evaluate(() => window.__v3.log().rating);
+  check(JSON.stringify(runRating) === '{"fun":3,"effort":2}', `the run's rating, Effort included, is in the log (${JSON.stringify(runRating)})`);
   await page.waitForSelector('[data-screen="result"]');
 
   // ---- Free Play (round 7): any map, wave, weapons and Armory; nothing counts ----
