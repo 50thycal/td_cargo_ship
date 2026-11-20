@@ -232,12 +232,16 @@ import type { EncounterSetup } from '../data/encounters';
  *      (MAP_SIGNATURE.needle, its new `block`), the Shield Wall's rounds
  *      (MAP_BOSS.needle; a boss round's `fire` may send a cluster). A v34
  *      Needle card log no longer replays to the same game; the campaign
- *      plays as it did. */
-export const LOG_VERSION = 35;
+ *      plays as it did.
+ *  36: the Archipelago rebuilt to the map rules (docs/design/
+ *      v3-ch2-archipelago.md; lab, under the encounter layer). A v35
+ *      Archipelago card log no longer replays to the same game; the
+ *      campaign plays as it did. */
+export const LOG_VERSION = 36;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [35];
+export const LOG_REPLAYS: readonly number[] = [36];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
