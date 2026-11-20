@@ -4284,10 +4284,8 @@ export interface BossTune {
   name?: string;
   /** Log v42: the boss's trucks (BossRound `trucks`): hits each, their
    *  speed driving in (× a truck's own), how far apart they park along the
-   *  bank, how long a wreck stalls the trucks behind it on its road, and
-   *  how long a truck marks its ship (a red line from the truck) before
-   *  each salvo. */
-  truck?: { hp: number; drive: number; spacing: number; stall: number; mark: number };
+   *  bank, and how long a wreck stalls the trucks behind it on its road. */
+  truck?: { hp: number; drive: number; spacing: number; stall: number };
 }
 
 /** Log v42 (Saltgate Canal's Gatecrashers): a column of Rocket Trucks
@@ -4466,9 +4464,11 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  boss ones, like they all drive in and they can shoot missiles, and it
  *  could be pretty intense if all the ships are clustered together"): Rocket
  *  Trucks drive down to the banks by the locks and fire at the ships held
- *  there. Round 1 a column on the enemy's bank by the west lock; round 2
- *  more, from both banks; round 3 a mass charge at both locks, the leaders
- *  of the north columns firing cluster missiles over the full chambers. A
+ *  there. Round 1 a column of 8 on the enemy's bank by the west lock;
+ *  round 2 4 + 4, from both banks; round 3 a charge of 13 at both locks,
+ *  the last truck of each north column firing a cluster missile over the
+ *  full chamber (one salvo each, so the charge is many trucks, not many
+ *  rockets). A
  *  truck can be shot on the way in (a wreck stalls the trucks behind it),
  *  raises its launcher (a ring fills round it) and marks its ship before
  *  each salvo. Log v38-v41: Run the Canal, rising (Torpedo Subs, a gunship,
@@ -4502,10 +4502,11 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
-/** The Gatecrashers' trucks: 3 hits each (a wave's truck takes 4), in at
- *  1.6 × a truck's speed, parked 58 px apart, a wreck stalling the ones
- *  behind it 2 s, each salvo's ship marked 0.9 s before it. */
-export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2, mark: 0.9 };
+/** The Gatecrashers' trucks: 4 hits each (as a wave's truck), in at 2.2 ×
+ *  a truck's speed, parked 58 px apart, a wreck stalling the ones behind it
+ *  2 s. Each marks its next salvo's ship from the moment it starts raising
+ *  its launcher (2.4 s, a ring filling round it) and between salvos (1.5 s). */
+export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2 };
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
