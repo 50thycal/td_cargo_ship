@@ -395,9 +395,12 @@ describe('every authored launch is warned of', () => {
           expect(up, e.id).toBeDefined();
           expect(l.t - up!.t, e.id).toBeGreaterThanOrEqual(SUB.warn + SUB.surface - 0.05);
         } else {
-          const arrow = sc.events.filter((o) => o.k === 'warn' && o.what === 'aircraft' && o.t <= l.t).at(-1);
-          expect(arrow, e.id).toBeDefined();
-          expect(l.t - arrow!.t, e.id).toBeGreaterThanOrEqual(PLANE.warn - 0.1);
+          // Its own arrow, the warning's time ahead (the Needle of Bosk, log
+          // v35: another jet of the wave may be warned of in between, so not
+          // only the latest arrow).
+          const arrows = sc.events.filter((o) => o.k === 'warn' && o.what === 'aircraft' && o.t <= l.t);
+          expect(arrows.length, e.id).toBeGreaterThan(0);
+          expect(arrows.some((o) => l.t - o.t >= PLANE.warn - 0.1 && l.t - o.t <= PLANE.warn + 0.5), `${e.id}: an arrow ${PLANE.warn} s ahead`).toBe(true);
         }
       }
       // The wave says which encounter it carried.

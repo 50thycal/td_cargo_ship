@@ -3336,8 +3336,8 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Single file is the map\'s shape: a jet\'s line and the column are the same line, in place of the wave\'s clusters and shells.',
     },
     beats: [
-      { at: 0.3, kind: 'strafer', count: 1, from: { air: 1 } },
-      { at: 0.3, plus: 2, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.4, plus: 2, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.65, kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'near' },
       { at: 0.85, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
