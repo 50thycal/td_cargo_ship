@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 38 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 39 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -426,7 +426,16 @@ try {
   await page.waitForSelector('[data-screen="review"]');
   const band = await page.evaluate(() => { const b = document.querySelector('.v3-timeline .v3-tl-wave[data-wave="1"]'); return b ? { rated: b.classList.contains('rated'), text: b.querySelector('.v3-tl-rate')?.textContent, data: b.dataset.waveRating, title: b.title } : null; });
   check(band?.rated && band.text === '♥4' && band.data === 'F4 I5' && /Swarm from the left/.test(band.title), `the review's timeline shows wave 1's draft rating on its band (${JSON.stringify(band)})`);
+  // Round 11: the run's rating asks Effort too (how hard the player tried),
+  // and it lands in the log's rating with the others.
+  const runAxes = await page.evaluate(() => [...document.querySelectorAll('[data-screen="review"] .v3-rating [data-axis]')].map((a) => `${a.dataset.axis}:${a.querySelector('.v3-rating-head span')?.textContent}`));
+  check(runAxes.map((a) => a.split(':')[0]).join() === 'difficulty,fun,intensity,effort' && runAxes[3] === 'effort:1 casual / not really trying · 5 full focus, all-out', `the run's rating rows: ${runAxes.join(' | ')}`);
+  await page.click('[data-screen="review"] [data-axis="fun"] [data-n="3"]');
+  await page.click('[data-screen="review"] [data-axis="effort"] [data-n="2"]');
   await page.click('.v3-review-done');
+  // The sealed log is stored (and sent) again with it.
+  const runRating = await page.evaluate(() => (JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') ?? '[]').at(-1) ?? {}).rating ?? null);
+  check(JSON.stringify(runRating) === '{"fun":3,"effort":2}', `the run's rating, Effort included, is in the stored log (${JSON.stringify(runRating)})`);
   await page.waitForSelector('[data-screen="result"]');
 
   // ---- Free Play (round 7): any map, wave, weapons and Armory; nothing counts ----
@@ -1151,7 +1160,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 38 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 39 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

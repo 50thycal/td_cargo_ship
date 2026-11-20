@@ -18,7 +18,7 @@ import { agoText, defaultSetup, labRunPlan, lastScores, parseLabProgress, prefil
 describe('the scorecard: its categories, in data', () => {
   it('keeps every row ever asked, each with an id, a label, a help line and a scale, and a revision', () => {
     expect(SCORECARD_REV).toBe(4);
-    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'vs', 'again', 'best', 'weakest', 'moment']);
+    expect(SCORECARD.map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'pacing', 'variety', 'readability', 'mapFeel', 'boss', 'vs', 'again', 'effort', 'best', 'weakest', 'moment']);
     for (const c of SCORECARD) {
       expect(c.label.length, c.id).toBeGreaterThan(0);
       expect(c.help.length, c.id).toBeGreaterThan(0);
@@ -31,7 +31,7 @@ describe('the scorecard: its categories, in data', () => {
     expect(opts('pacing')).toEqual(['Too slow', 'Right', 'Too fast']);
     expect(opts('again')).toEqual(['Yes', 'Maybe', 'No']);
     expect(opts('vs')).toEqual(['Worse', 'About the same', 'Better']);
-    for (const id of ['fun', 'intensity', 'variety', 'readability', 'mapFeel', 'boss']) expect(opts(id)).toBe('stars');
+    for (const id of ['fun', 'intensity', 'effort', 'variety', 'readability', 'mapFeel', 'boss']) expect(opts(id)).toBe('stars');
     expect(opts('best')).toBe('wave');
     expect(SCORECARD.find((c) => c.id === 'variety')!.help).toBe('The waves felt different from each other');
     // A too-little / too-much scale is centred on Right.
@@ -76,11 +76,12 @@ describe('revision 2 (the player\'s approval, 2026-11-17): fewer rows, a compari
       expect(askedAt(c, 1)).toBe(true);
       expect(askedAt(c, 2)).toBe(false);
     }
-    // (Revision 4 adds Intensity and retires revision 3's Best moment.)
-    expect(scoreRows(13, { vsCard: 'map-gauntlet' }).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'boss', 'vs', 'again', 'best', 'weakest']);
+    // (Revision 4 adds Intensity and retires revision 3's Best moment;
+    // round 11 adds Effort to it.)
+    expect(scoreRows(13, { vsCard: 'map-gauntlet' }).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'boss', 'vs', 'again', 'effort', 'best', 'weakest']);
     // No other map card rated yet: no comparison row.
-    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'boss', 'again', 'best', 'weakest']);
-    expect(scoreRows(7).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'again', 'best', 'weakest']);
+    expect(scoreRows(13).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'boss', 'again', 'effort', 'best', 'weakest']);
+    expect(scoreRows(7).map((c) => c.id)).toEqual(['fun', 'difficulty', 'intensity', 'again', 'effort', 'best', 'weakest']);
     const vs = SCORECARD.find((c) => c.id === 'vs')!.scale;
     expect(vs.kind === 'choice' && vs.options.map((o) => [o.id, o.value])).toEqual([['worse', -1], ['same', 0], ['better', 1]]);
   });
@@ -276,10 +277,11 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 38 (Saltgate Canal rebuilt; after 37, the Archipelago, and 36, the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(38);
-    expect(LOG_REPLAYS).toEqual([38]);
-    expect(replaysHere(38)).toBe(true);
+  it('the log is version 39 (the Shield takes 2 / 3 / 4 hits; after 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger); only its own version replays here', () => {
+    expect(LOG_VERSION).toBe(39);
+    expect(LOG_REPLAYS).toEqual([39]);
+    expect(replaysHere(39)).toBe(true);
+    expect(replaysHere(38)).toBe(false);
     expect(replaysHere(37)).toBe(false);
     expect(replaysHere(36)).toBe(false);
     expect(replaysHere(34)).toBe(false);

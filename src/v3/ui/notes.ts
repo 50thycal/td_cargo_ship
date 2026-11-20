@@ -3,7 +3,7 @@
 // summary, the run's timeline of marked moments, and the setting that turns
 // it all on. DOM only; app.ts wires them to the run.
 
-import { RATING_AXES, NOTE_TAGS, WAVE_NOTE_MAX, type Moment, type NoteTag, type PlayNote, type Rating, type Volley } from '../sim/feedback';
+import { RATING_AXES, NOTE_TAGS, type RatingAxis, WAVE_NOTE_MAX, type Moment, type NoteTag, type PlayNote, type Rating, type Volley } from '../sim/feedback';
 import { waveLabel, waveScoreText, waveScores } from '../data/scorecard';
 import { THREATS, type ThreatKind } from '../data/config';
 import type { PlayLog } from '../sim/playlog';
@@ -99,12 +99,12 @@ export function noteForm(opts: { tags?: NoteTag[]; text?: string; placeholder?: 
   };
 }
 
-/** Three rows of 1–5: difficulty, fun, intensity. Tap a number again to
- *  clear it. */
-export function ratingRows(initial: Rating = {}): { el: HTMLElement; value(): Rating; any(): boolean } {
+/** Rows of 1–5: difficulty, fun, intensity (and, for a whole run,
+ *  `RUN_RATING_AXES`: effort too). Tap a number again to clear it. */
+export function ratingRows(initial: Rating = {}, axes: readonly RatingAxis[] = RATING_AXES): { el: HTMLElement; value(): Rating; any(): boolean } {
   const r: Rating = { ...initial };
   const wrap = el('div', 'v3-rating');
-  for (const axis of RATING_AXES) {
+  for (const axis of axes) {
     const row = el('div', 'v3-rating-row');
     row.dataset.axis = axis.id;
     const nums = el('div', 'v3-rating-nums');

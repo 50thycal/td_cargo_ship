@@ -22,6 +22,8 @@
 // intensity?, note? }]), with `bestSuggested` / `weakestSuggested`, the
 // Best and Weakest wave the end screen suggested from them. Older scores
 // read and average under their own revision as before.
+// Round 11 added Effort (`since: 4`, stars) to revision 4: it changes no
+// other row's question, so revision 4 scores still average together.
 
 /** A wave's name: "7", or "B2" for the second boss round. */
 export function waveName(n, bossFrom) {

@@ -85,7 +85,7 @@ import {
   saveLabProgress,
   type LabRunSetup,
 } from './lab';
-import { noteContext, type PlayNote } from '../sim/feedback';
+import { RUN_RATING_AXES, noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
   MOMENT_LOOK,
@@ -4387,7 +4387,8 @@ export class App {
     const view = this.review;
     const log = view?.log;
     if (!view || !log) return;
-    const rows = ratingRows(log.rating);
+    // The whole run: the three axes and how hard the player tried.
+    const rows = ratingRows(log.rating, RUN_RATING_AXES);
     const save = () => {
       if (rows.any()) log.rating = rows.value();
       this.resendReview();

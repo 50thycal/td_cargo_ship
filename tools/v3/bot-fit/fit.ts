@@ -7,6 +7,9 @@
 //       (runs measured before are kept as they were; --remeasure measures the
 //       folder's runs again, --fresh starts the file over)
 //   --ids=<log id,...> limits calibration and --fun to those runs
+//   --skip-low-effort leaves out the runs the player rated Effort 2 or less
+//       ("casual / not really trying"; round 11); without it they are kept
+//       and listed under the table, to be weighed less
 //   npx vite-node tools/v3/bot-fit/fit.ts -- [--personas=you-r12,you] [--dice=6] [--own-picks] [--json=out.json]
 //       calibration (the default): each of the player's runs, map cards and
 //       campaign alike, mirrored by each bot with the same map, seed, Armory
@@ -36,6 +39,7 @@ import type { CardId } from '../../../src/v3/data/abilities';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
 import { PLAYER_ARMORY, measure, measureFun, pool, poolFun, type Pooled, type PooledFun, type RunMeasure } from './measure';
 import { SAVE_NAMES, SHAPE_NAMES, waveName, type Save, type SaveKind } from '../../../src/v3/sim/funMetrics';
+import { LOW_EFFORT, lowEffort, runEffort } from '../../../src/v3/sim/feedback';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
@@ -59,6 +63,19 @@ export interface PlayerRun extends RunMeasure {
    *  copies (the seed, the Armory upgrades in use, the Test Lab card's
    *  setup, or none for a campaign run), and the cards picked. */
   setup: Pick<PlayLog, 'seed' | 'armory' | 'firstWave' | 'lab' | 'encounters' | 'convoy' | 'tempo' | 'freePlay'>;
+  /** How hard the player said they tried, 1-5 (round 11: the run's Effort
+   *  rating, or its map card's scorecard; absent: not rated). A run at
+   *  LOW_EFFORT or under is a weak sample of how the player plays. */
+  effort?: number;
+}
+
+/** The player's low-effort runs, flagged for the report: "map id (effort
+ *  n)". */
+export function effortNote(runs: readonly Pick<PlayerRun, 'id' | 'map' | 'effort'>[]): string {
+  const rated = runs.filter((r) => r.effort !== undefined);
+  const low = rated.filter((r) => lowEffort(r.effort));
+  if (!rated.length) return 'Effort: none of these runs is rated for effort (the rating is new in round 11).';
+  return `Effort: ${rated.length} of ${runs.length} runs rated (mean ${(rated.reduce((a, r) => a + r.effort!, 0) / rated.length).toFixed(1)} of 5). ${low.length ? `LOW EFFORT (${LOW_EFFORT} or less; weigh less, or rerun with --skip-low-effort): ${low.map((r) => `${r.map} ${r.id} (effort ${r.effort})`).join(', ')}.` : 'No low-effort runs.'}`;
 }
 
 /** Seconds to the millisecond: the saved file stays small. */
@@ -77,7 +94,8 @@ function loadPlayer(dir: string): PlayerRun[] {
     if (!kind) continue;
     const setup: PlayerRun['setup'] = { seed: l.seed, armory: l.armory ?? {}, firstWave: l.firstWave };
     for (const k of ['lab', 'encounters', 'convoy', 'tempo', 'freePlay'] as const) if (l[k]) (setup as Record<string, unknown>)[k] = l[k];
-    out.push({ ...compact(measure(l, 'you')), kind, setup });
+    const effort = runEffort(l);
+    out.push({ ...compact(measure(l, 'you')), kind, setup, ...(effort !== undefined ? { effort } : {}) });
   }
   return out;
 }
@@ -248,7 +266,7 @@ function funCalibration(player: PlayerRun[]): void {
   console.log('\nThe player\'s own saves, and the bot\'s on the same run (mean of its mirrors):');
   const rows: Record<string, unknown>[] = [];
   for (const r of mine) {
-    console.log(`\n  ${r.map} (${r.id}, ${r.end}, wave ${r.wave}, ${r.lost.reduce((a, b) => a + b, 0)} lost)`);
+    console.log(`\n  ${r.map} (${r.id}, ${r.end}, wave ${r.wave}, ${r.lost.reduce((a, b) => a + b, 0)} lost${r.effort !== undefined ? `, effort ${r.effort}${lowEffort(r.effort) ? ' LOW' : ''}` : ''})`);
     for (const s of r.saves ?? []) console.log(`    ${saveLine(s)}`);
     if (!r.saves?.length) console.log('    none');
     const kinds = (list: Save[]) => {
@@ -295,7 +313,11 @@ function main(): void {
     return;
   }
   const only = opt('ids')?.split(',');
-  const player = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs.filter((r) => !only || only.includes(r.id));
+  const all = (JSON.parse(readFileSync(PLAYER, 'utf8')) as { runs: PlayerRun[] }).runs.filter((r) => !only || only.includes(r.id));
+  // Round 11: the runs the player said they weren't really trying on.
+  const skipLow = args.includes('--skip-low-effort');
+  const player = skipLow ? all.filter((r) => !lowEffort(r.effort)) : all;
+  console.log(`${effortNote(all)}${skipLow && all.length > player.length ? ` Left out: ${all.length - player.length}.` : ''}\n`);
   if (args.includes('--fun')) {
     funCalibration(player);
     return;
@@ -361,7 +383,7 @@ function main(): void {
   for (const map of Object.keys(perMap))
     for (const c of perMap[map]) console.log(`  ${map.padEnd(9)} ${c.name.padEnd(10)} ${c.p.curve.map((v) => (Number.isFinite(v) ? v.toFixed(1) : ' - ')).join(' ')}   (n ${c.p.n}, boss ${c.p.bossRound.toFixed(2)}/round over ${c.p.bossN})`);
   const out = opt('json');
-  if (out) writeFileSync(out, `${JSON.stringify({ about: head, columns, perMap }, null, 1)}\n`);
+  if (out) writeFileSync(out, `${JSON.stringify({ about: head, columns, perMap, effort: player.map((r) => ({ id: r.id, map: r.map, effort: r.effort ?? null, low: lowEffort(r.effort) })) }, null, 1)}\n`);
 }
 
 if (!process.env.V3_FIT_IMPORT) main();

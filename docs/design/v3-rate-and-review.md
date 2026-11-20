@@ -129,6 +129,21 @@ A skipped scorecard saves no score, `waves` included. The per-wave ratings are s
 - `src/v3/sim/labDocs.ts` (the bridge) and `results.mts` read the score through `cleanScorecard` and `scoreLine`, so the new fields come through. `scoreLine` adds "Waves 1:F2 9:F5 I5 …".
 - `docs/design/v3-fun-metrics.md`: the ground truth for the saves and the tension curve is now the per-wave ratings, not Best moment.
 
+## Effort (round 11)
+
+> "In the end games score card add in a rating for me to rate how hard I tried, so we know if it was a fluke or if it truly is hard."
+
+- **One row more on the end screen: Effort, 1–5** (1 casual / not really trying, 5 full focus, all-out), in the same style as Fun and Intensity, and optional like them.
+  - **Campaign and Free Play:** under Difficulty, Fun and Intensity in the run's rating. It is saved in the log's `rating` as `effort`. The per-volley and per-wave ratings do not ask it (`RATING_AXES` is unchanged; the run uses `RUN_RATING_AXES`).
+  - **Test Lab, a map card's full run:** a scorecard row after Play again, saved in `labResult.score.effort`.
+  - **Test Lab, any other card:** the normal game's rows, Effort included, in the log's `rating`.
+- **Scorecard revision stays 4.** Effort asks something new and changes no other row's question, so it joins revision 4 (`since: 4`). This round's scores keep averaging with the earlier revision 4 ones, and an older revision 4 score reads as Effort left blank. `scoreAverages` (`tools/v3/test-lab/scores.mjs`) averages it as a stars row, and `scoreLine` reads "Effort 2".
+- **The log version is unchanged by it.** Like the rest of the rating it is not sim input. The uploader (`api/playlog.ts`, `src/v3/platform/playlogStore.ts`) stores the whole log, so it reaches the uploaded log with no change there.
+- **The tools:** `runEffort(log)` (`src/v3/sim/feedback.ts`) reads it from either place, and `lowEffort` marks 2 or less (`LOW_EFFORT`).
+  - `tools/v3/bot-fit/fit.ts` keeps it on each of the player's runs in `player.json` (`effort`) and prints a line above the table with the rated runs and the **LOW EFFORT** ones, to be weighed less. `--skip-low-effort` leaves them out. `--json` output carries `effort` per run.
+  - `tools/v3/bot-fit/playtest.ts` shows `effort n` (and `LOW: weigh less`) on each run's header and saves it in the run's entry.
+- Test: `tests/v3/effort.test.ts`.
+
 ## Checks
 
 - `tests/v3/scorecard.test.ts`: revision 4's rows, Intensity, the retired Best moment still read on revision 3, `waveScores`, `suggestWaves`, the sheet's suggestion (put in once, never over a pick), and Save with the waves.
