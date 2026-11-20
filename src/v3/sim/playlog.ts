@@ -205,12 +205,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      Island's waves 3-5 are the Torpedo Sub's, Armored Drone's and
  *      Scavenger Drone's debut waves, drones only around each (lab;
  *      `replaces.extras` may stand in for a jet or a bomber). A v31 Marrow
- *      log, or a v31 Island card log, no longer replays to the same game. */
-export const LOG_VERSION = 32;
+ *      log, or a v31 Island card log, no longer replays to the same game.
+ *  33: the player's round 9 (docs/design/v3-combo-diversity.md, "Round
+ *      9"): Overdrive lasts 18 s from level 1 (was 15; level 2 and MAX 21
+ *      s, was 18; campaign and lab); chapter 2's maps each get a signature
+ *      threat in waves 4-10 (the Island: attack helicopters; the Behemoth
+ *      Run: heavy cruise missiles at the supertanker; lab), and the Wolf
+ *      Pack's boss rounds send heavy missiles at the tanker in place of
+ *      most of its torpedo subs (MAP_BOSS, lab). A v32 log with Overdrive,
+ *      or a v32 Island or Behemoth card log, no longer replays to the same
+ *      game. */
+export const LOG_VERSION = 33;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [32];
+export const LOG_REPLAYS: readonly number[] = [33];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
