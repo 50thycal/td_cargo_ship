@@ -670,7 +670,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
   // 'lock', the ship held at the lock nearest the launcher.
-  it('Saltgate Canal: a launch aimed at the locks goes for a ship held at the lock nearest its silo; the locks are the stake in most waves', () => {
+  it('Saltgate Canal: a launch aimed at the locks goes for a ship held at the lock nearest its silo; the locks are the stake in nine waves of ten', () => {
     const locks = MAPS.saltgate.locks!;
     const held = (s: { x: number }) => locks.some((l) => s.x >= l.x0 - 120 && s.x <= l.x1);
     // Wave 3: a guided missile off the silo over the west lock, as ships
@@ -692,8 +692,9 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       const t = ships.find((s) => s.id === th.target)!;
       expect(d(t, early.g.map.bases[0])).toBeCloseTo(Math.min(...ships.map((s) => d(s, early.g.map.bases[0]))), 3);
     }
+    // Every wave but the jet's (wave 7, down the canal's line of held ships).
     const at = arc('saltgate').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'lock'))).map((a) => a.wave);
-    expect(at).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(at).toEqual([1, 2, 3, 4, 5, 6, 8, 9, 10]);
     expect(LAYER_MAPS.filter((m) => m !== 'saltgate').some((m) => ENCOUNTERS.some((e) => e.map === m && e.beats.some((b) => b.aim === 'lock')))).toBe(false);
   });
 
@@ -1022,8 +1023,8 @@ describe('Saltgate Canal\'s boss rounds (log v38, MAP_BOSS): Run the Canal rises
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more subs, gunships, armored drones and swarms each round, with clusters and missiles off the lock silos at the ships held in the locks', () => {
-    const off = playMimic('saltgate', 205, opts);
-    const old = playMimic('saltgate', 205, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    const off = playMimic('saltgate', 208, opts);
+    const old = playMimic('saltgate', 208, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own 2 subs, a gunship, a block of 4 and
     // a swarm of 5, every round.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
@@ -1033,9 +1034,9 @@ describe('Saltgate Canal\'s boss rounds (log v38, MAP_BOSS): Run the Canal rises
       ['run-the-canal', 2, 1, 4, 5, 0],
       ['run-the-canal', 2, 1, 4, 5, 0],
     ]);
-    // Seed 205: the tryhard bot, starting at the boss with no weapon, sees
+    // Seed 208: the tryhard bot, starting at the boss with no weapon, sees
     // all three rounds through.
-    const on = playMimic('saltgate', 205, { ...opts, encounters: VER('v1') });
+    const on = playMimic('saltgate', 208, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.saltgate!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['run-the-canal', 1], ['run-the-canal', 2], ['run-the-canal', 3]]);
     const done = on.game.eventLog;

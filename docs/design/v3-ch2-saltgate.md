@@ -25,7 +25,7 @@ How it differs from the other chapter 2 maps:
 - **The Needle of Bosk:** a queue at one mouth, nose to tail, because the water narrows. Here the ships stop because a gate is shut, twice, and the danger is the time they sit there (and the silos built over it), not the shape of the water.
 - **The Archipelago:** fire from many islets and directions at a lane that keeps moving. Here the fire is mostly from two places, the silos over the locks, at ships that cannot move, with the shortest warning in the chapter.
 
-The mechanic is in every wave (rule `g-mechanic`): every encounter aims something at a ship held at a lock (`'lock'`), and so do the signature's clusters and every boss round's added fire.
+The mechanic is in the waves (rule `g-mechanic`): nine encounters of ten aim something at a ship held at a lock (`'lock'`; wave 7's jet flies down the canal's line of held ships instead), and so do the signature's clusters and every boss round's added fire.
 
 ## Sites and their jobs
 
@@ -89,14 +89,14 @@ One encounter a wave, none repeated. Every shell the shared wave would send from
 | --- | --- | --- | --- | --- |
 | 1 | teach | At the first lock (`saltgate-first-lock`) | west shore, 3 drones | the ship held at the west lock |
 | 2 | teach | Shells into the chamber (`saltgate-chamber`) | west shore, 1 shell; east lock silo, 4 drones | the west lock; any ship; in place of the wave's 2 shells |
-| 3 | teach | Both locks (`saltgate-both-locks`) | west lock silo, 1 guided; east lock silo 4 and west shore 4 drones | the ship in the west lock, point-blank; any ship; the ships coming in; in place of the shells and the guided missile |
-| 4 | combine | A cluster over the chamber (`saltgate-cluster`) | west lock silo, 1 cluster; west shore 4 and east lock silo 4 drones | the west lock; the ships coming in; any ship; in place of the shells and the cluster (the first torpedo sub comes with the wave) |
-| 5 | combine | Two gates (`saltgate-two-gates`) | west lock silo, 1 guided; east lock silo 5 and west shore 5 + 5 drones | the west lock; any ship; the ships coming in; in place of the shells, guided missiles, the heavy and a cluster |
-| 6 | combine | A periscope off the gate (`saltgate-periscope`) | East Sea sub, 2 shells; west shore 5 + 3 and east lock silo 5 drones | the east lock; any ship; in place of the shells, guided missiles and the heavy |
-| 7 | escalate | Down the canal (`saltgate-strafe`) | a jet from the west; west lock silo, 1 cluster; east lock silo 5 + 5 and west shore 5 drones | the canal; the west lock; any ship; the ships coming in; in place of the shells, a cluster and a jet |
-| 8 | escalate | Both chambers (`saltgate-both-chambers`) | a cluster off each lock silo, 6 s apart; west shore 5 + 4 + 3 and east lock silo 4 drones | both locks; the ships coming in; halfway along; in place of the shells, both clusters, the heavy and a jet |
-| 9 | escalate | Gate by gate (`saltgate-gate-by-gate`) | west lock silo, 1 guided; West Sea sub, 2 shells; east lock silo 4 + 5 + 5 and west shore 5 drones | the west lock; the ships coming in; halfway along; in place of the shells, guided missiles, a cluster and the heavy |
-| 10 | climax | Through both locks (`saltgate-climax`), the clusters after the wave's own fire (`at: 1`) | a cluster off each lock silo and a swarm of 5; six swarms of 4 all wave | both locks; halfway along; in place of the shells, most guided missiles, the heavy, the clusters, a supersonic and a jet |
+| 3 | teach | Both locks (`saltgate-both-locks`) | west lock silo, 1 guided; east lock silo 4 and west shore 4 drones | the ship in the west lock, point-blank; any ship; in place of the shells and the guided missile |
+| 4 | combine | A cluster over the chamber (`saltgate-cluster`) | west lock silo, 1 cluster; west shore 4 and east lock silo 4 drones | the west lock; any ship; in place of the shells and the cluster (the first torpedo sub comes with the wave) |
+| 5 | combine | Two gates (`saltgate-two-gates`) | west lock silo, 1 guided; east lock silo 5 and west shore 5 + 5 drones | the west lock; any ship; in place of the shells, guided missiles, the heavy and a cluster |
+| 6 | combine | A periscope off the gate (`saltgate-periscope`) | East Sea sub, 3 shells; west shore 5 + 3 and east lock silo 5 drones | the east lock; any ship; in place of the shells, guided missiles and the heavy |
+| 7 | escalate | Down the canal (`saltgate-strafe`) | a jet from the west; east lock silo 5 + 5 and west shore 5 drones | the canal, every held ship in a line; any ship; in place of the shells, a cluster and a jet |
+| 8 | escalate | Both chambers (`saltgate-both-chambers`) | a cluster off each lock silo, 6 s apart; west shore 5 + 4 + 3 and east lock silo 4 drones | both locks; halfway along; any ship; in place of the shells, both clusters, the heavy and a jet |
+| 9 | escalate | Gate by gate (`saltgate-gate-by-gate`) | west lock silo, 1 guided; West Sea sub, 3 shells; east lock silo 4 + 5 + 5 and west shore 5 drones | the west lock; the ships coming in; halfway along; in place of the shells, guided missiles, a cluster and the heavy |
+| 10 | climax | Through both locks (`saltgate-climax`), the clusters after the wave's own fire (`at: 1`) | a cluster off each lock silo, 4 s apart; five swarms of 4 all wave | both locks; halfway along; any ship; in place of the shells, most guided missiles, the heavy, the clusters, a supersonic and a jet |
 
 WAVE1_LINE
 
@@ -104,16 +104,16 @@ WAVE1_LINE
 
 Run the Canal is the map's own event and chapter 2's finale, in three phases one after another (round 8, cut down): Torpedo Subs as the round opens (three torpedoes each, one by one), an attack helicopter over the far bank by a lock from 9 s, a block of armored drones from the enemy shore from 19 s banking together twice, and a drone swarm. Under encounter rev 4 (`SALTGATE_BOSS_ROUNDS`, lab only: the campaign plays the event as it was):
 
-| Round | Torpedo subs | Helicopters (hits) | Armored drones (wide) | Drone swarms | Clusters (west lock silo) | Guided (east shore) |
+| Round | Torpedo subs | Helicopters (hits) | Armored drones (wide) | Drone swarms | Clusters (lock silos) | Guided (east shore) |
 | --- | --- | --- | --- | --- | --- | --- |
 | before (every round) | 2 | 1 (4) | 4 (2) | 1 of 5 | 0 | 0 |
-| 1 | 2 | 1 (4) | 4 (2) | 2 of 5 | 1 (6 s) | 1 (9 s) |
-| 2 | 3 | 1 (5) | 5 (3) | 3 of 5 | 1 (5 s) | 1 (8 s) |
-| 3 | 3 | 2 (5), one over each lock, 6 s apart | 6 (3) | 3 of 5 | 1 (4 s) | 0 |
+| 1 | 3 | 1 (4) | 4 (2) | 2 of 5 | 1, west (6 s) | 1 (9 s) |
+| 2 | 3 | 1 (5) | 6 (3) | 3 of 5 | 1, west (5 s) | 1 (8 s) |
+| 3 | 3 | 2 (5), one over each lock, 6 s apart | 6 (3) | 3 of 5 | 2, west (4 s) and east (12 s) | 0 |
 
-The clusters and the guided missiles go at the ship held at the lock nearest their silo (aim `'lock'`). `MAP_PLANS.saltgate.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale; as the chapter's last map it may be the chapter's toughest). Each round lasts 15–30 s (test, seed 205: 23–29 s). The intro cards are the shared ones (log v30), after the convoy is restored: "Boss round", "Convoy restored" (and the ships that can still be lost), "The boss: Run the Canal", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
+The clusters and the guided missiles go at the ship held at the lock nearest their silo (aim `'lock'`). `MAP_PLANS.saltgate.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale; as the chapter's last map it may be the chapter's toughest). Each round lasts 15–30 s (test, seed 208: 24, 24 and 25 s). The intro cards are the shared ones (log v30), after the convoy is restored: "Boss round", "Convoy restored" (and the ships that can still be lost), "The boss: Run the Canal", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
 
-The subs are most of the boss's teeth: with the event as it was, its two subs alone sank 1.2–1.8 ships a round on the bot's tough runs (the player's Armory, 12 seeds), the rest of the round 0.2–0.5. A guided missile in round 3 off the silo over the west lock (200 px, almost no warning) sank 0.8 a round by itself and was cut; a second cluster in round 3 was cut too (round 3 read 1.9–2.0).
+The subs are most of the boss's teeth: with the event as it was, its two subs alone sank 1.2–1.8 ships a round on the bot's tough runs (the player's Armory, 12 seeds), the rest of the round 0.2–0.5. A guided missile in round 3 off the silo over the west lock (200 px, almost no warning) sank 0.8 a round by itself on an early build and was cut; a third sub in round 1 (the event's own two before) lifted it from about 0.6 to 0.95 a round on 96 seeds.
 
 ## Bot results, before and after (24 seeds, 900–923)
 
@@ -140,7 +140,7 @@ QUESTIONS
 - `tests/v3/encounters.test.ts`:
   - the ten listed, rev 4, v1 only, none at rev 3 (the map with no authored encounters is now Battery Point, chapter 3);
   - the budget, legality, warning and replay checks cover the map;
-  - the `'lock'` aim: the west lock silo's missile goes for a ship held at the west lock, the nearest to the silo; with no ship held, the ship nearest the launcher; every wave aims at a lock; no other map uses the aim;
+  - the `'lock'` aim: the west lock silo's missile goes for a ship held at the west lock, the nearest to the silo; with no ship held, the ship nearest the launcher; every wave but wave 7 aims at a lock; no other map uses the aim;
   - Run the Canal's rounds: the subs, helicopters, armored drones, swarms, clusters and guided missiles each round as `MAP_BOSS` says, rising, every added launch from a base that fires it, at a lock; a rev 3 log and the campaign play the event as it was; 15–30 s a round;
   - the signature: from wave 4 at least half the wave's new enemies are torpedo subs and its own clusters off a silo are aimed at the locks; played, every cluster of the wave's own (silo or truck) goes for a held ship; within the wave budget; waves 1–3, the campaign and the shared wave as they were; the other signatures leave the clusters alone.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
