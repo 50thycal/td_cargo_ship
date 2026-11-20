@@ -177,12 +177,14 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // ship's own Point Defense, which in a column covers the ship ahead and
     // behind; the Thermobaric Shell's blast, which goes round an armored
     // wall's plates and takes a cluster with what is near it; the Gunship
-    // Pair's rockets at the thickest cluster, the queue. The Seeker Pod's
-    // long flight, the Tesla Arc and the Drone Screen read worst of every
-    // weapon here (bots, the player's Armory: docs/design/v3-ch2-needle.md,
-    // Kits). Every weapon is in chapter 2's draft.
+    // Pair's rockets at the thickest cluster, the queue. The Frigate Escort
+    // can't follow the convoy through the Needle (its frigates back out of
+    // the narrows), the Seeker Pod's long flight is too late at the mouth,
+    // and the Drone Screen is the weakest helper here (bots, the player's
+    // Armory: docs/design/v3-ch2-needle.md, Kits). Every weapon is in
+    // chapter 2's draft.
     counters: ['aegis', 'thermo', 'gunships'],
-    offCounter: ['seeker', 'tesla', 'droneScreen'],
+    offCounter: ['seeker', 'frigate', 'droneScreen'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east across open water, falling into single file as the lane closes to one hull wide, queueing at the mouth and threading the Needle between the headlands.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {

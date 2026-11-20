@@ -55,11 +55,54 @@ SIGNATURE_LINES
 
 ## The counters
 
-COUNTERS_SECTION
+- **Counter kit: Point Defense, Thermobaric Shell, Gunship Pair.** The headlands fire from point-blank range onto ships bunched nose to tail, too close for a shot from the carrier to get there first. Each ship's own Point Defense, which in a column covers the ship ahead and the ship behind; the Thermobaric Shell's blast, which goes round an armored wall's plates and takes a cluster with what is near it; the Gunship Pair's rockets at the thickest cluster of ships, the queue.
+- **Off-counter kit: Seeker Pod, Frigate Escort, Drone Screen.** The Frigate Escort can't follow the convoy through the Needle (its frigates back out of the narrows), the Seeker's long flight is too late at the mouth, and the Drone Screen is the weakest helper on this map.
+- Every weapon is in chapter 2's draft.
+
+How they compare (the player's Armory):
+
+| | Ships lost, all 13 waves | Won |
+| --- | --- | --- |
+| Counter kit, forced (combo sweep's `check-one.ts`, 16 seeds) | **7.8** ±0.7 | 56% |
+| The bot drafting for itself (combo sweep singles, 12 seeds) | 7.6 | 58% |
+| Off-counter kit, forced (16 seeds) | 9.7 ±1.1 | 44% |
+| Counter kit as the bot's taste (bot report, 24 seeds) | KIT_COUNTER | |
+| Off-counter kit as taste (bot report) | KIT_OFF | |
+
+The counter kit loses about 1.9 ships fewer than the off-counter kit and wins more often, but only matches the bot's own draft, as on the Island. Two other kits read about the same forced (Point Defense + Shield + Gunship Pair 7.3; Point Defense + Thermobaric + Shield 8.8), and an earlier off-counter pick (Seeker, Tesla Arc, Drone Screen) read 8.9: on this map the differences between three-weapon kits are within a ship or two, and the map's best kits (below, "Diversity") are a better guide than a forced counter kit.
 
 ## Loadouts on this map (combo sweep singles)
 
-SINGLES_SECTION
+Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 34; `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2`). Ships lost over all 13 waves:
+
+- **Strong:** **Point Defense 5.3 (won 83%)**, Shield 6.0, Gunship Pair 6.5, Thermobaric 6.8, Railgun 6.8, Scattergun 7.1, Shrapnel 7.3.
+- **Middling:** Air Strike 7.6; the bot's own draft 7.6; Gravity Well 7.8, Flak 8.0, Boomerang 8.1, Overdrive 8.3.
+- **Weak:** Drone Screen 9.5, Tesla 9.5, Frigate Escort 9.5, Supply Run alone 10.8, Seeker 11.7, Full Steam 12.3, Charge Lance 12.4 (plain gun 12.8).
+- **Point Defense is the one to watch:** alone it loses 5.3 ships a run and wins 10 runs in 12. It is not trivial by the sweep's bar (it still loses 5.3), and it is the map's answer by design (every ship in the column covers its neighbours), but it is the best single on any chapter 2 map at v34 (the Island's best is the Railgun 6.0, the Behemoth's the Frigate Escort 6.4).
+- The Charge Lance reads badly because the bot charges it poorly; the Laser Cutter is not measured (the bot can't swipe).
+
+## Diversity: are the Needle's best kits its own?
+
+The player's rule for this rebuild: the Needle's best kits must differ from the Island's and the Behemoth Run's. All three maps were swept again at v34 (the Armory overhaul changed the player's Armory's Quick Reload and Stockpile since the v33 sweep): singles on 12 seeds, every pair on 6, each map's 6 best pairs with every third weapon on 6, its 10 best kits on 16 (`tools/v3/combo-sweep/diversity.ts`, results in `tools/v3/combo-sweep/results/v34-ch2/`; docs/design/v3-combo-diversity.md, "The Needle of Bosk").
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Island | **Point Defense + Supply Run + Shield** 6.2 ±0.8, won 81% | Scattergun + Point Defense + Shield 6.9 | Boomerang + Point Defense + Gunship Pair 7.3 | Air Strike + Scattergun + Supply Run 7.4 | Seeker Pod + Gravity Well + Tesla Arc 7.9 |
+| The Behemoth Run | **Air Strike + Flak Cannon + Gravity Well** 4.2 ±0.9, won 81% | Air Strike + Boomerang + Gravity Well 4.6 | Air Strike + Flak Cannon + Supply Run 4.8 | Air Strike + Frigate Escort + Supply Run 5.1 | Air Strike + Frigate Escort + Thermobaric Shell 5.6 |
+| The Needle of Bosk | **Boomerang + Flak Cannon + Point Defense** 5.8 ±0.6, won 81% | Air Strike + Thermobaric Shell + Shield 5.8 | Gravity Well + Railgun + Shield 6.3 | Air Strike + Supply Run + Shield 6.4 | Scattergun + Boomerang + Flak Cannon 6.5 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, map against map (all three pairs) | **0** (no kit shared) |
+| The same, one map against itself (two halves of its seeds) | 0.43 / 0.67 / 0.43 |
+| #1 kit | a different one on each map |
+| Best weapon alone | a different one on each map: Railgun (the Island), Frigate Escort (the Behemoth Run), **Point Defense** (the Needle) |
+| Rank correlation of the weapons alone (Needle against the Island / the Behemoth Run) | 0.44 / 0.59 |
+
+- **The Needle's best kits are its own.** No kit in its top 5 is in the Island's or the Behemoth Run's, its #1 kit and its best weapon alone are its own, and its weapons alone rank about as differently from the other two as they do from each other.
+- **Weapons it shares:** the Shield is in three of the Needle's top 5 and two of the Island's (none of the Behemoth Run's, since round 9's jets); Point Defense in one of the Needle's and three of the Island's; Flak in two of the Needle's and two of the Behemoth Run's; Air Strike in two of the Needle's and all five of the Behemoth Run's. The kits differ; their parts overlap, as on every map so far.
+
+SIGNATURE_SHARE
 
 ## The debut
 
@@ -129,6 +172,6 @@ UNCERTAIN_SECTION
 
 ## What to look for when you play
 
-LOOK_SECTION
+Watch the mouth. The ships sail wide over the open water in the west, then the funnel closes them into single file and they slow and queue at the mouth, right between the two enemy headlands: the south one is on your side of the strait, nearer your carrier than any enemy site so far. Wave 1 sends a few drones off the south headland at the queue; wave 3 the first cluster over it from the north headland. From wave 4 small walls of armored drones come in every wave, two at a time, plates first, as the boss's Shield Wall does in one big block; on wave 7 a jet strafes the column end to end; on wave 8 a heavy comes from the south headland's short range. The open water in the west is the safe part: only a sub (waves 4 and 6) and the climax reach it. The question to answer: did the queue at the mouth feel like the place to defend, and did the armored walls feel like the Shield Wall arriving early, or like more of the same drones? In the boss rounds one block of armored drones flies at one ship plates first and banks twice on the way; a cluster comes over the queue early in each round and a shell late. Tell us whether round 1 feels too light and whether the three rise.
 
 (This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)

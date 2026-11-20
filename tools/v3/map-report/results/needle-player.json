@@ -1,0 +1,834 @@
+{
+ "about": "Bot report (docs/design/v3-map-report.md). Made by tools/v3/map-report/report.ts.",
+ "persona": "you",
+ "armory": "the player's ({\"reload\":5,\"repair\":4,\"stockpile\":5})",
+ "date": "2026-11-20",
+ "command": "npx vite-node tools/v3/map-report/report.ts -- --map=needle --seeds=24 --kits=plan --armory=player",
+ "heat": "tools/v3/map-report/results/needle-player-heat.html",
+ "waves": 13,
+ "report": {
+  "map": "needle",
+  "name": "The Needle of Bosk",
+  "threatScale": 0.95,
+  "seeds": [
+   900,
+   901,
+   902,
+   903,
+   904,
+   905,
+   906,
+   907,
+   908,
+   909,
+   910,
+   911,
+   912,
+   913,
+   914,
+   915,
+   916,
+   917,
+   918,
+   919,
+   920,
+   921,
+   922,
+   923
+  ],
+  "normal": {
+   "n": 24,
+   "won": 0.542,
+   "endWave": 12.917,
+   "lost": {
+    "n": 24,
+    "mean": [
+     0,
+     0.083,
+     0.083,
+     0.083,
+     0.333,
+     0.5,
+     0.458,
+     0.292,
+     0.667,
+     0.917,
+     0.417,
+     0.958,
+     1.458
+    ],
+    "reachedMean": [
+     0,
+     0.083,
+     0.083,
+     0.083,
+     0.333,
+     0.5,
+     0.458,
+     0.292,
+     0.667,
+     1,
+     0.5,
+     1.15,
+     1.842
+    ],
+    "reached": [
+     24,
+     24,
+     24,
+     24,
+     24,
+     24,
+     24,
+     24,
+     24,
+     22,
+     20,
+     20,
+     19
+    ]
+   },
+   "lost10": 3.417,
+   "lost15": 0.583,
+   "lostBonus": 0
+  },
+  "tough": {
+   "n": 24,
+   "lost": [
+    0,
+    0.083,
+    0.083,
+    0.083,
+    0.333,
+    0.5,
+    0.458,
+    0.292,
+    0.875,
+    1.042,
+    0.542,
+    1.125,
+    2.583
+   ],
+   "lost10": 3.75,
+   "cliff": {
+    "step": {
+     "wave": 9,
+     "up": 0.583
+    },
+    "doubles": [
+     {
+      "wave": 9,
+      "prev": 0.292,
+      "cur": 0.875
+     }
+    ]
+   },
+   "close": [
+    0,
+    0.875,
+    4.417,
+    2.917,
+    4,
+    2.625,
+    2.917,
+    1.375,
+    3.708,
+    2.583,
+    1.333,
+    2.042,
+    2.5
+   ],
+   "closeAny": [
+    0,
+    0.583,
+    1,
+    0.875,
+    1,
+    0.917,
+    1,
+    0.75,
+    0.917,
+    0.875,
+    0.708,
+    0.875,
+    0.875
+   ],
+   "launches": [
+    15,
+    16.583,
+    24.167,
+    20.625,
+    21.042,
+    20.042,
+    20.125,
+    24.208,
+    28.042,
+    32.042,
+    10,
+    11,
+    12
+   ],
+   "table": [
+    15,
+    20,
+    26,
+    30,
+    31,
+    36,
+    41,
+    45,
+    52,
+    62
+   ],
+   "vsTable": [
+    1,
+    0.829,
+    0.929,
+    0.688,
+    0.679,
+    0.557,
+    0.491,
+    0.538,
+    0.539,
+    0.517
+   ],
+   "baseline": [
+    15,
+    16.583,
+    25.458,
+    23.25,
+    25.208,
+    29.25,
+    33.833,
+    36.917,
+    43,
+    47.292
+   ],
+   "vsBaseline": [
+    1,
+    1,
+    0.949,
+    0.887,
+    0.835,
+    0.685,
+    0.595,
+    0.656,
+    0.652,
+    0.678
+   ],
+   "warning": [
+    8.624,
+    6.77,
+    5.697,
+    5.878,
+    4.481,
+    5.581,
+    4.721,
+    5.485,
+    5.083,
+    5.763,
+    5.909,
+    5.336,
+    5.132
+   ],
+   "warningN": [
+    360,
+    397,
+    555,
+    494,
+    503,
+    478,
+    478,
+    579,
+    673,
+    745,
+    216,
+    240,
+    268
+   ],
+   "warningSlope": -0.248,
+   "stretchCore": [
+    {
+     "lane": 0,
+     "hpShare": [
+      0.095,
+      0.41,
+      0.495
+     ],
+     "sunkShare": [
+      0.046,
+      0.308,
+      0.646
+     ],
+     "hp": 41.917,
+     "sunk": 2.708,
+     "hot": 2,
+     "cold": 0,
+     "thin": false
+    },
+    {
+     "lane": -1,
+     "hpShare": [
+      0.095,
+      0.41,
+      0.495
+     ],
+     "sunkShare": [
+      0.046,
+      0.308,
+      0.646
+     ],
+     "hp": 41.917,
+     "sunk": 2.708,
+     "hot": 2,
+     "cold": 0,
+     "thin": false
+    }
+   ],
+   "stretchAll": [
+    {
+     "lane": 0,
+     "hpShare": [
+      0.073,
+      0.428,
+      0.499
+     ],
+     "sunkShare": [
+      0.068,
+      0.406,
+      0.526
+     ],
+     "hp": 84.208,
+     "sunk": 8,
+     "hot": 2,
+     "cold": 0,
+     "thin": false
+    },
+    {
+     "lane": -1,
+     "hpShare": [
+      0.073,
+      0.428,
+      0.499
+     ],
+     "sunkShare": [
+      0.068,
+      0.406,
+      0.526
+     ],
+     "hp": 84.208,
+     "sunk": 8,
+     "hot": 2,
+     "cold": 0,
+     "thin": false
+    }
+   ]
+  },
+  "boss": {
+   "reachedMean": [
+    0.5,
+    1.15,
+    1.842
+   ],
+   "reached": [
+    20,
+    20,
+    19
+   ],
+   "tough": [
+    0.542,
+    1.125,
+    2.583
+   ]
+  },
+  "tower": null,
+  "kits": [
+   {
+    "kit": "counter",
+    "weapons": [
+     "aegis",
+     "thermo",
+     "gunships"
+    ],
+    "n": 24,
+    "endWave": 12.792,
+    "won": 0.375,
+    "lost10": 3.833,
+    "lost10Tough": 4.042,
+    "curveTough": [
+     0,
+     0.042,
+     0.208,
+     0,
+     0.333,
+     0.542,
+     0.583,
+     0.417,
+     0.958,
+     0.958
+    ],
+    "boss": [
+     0.7,
+     1.6,
+     2.45
+    ],
+    "bossReached": [
+     20,
+     20,
+     20
+    ]
+   },
+   {
+    "kit": "off-counter",
+    "weapons": [
+     "seeker",
+     "frigate",
+     "droneScreen"
+    ],
+    "n": 24,
+    "endWave": 12.5,
+    "won": 0.375,
+    "lost10": 3.5,
+    "lost10Tough": 4.042,
+    "curveTough": [
+     0,
+     0.042,
+     0.083,
+     0.125,
+     0.292,
+     0.542,
+     0.333,
+     0.5,
+     1.125,
+     1
+    ],
+    "boss": [
+     0.579,
+     1.632,
+     2.611
+    ],
+    "bossReached": [
+     19,
+     19,
+     18
+    ]
+   }
+  ],
+  "fun": {
+   "n": 24,
+   "dice": 3,
+   "ms": 190056,
+   "waves": [
+    {
+     "wave": 1,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.126,
+     "peaks": 0,
+     "releaseS": 0,
+     "hotShare": 0,
+     "calmShare": 0.991,
+     "shape": "flat",
+     "shapes": {
+      "flat": 1
+     },
+     "tapR": 0.45
+    },
+    {
+     "wave": 2,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.361,
+     "peaks": 0.083,
+     "releaseS": 0.208,
+     "hotShare": 0.005,
+     "calmShare": 0.903,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.917,
+      "single": 0.083
+     },
+     "tapR": 0.448
+    },
+    {
+     "wave": 3,
+     "n": 24,
+     "saves": 0.083,
+     "saved": 0.056,
+     "big": 0,
+     "clutch": 0.083,
+     "kinds": {
+      "cover": 0.042,
+      "pickup": 0.042
+     },
+     "none": 0.917,
+     "peak": 0.818,
+     "peaks": 0.542,
+     "releaseS": 0.833,
+     "hotShare": 0.021,
+     "calmShare": 0.791,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.5,
+      "rising": 0.042,
+      "single": 0.458
+     },
+     "tapR": 0.394
+    },
+    {
+     "wave": 4,
+     "n": 24,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.601,
+     "peaks": 0.167,
+     "releaseS": 0.333,
+     "hotShare": 0.005,
+     "calmShare": 0.839,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.833,
+      "single": 0.167
+     },
+     "tapR": 0.399
+    },
+    {
+     "wave": 5,
+     "n": 24,
+     "saves": 0.25,
+     "saved": 0.181,
+     "big": 0,
+     "clutch": 0.083,
+     "kinds": {
+      "pickup": 0.042,
+      "kill": 0.167,
+      "cover": 0.042
+     },
+     "none": 0.917,
+     "peak": 0.793,
+     "peaks": 0.5,
+     "releaseS": 0.917,
+     "hotShare": 0.025,
+     "calmShare": 0.79,
+     "shape": "single",
+     "shapes": {
+      "single": 0.5,
+      "flat": 0.5
+     },
+     "tapR": 0.515
+    },
+    {
+     "wave": 6,
+     "n": 24,
+     "saves": 0.208,
+     "saved": 0.195,
+     "big": 0,
+     "clutch": 0.208,
+     "kinds": {
+      "pickup": 0.125,
+      "kill": 0.042,
+      "nuke": 0.042
+     },
+     "none": 0.833,
+     "peak": 0.847,
+     "peaks": 0.625,
+     "releaseS": 1.5,
+     "hotShare": 0.023,
+     "calmShare": 0.819,
+     "shape": "single",
+     "shapes": {
+      "single": 0.625,
+      "flat": 0.375
+     },
+     "tapR": 0.454
+    },
+    {
+     "wave": 7,
+     "n": 24,
+     "saves": 0.125,
+     "saved": 0.084,
+     "big": 0,
+     "clutch": 0.083,
+     "kinds": {
+      "kill": 0.083,
+      "cover": 0.042
+     },
+     "none": 0.875,
+     "peak": 0.612,
+     "peaks": 0.167,
+     "releaseS": 0.208,
+     "hotShare": 0.003,
+     "calmShare": 0.859,
+     "shape": "flat",
+     "shapes": {
+      "flat": 0.833,
+      "single": 0.167
+     },
+     "tapR": 0.428
+    },
+    {
+     "wave": 8,
+     "n": 24,
+     "saves": 0.167,
+     "saved": 0.139,
+     "big": 0,
+     "clutch": 0.125,
+     "kinds": {
+      "pickup": 0.042,
+      "lastSecond": 0.042,
+      "cover": 0.083
+     },
+     "none": 0.875,
+     "peak": 0.667,
+     "peaks": 0.333,
+     "releaseS": 0.833,
+     "hotShare": 0.011,
+     "calmShare": 0.842,
+     "shape": "flat",
+     "shapes": {
+      "single": 0.333,
+      "flat": 0.667
+     },
+     "tapR": 0.491
+    },
+    {
+     "wave": 9,
+     "n": 24,
+     "saves": 0.083,
+     "saved": 0.07,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {
+      "pickup": 0.042,
+      "kill": 0.042
+     },
+     "none": 0.917,
+     "peak": 0.928,
+     "peaks": 0.583,
+     "releaseS": 0.917,
+     "hotShare": 0.026,
+     "calmShare": 0.799,
+     "shape": "flat",
+     "shapes": {
+      "single": 0.417,
+      "rising": 0.083,
+      "flat": 0.5
+     },
+     "tapR": 0.339
+    },
+    {
+     "wave": 10,
+     "n": 22,
+     "saves": 0,
+     "saved": 0,
+     "big": 0,
+     "clutch": 0,
+     "kinds": {},
+     "none": 1,
+     "peak": 0.82,
+     "peaks": 0.591,
+     "releaseS": 1.205,
+     "hotShare": 0.013,
+     "calmShare": 0.815,
+     "shape": "single",
+     "shapes": {
+      "flat": 0.455,
+      "single": 0.5,
+      "sawtooth": 0.045
+     },
+     "tapR": 0.356
+    },
+    {
+     "wave": 11,
+     "n": 20,
+     "saves": 0.4,
+     "saved": 0.318,
+     "big": 0,
+     "clutch": 0.2,
+     "kinds": {
+      "pickup": 0.3,
+      "kill": 0.1
+     },
+     "none": 0.7,
+     "peak": 1.567,
+     "peaks": 0.85,
+     "releaseS": 4.6,
+     "hotShare": 0.248,
+     "calmShare": 0.47,
+     "shape": "pinned",
+     "shapes": {
+      "flat": 0.15,
+      "pinned": 0.55,
+      "single": 0.3
+     },
+     "tapR": 0.531
+    },
+    {
+     "wave": 12,
+     "n": 20,
+     "saves": 0.95,
+     "saved": 0.702,
+     "big": 0,
+     "clutch": 0.5,
+     "kinds": {
+      "kill": 0.4,
+      "pickup": 0.4,
+      "cover": 0.05,
+      "lastSecond": 0.1
+     },
+     "none": 0.45,
+     "peak": 2.095,
+     "peaks": 1,
+     "releaseS": 5,
+     "hotShare": 0.496,
+     "calmShare": 0.227,
+     "shape": "pinned",
+     "shapes": {
+      "pinned": 0.9,
+      "single": 0.1
+     },
+     "tapR": 0.425
+    },
+    {
+     "wave": 13,
+     "n": 19,
+     "saves": 1,
+     "saved": 0.809,
+     "big": 0,
+     "clutch": 0.684,
+     "kinds": {
+      "cover": 0.211,
+      "kill": 0.579,
+      "pickup": 0.211
+     },
+     "none": 0.368,
+     "peak": 2.633,
+     "peaks": 1.053,
+     "releaseS": 3.816,
+     "hotShare": 0.57,
+     "calmShare": 0.224,
+     "shape": "pinned",
+     "shapes": {
+      "pinned": 1
+     },
+     "tapR": 0.338
+    }
+   ],
+   "verdict": {
+    "flat": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10
+    ],
+    "chaotic": [],
+    "rising": true,
+    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.4; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "verdict": "FLAG"
+   },
+   "placebo": null
+  },
+  "checks": [
+   {
+    "rule": "w-cliff",
+    "name": "No cliffs",
+    "value": "biggest step w9 +0.58; doubles on w9 (0.29→0.88)",
+    "target": "no wave 2–10 more than 2× the one before (before floored at 0.25)",
+    "verdict": "FLAG",
+    "from": "tough"
+   },
+   {
+    "rule": "w-early",
+    "name": "Close calls from wave 3",
+    "value": "fewest w8 1.38 a run (75% of runs have one)",
+    "target": "≥ 1 a run on every wave 3–10",
+    "verdict": "PASS",
+    "from": "tough"
+   },
+   {
+    "rule": "w-budget",
+    "name": "Wave budgets ±15%",
+    "value": "furthest w7 ×0.59 of the no-encounter wave; outside on w5 ×0.83, w6 ×0.69, w7 ×0.59, w8 ×0.66, w9 ×0.65, w10 ×0.68",
+    "target": "every wave 1–10 within ×0.85–×1.15 of the table × scale as planned (encounters off)",
+    "verdict": "FLAG",
+    "from": "tough+baseline"
+   },
+   {
+    "rule": "m-stretches",
+    "name": "A danger and a safe stretch",
+    "value": "lane 1: hot late 50%, cold early 10%",
+    "target": "each lane's coldest stretch < 25% of its ship hull damage (waves 1–9)",
+    "verdict": "PASS",
+    "from": "tough"
+   },
+   {
+    "rule": "g-warning",
+    "name": "Warning time falls 1→10",
+    "value": "w1 8.6 s → w10 5.8 s (slope -0.25 s a wave)",
+    "target": "falls: slope < 0 and wave 10 below wave 1",
+    "verdict": "PASS",
+    "from": "tough"
+   },
+   {
+    "rule": "w-first",
+    "name": "Wave 1: no ship lost",
+    "value": "0.00 a run",
+    "target": "0 (under 0.1 a run)",
+    "verdict": "PASS",
+    "from": "tough"
+   },
+   {
+    "rule": "w-early",
+    "name": "Ships lost waves 1–5",
+    "value": "0.58 a run",
+    "target": "a good player 0–1 (rule w-early)",
+    "verdict": "INFO",
+    "from": "normal"
+   },
+   {
+    "rule": "w-boss",
+    "name": "Boss rounds",
+    "value": "normal (runs that reached it): r1 0.50 (20), r2 1.15 (20), r3 1.84 (19); tough (every run): 0.54, 1.13, 2.58",
+    "target": "about 2 a round on the bot's scale, rising",
+    "verdict": "INFO",
+    "from": "normal"
+   },
+   {
+    "rule": "fun",
+    "name": "Fun: saves a wave (provisional)",
+    "value": "saves a run: waves 1–7 0.1, 8–10 + boss 0.4; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10",
+    "target": "you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small",
+    "verdict": "FLAG",
+    "from": "normal+forks"
+   },
+   {
+    "rule": "m-kits",
+    "name": "Kits",
+    "value": "counter 4.0 lost 1–10, end 12.8; off-counter 4.0 lost 1–10, end 12.5",
+    "target": "the counter kit clearly better; neither trivial",
+    "verdict": "INFO",
+    "from": "kits"
+   }
+  ]
+ }
+}

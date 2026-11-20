@@ -3264,8 +3264,9 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
       { at: 0.4, plus: 2, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 5, ballistic: 4, extras: { cluster: 1 } },
+    replaces: { drones: 5, ballistic: 5, extras: { cluster: 1 } },
   },
   {
     id: 'needle-both-headlands',
@@ -3288,8 +3289,10 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'near' },
       { at: 0.45, plus: 2.5, kind: 'guided', count: 1, from: base(0), aim: 'lead' },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
     ],
-    replaces: { drones: 6, ballistic: 4, guided: 1, extras: { cluster: 2 } },
+    replaces: { drones: 6, ballistic: 5, guided: 1, extras: { cluster: 2 } },
   },
   {
     id: 'needle-way-out',
@@ -3311,9 +3314,10 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'rear' },
       { at: 0.4, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.4, plus: 3, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 5, ballistic: 6, guided: 1, extras: { cluster: 2 } },
+    replaces: { drones: 5, ballistic: 7, guided: 1, extras: { cluster: 2, heavy: 1 } },
   },
   {
     id: 'needle-strafe',
@@ -3335,9 +3339,11 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
       { at: 0.4, plus: 2, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.65, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 8, ballistic: 6, guided: 1, extras: { cluster: 1 } },
+    replaces: { drones: 8, ballistic: 7, guided: 1, extras: { cluster: 2 } },
   },
   {
     id: 'needle-heavy',
@@ -3361,8 +3367,10 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 3, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.45, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.7, kind: 'drone', count: 7, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 5, ballistic: 8, guided: 1, extras: { heavy: 1, mothership: 1, cluster: 3, strafer: 1 } },
+    replaces: { drones: 5, ballistic: 9, guided: 1, extras: { heavy: 1, mothership: 1, cluster: 3, strafer: 1 } },
   },
   {
     id: 'needle-crossfire',
@@ -3382,12 +3390,14 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.45, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
-      { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.45, plus: 3.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.6, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.35, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 8, ballistic: 8, guided: 2, extras: { cluster: 3, heavy: 1, strafer: 1 } },
+    replaces: { drones: 8, ballistic: 9, guided: 2, extras: { cluster: 3, heavy: 1, strafer: 1 } },
   },
   {
     id: 'needle-run',
@@ -3412,8 +3422,11 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 8, ballistic: 9, guided: 7, extras: { heavy: 2, cluster: 3, strafer: 1, bomber: 1 } },
+    replaces: { drones: 8, ballistic: 10, guided: 7, extras: { heavy: 2, cluster: 3, strafer: 1, bomber: 1 } },
   },
 ];
 
@@ -3556,11 +3569,6 @@ export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, Version
  *  the ten. */
 const KESH_CLIMB = [1, 0.9, 1, 1.05, 1.05, 1.08, 1.08, 1.06, 0.93, 0.85];
 const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
-/** The Needle of Bosk (log v34, docs/design/v3-ch2-needle.md): its shared
- *  waves 6-10 are the hardest of chapter 2 for the bot (the headlands'
- *  clusters and shells reach a queue of ships nose to tail), so they send a
- *  tenth less, within ±15% (rule w-budget). */
-const NEEDLE_EASE = [1, 1, 1, 1, 1, 0.92, 0.9, 0.93, 0.9, 0.85];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -3569,7 +3577,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   // Chapter 2.
   island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane; attack helicopters off the island from wave 6.', callouts: false } },
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
-  needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false, scale: NEEDLE_EASE } },
+  needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
