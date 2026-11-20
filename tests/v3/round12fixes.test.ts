@@ -214,7 +214,8 @@ describe('The Strait sends about 10% more fire on waves 5-10, the same in every 
   };
 
   it('waves 5-10 on The Strait, in all three versions: 5-20% more launches than the same wave at rev 2; waves 1-4 and the other maps as they were', () => {
-    expect(MAP_FIRE).toEqual({ strait: { from: 5, to: 10, more: 0.1 } });
+    // Log v32 (round 8): Lee of Marrow's waves 6-10 too (its sturdier radar tower).
+    expect(MAP_FIRE).toEqual({ strait: { from: 5, to: 10, more: 0.1 }, marrow: { from: 6, to: 10, more: 0.1 } });
     const seeds = [1, 2, 3, 4, 5, 6];
     for (const v of ENCOUNTER_VERSIONS)
       for (let w = 1; w <= 10; w++) {
@@ -228,7 +229,8 @@ describe('The Strait sends about 10% more fire on waves 5-10, the same in every 
         expect(waveFire('strait', w)).toBe(w >= 5 ? 0.1 : 0);
         expect(waveFire('strait', w, 2)).toBe(0);
       }
-    for (const map of ['gauntlet', 'harbor', 'kesh', 'marrow'] as const) for (let w = 1; w <= 10; w++) expect(waveFire(map, w), `${map} ${w}`).toBe(0);
+    for (const map of ['gauntlet', 'harbor', 'kesh'] as const) for (let w = 1; w <= 10; w++) expect(waveFire(map, w), `${map} ${w}`).toBe(0);
+    for (let w = 1; w <= 10; w++) expect(waveFire('marrow', w), `marrow ${w}`).toBe(w >= 6 ? 0.1 : 0);
     // Past the tenth wave (the boss rounds) nothing changes.
     expect(waveFire('strait', 11)).toBe(0);
   });
