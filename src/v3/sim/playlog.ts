@@ -201,7 +201,7 @@ import type { EncounterSetup } from '../data/encounters';
  *  32: the player's round 8 (docs/design/v3-ch1-marrow.md "After round
  *      8", v3-ch2-island.md "The debuts"): Lee of Marrow's radar tower
  *      takes 6 (was 4: three missiles or shells, not two; campaign and
- *      lab), and Marrow's waves 6-10 send 10% more (MAP_FIRE, lab); the
+ *      lab), and Marrow's waves 7-10 send 10% more (MAP_FIRE, lab); the
  *      Island's waves 3-5 are the Torpedo Sub's, Armored Drone's and
  *      Scavenger Drone's debut waves, drones only around each (lab;
  *      `replaces.extras` may stand in for a jet or a bomber). A v31 Marrow

@@ -3303,17 +3303,13 @@ export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, Version
  *  the ten. */
 const KESH_CLIMB = [1, 0.9, 1, 1.05, 1.05, 1.08, 1.08, 1.06, 0.93, 0.85];
 const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
-/** The Island (log v32, round 8): waves 3-5 became the new enemies' light
- *  debut waves (drones only), and the bot's win rate sat just under the
- *  chapter's 50-70%; waves 7-10 send 7% less of their own fire. */
-const ISLAND_EASE = [1, 1, 1, 1, 1, 1, 0.93, 0.93, 0.93, 0.93];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
   kesh: { v1: { name: 'Original', idea: 'One encounter a wave, built on the apex of the hook.', callouts: false, scale: KESH_CLIMB } },
   marrow: { v1: { name: 'Original', idea: 'One encounter a wave, built on the radar tower and the stretch it guards.', callouts: false, scale: MARROW_CLIMB } },
   // Chapter 2.
-  island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane.', callouts: false, scale: ISLAND_EASE } },
+  island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane.', callouts: false } },
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it.', callouts: false } },
 };
 
@@ -3349,9 +3345,10 @@ export const MAP_FIRE: Partial<Record<EncounterMap | RebuiltMap, { from: number;
   strait: { from: 5, to: 10, more: 0.1 },
   // Lee of Marrow (log v32, round 8): its radar tower takes three hits now,
   // not two, so it stands (and slows the enemy over the middle) a wave or
-  // two longer; waves 6-10 send 10% more to keep the map about as hard as
-  // it was (docs/design/v3-ch1-marrow.md, "After round 8").
-  marrow: { from: 6, to: 10, more: 0.1 },
+  // two longer; waves 7-10 send 10% more to keep the map about as hard as
+  // it was (docs/design/v3-ch1-marrow.md, "After round 8"). Not wave 6: it
+  // already sends 1.13 times its shared wave (rule w-budget, ±15%).
+  marrow: { from: 7, to: 10, more: 0.1 },
 };
 
 /** How much more fire a map's wave sends in every version (0: none; never
