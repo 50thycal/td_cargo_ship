@@ -226,7 +226,14 @@ import type { EncounterSetup } from '../data/encounters';
  *      round's `fire` may send jets). A v33 log with Overdrive,
  *      or a v33 Island or Behemoth card log, no longer replays to the same
  *      game.
- *  35: the player's 2026-11-20 playtest notes (docs/design/
+ *  35: the Needle of Bosk rebuilt to the map rules (docs/design/
+ *      v3-ch2-needle.md; lab, under the encounter layer): one encounter a
+ *      wave (NEEDLE_R4), small walls of armored drones from wave 4
+ *      (MAP_SIGNATURE.needle, its new `block`), the Shield Wall's rounds
+ *      (MAP_BOSS.needle; a boss round's `fire` may send a cluster). A v34
+ *      Needle card log no longer replays to the same game; the campaign
+ *      plays as it did.
+ *  36: the player's 2026-11-20 playtest notes (docs/design/
  *      v3-playtest-fixes.md): the Shield boost breaks after AB.shield.hits
  *      hits stopped (every missile, drone, shell or boat it stops is one,
  *      whatever its damage); the Attack Helicopter fires whenever it is on
@@ -234,13 +241,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      stays under water and can't be hit (nothing targets it, nor the
  *      Nuke; only its torpedoes can be shot) and fires two (was three to
  *      five; the Wolf Pack's one or two, was two or three); the Scavenger
- *      Drone takes three hits (was one). A v34 log with any of those no
+ *      Drone takes three hits (was one). A v35 log with any of those no
  *      longer replays to the same game. */
-export const LOG_VERSION = 35;
+export const LOG_VERSION = 36;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [35];
+export const LOG_REPLAYS: readonly number[] = [36];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

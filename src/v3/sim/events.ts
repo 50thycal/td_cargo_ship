@@ -555,7 +555,10 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     }
     case 'shield-wall':
       // The rows set out (run plans each one's start so they join up).
-      return steps(1, () => 0, 'block');
+      // Encounters rev 4 (lab only; docs/design/v3-ch2-needle.md): the
+      // Needle of Bosk's rounds rise, a block of their own size and
+      // launches of their own (MAP_BOSS).
+      return [...steps(1, () => 0, 'block'), ...fireSteps(bossRound(g, ev))];
     case 'supply-raid': {
       const E = EV['supply-raid'];
       return [
@@ -838,7 +841,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // rows fly to a muster point and form up there, then the block sets
       // off as one.
       if (s.op === 'row') shieldRow(g, ev, s.k);
-      else armoredBlock(g, ev, EV['shield-wall']);
+      else {
+        const R = bossRound(g, ev);
+        armoredBlock(g, ev, { ...EV['shield-wall'], drones: R?.block ?? EV['shield-wall'].drones, cols: R?.cols ?? EV['shield-wall'].cols });
+      }
       return;
     }
     case 'supply-raid': {

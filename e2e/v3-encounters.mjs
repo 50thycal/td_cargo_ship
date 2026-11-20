@@ -169,7 +169,7 @@ try {
   await page.screenshot({ path: `${OUT_DIR}/harbor-encounter-tactical.png` });
 
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-needle', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, the Island and the Behemoth Run since chapter 2)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-archipelago', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, the Island, the Behemoth Run and the Needle since chapter 2)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');
