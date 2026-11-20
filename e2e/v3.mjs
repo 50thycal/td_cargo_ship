@@ -1055,6 +1055,8 @@ try {
     // are retired (95 cards, eleven pairs). Round 12: two encounter
     // versions of each reference map have cards of their own (101).
     check(hub.rows === 101 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
+    // The UI overhaul: the enemy cards are in the hub's Tools drawer.
+    await tp.click('[data-lab-tools-open]');
     await tp.click('[data-card="diveBomber"]');
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar, [data-lab-done]'), map: g.map.id }; });

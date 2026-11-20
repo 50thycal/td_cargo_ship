@@ -72,6 +72,7 @@ import {
   labPauseHead,
   labHub,
   labLogs,
+  openLabTools,
   labReport,
   labSetupSheet,
   labVerdictSheet,
@@ -2472,6 +2473,13 @@ export class App {
     // The top bar: the Armory, Free Play, Settings (and the note button
     // while playtest notes are on), all one style.
     const bar = el('div', 'v3-menu-bar');
+    // The command room's status line (UI overhaul): the sector on the
+    // screen and how much of the strait is secured.
+    const status = el('div', 'v3-cic-status');
+    status.setAttribute('aria-hidden', 'true');
+    const sector = CHAPTERS.find((c) => c.n === this.menuChapter);
+    status.append(el('i', 'v3-led live'), el('b', '', 'CIC'), el('span', '', `SECTOR ${this.menuChapter} · ${sector?.name ?? ''}`), el('span', 'v3-cic-dim', `${p.cleared.length}/${MAP_ORDER.length} SECURED`));
+    bar.append(status);
     const armory = button('', 'v3-top-btn v3-armory-btn', () => this.showArmory());
     armory.innerHTML = `${chromeSvg('anchor')}<span>Armory</span>`;
     const count = el('b', 'v3-count', String(p.cards));
@@ -2499,17 +2507,13 @@ export class App {
       bar.append(note);
     }
     bar.append(settings);
-    // The artifact build ships one game alone; there is no other page to link to.
-    // A player has no use for the old prototype: developer mode only (and
-    // never in the store build, which has no other page).
-    if (!STORE && !('claude' in window) && this.dev) {
-      const classic = el('a', 'v2-classic', 'Play V2 →');
-      classic.href = './v2.html';
-      bar.prepend(classic);
-    }
+    // The older builds (the classic game, V2) are off the menu: Settings'
+    // Developer card links them, on the developer route only (UI overhaul).
     const title = el('div', 'v3-title');
     title.innerHTML = MARK_SVG;
-    title.append(el('h1', '', 'STRAITWATCH'));
+    const words = el('div', 'v3-title-words');
+    words.append(el('h1', '', 'STRAITWATCH'), el('span', 'v3-title-sub', 'Convoy defence · combat information centre'));
+    title.append(words);
     const maps = el('div', 'v3-menu-maps');
     // The locked-map line shows just above the tabs, under the title, where
     // it covers nothing.
@@ -2659,8 +2663,12 @@ export class App {
     const p = this.labProgress;
     // A test left mid-run: Continue, at the top of the hub.
     const saved = loadRun<RunUI>();
+    // The head's Tools key opens the drawer of everything past the maps.
+    const tools = button('', 'v3-top-btn v3-lab-tools-btn', () => openLabTools(this.overlay));
+    tools.innerHTML = `${chromeSvg('gear', 16)}<span>Tools</span>`;
+    tools.dataset.labToolsOpen = '1';
     this.showOverlay('v3-lab', [
-      this.screenHead('Test Lab', () => this.showMenu(), undefined, roundTitle()),
+      this.screenHead('Test Lab', () => this.showMenu(), tools, roundTitle()),
       ...(saved?.kind === 'lab' ? [this.continueEntry(saved)] : []),
       labHub(p, {
         start: (id) => this.startLab(id),
@@ -2677,7 +2685,7 @@ export class App {
         },
         report: () => this.showLabReport(),
         analytics: () => this.showMapLab(),
-      }),
+      }, [...labLogs(), ...localLogs()]),
     ]);
   }
 
@@ -3194,44 +3202,68 @@ export class App {
     this.showOverlay('v3-loadout', [this.screenHead(m.name, () => this.showMenu(), undefined, `Map ${n} · ${chapter.name}`), body]);
   }
 
-  /** Settings (menus round): two grouped cards side by side on a landscape
-   *  screen, Sound and Playtest, one sentence a row; the developer card
-   *  below them only while developer mode is on. */
+  /** Settings (UI overhaul, docs/design/v3-ui-overhaul.md): Audio and
+   *  Gameplay on the left, Playtest on the right, a build line under them.
+   *  The Developer card (developer mode, watch mode, the sound board, the
+   *  legacy builds) shows only on the developer route (`?dev=1`) or while
+   *  developer mode is on. */
   private showSettings(): void {
     if (STORE) {
       this.showStoreSettings();
       return;
     }
-    const notes = this.switchRow('notes', 'Playtest notes', 'Note a moment mid-run and rate each volley; both go into the game log.', this.notesOn, (on) => {
+    const notes = this.switchRow('notes', 'Playtest notes', 'A Note button in play and on the menu, and a rating for each volley. Both go into the game log.', this.notesOn, (on) => {
       this.notesOn = on;
       setNotesEnabled(on);
       this.root.classList.toggle('notes', on);
     });
-    const dev = this.switchRow('dev', 'Developer mode', 'Short test runs, every map open, a start-wave picker and faster speeds. Dev runs never count.', this.dev, (on) => this.setDev(on));
+    // Two columns that fit a phone held sideways: Audio and Playtest on the
+    // left, Gameplay on the right.
+    const play = this.setCard('Playtest', [notes]);
+    play.append(el('p', 'v3-set-foot', `Build ${__BUILD__} · log v${LOG_VERSION} · ${VERSION}`));
     const left = el('div', 'v3-set-col');
-    left.append(this.setCard('Sound', this.soundRows()), this.setCard('Game', [this.calloutRow()]));
-    // Show tips again in the right-hand card: the left column is full on a
-    // phone (the App Store build has it under Game).
-    const cards: HTMLElement[] = [left, this.setCard('Playtest', [notes, dev, this.tipsRow()])];
-    if (this.dev) {
-      const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
-      board.dataset.soundBoard = '1';
-      const rows: HTMLElement[] = [
-        this.switchRow(
-          'watch',
-          'Watch mode',
-          'A bot fitted to your logs plays: your tap rhythm, aim and card picks. Watch at up to 10×; touch the field to take over. Every watched run is logged.',
-          this.devSettings.watch,
-          (on) => {
-            this.devSettings.watch = on;
-            saveDevSettings(this.devSettings);
-          },
-        ),
-      ];
-      if (this.devSettings.watch) rows.push(this.personaRow());
-      rows.push(board);
+    left.append(this.setCard('Audio', this.soundRows()), play);
+    const right = el('div', 'v3-set-col');
+    right.append(this.setCard('Gameplay', [this.calloutRow(), this.tipsRow()]));
+    const cards: HTMLElement[] = [left, right];
+    const devRoute = new URLSearchParams(location.search).has('dev');
+    if (this.dev || devRoute) {
+      const rows: HTMLElement[] = [this.switchRow('dev', 'Developer mode', 'Short test runs, every map open, a start-wave picker and faster speeds. Dev runs never count.', this.dev, (on) => this.setDev(on))];
+      if (this.dev) {
+        rows.push(
+          this.switchRow(
+            'watch',
+            'Watch mode',
+            'A bot fitted to your logs plays: your tap rhythm, aim and card picks. Watch at up to 10×; touch the field to take over. Every watched run is logged.',
+            this.devSettings.watch,
+            (on) => {
+              this.devSettings.watch = on;
+              saveDevSettings(this.devSettings);
+            },
+          ),
+        );
+        if (this.devSettings.watch) rows.push(this.personaRow());
+        const tools = el('div', 'v3-set-dev-tools');
+        const board = button('♪ Sound board', 'v2-btn v3-board-btn', () => void this.showSoundBoard());
+        board.dataset.soundBoard = '1';
+        tools.append(board);
+        // The older builds (the classic game and V2), kept for reference:
+        // the artifact build has no other page to link to.
+        if (!('claude' in window)) {
+          for (const [text, href] of [
+            ['Classic ↗', './index.html?legacy=1'],
+            ['V2 ↗', './v2.html'],
+          ]) {
+            const a = el('a', 'v2-btn v3-set-btn v3-set-link', text);
+            a.href = href;
+            a.dataset.legacy = '1';
+            tools.append(a);
+          }
+        }
+        rows.push(tools);
+      }
       const card = this.setCard('Developer', rows);
-      card.classList.add('wide');
+      card.classList.add('wide', 'v3-set-dev');
       cards.push(card);
     }
     const grid = el('div', 'v3-set-grid');
@@ -3291,8 +3323,8 @@ export class App {
     aboutCard.append(el('p', 'v3-set-foot', `Straitwatch · Version ${VERSION}`));
     // Two columns: Sound and Game on the left, About on the right.
     const left = el('div', 'v3-set-col');
-    left.append(this.setCard('Sound', sound));
-    left.append(this.setCard('Game', game));
+    left.append(this.setCard('Audio', sound));
+    left.append(this.setCard('Gameplay', game));
     const grid = el('div', 'v3-set-grid');
     grid.append(left, aboutCard);
     this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
