@@ -1404,7 +1404,18 @@ try {
     await lp.waitForSelector('.playing');
     await lp.waitForTimeout(400);
     const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run }));
-    check(/BOSS\s*Round 1 of 3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS Round 1 of 3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS 1/3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    // Round 12 (the player: "just say like 1/3 ... the text wraps"): the
+    // count sits on one line.
+    const countLines = await lp.evaluate(() => {
+      const span = document.querySelector('.v3-hud-wave');
+      const text = [...(span?.childNodes ?? [])].find((n) => n.nodeType === 3);
+      if (!text) return -1;
+      const r = document.createRange();
+      r.selectNodeContents(text);
+      return new Set([...r.getClientRects()].map((q) => Math.round(q.top))).size;
+    });
+    check(countLines === 1, `the boss count "1/3" sits on one line (${countLines} lines)`);
     // Log v30 (the player: "have it say 'boss round', then 'live reset',
     // then what it is ... then 'round one', so each text is like a new card
     // pop up"): the intro is a sequence of cards through the calm, each
@@ -1425,9 +1436,9 @@ try {
     }
     const seq = cards.map((c) => `${c.n} ${c.key}: ${c.eyebrow ? `${c.eyebrow} / ` : ''}${c.name}${c.sub ? ` / ${c.sub}` : ''} @${c.t}s`).join(' | ');
     check(cards.map((c) => c.key).join() === 'boss,restore,name,round', `round 11 (log v30): four cards pop up in turn, boss round, the convoy, the boss, the round (${seq})`);
-    check(/^Boss round$/i.test(cards[0]?.name ?? '') && /convoy restored/i.test(cards[1]?.name ?? '') && /\d ships? can still be lost/i.test(cards[1]?.sub ?? '') && cards[2]?.name === 'Afterburner Rush' && /^Round 1 of 3$/.test(cards[3]?.name ?? '') && /Survive the next 3 rounds/.test(cards[3]?.sub ?? ''), `the cards read BOSS ROUND, Convoy restored (the ships that can still be lost), the boss's name, Round 1 of 3 (${seq})`);
+    check(/^Boss round$/i.test(cards[0]?.name ?? '') && /convoy restored/i.test(cards[1]?.name ?? '') && /\d ships? can still be lost/i.test(cards[1]?.sub ?? '') && cards[2]?.name === 'Afterburner Rush' && /^Boss 1\/3$/.test(cards[3]?.name ?? '') && /Survive the next 3 rounds/.test(cards[3]?.sub ?? ''), `the cards read BOSS ROUND, Convoy restored (the ships that can still be lost), the boss's name, Boss 1/3 (${seq})`);
     check(cards.every((c) => c.pop && c.launched === 0), `each card pops in, and nothing flies while they read (${seq})`);
-    // Rounds 2 and 3: one short card each, Round 2 of 3 and Round 3 of 3.
+    // Rounds 2 and 3: one short card each, Boss 2/3 and Boss 3/3 (round 12).
     const later = new Set();
     for (let i = 0; i < 400; i++) {
       const ph = await lp.evaluate(() => {
@@ -1443,7 +1454,7 @@ try {
       if (ph.phase !== 'wave' && ph.phase !== 'draft') break;
       await lp.waitForTimeout(100);
     }
-    check(later.has('Afterburner Rush / Round 2 of 3') && later.has('Afterburner Rush / Round 3 of 3'), `rounds 2 and 3 open on a short card each (${[...later].join(' | ')})`);
+    check(later.has('Afterburner Rush / Boss 2/3') && later.has('Afterburner Rush / Boss 3/3'), `rounds 2 and 3 open on a short card each (${[...later].join(' | ')})`);
     await lp.waitForSelector('[data-screen="result"]');
     const resEv = await lp.evaluate(() => { const e = document.querySelector('[data-result-event]'); return `${e?.dataset.resultEvent} | ${e?.dataset.resultEnding}`; });
     check(resEv === 'rush:clean rush:clean rush:clean | clean', `the result screen lists the three runs and the ending as a whole (${resEv})`);

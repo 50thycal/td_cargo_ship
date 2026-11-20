@@ -61,7 +61,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, bossShort, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -1827,7 +1827,7 @@ export class App {
           } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '');
           break;
         case 'specialEnd':
-          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '');
+          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossShort(ev.run!, ev.runs) : '');
           break;
         case 'encounter': {
           // Round 12: an encounter's call-out as its warning shows (v2, Set
@@ -2191,7 +2191,7 @@ export class App {
   }
 
   /** The counter's two lines for the game in play (data/events.ts
-   *  waveCountParts): ["WAVE", "3 of 10"], ["BOSS", "Round 1 of 3"]. */
+   *  waveCountParts): ["WAVE", "3 of 10"], ["BOSS", "1/3"]. */
   private waveParts(g: Game): [string, string] {
     const boss = g.event && !g.event.bonus && g.event.runs > 1 ? { run: g.event.run, runs: g.event.runs } : null;
     // A Test Lab event card's single run counts as itself ("WAVE 11").
@@ -2200,7 +2200,7 @@ export class App {
     return [head, head === 'BONUS' ? 'WAVE' : count];
   }
 
-  /** The same in words: "Wave 3 of 10", "Boss · Round 1 of 3". */
+  /** The same in words: "Wave 3 of 10", "Boss 1/3". */
   private waveText(g: Game): string {
     const boss = g.event && !g.event.bonus && g.event.runs > 1 ? { run: g.event.run, runs: g.event.runs } : null;
     const lone = !!g.event && !g.event.bonus && !boss;
@@ -2220,7 +2220,8 @@ export class App {
     // A bonus wave is not one of the map's: the counter says so. A run of
     // the map's ending is a boss round (round 11): "BOSS 1/3".
     // The 2026-11-20 playtest: "Wave 3 of 10" on every map, and a boss
-    // round as one ("Round 1 of 3"), never "11/13".
+    // round as one ("BOSS 1/3", round 12: was "Round 1 of 3", which
+    // wrapped), never "11/13".
     const [waveHead, waveLabel] = this.waveParts(g);
     const scrap = this.earnsScrap() ? this.runScrap(g).total : null;
     const html =
