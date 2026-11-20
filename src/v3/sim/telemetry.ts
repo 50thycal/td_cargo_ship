@@ -247,7 +247,7 @@ export type TelEvent = Base &
         k: 'in';
         /** `gesture`: a held weapon's shot (the Grapnel's hook, the Laser
          *  Cutter's swipe, a charged Lance): the game counts it as a tap. */
-        what: 'press' | 'move' | 'release' | 'focus' | 'bring' | 'pick' | 'endless' | 'gesture';
+        what: 'press' | 'move' | 'release' | 'focus' | 'bring' | 'pick' | 'reroll' | 'endless' | 'gesture';
         x?: number;
         y?: number;
         r?: number;

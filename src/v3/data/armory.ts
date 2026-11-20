@@ -42,7 +42,11 @@ export type ArmoryId =
   | 'repair'
   | 'longload'
   | 'drops'
-  | 'stockpile';
+  | 'stockpile'
+  | 'boilers'
+  | 'lifeboats'
+  | 'quartermaster'
+  | 'salvage';
 
 export interface BayDef {
   id: BayId;
@@ -127,6 +131,33 @@ const DROP_PITY = [WEAPON.pity, 26, 24, 22, 21, 20];
  *  takes a big multiplier to matter. */
 const POWER_SHARE = [1, 1.45, 1.9, 2.35, 2.8, 3.25];
 const POWER_TIME = [1, 1.3, 1.6, 1.9, 2.2, 2.5];
+
+// The four new upgrades (2026-11-20, the player on the Armory review page:
+// "Do life boat, salvage crew, boiler and quarter master"; numbers from
+// docs/design/v3-armory-overhaul.md, "New upgrades", measured in
+// tools/v3/armory-ideas/new-upgrades.md).
+/** Boilers: the convoy's sailing speed (×). Only how fast a hull sails:
+ *  every clock on a map (Saltgate's locks, a radar's window, the spawn
+ *  gaps) runs as it did. */
+const CONVOY_SPEED = [1, 1.04, 1.08, 1.12, 1.16, 1.2];
+/** Boilers level 5: a Full Steam pickup (the power-up or the boost) lasts
+ *  this many times as long. */
+const STEAM_TIME = [1, 1, 1, 1, 1, 2];
+/** Lifeboats: how many waves a run the first ship sunk counts as half a loss
+ *  (one a wave at most; LIFEBOATS_ALL: every wave). Every boss round is a
+ *  wave of its own; a bonus wave shares the number, and the boat, of the
+ *  wave it follows. */
+export const LIFEBOATS_ALL = 99;
+const LIFEBOATS = [0, 2, 4, 6, 8, LIFEBOATS_ALL];
+/** Lifeboats: the share of a loss a ship saved by a boat still counts. */
+export const LIFEBOAT_LOSS = 0.5;
+/** Quartermaster: re-rolls of the weapon draft a run, and the cards a draft
+ *  deals. Five levels over three re-rolls and the fourth card leave one
+ *  step without a new number: level 3 (2 re-rolls, as level 2). */
+const REROLLS = [0, 1, 2, 2, 3, 3];
+const DRAFT_CARDS = [3, 3, 3, 3, 3, 4];
+/** Salvage Crews: Scrap a run earns, × (1 + this). An economy card only. */
+const SALVAGE = [0, 0.1, 0.2, 0.3, 0.4, 0.5];
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
@@ -224,10 +255,42 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     max: ARMORY_MAX,
     show: (l) => `${pct(POWER_SHARE[l])} drops, ${pct(POWER_TIME[l])} time`,
   },
+  boilers: {
+    id: 'boilers',
+    bay: 'hull',
+    name: 'Boilers',
+    blurb: 'The convoy sails 4% faster a level; level 5 doubles Full Steam',
+    max: ARMORY_MAX,
+    show: (l) => `${pct(CONVOY_SPEED[l])} speed${STEAM_TIME[l] > 1 ? `, Full Steam ×${STEAM_TIME[l]}` : ''}`,
+  },
+  lifeboats: {
+    id: 'lifeboats',
+    bay: 'hull',
+    name: 'Lifeboats',
+    blurb: 'The first ship sunk in a wave counts as half a loss',
+    max: ARMORY_MAX,
+    show: (l) => (!l ? 'none' : LIFEBOATS[l] >= LIFEBOATS_ALL ? 'every wave' : `${LIFEBOATS[l]} waves a run`),
+  },
+  quartermaster: {
+    id: 'quartermaster',
+    bay: 'supply',
+    name: 'Quartermaster',
+    blurb: 'Re-roll the weapon draft; level 5 deals 4 cards',
+    max: ARMORY_MAX,
+    show: (l) => (!l ? 'no re-rolls' : `${REROLLS[l]} re-roll${REROLLS[l] === 1 ? '' : 's'} a run${DRAFT_CARDS[l] > 3 ? `, ${DRAFT_CARDS[l]} cards` : ''}`),
+  },
+  salvage: {
+    id: 'salvage',
+    bay: 'supply',
+    name: 'Salvage Crews',
+    blurb: '10% more Scrap from a run, a level',
+    max: ARMORY_MAX,
+    show: (l) => `${pct(1 + SALVAGE[l])} scrap`,
+  },
 };
 
-/** In bay order: Gun (4), Hull (3), Supply (4). */
-export const ARMORY_ORDER: ArmoryId[] = ['reload', 'warhead', 'motor', 'fuse', 'plating', 'pointdef', 'repair', 'magazine', 'longload', 'drops', 'stockpile'];
+/** In bay order: Gun (4), Hull (5), Supply (6). */
+export const ARMORY_ORDER: ArmoryId[] = ['reload', 'warhead', 'motor', 'fuse', 'plating', 'pointdef', 'repair', 'boilers', 'lifeboats', 'magazine', 'longload', 'drops', 'stockpile', 'quartermaster', 'salvage'];
 
 /** The upgrades in one bay, in order. */
 export function bayItems(bay: BayId): ArmoryId[] {
@@ -270,6 +333,17 @@ export interface ArmoryStats {
   /** Stockpile: power-up drop chance and timed power-up length (×). */
   powerShare: number;
   powerTime: number;
+  /** Boilers: the convoy's sailing speed (×), and a Full Steam pickup's
+   *  length (×). */
+  convoySpeed: number;
+  steamTime: number;
+  /** Lifeboats: waves a run whose first ship sunk counts as half a loss. */
+  lifeboats: number;
+  /** Quartermaster: draft re-rolls a run, and the cards a draft deals. */
+  rerolls: number;
+  draftCards: number;
+  /** Salvage Crews: Scrap × (1 + this). Read by the result, not the sim. */
+  salvage: number;
 }
 
 export function armoryLevel(a: ArmoryLevels, id: ArmoryId): number {
@@ -298,6 +372,12 @@ export function armoryStats(a: ArmoryLevels = {}): ArmoryStats {
     dropPity: DROP_PITY[lv('drops')],
     powerShare: POWER_SHARE[lv('stockpile')],
     powerTime: POWER_TIME[lv('stockpile')],
+    convoySpeed: CONVOY_SPEED[lv('boilers')],
+    steamTime: STEAM_TIME[lv('boilers')],
+    lifeboats: LIFEBOATS[lv('lifeboats')],
+    rerolls: REROLLS[lv('quartermaster')],
+    draftCards: DRAFT_CARDS[lv('quartermaster')],
+    salvage: SALVAGE[lv('salvage')],
   };
 }
 
@@ -386,10 +466,15 @@ export interface ScrapEarned {
   clear: number;
   firstClear: number;
   duplicates: number;
+  /** Salvage Crews: its share on top of the run's own Scrap (waves, boss
+   *  rounds, the clear and a first clear; not a repeat card's, which is
+   *  the card's, not the run's). */
+  salvage: number;
   total: number;
 }
 
-export function scrapFor(t: { waves: number; boss: number }, cleared: boolean, firstClear: boolean, duplicates = 0): ScrapEarned {
+/** `salvageLevel`: the Salvage Crews level the run took (0: none). */
+export function scrapFor(t: { waves: number; boss: number }, cleared: boolean, firstClear: boolean, duplicates = 0, salvageLevel = 0): ScrapEarned {
   const e = {
     waves: t.waves * SCRAP.wave,
     boss: t.boss * SCRAP.boss,
@@ -397,7 +482,9 @@ export function scrapFor(t: { waves: number; boss: number }, cleared: boolean, f
     firstClear: cleared && firstClear ? SCRAP.firstClear : 0,
     duplicates: duplicates * SCRAP.duplicate,
   };
-  return { ...e, total: e.waves + e.boss + e.clear + e.firstClear + e.duplicates };
+  const share = SALVAGE[Math.max(0, Math.min(ARMORY_MAX, Math.floor(salvageLevel)))] ?? 0;
+  const salvage = Math.round((e.waves + e.boss + e.clear + e.firstClear) * share);
+  return { ...e, salvage, total: e.waves + e.boss + e.clear + e.firstClear + e.duplicates + salvage };
 }
 
 /** Spend `bank` Scrap on levels, a card at a time in `order` (each one as

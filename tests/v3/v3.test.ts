@@ -110,11 +110,11 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(s.glance).toBe(0);
   });
 
-  it('three bays (the overhaul): Gun 4, Hull 3, Supply 4, Deep Magazine in Supply', () => {
+  it('three bays (the overhaul, and the four new upgrades): Gun 4, Hull 5, Supply 6, Deep Magazine in Supply', () => {
     expect(BAY_ORDER).toEqual(['gun', 'hull', 'supply']);
     expect(GUN).toEqual(['reload', 'warhead', 'motor', 'fuse']);
-    expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair']);
-    expect(bayItems('supply')).toEqual(['magazine', 'longload', 'drops', 'stockpile']);
+    expect(bayItems('hull')).toEqual(['plating', 'pointdef', 'repair', 'boilers', 'lifeboats']);
+    expect(bayItems('supply')).toEqual(['magazine', 'longload', 'drops', 'stockpile', 'quartermaster', 'salvage']);
     expect(BAYS.supply.name).toBe('Supply');
     expect(new Set(BAY_ORDER.map((b) => BAYS[b].color)).size).toBe(3);
   });
@@ -124,6 +124,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     const field = {
       reload: 'reload', warhead: 'blast', motor: 'interceptorSpeed', magazine: 'rack', fuse: 'contact',
       plating: 'glance', pointdef: 'pdRange', repair: 'repairEvery', longload: 'weaponTime', drops: 'dropShare', stockpile: 'powerShare',
+      boilers: 'convoySpeed', lifeboats: 'lifeboats', quartermaster: 'rerolls', salvage: 'salvage',
     } as const;
     const fields = Object.values(field);
     for (const id of ARMORY_ORDER) {
@@ -136,7 +137,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
         else expect(v).toBeGreaterThanOrEqual(prev);
         prev = v;
         // Deck Guns also set their gap, Long Loads the rack refill.
-        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill' };
+        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill', boilers: 'steamTime', quartermaster: 'draftCards' };
         for (const f of fields) if (f !== field[id] && also[id] !== f) expect(s[f]).toBe(base[f]);
       }
     }

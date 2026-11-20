@@ -61,11 +61,12 @@ import {
   abilityName,
   canSwapIn,
   canTake,
+  loadout,
   type AbilityId,
   type CardId,
   type Levels,
 } from '../data/abilities';
-import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
+import { LIFEBOAT_LOSS, armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
@@ -337,7 +338,7 @@ export type GameEvent =
   | { kind: 'wave'; wave: number }
   | { kind: 'debut'; threat: ThreatKind }
   | { kind: 'vector'; vector: RaiderKind }
-  | { kind: 'shipLost'; lost: number }
+  | { kind: 'shipLost'; lost: number; boat?: boolean }
   | { kind: 'carrierHit'; hp: number }
   /** A tough threat (3+ hits) went down: the UI gives it a punch. */
   | { kind: 'bigKill'; threat?: ThreatKind; label?: string; x: number; y: number }
@@ -381,6 +382,9 @@ export interface WaveRecord {
   kills: Record<ThreatKind, number>;
   sunkBy: Record<ThreatKind, number>;
   taps: TapCounts;
+  /** Lifeboats: boats used so far this run (absent: none), each a ship
+   *  sunk that counted as half a loss. */
+  boats?: number;
 }
 
 export type TapCounts = Record<TapResult, number>;
@@ -829,6 +833,8 @@ export interface Game {
   /** The run's numbers from the Armory: the gun, the hulls, the drops. */
   stats: ArmoryStats;
   offer: CardId[];
+  /** Quartermaster (Armory): draft re-rolls left this run. */
+  rerolls: number;
   score: number;
   delivered: number;
   lost: number;
@@ -901,6 +907,12 @@ export interface Game {
    *  ending): they stay in `lost`, but no longer count against the run's
    *  limit. */
   lossBase: number;
+  /** Lifeboats (Armory): the share of a loss forgiven since `lossBase`
+   *  (half a ship for each boat; a VIP's half of its three), the boats used
+   *  this run, and the wave the last one was used in (one a wave). */
+  lossCredit: number;
+  boatsUsed: number;
+  boatWave: number;
   /** The Map & Convoy Lab's telemetry (sim/telemetry.ts): null unless a
    *  run asked for it. It only watches: nothing in the sim reads it. */
   tel: Telemetry | null;
@@ -1037,6 +1049,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     uses: {},
     stats: s,
     offer: [],
+    rerolls: s.rerolls,
     score: 0,
     delivered: 0,
     lost: 0,
@@ -1074,6 +1087,9 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     eventLog: [],
     bonusDone: [],
     lossBase: 0,
+    lossCredit: 0,
+    boatsUsed: 0,
+    boatWave: 0,
     tel: null,
     convoy: null,
     enc: null,
@@ -2211,6 +2227,35 @@ export function continueEndless(g: Game): void {
 const OWNED_DRAW = 0.5;
 
 function openDraft(g: Game): void {
+  dealDraft(g, []);
+  g.phase = 'draft';
+}
+
+/** Quartermaster (Armory, Supply bay): deal the draft again, once per
+ *  re-roll the run has left. The new hand is dealt from the draft's own
+ *  dice (so a log replays it: the 'x' command), from the weapons the old
+ *  hand did not show when there are enough of them. */
+export function rerollDraft(g: Game): boolean {
+  if (g.phase !== 'draft' || g.rerolls <= 0) return false;
+  if (g.tel) g.tel.input(g, 'reroll');
+  g.rerolls -= 1;
+  dealDraft(g, g.offer);
+  return true;
+}
+
+/** Is a re-roll worth it for a player whose favourite weapons are
+ *  `preferred` (the bots' rule)? Yes when the hand has nothing they would
+ *  want: no weapon they hold to level up, and no favourite to take in a
+ *  free slot. */
+export function rerollWorth(g: Game, preferred: readonly AbilityId[]): boolean {
+  if (g.phase !== 'draft' || g.rerolls <= 0) return false;
+  const room = loadout(g.levels).length < MAX_SLOTS;
+  return !g.offer.some((id) => id !== 'resupply' && canTake(g.levels, id) && ((g.levels[id] ?? 0) > 0 || (room && preferred.includes(id))));
+}
+
+/** The draft's hand: `size` cards (3; Quartermaster 5: 4), avoiding the
+ *  cards in `avoid` (a re-roll's old hand) when enough others are open. */
+function dealDraft(g: Game, avoid: readonly CardId[]): void {
   // Three random weapons from everything not yet evolved. With a full
   // loadout, a new one can still be swapped in for one you hold; if nothing
   // can be taken without a swap, Resupply is added so keeping your build is
@@ -2218,7 +2263,10 @@ function openDraft(g: Game): void {
   // The roster (data/roster.ts) says which weapons are live and from which
   // chapter; a held one (Free Play can hand over a prototype) can level up.
   const pool = draftPool(chapterOf(g.map.id));
-  const open = ABILITY_ORDER.filter((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && (g.levels[id] ?? 0) < ABILITY_MAX);
+  const size = g.stats.draftCards;
+  const all = ABILITY_ORDER.filter((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && (g.levels[id] ?? 0) < ABILITY_MAX);
+  const fresh = all.filter((id) => !avoid.includes(id));
+  const open = avoid.length && fresh.length >= size ? fresh : all;
   const rng = g.rng.draft;
   const mine = rng.shuffle(open.filter((id) => (g.levels[id] ?? 0) > 0));
   const other = rng.shuffle(open.filter((id) => !(g.levels[id] ?? 0)));
@@ -2230,7 +2278,7 @@ function openDraft(g: Game): void {
     if (k > 0) other.unshift(...other.splice(k, 1));
   }
   g.offer = [];
-  while (g.offer.length < 3 && (mine.length || other.length)) {
+  while (g.offer.length < size && (mine.length || other.length)) {
     const fromMine = mine.length && (!other.length || rng.chance(OWNED_DRAW));
     g.offer.push((fromMine ? mine : other).shift()!);
   }
@@ -2246,10 +2294,9 @@ function openDraft(g: Game): void {
   // in.
   const tested = g.lab?.weapon;
   if (tested && (canTake(g.levels, tested) || canSwapIn(g.levels, tested))) {
-    g.offer = [tested, ...g.offer.filter((id) => id !== tested)].slice(0, 3);
+    g.offer = [tested, ...g.offer.filter((id) => id !== tested)].slice(0, size);
   }
   if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
-  g.phase = 'draft';
 }
 
 // ---------------------------------------------------------------------------
@@ -4491,7 +4538,8 @@ export function warping(g: Game): boolean {
 function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number): void {
   const k = level - 1;
   // Dual Wield and (Test Lab round 8) Overdrive last longer from level 2.
-  const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : id === 'overdrive' ? AB.overdrive.time[k] : 1);
+  // Boilers 5 (Armory): Full Steam lasts twice as long.
+  const t = g.stats.weaponTime * (id === 'dualWield' ? AB.dualWield.time[k] : id === 'overdrive' ? AB.overdrive.time[k] : id === 'fullSteam' ? g.stats.steamTime : 1);
   // Dual Wield again while it runs (Test Lab round 4: "if you pick up another
   // dual wield it should reset all your current weapons ... back to the full
   // duration"): the boost's clock starts over, and both hands with it.
@@ -4889,7 +4937,7 @@ function stepSim(g: Game, dt: number): void {
 /** Ships sunk that count against the run's limit (all of them, unless the
  *  convoy was restored before the ending: then those since). */
 export function shipsSunk(g: Game): number {
-  return g.lost - g.lossBase;
+  return g.lost - g.lossBase - g.lossCredit;
 }
 
 /** V2 round 13 ("the next wave starts fresh"): a cleared wave takes
@@ -4950,6 +4998,7 @@ function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
     kills: { ...g.kills },
     sunkBy: { ...g.sunkBy },
     taps: { ...g.taps },
+    ...(g.boatsUsed ? { boats: g.boatsUsed } : {}),
   });
 }
 
@@ -5203,7 +5252,8 @@ function steamMult(g: Game): number {
 }
 
 export function shipSpeed(g: Game): number {
-  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g);
+  // Boilers (Armory): sailing only; no map clock reads this.
+  return SHIP.speed * FORMATIONS[g.formation].speed * steamMult(g) * g.stats.convoySpeed;
 }
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
@@ -5249,11 +5299,23 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
     return;
   }
   g.ships = g.ships.filter((o) => o !== s);
-  g.lost += s.vip ? VIP.loss : 1;
+  const loss = s.vip ? VIP.loss : 1;
+  g.lost += loss;
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
   cue(g, 'ship.sunk', s.x, s.y);
-  g.events.push({ kind: 'shipLost', lost: g.lost });
+  // Lifeboats (Armory, Hull bay): the first ship sunk in a wave counts as
+  // half a loss, for as many waves a run as the level has boats. The ship
+  // is still sunk (it is in `lost` and the wave's record); only the run's
+  // limit (shipsSunk) counts half of it.
+  const boat = g.boatsUsed < g.stats.lifeboats && g.boatWave !== g.wave;
+  if (boat) {
+    g.boatsUsed += 1;
+    g.boatWave = g.wave;
+    g.lossCredit += loss * (1 - LIFEBOAT_LOSS);
+    addFx(g, 'text', s.x, s.y - 26, { life: 1.4, text: 'LIFEBOATS · ½ LOSS' });
+  }
+  g.events.push({ kind: 'shipLost', lost: g.lost, ...(boat ? { boat: true } : {}) });
 }
 
 /** Armor Plating (Armory, Hull bay): a hit on a hull may glance off. */
@@ -7022,7 +7084,7 @@ function collect(g: Game, p: Pickup): void {
       g.shieldT = PICKUPS.shieldTime * g.stats.powerTime;
       break;
     case 'steam':
-      g.steamT = PICKUPS.steamTime * g.stats.powerTime;
+      g.steamT = PICKUPS.steamTime * g.stats.powerTime * g.stats.steamTime;
       break;
     case 'starshell':
       g.flareT = PICKUPS.starshellTime * g.stats.powerTime;
