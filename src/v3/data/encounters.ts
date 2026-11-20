@@ -155,7 +155,9 @@ export interface Encounter {
    *  short, "Both shores at once". */
   callout: string;
   /** The decision it asks for, what answers it, and what would show it
-   *  worked (for the designer; never shown in the game). */
+   *  worked (for the designer: the Test Lab's pause screen shows the
+   *  decision and the test, never the answer; round 8, the player: "they
+   *  should just figure that out alone through play testing"). */
   decision: string;
   counters: string;
   succeeds: string;
@@ -169,8 +171,9 @@ export interface Encounter {
   pairs?: PairBeat[];
   /** Taken out of the wave's own launches, so the wave is no bigger.
    *  `extras` (chapter 2, rev 4): of the map's own extra kinds (data/maps.ts
-   *  `extras`: supersonic, heavy, cluster...), each taken only if the wave
-   *  has one. */
+   *  `extras`: supersonic, heavy, cluster...) or its aircraft (a strafer, a
+   *  bomber: log v32, the Island's debut waves), each taken only if the
+   *  wave has one. */
   replaces: { drones?: number; ballistic?: number; guided?: number; extras?: Partial<Record<ThreatKind, number>> };
   /** The encounter revision it came in (absent: 1, or 2 for v2 and v3,
    *  their first). A run plays only the encounters of its own rev or
@@ -2677,8 +2680,10 @@ const MARROW_R4: Omit<Encounter, 'version' | 'rev'>[] = [
 // the north-lane ship when one is out). No mechanic of its own: the island
 // is a shape (rule m-mechanic). Chapter 2's four new enemies arrive here,
 // one a wave from wave 2 (the wave planner's rule: docs/design/
-// v3-map-data-checks.md); wave 2 gives up its shells so the Attack
-// Helicopter's first wave is it and drones.
+// v3-map-data-checks.md), and each gets a debut wave of its own (rule
+// m-enemy; log v32, the player's round 8): waves 2-5 send nothing but
+// drones around the new enemy, so wave 2 gives up its shells, and waves 3-5
+// their shells, missiles and aircraft too.
 const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   {
     id: 'island-point-blank',
@@ -2721,49 +2726,58 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     ],
     replaces: { drones: 8, ballistic: 2 },
   },
+  // Waves 3-5 (log v32, the player's round 8: "each new enemy should have
+  // its own debut"): each is a new enemy's debut wave, the Torpedo Sub's,
+  // the Armored Drone's and the Scavenger Drone's in turn (the wave
+  // planner's order, as wave 2 is the Attack Helicopter's). Rule m-enemy:
+  // alone or with drones only. So each stands in for every shell and
+  // missile the wave would send (the subs' and trucks' too) and its jet
+  // and bomber (`replaces.extras`), and sends swarms in their place: the
+  // new enemy is the one new thing on the water. The island's shells and
+  // the periscopes between the lanes now come first on wave 6.
   {
-    id: 'island-shells',
+    id: 'island-quiet-water',
     map: 'island',
     waves: [3],
     role: 'teach',
-    name: 'Shells off the island',
-    callout: 'A shell at close range',
-    premise: 'The island\'s east silo lobs a shell at the ship passing it, and its west silo sends a swarm right behind it.',
-    decision: 'The first stakes: the shell lands quickly, and the swarm is already on its way. Shell first, or the swarm?',
-    counters: 'A tap on the shell as it climbs, then the swarm before it crosses the water.',
-    succeeds: 'A close call alongside the island in most runs; a good player loses under half a ship.',
+    name: 'Swarms on both sides',
+    callout: 'Swarms off the island',
+    premise: 'The island\'s west silo sends a swarm at the ships halfway along, and its east silo another at the ship beside it; nothing else is fired from the water or the far shore this wave.',
+    decision: 'The first stakes: two swarms from point-blank range a breath apart, with something new on the water.',
+    counters: 'The near swarm first, then the far one before it crosses.',
+    succeeds: 'Both swarms are shot at beside the island in most runs; under half a ship lost.',
     notes: {
-      sites: 'The east silo on the island for the shells, the west silo on the island for the swarm.',
-      target: 'The ship nearest each silo: alongside the island (the middle third).',
-      usesMap: 'Both of the island\'s silos at once, at the shortest warning on the map, onto the danger stretch.',
+      sites: 'The west silo on the island (540, 362), then the east silo on the island (1060, 362).',
+      target: 'The west swarm at the ship halfway along its lane (the middle third), the east swarm at the ship nearest it.',
+      usesMap: 'Both of the island\'s silos onto the danger stretch, drones only: the Torpedo Sub\'s debut wave (rule m-enemy), in place of the wave\'s shells.',
     },
     beats: [
-      { at: 0.35, kind: 'ballistic', count: 1, from: base(1), aim: 'near' },
-      { at: 0.35, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.35, plus: 3, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'near' },
     ],
-    replaces: { drones: 6 },
+    replaces: { drones: 4, ballistic: 4 },
   },
   {
-    id: 'island-west-tip',
+    id: 'island-two-lanes',
     map: 'island',
     waves: [4],
     role: 'teach',
-    name: 'Off the west tip',
-    callout: 'A periscope off the island',
-    premise: 'A periscope rises in the water off the island\'s west tip, between the two lanes, and fires two shells; the island\'s east silo sends a swarm at the same time.',
-    decision: 'Fire from the water and from the island, at ships on both lanes: which first?',
-    counters: 'The shells as they climb (they are committed); the swarm has the water to cross.',
-    succeeds: 'The salvo is shot at in most runs; what is lost is lost alongside the island.',
+    name: 'A swarm for each lane',
+    callout: 'Two swarms, near and far',
+    premise: 'The far shore\'s middle silo sends a swarm down at the north lane, and the island\'s east silo one at the ship beside it.',
+    decision: 'Both lanes at once, drones only: the far shore\'s swarm has the water to cross, the island\'s none.',
+    counters: 'The island\'s swarm first (it is quickest), then the far shore\'s.',
+    succeeds: 'No more than a close call on either lane in most runs.',
     notes: {
-      sites: 'A submarine at the west sub spot between the lanes (180, 380), then the east silo on the island.',
-      target: 'The shells at the ship halfway along its lane (alongside the island), the swarm at the ship nearest the east silo.',
-      usesMap: 'The only water between the lanes: a launcher with both lanes in reach, beside the island.',
+      sites: 'The far shore\'s middle silo (800, 62), the island\'s east silo.',
+      target: 'The ship nearest each silo: the north lane when one is out, and the ship beside the island.',
+      usesMap: 'The two lanes and their two threats, drones only: the Armored Drone\'s debut wave (rule m-enemy), in place of the wave\'s shells, its missile and its jet.',
     },
     beats: [
-      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'mid' },
-      { at: 0.4, plus: 1, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
+      { at: 0.35, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.35, plus: 2, kind: 'drone', count: 6, gap: 0.35, from: base(1), aim: 'near' },
     ],
-    replaces: { drones: 6 },
+    replaces: { drones: 4, ballistic: 5, guided: 1, extras: { strafer: 1 } },
   },
   {
     id: 'island-both-lanes',
@@ -2771,21 +2785,22 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [5],
     role: 'combine',
     name: 'Both lanes',
-    callout: 'Missiles and a swarm',
-    premise: 'Two guided missiles from the far shore\'s east silo and a swarm from the island at the ships halfway along.',
-    decision: 'The missiles fly far and can go for either lane; the island\'s swarm is close. Which first?',
-    counters: 'The swarm first (it is quickest), then the missiles while they cross the water.',
-    succeeds: 'Both are shot at in most runs; losses fall alongside the island, not on the way out.',
+    callout: 'Three swarms',
+    premise: 'The far shore\'s middle silo sends two swarms down at the north lane, a breath apart, and the island\'s west silo one at the ships halfway along.',
+    decision: 'Three swarms over two lanes, two from far off and one from close: which first?',
+    counters: 'The island\'s swarm first (it is quickest), then the north lane\'s while they cross the water.',
+    succeeds: 'All three are shot at in most runs; losses fall alongside the island, not on the way out.',
     notes: {
-      sites: 'The far shore\'s east silo (1300, 70) for the missiles, the island\'s west silo for the swarm.',
-      target: 'The missiles at any ship (the north lane is the nearest to their silo), the swarm at the ship halfway along its lane.',
-      usesMap: 'The two lanes at once: the far shore over the north lane, the island onto the south one.',
+      sites: 'The far shore\'s middle silo (two swarms), the island\'s west silo.',
+      target: 'The far shore\'s first swarm at the ship nearest it (the north lane when one is out), its second at any ship; the island\'s at the ship halfway along its lane.',
+      usesMap: 'The two lanes at once, drones only: the Scavenger Drone\'s debut wave (rule m-enemy), in place of the wave\'s shells, its bomber and its jet.',
     },
     beats: [
-      { at: 0.4, kind: 'guided', count: 2, gap: 0.9, from: base(4) },
-      { at: 0.4, plus: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 5, guided: 2 },
+    replaces: { drones: 5, ballistic: 5, extras: { bomber: 1, strafer: 1 } },
   },
   {
     id: 'island-behind',
@@ -3328,6 +3343,12 @@ export function waveScale(map: MapId, v: EncounterVersion, wave: number): number
  *  encounter layer is lab only, so the campaign's Strait is unchanged. */
 export const MAP_FIRE: Partial<Record<EncounterMap | RebuiltMap, { from: number; to: number; more: number }>> = {
   strait: { from: 5, to: 10, more: 0.1 },
+  // Lee of Marrow (log v32, round 8): its radar tower takes three hits now,
+  // not two, so it stands (and slows the enemy over the middle) a wave or
+  // two longer; waves 7-10 send 10% more to keep the map about as hard as
+  // it was (docs/design/v3-ch1-marrow.md, "After round 8"). Not wave 6: it
+  // already sends 1.13 times its shared wave (rule w-budget, ±15%).
+  marrow: { from: 7, to: 10, more: 0.1 },
 };
 
 /** How much more fire a map's wave sends in every version (0: none; never

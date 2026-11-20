@@ -319,7 +319,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 32 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 33 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -462,6 +462,32 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.v3-command').length > 0, null, { timeout: 8000 });
   const s6 = await runState(page);
   check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === 'hold' && s6.enc === null, `the bare link v3.html?lab=map-sowers opens the full map with Hold (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
+  // Round 8: a map card always gives its own new enemies their debut card
+  // ("NEW · The Narrows: …"), even on a device that has met them (say in the
+  // Test Lab's enemy cards), at Call-outs: Essential too. Another map's card
+  // and Call-outs: Off keep it quiet.
+  const debutTitles = async (map, level, kind) => {
+    await page.evaluate((lv) => {
+      localStorage.setItem('straitwatch.v3.seen', JSON.stringify({ v: 1, ids: ['threat:attackHeli', 'threat:torpedoSub', 'tip:basics'] }));
+      localStorage.setItem('straitwatch.v3.callouts', lv);
+    }, level);
+    await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.playing.lab-on');
+    await page.evaluate((k) => window.__v3.foe(k), kind);
+    const seen = new Set();
+    for (let t = 0; t < 2500; t += 100) {
+      for (const s of await page.locator('.v2-alert:not(.leaving) strong').allTextContents()) seen.add(s);
+      await page.waitForTimeout(100);
+    }
+    return [...seen];
+  };
+  const onIsland = await debutTitles('island', 'essential', 'attackHeli');
+  check(onIsland.includes('NEW · The Narrows: Attack helicopter'), `the Island's card: the Attack Helicopter's debut card, though met before, at Call-outs: Essential (${onIsland.join(' | ')})`);
+  const onStrait = await debutTitles('strait', 'all', 'attackHeli');
+  check(!onStrait.some((t) => t.startsWith('NEW')), `the Strait's card (not its debut): no card for an enemy met before (${onStrait.join(' | ')})`);
+  const off = await debutTitles('island', 'off', 'torpedoSub');
+  check(!off.some((t) => t.startsWith('NEW')), `Call-outs: Off: no debut card (${off.join(' | ')})`);
+  await page.evaluate(() => localStorage.removeItem('straitwatch.v3.callouts'));
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
 } catch (e) {

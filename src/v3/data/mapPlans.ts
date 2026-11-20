@@ -4,7 +4,11 @@
 //   - problem: the map's one problem, in one sentence (rule m-dilemma).
 //   - counters: the weapons the map's threats favour (rule m-kits): the
 //     bots play the map with these as their kit and with `offCounter`, and
-//     the counter kit should do clearly better, neither trivially.
+//     the counter kit should do clearly better, neither trivially. A design
+//     note and a bot report's kit only: never shown to the player, and the
+//     draft is not weighted by it (round 8, the player: "we really should
+//     not nudge the player with these kits. They should just figure that
+//     out alone through play testing"; tests/v3/mapRules.test.ts).
 //   - convoy: how ships come and why (rule m-shape-convoy).
 //   - stretches: the danger stretch and the safe stretch, by third of the
 //     lane ('early' | 'middle' | 'late'), as the bot report measures them.
