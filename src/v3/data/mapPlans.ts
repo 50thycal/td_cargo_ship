@@ -231,7 +231,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'The map\'s own convoy, no commands: pairs west to east down the canal at the campaign\'s own schedule; each lock takes what its chamber holds, shuts and fills, so the ships sail in short bursts and wait, bunched and still, at each gate.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'Run the Canal, rising: Torpedo Subs as the round opens (3 a round; the event sends 2), a gunship over the far bank by a lock (1, 1, then 2, one over each lock; 4 then 5 hits), a block of armored drones (4, 6, 6; the event sends 4) and drone swarms of 5 (2, 3, 3; the event sends 1), with clusters off the silos over the locks (1, 1, 2) and a guided missile from the east shore (rounds 1 and 2) at the ships held in the locks (encounters rev 4, MAP_BOSS; lab only).',
+      plan: 'The Gatecrashers (log v42, the player\'s answer: lots of trucks), rising: columns of Rocket Trucks (4 hits each, in at 2.2 × a truck\'s speed) down to the banks by the locks, each salvo at a ship held at the lock nearest the truck and marked first; round 1 a column of 7 on the enemy\'s bank by the west lock (2 salvos each), round 2 4 there and 4 on your own bank (2 each), round 3 a charge of 13 at both locks and both banks (1 salvo each; the last truck of each north column fires a cluster over the chamber); a drone swarm of 5 each round. A wreck stalls the trucks behind it. In place of Run the Canal\'s subs, gunships and block (encounters rev 4, MAP_BOSS; lab only: the campaign plays Run the Canal).',
       botTarget: 2,
     },
   },

@@ -1,0 +1,7925 @@
+{
+ "stage": "pairs",
+ "about": "Every pair of weapons, nothing else (each levelled to MAX in turn, then Resupply). Synergy against the singles on the same seeds.",
+ "logVersion": 42,
+ "botRev": 3,
+ "date": "2026-11-20",
+ "seeds": [
+  900,
+  901,
+  902,
+  903,
+  904,
+  905
+ ],
+ "maps": [
+  "saltgate"
+ ],
+ "pool": [
+  "airstrike",
+  "shrapnel",
+  "frigate",
+  "thermo",
+  "scatter",
+  "boomerang",
+  "flak",
+  "seeker",
+  "aegis",
+  "well",
+  "railgun",
+  "tesla",
+  "lance",
+  "cutter",
+  "droneScreen",
+  "gunships",
+  "supplyRun",
+  "overdrive",
+  "shield",
+  "fullSteam"
+ ],
+ "seconds": 394,
+ "runs": 1026,
+ "configs": [
+  {
+   "key": "plain",
+   "name": "Plain gun",
+   "kind": "plain",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.056,
+     "lostAll": 8.167,
+     "bossNormal": 0.889,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 5,
+    "boss": 1.056,
+    "lostAll": 8.167,
+    "bossNormal": 0.889,
+    "bossReached": 1.5
+   },
+   "weapons": []
+  },
+  {
+   "key": "self",
+   "name": "Bot drafts for itself",
+   "kind": "self",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 2.167,
+     "lostAll": 9.333,
+     "bossNormal": 1.867,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 2.167,
+    "lostAll": 9.333,
+    "bossNormal": 1.867,
+    "bossReached": 2.5
+   }
+  },
+  {
+   "key": "airstrike",
+   "name": "Air Strike",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.611,
+     "lostAll": 6,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.611,
+    "lostAll": 6,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike"
+   ]
+  },
+  {
+   "key": "shrapnel",
+   "name": "Shrapnel Shell",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.056,
+     "lostAll": 9.167,
+     "bossNormal": 1.765,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 2.056,
+    "lostAll": 9.167,
+    "bossNormal": 1.765,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "shrapnel"
+   ]
+  },
+  {
+   "key": "frigate",
+   "name": "Frigate Escort",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.111,
+     "lostAll": 5.5,
+     "bossNormal": 1.067,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.111,
+    "lostAll": 5.5,
+    "bossNormal": 1.067,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "frigate"
+   ]
+  },
+  {
+   "key": "thermo",
+   "name": "Thermobaric Shell",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.278,
+     "lostAll": 5.833,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.278,
+    "lostAll": 5.833,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo"
+   ]
+  },
+  {
+   "key": "scatter",
+   "name": "Scattergun",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.833,
+     "lostAll": 6.667,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.833,
+    "lostAll": 6.667,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter"
+   ]
+  },
+  {
+   "key": "boomerang",
+   "name": "Boomerang",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.5,
+     "lostAll": 6,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.5,
+    "lostAll": 6,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang"
+   ]
+  },
+  {
+   "key": "flak",
+   "name": "Flak Cannon",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.444,
+     "lostAll": 6.5,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.444,
+    "lostAll": 6.5,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak"
+   ]
+  },
+  {
+   "key": "seeker",
+   "name": "Seeker Pod",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.5,
+     "lostAll": 6.833,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.5,
+    "lostAll": 6.833,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "seeker"
+   ]
+  },
+  {
+   "key": "aegis",
+   "name": "Point Defense",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.167,
+     "lostAll": 5.167,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.167,
+    "lostAll": 5.167,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis"
+   ]
+  },
+  {
+   "key": "well",
+   "name": "Gravity Well",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.278,
+     "lostAll": 5.167,
+     "bossNormal": 1.294,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.278,
+    "lostAll": 5.167,
+    "bossNormal": 1.294,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "well"
+   ]
+  },
+  {
+   "key": "railgun",
+   "name": "Railgun",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.5,
+     "lostAll": 5.5,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.5,
+    "lostAll": 5.5,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun"
+   ]
+  },
+  {
+   "key": "tesla",
+   "name": "Tesla Arc",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.5,
+     "lostAll": 6.5,
+     "bossNormal": 1.294,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.5,
+    "lostAll": 6.5,
+    "bossNormal": 1.294,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "tesla"
+   ]
+  },
+  {
+   "key": "lance",
+   "name": "Charge Lance",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.833,
+     "lostAll": 9.5,
+     "bossNormal": 1.333,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 1.833,
+    "lostAll": 9.5,
+    "bossNormal": 1.333,
+    "bossReached": 2
+   },
+   "weapons": [
+    "lance"
+   ]
+  },
+  {
+   "key": "cutter",
+   "name": "Laser Cutter",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0,
+     "endWave": 6,
+     "flawless": 0,
+     "lost10": 21,
+     "boss": 1.667,
+     "lostAll": 26,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0,
+    "endWave": 6,
+    "flawless": 0,
+    "lost10": 21,
+    "boss": 1.667,
+    "lostAll": 26,
+    "bossNormal": null,
+    "bossReached": 0
+   },
+   "weapons": [
+    "cutter"
+   ]
+  },
+  {
+   "key": "droneScreen",
+   "name": "Drone Screen",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.444,
+     "lostAll": 6.5,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.444,
+    "lostAll": 6.5,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "droneScreen"
+   ]
+  },
+  {
+   "key": "gunships",
+   "name": "Gunship Pair",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 2,
+     "lostAll": 7.667,
+     "bossNormal": 1.611,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 2,
+    "lostAll": 7.667,
+    "bossNormal": 1.611,
+    "bossReached": 3
+   },
+   "weapons": [
+    "gunships"
+   ]
+  },
+  {
+   "key": "supplyRun",
+   "name": "Supply Run",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.278,
+     "lostAll": 7.5,
+     "bossNormal": 1.133,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3.667,
+    "boss": 1.278,
+    "lostAll": 7.5,
+    "bossNormal": 1.133,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "supplyRun"
+   ]
+  },
+  {
+   "key": "overdrive",
+   "name": "Overdrive",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.5,
+     "lostAll": 7.833,
+     "bossNormal": 1.333,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.5,
+    "lostAll": 7.833,
+    "bossNormal": 1.333,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "overdrive"
+   ]
+  },
+  {
+   "key": "shield",
+   "name": "Shield",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 1.944,
+     "lostAll": 8.667,
+     "bossNormal": 1.722,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 1.944,
+    "lostAll": 8.667,
+    "bossNormal": 1.722,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shield"
+   ]
+  },
+  {
+   "key": "fullSteam",
+   "name": "Full Steam",
+   "kind": "single",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.667,
+     "lostAll": 9,
+     "bossNormal": 1,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 11.667,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 1.667,
+    "lostAll": 9,
+    "bossNormal": 1,
+    "bossReached": 1.5
+   },
+   "weapons": [
+    "fullSteam"
+   ]
+  },
+  {
+   "key": "airstrike+shrapnel",
+   "name": "Air Strike + Shrapnel Shell",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.222,
+     "lostAll": 6.667,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.222,
+    "lostAll": 6.667,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "shrapnel"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.068
+    },
+    "mean": 0.068,
+    "predicted": 6.735,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+frigate",
+   "name": "Air Strike + Frigate Escort",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.778,
+     "lostAll": 6.667,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.778,
+    "lostAll": 6.667,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "frigate"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.626
+    },
+    "mean": -2.626,
+    "predicted": 4.041,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+thermo",
+   "name": "Air Strike + Thermobaric Shell",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 2.167,
+     "lostAll": 8,
+     "bossNormal": 1.722,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 2.167,
+    "lostAll": 8,
+    "bossNormal": 1.722,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "thermo"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.714
+    },
+    "mean": -3.714,
+    "predicted": 4.286,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "airstrike+scatter",
+   "name": "Air Strike + Scattergun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.5,
+     "lostAll": 6,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.5,
+    "lostAll": 6,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "scatter"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.102
+    },
+    "mean": -1.102,
+    "predicted": 4.898,
+    "win": 0.333,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "airstrike+boomerang",
+   "name": "Air Strike + Boomerang",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.889,
+     "lostAll": 8.167,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.889,
+    "lostAll": 8.167,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "boomerang"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.759
+    },
+    "mean": -3.759,
+    "predicted": 4.408,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+flak",
+   "name": "Air Strike + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 2.111,
+     "lostAll": 8.667,
+     "bossNormal": 1.706,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 2.111,
+    "lostAll": 8.667,
+    "bossNormal": 1.706,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "airstrike",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.891
+    },
+    "mean": -3.891,
+    "predicted": 4.776,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+seeker",
+   "name": "Air Strike + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2,
+     "lostAll": 8.167,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2,
+    "lostAll": 8.167,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.146
+    },
+    "mean": -3.146,
+    "predicted": 5.02,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "airstrike+aegis",
+   "name": "Air Strike + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.944,
+     "lostAll": 7.167,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.944,
+    "lostAll": 7.167,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.371
+    },
+    "mean": -3.371,
+    "predicted": 3.796,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "airstrike+well",
+   "name": "Air Strike + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.833,
+     "lostAll": 7.333,
+     "bossNormal": 1.333,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.833,
+    "lostAll": 7.333,
+    "bossNormal": 1.333,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "airstrike",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.537
+    },
+    "mean": -3.537,
+    "predicted": 3.796,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "airstrike+railgun",
+   "name": "Air Strike + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.778,
+     "lostAll": 6.667,
+     "bossNormal": 1.529,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.778,
+    "lostAll": 6.667,
+    "bossNormal": 1.529,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "airstrike",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.626
+    },
+    "mean": -2.626,
+    "predicted": 4.041,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+tesla",
+   "name": "Air Strike + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.389,
+     "lostAll": 7.167,
+     "bossNormal": 1.5,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.389,
+    "lostAll": 7.167,
+    "bossNormal": 1.5,
+    "bossReached": 2
+   },
+   "weapons": [
+    "airstrike",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.391
+    },
+    "mean": -2.391,
+    "predicted": 4.776,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "airstrike+lance",
+   "name": "Air Strike + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2,
+     "lostAll": 8.167,
+     "bossNormal": 1.833,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2,
+    "lostAll": 8.167,
+    "bossNormal": 1.833,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.187
+    },
+    "mean": -1.187,
+    "predicted": 6.98,
+    "win": -0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "airstrike+droneScreen",
+   "name": "Air Strike + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 0.944,
+     "lostAll": 5.5,
+     "bossNormal": 0.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 0.944,
+    "lostAll": 5.5,
+    "bossNormal": 0.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.724
+    },
+    "mean": -0.724,
+    "predicted": 4.776,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "airstrike+gunships",
+   "name": "Air Strike + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.944,
+     "lostAll": 7.333,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.944,
+    "lostAll": 7.333,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.701
+    },
+    "mean": -1.701,
+    "predicted": 5.633,
+    "win": -0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "airstrike+supplyRun",
+   "name": "Air Strike + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 0.667,
+     "boss": 1.111,
+     "lostAll": 4,
+     "bossNormal": 1.056,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 0.667,
+    "boss": 1.111,
+    "lostAll": 4,
+    "bossNormal": 1.056,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.51
+    },
+    "mean": 1.51,
+    "predicted": 5.51,
+    "win": 0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "airstrike+overdrive",
+   "name": "Air Strike + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.556,
+     "lostAll": 7.333,
+     "bossNormal": 1.467,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.556,
+    "lostAll": 7.333,
+    "bossNormal": 1.467,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "airstrike",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.578
+    },
+    "mean": -1.578,
+    "predicted": 5.755,
+    "win": 0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "airstrike+shield",
+   "name": "Air Strike + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.444,
+     "lostAll": 5.667,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.444,
+    "lostAll": 5.667,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.701
+    },
+    "mean": 0.701,
+    "predicted": 6.367,
+    "win": 0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "airstrike+fullSteam",
+   "name": "Air Strike + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.389,
+     "lostAll": 6,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.389,
+    "lostAll": 6,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.612
+    },
+    "mean": 0.612,
+    "predicted": 6.612,
+    "win": 0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "shrapnel+frigate",
+   "name": "Shrapnel Shell + Frigate Escort",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.5,
+     "lostAll": 6.167,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.5,
+    "lostAll": 6.167,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "frigate"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.007
+    },
+    "mean": 0.007,
+    "predicted": 6.173,
+    "win": -0.111,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "shrapnel+thermo",
+   "name": "Shrapnel Shell + Thermobaric Shell",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.556,
+     "lostAll": 7.167,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.556,
+    "lostAll": 7.167,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "thermo"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.619
+    },
+    "mean": -0.619,
+    "predicted": 6.548,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "shrapnel+scatter",
+   "name": "Shrapnel Shell + Scattergun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.167,
+     "lostAll": 5.167,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.167,
+    "lostAll": 5.167,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "scatter"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.316
+    },
+    "mean": 2.316,
+    "predicted": 7.483,
+    "win": 0.444,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "shrapnel+boomerang",
+   "name": "Shrapnel Shell + Boomerang",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.722,
+     "lostAll": 7.167,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.722,
+    "lostAll": 7.167,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "boomerang"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.432
+    },
+    "mean": -0.432,
+    "predicted": 6.735,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "shrapnel+flak",
+   "name": "Shrapnel Shell + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.667,
+     "lostAll": 7,
+     "bossNormal": 1.353,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.667,
+    "lostAll": 7,
+    "bossNormal": 1.353,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "shrapnel",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.296
+    },
+    "mean": 0.296,
+    "predicted": 7.296,
+    "win": 0.056,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "shrapnel+seeker",
+   "name": "Shrapnel Shell + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.444,
+     "lostAll": 6.167,
+     "bossNormal": 1.467,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.444,
+    "lostAll": 6.167,
+    "bossNormal": 1.467,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "shrapnel",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.503
+    },
+    "mean": 1.503,
+    "predicted": 7.67,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "shrapnel+aegis",
+   "name": "Shrapnel Shell + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.5,
+     "lostAll": 5.667,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.5,
+    "lostAll": 5.667,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.133
+    },
+    "mean": 0.133,
+    "predicted": 5.799,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "shrapnel+well",
+   "name": "Shrapnel Shell + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 0.944,
+     "lostAll": 4.667,
+     "bossNormal": 0.889,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 0.944,
+    "lostAll": 4.667,
+    "bossNormal": 0.889,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.133
+    },
+    "mean": 1.133,
+    "predicted": 5.799,
+    "win": -0.056,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "shrapnel+railgun",
+   "name": "Shrapnel Shell + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 0.833,
+     "boss": 1.944,
+     "lostAll": 6.667,
+     "bossNormal": 1.941,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 0.833,
+    "boss": 1.944,
+    "lostAll": 6.667,
+    "bossNormal": 1.941,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "shrapnel",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.493
+    },
+    "mean": -0.493,
+    "predicted": 6.173,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "shrapnel+tesla",
+   "name": "Shrapnel Shell + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 2.056,
+     "lostAll": 8.5,
+     "bossNormal": 1.714,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 2.056,
+    "lostAll": 8.5,
+    "bossNormal": 1.714,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "shrapnel",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.204
+    },
+    "mean": -1.204,
+    "predicted": 7.296,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "shrapnel+lance",
+   "name": "Shrapnel Shell + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.722,
+     "lostAll": 7.333,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.722,
+    "lostAll": 7.333,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 3.33
+    },
+    "mean": 3.33,
+    "predicted": 10.663,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "shrapnel+droneScreen",
+   "name": "Shrapnel Shell + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.667,
+     "lostAll": 7.333,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.667,
+    "lostAll": 7.333,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.037
+    },
+    "mean": -0.037,
+    "predicted": 7.296,
+    "win": 0.056,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "shrapnel+gunships",
+   "name": "Shrapnel Shell + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.167,
+     "lost10": 1.5,
+     "boss": 1.056,
+     "lostAll": 4.667,
+     "bossNormal": 1.056,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0.167,
+    "lost10": 1.5,
+    "boss": 1.056,
+    "lostAll": 4.667,
+    "bossNormal": 1.056,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 3.939
+    },
+    "mean": 3.939,
+    "predicted": 8.605,
+    "win": 0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "shrapnel+supplyRun",
+   "name": "Shrapnel Shell + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 2.278,
+     "lostAll": 7.833,
+     "bossNormal": 1.824,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 2.278,
+    "lostAll": 7.833,
+    "bossNormal": 1.824,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "shrapnel",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.585
+    },
+    "mean": 0.585,
+    "predicted": 8.418,
+    "win": -0.5,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "shrapnel+overdrive",
+   "name": "Shrapnel Shell + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 2.111,
+     "lostAll": 7.667,
+     "bossNormal": 1.882,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 2.111,
+    "lostAll": 7.667,
+    "bossNormal": 1.882,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "shrapnel",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.126
+    },
+    "mean": 1.126,
+    "predicted": 8.793,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "shrapnel+shield",
+   "name": "Shrapnel Shell + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 2.111,
+     "lostAll": 8,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 2.111,
+    "lostAll": 8,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shrapnel",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.728
+    },
+    "mean": 1.728,
+    "predicted": 9.728,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "shrapnel+fullSteam",
+   "name": "Shrapnel Shell + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.667,
+     "lostAll": 8.5,
+     "bossNormal": 1.462,
+     "bossReached": 2.167
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.667,
+    "lostAll": 8.5,
+    "bossNormal": 1.462,
+    "bossReached": 2.167
+   },
+   "weapons": [
+    "shrapnel",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.602
+    },
+    "mean": 1.602,
+    "predicted": 10.102,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+thermo",
+   "name": "Frigate Escort + Thermobaric Shell",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.889,
+     "lostAll": 7.167,
+     "bossNormal": 1.588,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.889,
+    "lostAll": 7.167,
+    "bossNormal": 1.588,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "frigate",
+    "thermo"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.238
+    },
+    "mean": -3.238,
+    "predicted": 3.929,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "frigate+scatter",
+   "name": "Frigate Escort + Scattergun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 2.111,
+     "lostAll": 8.167,
+     "bossNormal": 1.941,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 2.111,
+    "lostAll": 8.167,
+    "bossNormal": 1.941,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "frigate",
+    "scatter"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.677
+    },
+    "mean": -3.677,
+    "predicted": 4.49,
+    "win": -0.222,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "frigate+boomerang",
+   "name": "Frigate Escort + Boomerang",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.167,
+     "lostAll": 5.167,
+     "bossNormal": 1.111,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.167,
+    "lostAll": 5.167,
+    "bossNormal": 1.111,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "boomerang"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.126
+    },
+    "mean": -1.126,
+    "predicted": 4.041,
+    "win": 0.056,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "frigate+flak",
+   "name": "Frigate Escort + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 2.056,
+     "lostAll": 8.5,
+     "bossNormal": 1.882,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 2.056,
+    "lostAll": 8.5,
+    "bossNormal": 1.882,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "frigate",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.122
+    },
+    "mean": -4.122,
+    "predicted": 4.378,
+    "win": -0.111,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "frigate+seeker",
+   "name": "Frigate Escort + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 1.222,
+     "lostAll": 6.5,
+     "bossNormal": 1.111,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 1.222,
+    "lostAll": 6.5,
+    "bossNormal": 1.111,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.898
+    },
+    "mean": -1.898,
+    "predicted": 4.602,
+    "win": -0.056,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "frigate+aegis",
+   "name": "Frigate Escort + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 2.333,
+     "lostAll": 9.333,
+     "bossNormal": 1.889,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 2.333,
+    "lostAll": 9.333,
+    "bossNormal": 1.889,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -5.854
+    },
+    "mean": -5.854,
+    "predicted": 3.48,
+    "win": -0.833,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "frigate+well",
+   "name": "Frigate Escort + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.944,
+     "lostAll": 7.333,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.944,
+    "lostAll": 7.333,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.854
+    },
+    "mean": -3.854,
+    "predicted": 3.48,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "frigate+railgun",
+   "name": "Frigate Escort + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.444,
+     "lostAll": 5.667,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.444,
+    "lostAll": 5.667,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.963
+    },
+    "mean": -1.963,
+    "predicted": 3.704,
+    "win": 0.056,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "frigate+tesla",
+   "name": "Frigate Escort + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.111,
+     "lostAll": 8.833,
+     "bossNormal": 1.571,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 2.111,
+    "lostAll": 8.833,
+    "bossNormal": 1.571,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "frigate",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.456
+    },
+    "mean": -4.456,
+    "predicted": 4.378,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "frigate+lance",
+   "name": "Frigate Escort + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 1.611,
+     "lostAll": 7.667,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 1.611,
+    "lostAll": 7.667,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.269
+    },
+    "mean": -1.269,
+    "predicted": 6.398,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+droneScreen",
+   "name": "Frigate Escort + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2.444,
+     "lostAll": 9.5,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2.444,
+    "lostAll": 9.5,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -5.122
+    },
+    "mean": -5.122,
+    "predicted": 4.378,
+    "win": -0.444,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "frigate+gunships",
+   "name": "Frigate Escort + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 2,
+     "lostAll": 8.333,
+     "bossNormal": 1.889,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 2,
+    "lostAll": 8.333,
+    "bossNormal": 1.889,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.17
+    },
+    "mean": -3.17,
+    "predicted": 5.163,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+supplyRun",
+   "name": "Frigate Escort + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2,
+     "lostAll": 8.167,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2,
+    "lostAll": 8.167,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.116
+    },
+    "mean": -3.116,
+    "predicted": 5.051,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+overdrive",
+   "name": "Frigate Escort + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.611,
+     "lostAll": 5.833,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.611,
+    "lostAll": 5.833,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.558
+    },
+    "mean": -0.558,
+    "predicted": 5.276,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+shield",
+   "name": "Frigate Escort + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.333,
+     "lostAll": 6,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.333,
+    "lostAll": 6,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.163
+    },
+    "mean": -0.163,
+    "predicted": 5.837,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "frigate+fullSteam",
+   "name": "Frigate Escort + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.722,
+     "lostAll": 7.333,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.722,
+    "lostAll": 7.333,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "frigate",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.272
+    },
+    "mean": -1.272,
+    "predicted": 6.061,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "thermo+scatter",
+   "name": "Thermobaric Shell + Scattergun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.778,
+     "lostAll": 8.333,
+     "bossNormal": 1.4,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.778,
+    "lostAll": 8.333,
+    "bossNormal": 1.4,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "thermo",
+    "scatter"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.571
+    },
+    "mean": -3.571,
+    "predicted": 4.762,
+    "win": -0.444,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "thermo+boomerang",
+   "name": "Thermobaric Shell + Boomerang",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.444,
+     "lostAll": 5.5,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.444,
+    "lostAll": 5.5,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "boomerang"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.214
+    },
+    "mean": -1.214,
+    "predicted": 4.286,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "thermo+flak",
+   "name": "Thermobaric Shell + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 1.833,
+     "lostAll": 8.333,
+     "bossNormal": 1.8,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 1.833,
+    "lostAll": 8.333,
+    "bossNormal": 1.8,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "thermo",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.69
+    },
+    "mean": -3.69,
+    "predicted": 4.643,
+    "win": -0.556,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "thermo+seeker",
+   "name": "Thermobaric Shell + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1,
+     "lostAll": 6,
+     "bossNormal": 0.867,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1,
+    "lostAll": 6,
+    "bossNormal": 0.867,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "thermo",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.119
+    },
+    "mean": -1.119,
+    "predicted": 4.881,
+    "win": -0.111,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "thermo+aegis",
+   "name": "Thermobaric Shell + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.722,
+     "lostAll": 6.667,
+     "bossNormal": 1.722,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.722,
+    "lostAll": 6.667,
+    "bossNormal": 1.722,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.976
+    },
+    "mean": -2.976,
+    "predicted": 3.69,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "thermo+well",
+   "name": "Thermobaric Shell + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 2.167,
+     "lostAll": 8,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 2.167,
+    "lostAll": 8,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.31
+    },
+    "mean": -4.31,
+    "predicted": 3.69,
+    "win": -0.611,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "thermo+railgun",
+   "name": "Thermobaric Shell + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.444,
+     "lostAll": 6,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.444,
+    "lostAll": 6,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.071
+    },
+    "mean": -2.071,
+    "predicted": 3.929,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "thermo+tesla",
+   "name": "Thermobaric Shell + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.333,
+     "lostAll": 7,
+     "bossNormal": 1.267,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.333,
+    "lostAll": 7,
+    "bossNormal": 1.267,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "thermo",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.357
+    },
+    "mean": -2.357,
+    "predicted": 4.643,
+    "win": -0.444,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "thermo+lance",
+   "name": "Thermobaric Shell + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.5,
+     "lostAll": 6.667,
+     "bossNormal": 1.235,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.5,
+    "lostAll": 6.667,
+    "bossNormal": 1.235,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "thermo",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.119
+    },
+    "mean": 0.119,
+    "predicted": 6.786,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "thermo+droneScreen",
+   "name": "Thermobaric Shell + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.722,
+     "lostAll": 8.167,
+     "bossNormal": 1.533,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.722,
+    "lostAll": 8.167,
+    "bossNormal": 1.533,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "thermo",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.524
+    },
+    "mean": -3.524,
+    "predicted": 4.643,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "thermo+gunships",
+   "name": "Thermobaric Shell + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.722,
+     "lostAll": 6.167,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.722,
+    "lostAll": 6.167,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.69
+    },
+    "mean": -0.69,
+    "predicted": 5.476,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "thermo+supplyRun",
+   "name": "Thermobaric Shell + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.5,
+     "lostAll": 6.333,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.5,
+    "lostAll": 6.333,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.976
+    },
+    "mean": -0.976,
+    "predicted": 5.357,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "thermo+overdrive",
+   "name": "Thermobaric Shell + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.444,
+     "lostAll": 6.5,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.444,
+    "lostAll": 6.5,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.905
+    },
+    "mean": -0.905,
+    "predicted": 5.595,
+    "win": 0,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "thermo+shield",
+   "name": "Thermobaric Shell + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.5,
+     "lostAll": 6.333,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.5,
+    "lostAll": 6.333,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "thermo",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.143
+    },
+    "mean": -0.143,
+    "predicted": 6.19,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "thermo+fullSteam",
+   "name": "Thermobaric Shell + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.722,
+     "lostAll": 8.667,
+     "bossNormal": 1.5,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.722,
+    "lostAll": 8.667,
+    "bossNormal": 1.5,
+    "bossReached": 2
+   },
+   "weapons": [
+    "thermo",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.238
+    },
+    "mean": -2.238,
+    "predicted": 6.429,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "scatter+boomerang",
+   "name": "Scattergun + Boomerang",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.333,
+     "lostAll": 9.5,
+     "bossNormal": 1.833,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 2.333,
+    "lostAll": 9.5,
+    "bossNormal": 1.833,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "boomerang"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.602
+    },
+    "mean": -4.602,
+    "predicted": 4.898,
+    "win": -0.222,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "scatter+flak",
+   "name": "Scattergun + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.778,
+     "lostAll": 7.5,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.778,
+    "lostAll": 7.5,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.194
+    },
+    "mean": -2.194,
+    "predicted": 5.306,
+    "win": 0.111,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "scatter+seeker",
+   "name": "Scattergun + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 2,
+     "lostAll": 7.667,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 2,
+    "lostAll": 7.667,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.088
+    },
+    "mean": -2.088,
+    "predicted": 5.578,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "scatter+aegis",
+   "name": "Scattergun + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.722,
+     "lostAll": 6.5,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.722,
+    "lostAll": 6.5,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.282
+    },
+    "mean": -2.282,
+    "predicted": 4.218,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "scatter+well",
+   "name": "Scattergun + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.667,
+     "lostAll": 8,
+     "bossNormal": 1.4,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.667,
+    "lostAll": 8,
+    "bossNormal": 1.4,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "scatter",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.782
+    },
+    "mean": -3.782,
+    "predicted": 4.218,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "scatter+railgun",
+   "name": "Scattergun + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.444,
+     "lostAll": 6,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.444,
+    "lostAll": 6,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.51
+    },
+    "mean": -1.51,
+    "predicted": 4.49,
+    "win": 0.111,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "scatter+tesla",
+   "name": "Scattergun + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.778,
+     "lostAll": 7.5,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.778,
+    "lostAll": 7.5,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.194
+    },
+    "mean": -2.194,
+    "predicted": 5.306,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "scatter+lance",
+   "name": "Scattergun + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.944,
+     "lostAll": 9.5,
+     "bossNormal": 1.667,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.667,
+    "boss": 1.944,
+    "lostAll": 9.5,
+    "bossNormal": 1.667,
+    "bossReached": 2
+   },
+   "weapons": [
+    "scatter",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.745
+    },
+    "mean": -1.745,
+    "predicted": 7.755,
+    "win": 0,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "scatter+droneScreen",
+   "name": "Scattergun + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.556,
+     "lostAll": 5.833,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.556,
+    "lostAll": 5.833,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.527
+    },
+    "mean": -0.527,
+    "predicted": 5.306,
+    "win": -0.056,
+    "winPredicted": 0.556
+   }
+  },
+  {
+   "key": "scatter+gunships",
+   "name": "Scattergun + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.444,
+     "lostAll": 5.833,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.444,
+    "lostAll": 5.833,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.425
+    },
+    "mean": 0.425,
+    "predicted": 6.259,
+    "win": 0.5,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "scatter+supplyRun",
+   "name": "Scattergun + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.556,
+     "lostAll": 6.833,
+     "bossNormal": 1.471,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.556,
+    "lostAll": 6.833,
+    "bossNormal": 1.471,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "scatter",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.711
+    },
+    "mean": -0.711,
+    "predicted": 6.122,
+    "win": 0.5,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "scatter+overdrive",
+   "name": "Scattergun + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2.056,
+     "lostAll": 8.333,
+     "bossNormal": 1.824,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2.056,
+    "lostAll": 8.333,
+    "bossNormal": 1.824,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "scatter",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.939
+    },
+    "mean": -1.939,
+    "predicted": 6.395,
+    "win": 0.167,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "scatter+shield",
+   "name": "Scattergun + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.556,
+     "lostAll": 6.333,
+     "bossNormal": 1.533,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.556,
+    "lostAll": 6.333,
+    "bossNormal": 1.533,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "scatter",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.741
+    },
+    "mean": 0.741,
+    "predicted": 7.075,
+    "win": 0.167,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "scatter+fullSteam",
+   "name": "Scattergun + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 2.278,
+     "lostAll": 9.833,
+     "bossNormal": 2.154,
+     "bossReached": 2.167
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 2.278,
+    "lostAll": 9.833,
+    "bossNormal": 2.154,
+    "bossReached": 2.167
+   },
+   "weapons": [
+    "scatter",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.486
+    },
+    "mean": -2.486,
+    "predicted": 7.347,
+    "win": 0,
+    "winPredicted": 0.333
+   }
+  },
+  {
+   "key": "boomerang+flak",
+   "name": "Boomerang + Flak Cannon",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.722,
+     "lostAll": 7.5,
+     "bossNormal": 1.533,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.722,
+    "lostAll": 7.5,
+    "bossNormal": 1.533,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "boomerang",
+    "flak"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.724
+    },
+    "mean": -2.724,
+    "predicted": 4.776,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "boomerang+seeker",
+   "name": "Boomerang + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.611,
+     "lostAll": 8.333,
+     "bossNormal": 1.611,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.611,
+    "lostAll": 8.333,
+    "bossNormal": 1.611,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.313
+    },
+    "mean": -3.313,
+    "predicted": 5.02,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "boomerang+aegis",
+   "name": "Boomerang + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.556,
+     "lostAll": 6.833,
+     "bossNormal": 1.467,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.556,
+    "lostAll": 6.833,
+    "bossNormal": 1.467,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "boomerang",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.037
+    },
+    "mean": -3.037,
+    "predicted": 3.796,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "boomerang+well",
+   "name": "Boomerang + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 2.056,
+     "lostAll": 8.667,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 2.056,
+    "lostAll": 8.667,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.871
+    },
+    "mean": -4.871,
+    "predicted": 3.796,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "boomerang+railgun",
+   "name": "Boomerang + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.444,
+     "lostAll": 7.333,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.444,
+    "lostAll": 7.333,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.293
+    },
+    "mean": -3.293,
+    "predicted": 4.041,
+    "win": -0.111,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "boomerang+tesla",
+   "name": "Boomerang + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 2,
+     "lostAll": 8.667,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 2,
+    "lostAll": 8.667,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.891
+    },
+    "mean": -3.891,
+    "predicted": 4.776,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "boomerang+lance",
+   "name": "Boomerang + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.667,
+     "lostAll": 8.333,
+     "bossNormal": 1.643,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.667,
+    "lostAll": 8.333,
+    "bossNormal": 1.643,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "boomerang",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.354
+    },
+    "mean": -1.354,
+    "predicted": 6.98,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "boomerang+droneScreen",
+   "name": "Boomerang + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.944,
+     "lostAll": 7.5,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.944,
+    "lostAll": 7.5,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.724
+    },
+    "mean": -2.724,
+    "predicted": 4.776,
+    "win": -0.278,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "boomerang+gunships",
+   "name": "Boomerang + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 0.778,
+     "lostAll": 5.167,
+     "bossNormal": 0.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 0.778,
+    "lostAll": 5.167,
+    "bossNormal": 0.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.466
+    },
+    "mean": 0.466,
+    "predicted": 5.633,
+    "win": 0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "boomerang+supplyRun",
+   "name": "Boomerang + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.278,
+     "lostAll": 5.667,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.278,
+    "lostAll": 5.667,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "boomerang",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.156
+    },
+    "mean": -0.156,
+    "predicted": 5.51,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "boomerang+overdrive",
+   "name": "Boomerang + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.722,
+     "lostAll": 7.333,
+     "bossNormal": 1.471,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.722,
+    "lostAll": 7.333,
+    "bossNormal": 1.471,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "boomerang",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.578
+    },
+    "mean": -1.578,
+    "predicted": 5.755,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "boomerang+shield",
+   "name": "Boomerang + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.944,
+     "lostAll": 7.667,
+     "bossNormal": 1.765,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.944,
+    "lostAll": 7.667,
+    "bossNormal": 1.765,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "boomerang",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.299
+    },
+    "mean": -1.299,
+    "predicted": 6.367,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "boomerang+fullSteam",
+   "name": "Boomerang + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.778,
+     "lostAll": 8.833,
+     "bossNormal": 1.765,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.778,
+    "lostAll": 8.833,
+    "bossNormal": 1.765,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "boomerang",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.221
+    },
+    "mean": -2.221,
+    "predicted": 6.612,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+seeker",
+   "name": "Flak Cannon + Seeker Pod",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.278,
+     "lostAll": 5.833,
+     "bossNormal": 1.111,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.278,
+    "lostAll": 5.833,
+    "bossNormal": 1.111,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak",
+    "seeker"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.395
+    },
+    "mean": -0.395,
+    "predicted": 5.439,
+    "win": -0.056,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "flak+aegis",
+   "name": "Flak Cannon + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1,
+     "lostAll": 5.167,
+     "bossNormal": 0.889,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1,
+    "lostAll": 5.167,
+    "bossNormal": 0.889,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.054
+    },
+    "mean": -1.054,
+    "predicted": 4.112,
+    "win": -0.167,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "flak+well",
+   "name": "Flak Cannon + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.5,
+     "lostAll": 6.833,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.5,
+    "lostAll": 6.833,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.721
+    },
+    "mean": -2.721,
+    "predicted": 4.112,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "flak+railgun",
+   "name": "Flak Cannon + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.556,
+     "lostAll": 6.833,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.556,
+    "lostAll": 6.833,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.456
+    },
+    "mean": -2.456,
+    "predicted": 4.378,
+    "win": 0.056,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "flak+tesla",
+   "name": "Flak Cannon + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.333,
+     "lostAll": 7.5,
+     "bossNormal": 1.167,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.333,
+    "lostAll": 7.5,
+    "bossNormal": 1.167,
+    "bossReached": 2
+   },
+   "weapons": [
+    "flak",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.327
+    },
+    "mean": -2.327,
+    "predicted": 5.173,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "flak+lance",
+   "name": "Flak Cannon + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 2.056,
+     "lostAll": 10,
+     "bossNormal": 1.417,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.833,
+    "boss": 2.056,
+    "lostAll": 10,
+    "bossNormal": 1.417,
+    "bossReached": 2
+   },
+   "weapons": [
+    "flak",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.439
+    },
+    "mean": -2.439,
+    "predicted": 7.561,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+droneScreen",
+   "name": "Flak Cannon + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 2.056,
+     "lostAll": 8,
+     "bossNormal": 1.6,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 2.056,
+    "lostAll": 8,
+    "bossNormal": 1.6,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "flak",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.827
+    },
+    "mean": -2.827,
+    "predicted": 5.173,
+    "win": -0.111,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "flak+gunships",
+   "name": "Flak Cannon + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.778,
+     "lostAll": 6.333,
+     "bossNormal": 1.353,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.778,
+    "lostAll": 6.333,
+    "bossNormal": 1.353,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "flak",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.231
+    },
+    "mean": -0.231,
+    "predicted": 6.102,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+supplyRun",
+   "name": "Flak Cannon + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.611,
+     "lostAll": 6.333,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.611,
+    "lostAll": 6.333,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "flak",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.364
+    },
+    "mean": -0.364,
+    "predicted": 5.969,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+overdrive",
+   "name": "Flak Cannon + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.944,
+     "lostAll": 7.5,
+     "bossNormal": 1.588,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.944,
+    "lostAll": 7.5,
+    "bossNormal": 1.588,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "flak",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.265
+    },
+    "mean": -1.265,
+    "predicted": 6.235,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+shield",
+   "name": "Flak Cannon + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 1.222,
+     "lostAll": 6.5,
+     "bossNormal": 1.267,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 1.222,
+    "lostAll": 6.5,
+    "bossNormal": 1.267,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "flak",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.398
+    },
+    "mean": 0.398,
+    "predicted": 6.898,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "flak+fullSteam",
+   "name": "Flak Cannon + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.222,
+     "lostAll": 7,
+     "bossNormal": 1.267,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.222,
+    "lostAll": 7,
+    "bossNormal": 1.267,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "flak",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.163
+    },
+    "mean": 0.163,
+    "predicted": 7.163,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "seeker+aegis",
+   "name": "Seeker Pod + Point Defense",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.722,
+     "lostAll": 7,
+     "bossNormal": 1.294,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.722,
+    "lostAll": 7,
+    "bossNormal": 1.294,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "seeker",
+    "aegis"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.677
+    },
+    "mean": -2.677,
+    "predicted": 4.323,
+    "win": -0.333,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "seeker+well",
+   "name": "Seeker Pod + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.833,
+     "lostAll": 6.5,
+     "bossNormal": 1.722,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.833,
+    "lostAll": 6.5,
+    "bossNormal": 1.722,
+    "bossReached": 3
+   },
+   "weapons": [
+    "seeker",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.177
+    },
+    "mean": -2.177,
+    "predicted": 4.323,
+    "win": -0.611,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "seeker+railgun",
+   "name": "Seeker Pod + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.778,
+     "lostAll": 8,
+     "bossNormal": 1.529,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.778,
+    "lostAll": 8,
+    "bossNormal": 1.529,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "seeker",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.398
+    },
+    "mean": -3.398,
+    "predicted": 4.602,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "seeker+tesla",
+   "name": "Seeker Pod + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.611,
+     "lostAll": 7.833,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.611,
+    "lostAll": 7.833,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "seeker",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.395
+    },
+    "mean": -2.395,
+    "predicted": 5.439,
+    "win": -0.111,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "seeker+lance",
+   "name": "Seeker Pod + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 1.222,
+     "lostAll": 6.833,
+     "bossNormal": 1.2,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 3.167,
+    "boss": 1.222,
+    "lostAll": 6.833,
+    "bossNormal": 1.2,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "seeker",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.116
+    },
+    "mean": 1.116,
+    "predicted": 7.949,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "seeker+droneScreen",
+   "name": "Seeker Pod + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.611,
+     "lostAll": 7,
+     "bossNormal": 1.533,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.611,
+    "lostAll": 7,
+    "bossNormal": 1.533,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "seeker",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.561
+    },
+    "mean": -1.561,
+    "predicted": 5.439,
+    "win": -0.389,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "seeker+gunships",
+   "name": "Seeker Pod + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 2.278,
+     "lostAll": 8.667,
+     "bossNormal": 1.706,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 2.278,
+    "lostAll": 8.667,
+    "bossNormal": 1.706,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "seeker",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.252
+    },
+    "mean": -2.252,
+    "predicted": 6.415,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "seeker+supplyRun",
+   "name": "Seeker Pod + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 1.778,
+     "lostAll": 8.5,
+     "bossNormal": 1.611,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 3.167,
+    "boss": 1.778,
+    "lostAll": 8.5,
+    "bossNormal": 1.611,
+    "bossReached": 3
+   },
+   "weapons": [
+    "seeker",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.224
+    },
+    "mean": -2.224,
+    "predicted": 6.276,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "seeker+overdrive",
+   "name": "Seeker Pod + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 2.722,
+     "lostAll": 10.333,
+     "bossNormal": 2,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 2.722,
+    "lostAll": 10.333,
+    "bossNormal": 2,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "seeker",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.779
+    },
+    "mean": -3.779,
+    "predicted": 6.554,
+    "win": -0.667,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "seeker+shield",
+   "name": "Seeker Pod + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.5,
+     "boss": 1.833,
+     "lostAll": 9,
+     "bossNormal": 1.533,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 3.5,
+    "boss": 1.833,
+    "lostAll": 9,
+    "bossNormal": 1.533,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "seeker",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.748
+    },
+    "mean": -1.748,
+    "predicted": 7.252,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "seeker+fullSteam",
+   "name": "Seeker Pod + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 3.833,
+     "boss": 1.944,
+     "lostAll": 9.667,
+     "bossNormal": 1.5,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 11.667,
+    "flawless": 0,
+    "lost10": 3.833,
+    "boss": 1.944,
+    "lostAll": 9.667,
+    "bossNormal": 1.5,
+    "bossReached": 2
+   },
+   "weapons": [
+    "seeker",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.136
+    },
+    "mean": -2.136,
+    "predicted": 7.531,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "aegis+well",
+   "name": "Point Defense + Gravity Well",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 2.167,
+     "lostAll": 8.5,
+     "bossNormal": 1.833,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 2.167,
+    "lostAll": 8.5,
+    "bossNormal": 1.833,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "well"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -5.231
+    },
+    "mean": -5.231,
+    "predicted": 3.269,
+    "win": -0.667,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+railgun",
+   "name": "Point Defense + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.944,
+     "lostAll": 7.333,
+     "bossNormal": 1.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.944,
+    "lostAll": 7.333,
+    "bossNormal": 1.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.854
+    },
+    "mean": -3.854,
+    "predicted": 3.48,
+    "win": -0.667,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+tesla",
+   "name": "Point Defense + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.5,
+     "lostAll": 6.667,
+     "bossNormal": 1.5,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.5,
+    "lostAll": 6.667,
+    "bossNormal": 1.5,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.554
+    },
+    "mean": -2.554,
+    "predicted": 4.112,
+    "win": -0.167,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+lance",
+   "name": "Point Defense + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.167,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 2.389,
+     "lostAll": 10.333,
+     "bossNormal": 2,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.167,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.167,
+    "boss": 2.389,
+    "lostAll": 10.333,
+    "bossNormal": 2,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "aegis",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -4.323
+    },
+    "mean": -4.323,
+    "predicted": 6.01,
+    "win": -0.833,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+droneScreen",
+   "name": "Point Defense + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.778,
+     "lostAll": 7.5,
+     "bossNormal": 1.588,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.778,
+    "lostAll": 7.5,
+    "bossNormal": 1.588,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "aegis",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.388
+    },
+    "mean": -3.388,
+    "predicted": 4.112,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+gunships",
+   "name": "Point Defense + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 1.833,
+     "lostAll": 6.833,
+     "bossNormal": 1.647,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 1.833,
+    "lostAll": 6.833,
+    "bossNormal": 1.647,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "aegis",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.983
+    },
+    "mean": -1.983,
+    "predicted": 4.85,
+    "win": -0.5,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+supplyRun",
+   "name": "Point Defense + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.5,
+     "lostAll": 6.333,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.5,
+    "lostAll": 6.333,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.588
+    },
+    "mean": -1.588,
+    "predicted": 4.745,
+    "win": -0.167,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+overdrive",
+   "name": "Point Defense + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1,
+     "lostAll": 5.167,
+     "bossNormal": 1,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1,
+    "lostAll": 5.167,
+    "bossNormal": 1,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.211
+    },
+    "mean": -0.211,
+    "predicted": 4.956,
+    "win": 0,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+shield",
+   "name": "Point Defense + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.5,
+     "lostAll": 6,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.5,
+    "lostAll": 6,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.517
+    },
+    "mean": -0.517,
+    "predicted": 5.483,
+    "win": -0.333,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "aegis+fullSteam",
+   "name": "Point Defense + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.556,
+     "lostAll": 6.333,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.556,
+    "lostAll": 6.333,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "aegis",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.639
+    },
+    "mean": -0.639,
+    "predicted": 5.694,
+    "win": -0.333,
+    "winPredicted": 1
+   }
+  },
+  {
+   "key": "well+railgun",
+   "name": "Gravity Well + Railgun",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.889,
+     "lostAll": 7.333,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.889,
+    "lostAll": 7.333,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "railgun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -3.854
+    },
+    "mean": -3.854,
+    "predicted": 3.48,
+    "win": -0.222,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "well+tesla",
+   "name": "Gravity Well + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.5,
+     "lostAll": 6.833,
+     "bossNormal": 1.471,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.5,
+    "lostAll": 6.833,
+    "bossNormal": 1.471,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "well",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.721
+    },
+    "mean": -2.721,
+    "predicted": 4.112,
+    "win": -0.111,
+    "winPredicted": 0.944
+   }
+  },
+  {
+   "key": "well+lance",
+   "name": "Gravity Well + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.722,
+     "lostAll": 7.833,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.722,
+    "lostAll": 7.833,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.823
+    },
+    "mean": -1.823,
+    "predicted": 6.01,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "well+droneScreen",
+   "name": "Gravity Well + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.278,
+     "lostAll": 6,
+     "bossNormal": 1.056,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.278,
+    "lostAll": 6,
+    "bossNormal": 1.056,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.888
+    },
+    "mean": -1.888,
+    "predicted": 4.112,
+    "win": -0.056,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "well+gunships",
+   "name": "Gravity Well + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.333,
+     "boss": 0.778,
+     "lostAll": 3.667,
+     "bossNormal": 0.778,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 1.333,
+    "boss": 0.778,
+    "lostAll": 3.667,
+    "bossNormal": 0.778,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.184
+    },
+    "mean": 1.184,
+    "predicted": 4.85,
+    "win": 0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "well+supplyRun",
+   "name": "Gravity Well + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.778,
+     "lostAll": 7.333,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.778,
+    "lostAll": 7.333,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.588
+    },
+    "mean": -2.588,
+    "predicted": 4.745,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "well+overdrive",
+   "name": "Gravity Well + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.389,
+     "lostAll": 7.167,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.389,
+    "lostAll": 7.167,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.211
+    },
+    "mean": -2.211,
+    "predicted": 4.956,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "well+shield",
+   "name": "Gravity Well + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.333,
+     "lostAll": 7,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.333,
+    "lostAll": 7,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "well",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.517
+    },
+    "mean": -1.517,
+    "predicted": 5.483,
+    "win": 0,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "well+fullSteam",
+   "name": "Gravity Well + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.889,
+     "lostAll": 8.167,
+     "bossNormal": 1.5,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.889,
+    "lostAll": 8.167,
+    "bossNormal": 1.5,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "well",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.473
+    },
+    "mean": -2.473,
+    "predicted": 5.694,
+    "win": -0.5,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "railgun+tesla",
+   "name": "Railgun + Tesla Arc",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.778,
+     "lostAll": 7.333,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.778,
+    "lostAll": 7.333,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "tesla"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.956
+    },
+    "mean": -2.956,
+    "predicted": 4.378,
+    "win": -0.556,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "railgun+lance",
+   "name": "Railgun + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.944,
+     "lostAll": 7.667,
+     "bossNormal": 1.722,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.944,
+    "lostAll": 7.667,
+    "bossNormal": 1.722,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.269
+    },
+    "mean": -1.269,
+    "predicted": 6.398,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "railgun+droneScreen",
+   "name": "Railgun + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1,
+     "boss": 1.944,
+     "lostAll": 6.833,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1,
+    "boss": 1.944,
+    "lostAll": 6.833,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.456
+    },
+    "mean": -2.456,
+    "predicted": 4.378,
+    "win": -0.444,
+    "winPredicted": 0.778
+   }
+  },
+  {
+   "key": "railgun+gunships",
+   "name": "Railgun + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.333,
+     "lostAll": 6,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.333,
+    "lostAll": 6,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.837
+    },
+    "mean": -0.837,
+    "predicted": 5.163,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "railgun+supplyRun",
+   "name": "Railgun + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 13.167,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 2.056,
+     "lostAll": 7.667,
+     "bossNormal": 1.824,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 13.167,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 2.056,
+    "lostAll": 7.667,
+    "bossNormal": 1.824,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "railgun",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -2.616
+    },
+    "mean": -2.616,
+    "predicted": 5.051,
+    "win": -0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "railgun+overdrive",
+   "name": "Railgun + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.278,
+     "lostAll": 5.833,
+     "bossNormal": 1.278,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.278,
+    "lostAll": 5.833,
+    "bossNormal": 1.278,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.558
+    },
+    "mean": -0.558,
+    "predicted": 5.276,
+    "win": 0.333,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "railgun+shield",
+   "name": "Railgun + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.833,
+     "lostAll": 7.167,
+     "bossNormal": 1.765,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.833,
+    "lostAll": 7.167,
+    "bossNormal": 1.765,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "railgun",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.33
+    },
+    "mean": -1.33,
+    "predicted": 5.837,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "railgun+fullSteam",
+   "name": "Railgun + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.389,
+     "lostAll": 6.833,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.389,
+    "lostAll": 6.833,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "railgun",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.772
+    },
+    "mean": -0.772,
+    "predicted": 6.061,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "tesla+lance",
+   "name": "Tesla Arc + Charge Lance",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.556,
+     "lostAll": 7.167,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.556,
+    "lostAll": 7.167,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "tesla",
+    "lance"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.395
+    },
+    "mean": 0.395,
+    "predicted": 7.561,
+    "win": 0,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "tesla+droneScreen",
+   "name": "Tesla Arc + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.556,
+     "lostAll": 6.833,
+     "bossNormal": 1.412,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.556,
+    "lostAll": 6.833,
+    "bossNormal": 1.412,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "tesla",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.66
+    },
+    "mean": -1.66,
+    "predicted": 5.173,
+    "win": -0.056,
+    "winPredicted": 0.889
+   }
+  },
+  {
+   "key": "tesla+gunships",
+   "name": "Tesla Arc + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 1.833,
+     "lostAll": 6.667,
+     "bossNormal": 1.611,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 1.833,
+    "lostAll": 6.667,
+    "bossNormal": 1.611,
+    "bossReached": 3
+   },
+   "weapons": [
+    "tesla",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.565
+    },
+    "mean": -0.565,
+    "predicted": 6.102,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "tesla+supplyRun",
+   "name": "Tesla Arc + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.833,
+     "lostAll": 7.167,
+     "bossNormal": 1.706,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.833,
+    "lostAll": 7.167,
+    "bossNormal": 1.706,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "tesla",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.197
+    },
+    "mean": -1.197,
+    "predicted": 5.969,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "tesla+overdrive",
+   "name": "Tesla Arc + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.778,
+     "lostAll": 7.5,
+     "bossNormal": 1.611,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.778,
+    "lostAll": 7.5,
+    "bossNormal": 1.611,
+    "bossReached": 3
+   },
+   "weapons": [
+    "tesla",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.265
+    },
+    "mean": -1.265,
+    "predicted": 6.235,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "tesla+shield",
+   "name": "Tesla Arc + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.111,
+     "lostAll": 4.833,
+     "bossNormal": 1.056,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.111,
+    "lostAll": 4.833,
+    "bossNormal": 1.056,
+    "bossReached": 3
+   },
+   "weapons": [
+    "tesla",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.065
+    },
+    "mean": 2.065,
+    "predicted": 6.898,
+    "win": -0.167,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "tesla+fullSteam",
+   "name": "Tesla Arc + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 11.833,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.944,
+     "lostAll": 6.833,
+     "bossNormal": 0.889,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 11.833,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 0.944,
+    "lostAll": 6.833,
+    "bossNormal": 0.889,
+    "bossReached": 1.5
+   },
+   "weapons": [
+    "tesla",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.33
+    },
+    "mean": 0.33,
+    "predicted": 7.163,
+    "win": -0.333,
+    "winPredicted": 0.833
+   }
+  },
+  {
+   "key": "lance+droneScreen",
+   "name": "Charge Lance + Drone Screen",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 1.944,
+     "lostAll": 8.833,
+     "bossNormal": 1.429,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 1.944,
+    "lostAll": 8.833,
+    "bossNormal": 1.429,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "lance",
+    "droneScreen"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.272
+    },
+    "mean": -1.272,
+    "predicted": 7.561,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "lance+gunships",
+   "name": "Charge Lance + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 2.278,
+     "lostAll": 10.833,
+     "bossNormal": 1.929,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 2.278,
+    "lostAll": 10.833,
+    "bossNormal": 1.929,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "lance",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.915
+    },
+    "mean": -1.915,
+    "predicted": 8.918,
+    "win": -0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "lance+supplyRun",
+   "name": "Charge Lance + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 4.5,
+     "boss": 1.833,
+     "lostAll": 10,
+     "bossNormal": 1.417,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 4.5,
+    "boss": 1.833,
+    "lostAll": 10,
+    "bossNormal": 1.417,
+    "bossReached": 2
+   },
+   "weapons": [
+    "lance",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.276
+    },
+    "mean": -1.276,
+    "predicted": 8.724,
+    "win": -0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "lance+overdrive",
+   "name": "Charge Lance + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.556,
+     "lostAll": 7.333,
+     "bossNormal": 1.4,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.556,
+    "lostAll": 7.333,
+    "bossNormal": 1.4,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "lance",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.779
+    },
+    "mean": 1.779,
+    "predicted": 9.112,
+    "win": 0,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "lance+shield",
+   "name": "Charge Lance + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.333,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.722,
+     "lostAll": 8.833,
+     "bossNormal": 1.455,
+     "bossReached": 1.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.333,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 3.667,
+    "boss": 1.722,
+    "lostAll": 8.833,
+    "bossNormal": 1.455,
+    "bossReached": 1.833
+   },
+   "weapons": [
+    "lance",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.248
+    },
+    "mean": 1.248,
+    "predicted": 10.082,
+    "win": -0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "lance+fullSteam",
+   "name": "Charge Lance + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.667,
+     "boss": 1.833,
+     "lostAll": 9.167,
+     "bossNormal": 1.4,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 3.667,
+    "boss": 1.833,
+    "lostAll": 9.167,
+    "bossNormal": 1.4,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "lance",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.303
+    },
+    "mean": 1.303,
+    "predicted": 10.469,
+    "win": 0,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "droneScreen+gunships",
+   "name": "Drone Screen + Gunship Pair",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.333,
+     "boss": 1.833,
+     "lostAll": 7.833,
+     "bossNormal": 1.588,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.333,
+    "boss": 1.833,
+    "lostAll": 7.833,
+    "bossNormal": 1.588,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "droneScreen",
+    "gunships"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -1.731
+    },
+    "mean": -1.731,
+    "predicted": 6.102,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "droneScreen+supplyRun",
+   "name": "Drone Screen + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.5,
+     "boss": 1.722,
+     "lostAll": 6.667,
+     "bossNormal": 1.556,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.5,
+    "boss": 1.722,
+    "lostAll": 6.667,
+    "bossNormal": 1.556,
+    "bossReached": 3
+   },
+   "weapons": [
+    "droneScreen",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.697
+    },
+    "mean": -0.697,
+    "predicted": 5.969,
+    "win": -0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "droneScreen+overdrive",
+   "name": "Drone Screen + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.667,
+     "lostAll": 6.833,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.667,
+    "lostAll": 6.833,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "droneScreen",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.599
+    },
+    "mean": -0.599,
+    "predicted": 6.235,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "droneScreen+shield",
+   "name": "Drone Screen + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 1.667,
+     "boss": 1.5,
+     "lostAll": 6.167,
+     "bossNormal": 1.444,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 1.667,
+    "boss": 1.5,
+    "lostAll": 6.167,
+    "bossNormal": 1.444,
+    "bossReached": 3
+   },
+   "weapons": [
+    "droneScreen",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.731
+    },
+    "mean": 0.731,
+    "predicted": 6.898,
+    "win": 0,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "droneScreen+fullSteam",
+   "name": "Drone Screen + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.5,
+     "lostAll": 7,
+     "bossNormal": 1.333,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.5,
+    "lostAll": 7,
+    "bossNormal": 1.333,
+    "bossReached": 3
+   },
+   "weapons": [
+    "droneScreen",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.163
+    },
+    "mean": 0.163,
+    "predicted": 7.163,
+    "win": 0.167,
+    "winPredicted": 0.667
+   }
+  },
+  {
+   "key": "gunships+supplyRun",
+   "name": "Gunship Pair + Supply Run",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 1.167,
+     "boss": 2.111,
+     "lostAll": 7.5,
+     "bossNormal": 1.667,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 1.167,
+    "boss": 2.111,
+    "lostAll": 7.5,
+    "bossNormal": 1.667,
+    "bossReached": 3
+   },
+   "weapons": [
+    "gunships",
+    "supplyRun"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": -0.459
+    },
+    "mean": -0.459,
+    "predicted": 7.041,
+    "win": 0,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "gunships+overdrive",
+   "name": "Gunship Pair + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0.167,
+     "lost10": 1.333,
+     "boss": 1.333,
+     "lostAll": 5.333,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0.167,
+    "lost10": 1.333,
+    "boss": 1.333,
+    "lostAll": 5.333,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "gunships",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.02
+    },
+    "mean": 2.02,
+    "predicted": 7.354,
+    "win": 0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "gunships+shield",
+   "name": "Gunship Pair + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.5,
+     "flawless": 0.167,
+     "lost10": 0.667,
+     "boss": 1.778,
+     "lostAll": 6,
+     "bossNormal": 1.412,
+     "bossReached": 2.833
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.5,
+    "flawless": 0.167,
+    "lost10": 0.667,
+    "boss": 1.778,
+    "lostAll": 6,
+    "bossNormal": 1.412,
+    "bossReached": 2.833
+   },
+   "weapons": [
+    "gunships",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.136
+    },
+    "mean": 2.136,
+    "predicted": 8.136,
+    "win": 0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "gunships+fullSteam",
+   "name": "Gunship Pair + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2,
+     "boss": 1.389,
+     "lostAll": 6.167,
+     "bossNormal": 1.222,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2,
+    "boss": 1.389,
+    "lostAll": 6.167,
+    "bossNormal": 1.222,
+    "bossReached": 3
+   },
+   "weapons": [
+    "gunships",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.282
+    },
+    "mean": 2.282,
+    "predicted": 8.449,
+    "win": 0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "supplyRun+overdrive",
+   "name": "Supply Run + Overdrive",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1,
+     "lostAll": 5.667,
+     "bossNormal": 1,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1,
+    "lostAll": 5.667,
+    "bossNormal": 1,
+    "bossReached": 3
+   },
+   "weapons": [
+    "supplyRun",
+    "overdrive"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.527
+    },
+    "mean": 1.527,
+    "predicted": 7.194,
+    "win": 0.5,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "supplyRun+shield",
+   "name": "Supply Run + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 1.833,
+     "boss": 1.056,
+     "lostAll": 5,
+     "bossNormal": 1.056,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 1.833,
+    "boss": 1.056,
+    "lostAll": 5,
+    "bossNormal": 1.056,
+    "bossReached": 3
+   },
+   "weapons": [
+    "supplyRun",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 2.959
+    },
+    "mean": 2.959,
+    "predicted": 7.959,
+    "win": 0.5,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "supplyRun+fullSteam",
+   "name": "Supply Run + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.333,
+     "flawless": 0,
+     "lost10": 4.167,
+     "boss": 1.278,
+     "lostAll": 8,
+     "bossNormal": 1.333,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.333,
+    "flawless": 0,
+    "lost10": 4.167,
+    "boss": 1.278,
+    "lostAll": 8,
+    "bossNormal": 1.333,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "supplyRun",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.265
+    },
+    "mean": 0.265,
+    "predicted": 8.265,
+    "win": 0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "overdrive+shield",
+   "name": "Overdrive + Shield",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0,
+     "lost10": 2.5,
+     "boss": 1.389,
+     "lostAll": 6.667,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.833,
+    "endWave": 13.833,
+    "flawless": 0,
+    "lost10": 2.5,
+    "boss": 1.389,
+    "lostAll": 6.667,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "overdrive",
+    "shield"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.646
+    },
+    "mean": 1.646,
+    "predicted": 8.313,
+    "win": 0.333,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "overdrive+fullSteam",
+   "name": "Overdrive + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.667,
+     "endWave": 13.667,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.5,
+     "lostAll": 7.167,
+     "bossNormal": 1.389,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.667,
+    "endWave": 13.667,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.5,
+    "lostAll": 7.167,
+    "bossNormal": 1.389,
+    "bossReached": 3
+   },
+   "weapons": [
+    "overdrive",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 1.466
+    },
+    "mean": 1.466,
+    "predicted": 8.633,
+    "win": 0.167,
+    "winPredicted": 0.5
+   }
+  },
+  {
+   "key": "shield+fullSteam",
+   "name": "Shield + Full Steam",
+   "kind": "pair",
+   "perMap": {
+    "saltgate": {
+     "n": 6,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.611,
+     "lostAll": 8.833,
+     "bossNormal": 1.467,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 6,
+    "won": 0.5,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 1.611,
+    "lostAll": 8.833,
+    "bossNormal": 1.467,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "shield",
+    "fullSteam"
+   ],
+   "syn": {
+    "perMap": {
+     "saltgate": 0.718
+    },
+    "mean": 0.718,
+    "predicted": 9.551,
+    "win": 0,
+    "winPredicted": 0.5
+   }
+  }
+ ]
+}
