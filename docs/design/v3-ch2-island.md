@@ -163,6 +163,24 @@ As on chapter 1's maps (Kesh 4%, Marrow 0% without the Armory), the baseline sta
 
 **For comparison,** the same card on the map's own convoy with no encounters (`quick.ts --no-enc`, 16 seeds, the player's Armory) wins 31% and loses 5.1 ships in waves 1–10: most of the drop from 92% is the production convoy and chapter 2's shared waves, not the encounters. The first encounter draft, aimed hard at the danger stretch, took the bot to 0% (6.0 ships in waves 1–10); the final one is easier than the shared waves.
 
+### After round 8: the debut waves (log v32)
+
+Waves 3–5 now send drones only around their new enemy (see "The debut"). The rest of the map is unchanged. 48 seeds (900–947, `quick.ts`), and the record reports (24 seeds):
+
+| | v31 | v32 |
+| --- | --- | --- |
+| The player's Armory, 48 seeds: won; lost 1–10; lost 1–5 | 44%; 4.19; 0.92 | 40%; 4.65; **0.79** |
+| Lost per wave 2–5 (48 seeds) | .13 .17 .19 .36 | .13 .17 .19 .32 |
+| Lost per wave 6–10 (48 seeds) | .41 .78 .80 .69 1.02 | .38 .91 .93 .98 1.29 |
+| The latest Armory, 48 seeds: won; lost 1–10; lost 1–5 | 42%; 4.44; 0.81 | 40%; 4.13; **0.56** |
+| Report, the player's Armory (24): won; 1–10; 1–5; boss r1 / r2 / r3 | 50%; 3.9; 0.88; 1.28 / 1.71 / 1.64 | 33%; 4.8; 0.63; 1.08 / 1.58 / 1.80 |
+| Report, the latest Armory (24): won; 1–10; 1–5 | 50%; 4.7; 0.75 | 42%; 3.8; 0.42 |
+| Report, no Armory (24): won; 1–10; 1–5 | 0%; 5.7; 1.87 | 0%; 4.9; 0.83 |
+| `w-budget` (player's Armory) | PASS (w2 ×0.87) | PASS (w6 ×0.87) |
+
+- **Waves 1–5 are in the band now** (0.4–0.8: 0.79 and 0.56 on 48 seeds, 0.63 and 0.42 on the reports), and no debut wave loses more than the wave before it by much: the new enemy is the wave's one new thing.
+- **The win rate is under the 50–70% asked, before and after.** On 48 seeds v31 already won 42–44% (the card's 50% was a 24-seed read); v32 reads 40% with both Armories. Waves 6–10 read higher on v32 (the debut waves changed nothing there; the sim is chaotic, and the same 48 seeds move ±0.3 a wave between near-identical builds). Two easings were tried and dropped: waves 7–10 at 93% of their own fire (won 48% / 58%, but waves 8–10 fell to ×0.76–0.80 of their shared wave, outside rule `w-budget`), and wave 9's island swarm moved to the far shore (won 33% / 48%: no better). A question for the player (hub).
+
 ### Chapter 2 difficulty (rule `m-difficulty`)
 
 With the player's Armory the bot wins 50% (the latest Armory: 50%), the bottom of the 50–70% aimed for, against Kesh's 13% and Marrow's 79% on v29. Waves 1–10 lose 3.9 ships (a step over chapter 1's 3.1–3.75), waves 1–5 0.88 (in the 0.4–0.8 band's top, just over), and the boss rounds read 1.3 / 1.7 / 1.6 on the bot, a little under the 1.5 / 2 / 2.5 asked: with the bot's boss bias on chapter 1 (1.4–2.5×) that is about 0.6–1 a round for the player.
@@ -179,14 +197,16 @@ From `island-player.md`:
 - **The south lane's way in takes 28% of its hull damage (rule: under 25%).** The early third lies west of the island, in reach of the far west silo's shells and supersonic missiles and the west sub spot; the shared waves send that fire, and the encounters already aim away from it (wave 3's swarm moved from `near` to `mid` for this). Without the Armory it passes (24%); the north lane passes in every report.
 - **The debut banner shows once per device, at Call-outs: All only.** A player who met chapter 2's enemies in the Test Lab's enemy cards has already seen it, so on the Island card the debut waves come with no banner. A question for the player (hub).
 - **The counter kit only matches the bot's own draft** (9.1 against 9.3 ships a run), while clearly beating the off-counter kit; the Gunship Pair alone beats both.
-- **Waves 1–5 lose 0.88** (target 0.4–0.8): the Torpedo Sub's and Armored Drone's debuts on waves 3–4.
+- **Waves 1–5 lost 0.88 on v31** (target 0.4–0.8); since the debut waves (v32) 0.42–0.79. **The win rate** reads 40% on 48 seeds (v31: 42–44%), under the 50–70% asked (above, "After round 8").
 - **Boss rounds are a little under target and round 3 is not above round 2** on the bot (1.71 / 1.64). Five helicopters read 2.4–3.3 in round 3 during tuning, a cliff after round 2; this is the middle.
 - **The bot numbers move a lot with small changes.** One more drone or shell in a wave moved later waves by up to ±0.7 of a ship on the same 24 seeds (the sim is chaotic: the bot's drafts and the wave planner's dice change). 48-seed reads were used to choose between versions.
 - **No player data** on chapter 2 maps yet: the bot's bias here is unknown.
 
-## The play log (v31)
+## The play log (v31, then v32)
 
 `LOG_VERSION` 31, `LOG_REPLAYS` `[31]` (`src/v3/sim/playlog.ts`), shared with the Behemoth Run. The base branch moved to v30 (#178) while this was built and was merged in. All of chapter 2's change is lab only, under the encounter layer: the campaign plays as it did (apart from the debut banner's text, which is UI only), and a v30 Island card log played the shared waves. The map-lab baseline's twelve runs differed only in their log version; it was rewritten with `--write` and replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 31.
+
+Log v32 (round 8): the debut waves; the map-lab baseline changed only its version and was rewritten; the version pins moved to 32. The Test Lab's "Ready to test" lists the Island at v32.
 
 ## Tests
 
@@ -196,6 +216,7 @@ From `island-player.md`:
   - the Island's wave 8 plans one cluster and one supersonic fewer than the shared wave (`replaces.extras`), and only chapter 2's encounters do that;
   - the Gunship Wall's rounds: the helicopters, swarms, shells and missiles, rising; a rev 3 log and the campaign play the event as it was; 15–30 s a round.
 - `tests/v3/foes.test.ts`: `foeDebutTag` (rule `m-debut-tag`).
+- `tests/v3/mapRules.test.ts` (log v32): waves 2–5 plan only their debut enemy and drones; no game code reads `MAP_PLANS`; the draft deals the same cards on every map of a chapter.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command.
 - `e2e/v3-map-cards.mjs`: the hub card says so; `?lab=map-island` opens the full map with encounters rev 4 and no command. `e2e/v3-encounters.mjs`: the map with no authored encounters is now the Needle.

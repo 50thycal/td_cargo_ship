@@ -320,3 +320,47 @@ Without the Armory (`marrow.md`): won 8% → 8%, waves 1–10 5.0 → 5.7, `w-cl
 - **The bot report still flags one cliff**, in its tough runs with its own picks: wave 7 at 0.67 after wave 6's 0.13 (it moved from wave 8; a second try, wave 7's missiles back from the west, moved it to wave 10). It reads a sinking either side of the line from run to run.
 - **The early stretch** still takes 26% (rule: under 25%): the east shells land past the island, not on the way in, but the shared waves' trucks and strafers keep the way in warm.
 - **The tower:** it still falls around wave 7 for the bot. The player lost it on wave 4. The waves after it get harder by the tower's loss on top of the table's rise, so the player's 7–10 are likely to stay the hardest stretch.
+
+## After round 8 (log v32, 2026-11-20)
+
+The player's decision (round 8): **the radar tower gets more hit points (about 6, from 4)** so it usually lasts into the late waves. On their v29 replay it fell on wave 4; the bot lost it around wave 7. The slow field (`POST.radarSlow` 0.65, #174) stays.
+
+### What changed
+
+- **The tower takes 6** (`MAPS.marrow.posts[0].hp`, `src/v3/data/maps20.ts`; campaign and lab). A guided missile or a shell takes 2, so it falls to the third hit, not the second; a heavy still takes it at once. The "RADAR HIT" notice counts hits as the player does ("2 more hits and it is lost"; it used to print the points left).
+- **Waves 7–10 send 10% more of their own fire** (`MAP_FIRE.marrow`, lab only, as the Strait's waves 5–10 do), to win back what the sturdier tower gives away. Not wave 6: it already sends 1.13 times its shared wave, and +10% put it at 1.25, past rule `w-budget`'s ±15% (tried first). The encounters are unchanged. (Tried and dropped: one more missile, shell or drone pair in the encounters of waves 7–9; within the noise, and the books rule `sends ≤ takes out` needs a drone given up for each.)
+
+### Before and after
+
+The bot report, the player's Armory (`npm run v3:map-report -- --map=marrow --seeds=24 --kits=plan --armory=player`):
+
+| | v31 | 6 hit points only | v32 (6 + waves 7–10 fire) |
+| --- | --- | --- | --- |
+| Won (normal) | 83% | 83% | **83%** |
+| Ships lost in waves 1–10 / 1–5 | 2.6 / 0.25 | 2.3 / 0.29 | 2.3 / 0.29 |
+| Lost per wave 6–10 (normal, reached) | .13 .67 .71 .38 .52 | | .17 .25 .50 .65 .45 |
+| Tower fell: by w5 / by w6 / by w10 / in the boss rounds / stood (of 24) | 4 / 7 / 22 / 2 / 0 | 1 / 3 / 21 / 1 / 2 | 1 / 3 / 21 / 2 / 1 |
+| Tower fell, median | w7 | w8 | **w8** |
+| Boss r1 / r2 / r3 (normal, reached) | 0.33 / 0.95 / 1.76 | | 0.57 / 0.57 / 1.38 |
+| `w-cliff` | FLAG: w7 0.13 → 0.67 | FLAG: w9 | **PASS** |
+| `w-budget` | PASS (w6 ×1.13) | PASS | PASS (w8 ×1.15) |
+| `m-stretches` | FLAG: cold early 26% | | FLAG: cold early 29% |
+
+The player's own setup (`tools/v3/bot-fit/curve.ts --ids=v3-20261119132436-3976 --dice=24 --seeds=24`: the latest Armory, warhead 5 / Point Defense 4 / drops 3, and the player's picks):
+
+| | Won | Lost 1–5 | Lost 6–10 | Lost per wave 6–10 | Tower fell, median |
+| --- | --- | --- | --- | --- | --- |
+| Mirror (the player's seed), v31 | 96% | 0.25 | 2.33 | .25 .25 .42 .67 .78 | w7 |
+| Mirror, 6 hit points only | 96% | 0.21 | 1.92 | .04 .25 .25 .79 .58 | w8 |
+| Mirror, v32 (fire from wave 6, tried) | 92% | 0.21 | 2.13 | .13 .29 .13 .63 .96 | w8 |
+| Seeds 900–923, v31 | 67% | 0.46 | 3.13 | .54 .46 .78 .82 .75 | w7 |
+| Seeds, 6 hit points only | 96% | 0.29 | 2.25 | .46 .17 .42 .70 .57 | w8 |
+| Seeds, v32 (fire from wave 6, tried) | 83% | 0.29 | 2.33 | .63 .29 .26 .78 .48 | w8 |
+
+48 seeds, the latest Armory (`quick.ts`): won 81% / 2.67 lost in waves 1–10 on v31, 90% / 2.13 with 6 hit points alone, 92% / 2.27 with the extra fire from wave 6. Without the Armory (`marrow.md`): won 4% (8%), 4.3 lost in waves 1–10, tower median w8 (w6).
+
+### What it does, and what it doesn't
+
+- **The tower lasts a wave longer, not to the end:** it now falls by wave 6 in 3 runs of 24 (7), and the median moves from wave 7 to wave 8. In most runs it still falls in waves 7–10, so the boss's tower missiles mostly go at the ship nearest the island. 6 is three hits; the next step that matters is 8 (four hits).
+- **The map is about as hard as it was** on the record report (83% won, 2.3 lost in waves 1–10). On the player's own setup it is easier than v31 (seeds: 67% → 83%; 6–10: 3.1 → 2.3), as the player's "a bit easy" note on waves 1–6 is untouched. The bot numbers move ±10% from run to run of 24–48 seeds.
+- **The early stretch** still takes 29% (rule: under 25%), a little more than before, as the middle under a standing tower takes less.
