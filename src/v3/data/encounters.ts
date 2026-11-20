@@ -3035,14 +3035,16 @@ const BEHEMOTH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'The north shore\'s middle silo (760, 88; a guided missile), its east silo (swarm), the south-east headland (guided).',
       target: 'The middle silo\'s missile at the supertanker, the swarm and the headland\'s missile at the lead ship.',
-      usesMap: 'The mechanic\'s decision: the tanker\'s worth three ships, and the convoy is everything else.',
+      usesMap: 'The mechanic\'s decision: the tanker\'s worth three ships, and the convoy is everything else; in place of the wave\'s heavy (the first comes on wave 6).',
     },
     beats: [
       { at: 0.45, kind: 'guided', count: 1, from: base(1), aim: 'vip' },
       { at: 0.45, plus: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.45, plus: 2, kind: 'guided', count: 1, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 6, guided: 2 },
+    // Log v33: the map's first heavy waits for wave 6 (from wave 4 the
+    // map's heavies go for the tanker, MAP_SIGNATURE; waves 1-5 stay light).
+    replaces: { drones: 6, guided: 2, extras: { heavy: 1 } },
   },
   {
     id: 'behemoth-both-sides',
@@ -3491,20 +3493,20 @@ export const ISLAND_BOSS_ROUNDS: BossRound[] = [
  *  r9-ch2-split: "change the Behemoth Run's boss to something Shield doesn't
  *  stop"): a strike on the supertanker. Strike jets come in pairs, down the
  *  deep lane at the tanker (`aim: 'vip'`) and over the convoy (the densest
- *  band, as any jet), and the Shield never stops a jet's guns; heavy cruise
- *  missiles go for the tanker (two hits sink it); one or two subs are left of
- *  the Wolf Pack from round 2 (before log v33: 4 to 6 subs, 1 or 2 fast torpedoes
- *  and guided missiles at the tanker, a stream the Shield answered). Before
- *  the encounter layer: 4 then 3 subs, two of them with a fast torpedo,
- *  every round. */
+ *  band, as any jet), and the Shield never stops a jet's guns; a heavy cruise
+ *  missile goes for the tanker each round (two hits sink it); one sub is left of the
+ *  Wolf Pack from round 2 (before log v33: 4 to 6 subs, 1 or 2 fast
+ *  torpedoes and guided missiles at the tanker, a stream the Shield
+ *  answered). Before the encounter layer: 4 then 3 subs, two of them with a
+ *  fast torpedo, every round. */
 export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
   {
     packs: [],
     fast: 0,
     fire: [
       { kind: 'heavy', at: 4, count: 1, base: 1, aim: 'vip' },
-      { kind: 'strafer', at: 5, count: 5, gap: 2.6, aim: 'vip' },
-      { kind: 'strafer', at: 6.3, count: 5, gap: 2.6 },
+      { kind: 'strafer', at: 5, count: 4, gap: 3, aim: 'vip' },
+      { kind: 'strafer', at: 6.5, count: 4, gap: 3 },
     ],
   },
   {
@@ -3512,18 +3514,18 @@ export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
     fast: 1,
     fire: [
       { kind: 'heavy', at: 4, count: 1, base: 1, aim: 'vip' },
-      { kind: 'strafer', at: 5, count: 6, gap: 2.2, aim: 'vip' },
-      { kind: 'strafer', at: 6.1, count: 6, gap: 2.2 },
+      { kind: 'strafer', at: 5, count: 5, gap: 2.6, aim: 'vip' },
+      { kind: 'strafer', at: 6.5, count: 4, gap: 3 },
     ],
   },
   {
-    packs: [1, 1],
+    packs: [1],
     fast: 1,
     fire: [
       { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'vip' },
-      { kind: 'heavy', at: 16, count: 1, base: 2, aim: 'vip' },
       { kind: 'strafer', at: 5, count: 6, gap: 2.2, aim: 'vip' },
-      { kind: 'strafer', at: 6.1, count: 6, gap: 2.2 },
+      { kind: 'strafer', at: 6.3, count: 5, gap: 2.6 },
+      { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' },
     ],
   },
 ];
