@@ -888,7 +888,7 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
   }, 90_000);
 });
 
-describe('the Needle of Bosk\'s boss rounds (log v34, MAP_BOSS): the Shield Wall at the mouth rises; a rev 3 log and the campaign play it as it was', () => {
+describe('the Needle of Bosk\'s boss rounds (log v35, MAP_BOSS): the Shield Wall at the mouth rises; a rev 3 log and the campaign play it as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('one block of armored drones a round, bigger each round, with clusters and shells from the headlands at the queue', () => {
@@ -987,7 +987,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(vipRoute(createGame('strait', 1, 4))).toBeNull();
   });
 
-  it('the Needle of Bosk (log v34): from wave 4 the wave\'s new enemies come as small walls of armored drones, the Shield Wall\'s own', () => {
+  it('the Needle of Bosk (log v35): from wave 4 the wave\'s new enemies come as small walls of armored drones, the Shield Wall\'s own', () => {
     const sig = MAP_SIGNATURE.needle!;
     expect(sig).toMatchObject({ from: 4, foe: 'armored', foeShare: 1 });
     expect(sig.block).toBeGreaterThanOrEqual(2);

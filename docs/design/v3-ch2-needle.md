@@ -1,6 +1,6 @@
 # The Needle of Bosk: map card (map rebuild, chapter 2)
 
-**Date:** 2026-11-20. The Needle of Bosk (`needle`, chapter 2 "The Narrows", the 8th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island and the Behemoth Run (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`) and with their round 9 signature threats. Encounter rev 4; play log v34.
+**Date:** 2026-11-20. The Needle of Bosk (`needle`, chapter 2 "The Narrows", the 8th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island and the Behemoth Run (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`) and with their round 9 signature threats. Encounter rev 4; play log v35.
 
 Code:
 - `src/v3/data/encounters.ts`: `NEEDLE_R4` (ten encounters), `NEEDLE_BOSS_ROUNDS` and `MAP_BOSS.needle`, `MAP_SIGNATURE.needle`, `REBUILT_MAPS` (via `CHAPTER_TWO_MAPS`), in the chapter 2 block;
@@ -8,7 +8,7 @@ Code:
 - `src/v3/data/convoy.ts`: `MAP_CONVOY.needle` (the map's own convoy, no command);
 - `src/v3/sim/game.ts`: a signature's `block` (the wave planner): each of the wave's new enemies comes as a small wall of armored drones, its extra drones taken out of the wave's own one for one;
 - `src/v3/sim/events.ts`: the Shield Wall reads its rounds from `MAP_BOSS` (the block's size and width) and adds a round's own launches (`fire`, as the Gunship Wall and the Wolf Pack do); a boss round's `fire` may now send a cluster;
-- `src/v3/data/lab.ts`: "Ready to test" lists the Needle at v34;
+- `src/v3/data/lab.ts`: "Ready to test" lists the Needle at v35;
 - `tools/v3/combo-sweep/mix.ts`, `mixwaves.ts`: the Needle among the maps, its signature the armored drones.
 
 Bot reports: `tools/v3/map-report/results/needle.md` (no Armory), `needle-player.md` (the player's usual Armory, with fun measures and the heat map) and `needle-latest.md` (the player's latest Armory: Wide Warhead 5, Point Defense 4, Supply Lines 3). Tuning reads: the bot as `tools/v3/map-report/quick.ts` plays it, on 48 seeds at a time (900–947 and 948–995).
@@ -82,7 +82,7 @@ Forced, the counter kit loses about 2.3 ships fewer than the off-counter kit and
 
 ## Loadouts on this map (combo sweep singles)
 
-Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 34, the final build; `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2`). Ships lost over all 13 waves:
+Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 34, the final build of the Needle before the version moved to 35 at the last merge (the same game); `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2`). Ships lost over all 13 waves:
 
 - **Strong:** **Shield 5.2**, Drone Screen 6.0 (won 75%), Railgun 6.9, Seeker 7.0, Boomerang 7.3, Frigate Escort 7.4.
 - **Middling:** Thermobaric 7.8, Overdrive 7.8, Gunship Pair 7.9; the bot's own draft 8.0; Gravity Well 8.1, Scattergun 8.2, Flak 8.3, Air Strike 8.4, Point Defense 8.5, Tesla 8.5.
@@ -152,7 +152,7 @@ The cluster and the shells go at the ship nearest the north headland (aim `near`
 
 ## Bot results, before and after (24 seeds, 900–923)
 
-"Before" is the map card as it was: today's convoy controls, no encounters, the event as it was. "After" is this build (log v34). Commands: `npx vite-node tools/v3/map-report/report.ts -- --map=needle --seeds=24 --kits=plan [--armory=player | --armory=latest] [--no-fun]`.
+"Before" is the map card as it was: today's convoy controls, no encounters, the event as it was. "After" is this build (log v35). Commands: `npx vite-node tools/v3/map-report/report.ts -- --map=needle --seeds=24 --kits=plan [--armory=player | --armory=latest] [--no-fun]`.
 
 ### The player's Armory (Quick Reload 5, Damage Control 4, Stockpile 5)
 
@@ -225,9 +225,9 @@ From `needle-player.md`:
 - **No player data** on chapter 2 yet (the Island and the Behemoth Run are being playtested): the bot's bias here is unknown. On chapter 1 the bot read boss rounds 1.4–2.5× as hard as the player did.
 - **This branch carries the round 9 build** (the signature threats), which was not yet merged into the base when the Needle was built (see "The play log").
 
-## The play log (v34)
+## The play log (v35)
 
-`LOG_VERSION` 34, `LOG_REPLAYS` `[34]` (`src/v3/sim/playlog.ts`). The base branch was at v33 (the Armory overhaul, #190) when this started. The round 9 build (the signature threats, the Behemoth's jet strike, Overdrive's 18 s; `claude/v3-r9-build`, log v33 on its own branch) was not yet merged into the base, and the Needle's signature builds on it (`MAP_SIGNATURE`), so it was merged into this branch first, and both share v34. The Needle's change is lab only, under the encounter layer: the campaign plays as it did, and a v33 Needle card log played the map with no encounters. The map-lab baseline (the Strait, the Gauntlet and Harbor) was rewritten with `--write` and replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 34. The Test Lab's "Ready to test" lists the Needle at v34 (and the Island and the Behemoth Run's round 9 builds at v34, the version they ship in on this branch).
+`LOG_VERSION` 35, `LOG_REPLAYS` `[35]` (`src/v3/sim/playlog.ts`). The base branch was at v33 (the Armory overhaul, #190) when this started; the round 9 build (the signature threats, `MAP_SIGNATURE`, which the Needle's walls build on) was not merged yet, so it was merged into this branch first. Round 9 then merged into the base as v34 (#192), and the base was merged in again at the end: the Needle is v35. Its change is lab only, under the encounter layer: the campaign plays as it did, and a v34 Needle card log played the map with no encounters (it no longer replays). The bot reports and sweeps were made while the Needle's build was numbered 34 on this branch; the game they played is v35's. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 35. The Test Lab's "Ready to test" lists the Needle at v35.
 
 ## Tests
 

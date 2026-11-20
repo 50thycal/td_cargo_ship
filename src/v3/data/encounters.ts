@@ -3178,7 +3178,7 @@ const BEHEMOTH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
 // the headlands is point-blank ('near' from a headland silo is the ship in
 // or at the mouth of the Needle), and a cluster or a shell there catches
 // ships bunched nose to tail. No mechanic of its own: the Needle is a shape
-// (rule m-mechanic). The signature (MAP_SIGNATURE, log v34): from wave 4
+// (rule m-mechanic). The signature (MAP_SIGNATURE, log v35): from wave 4
 // the wave's new enemies come as small walls of armored drones, the Shield
 // Wall's own, which the boss rounds send as one block.
 const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
@@ -3639,7 +3639,7 @@ export interface MapSignature {
   from: number;
   foe?: FoeId;
   foeShare?: number;
-  /** The Needle of Bosk (log v34): each signature enemy comes as a small
+  /** The Needle of Bosk (log v35): each signature enemy comes as a small
    *  wall of `block` of them (an Armored Drone is one drone, not a
    *  platform), out of one base 0.35 s apart, in place of the drone swarm
    *  it stands in for and never more than that swarm's drones (rule
@@ -3657,7 +3657,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // (MAP_BOSS): the wave's jets strafe the deep lane and its heavies go for
   // the tanker, from wave 4 (the first jet).
   behemoth: { from: 4, jets: 'vip', heavies: 'vip' },
-  // The Needle of Bosk (log v34, docs/design/v3-ch2-needle.md): armored
+  // The Needle of Bosk (log v35, docs/design/v3-ch2-needle.md): armored
   // drones, the Shield Wall's own, in small walls from wave 4 (the first
   // wave after the Island's debut of them, so no debut wave is needed here).
   needle: { from: 4, foe: 'armored', foeShare: 1, block: 2 },
@@ -3721,7 +3721,7 @@ export interface BossRound {
   volleys?: number;
   packs?: number[];
   fast?: number;
-  /** The Needle of Bosk's Shield Wall (log v34): one block of `block`
+  /** The Needle of Bosk's Shield Wall (log v35): one block of `block`
    *  armored drones, `cols` wide (the event's own: 12, 4 wide). */
   block?: number;
   cols?: number;
@@ -3807,7 +3807,7 @@ export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
-/** The Needle of Bosk's Shield Wall (log v34, docs/design/v3-ch2-needle.md):
+/** The Needle of Bosk's Shield Wall (log v35, docs/design/v3-ch2-needle.md):
  *  the event's block of armored drones from the north shore, plates forward,
  *  at one ship (before: 12, 4 wide, and nothing else, every round): 8, 9,
  *  then 10 drones, each round with a cluster from the north headland over the

@@ -1180,7 +1180,7 @@ function startWave(g: Game): void {
     const id = drawn[k];
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
-    // The Needle of Bosk (log v34, MAP_SIGNATURE `block`): a small wall of
+    // The Needle of Bosk (log v35, MAP_SIGNATURE `block`): a small wall of
     // armored drones out of one base. The wall stands in for a swarm as any
     // new enemy does, and its other drones come out of the wave's own, one
     // for one (the biggest swarm in a raid, else the biggest that trickles

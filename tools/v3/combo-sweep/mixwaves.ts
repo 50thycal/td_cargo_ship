@@ -27,7 +27,7 @@ const seeds = Number(opt('seeds') ?? 4);
 export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   island: ['attackHeli', 'heliRocket'],
   behemoth: ['heavy', 'strafer'],
-  // The Needle of Bosk (log v34): the Shield Wall's armored drones.
+  // The Needle of Bosk (log v35): the Shield Wall's armored drones.
   needle: ['armored'],
 };
 
@@ -54,7 +54,7 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
         // from the front, the way it flies at its ship): counted with its
-        // hull (log v34, the Needle's walls).
+        // hull (log v35, the Needle's walls).
         if (h) h[th.kind] = (h[th.kind] ?? 0) + (th.hp + (th.kind === 'armored' ? (th.foe?.n ?? 0) : 0)) / nSeeds;
       }
     }
