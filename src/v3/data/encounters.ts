@@ -4098,9 +4098,9 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  the far shore and a cluster off the west islet at the ships coming in
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
-  { swarms: 6, size: 7, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 5, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 7, size: 9, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 2, gap: 3, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 6, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
