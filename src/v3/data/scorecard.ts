@@ -41,8 +41,19 @@
 // Weakest wave from them (`bestSuggested`, `weakestSuggested`: what was
 // suggested, so the tools can tell a pick from an accepted suggestion).
 //
-// Change a category's meaning, add one or drop one: bump SCORECARD_REV, so
-// the page never averages answers to two different questions together.
+// Effort (round 11; the player: "add in a rating for me to rate how hard I
+// tried, so we know if it was a fluke or if it truly is hard"): one row
+// more, 1 casual / not really trying to 5 full focus, all-out (`effort`).
+// It asks something new and changes no other row's question, so it joins
+// revision 4 (`since: 4`) instead of starting revision 5: the page keeps
+// averaging this round's scores with the earlier revision 4 ones, and a
+// revision 4 score without it reads as Effort left blank. The bot fit
+// reads it (sim/feedback.ts runEffort) to weigh low-effort runs less.
+//
+// Change a category's meaning or drop one: bump SCORECARD_REV, so the page
+// never averages answers to two different questions together. A row added
+// may start a revision too (revision 3 did), unless, like Effort, the old
+// rows keep their meaning.
 
 import { EVENT_WAVE } from './events';
 
@@ -70,7 +81,7 @@ export type ScoreScale =
    *  B1 to B3). */
   | { kind: 'wave' };
 
-export type ScoreId = 'fun' | 'difficulty' | 'intensity' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest' | 'moment';
+export type ScoreId = 'fun' | 'difficulty' | 'intensity' | 'effort' | 'pacing' | 'variety' | 'readability' | 'mapFeel' | 'boss' | 'vs' | 'again' | 'best' | 'weakest' | 'moment';
 
 export interface ScoreCategory {
   id: ScoreId;
@@ -163,6 +174,9 @@ export const SCORECARD: ScoreCategory[] = [
       ],
     },
   },
+  // Round 11: how hard the player tried (asked from revision 4 on; see the
+  // header).
+  { id: 'effort', label: 'Effort', help: 'How hard did you try?', scale: STARS, since: 4, low: 'casual / not really trying', high: 'full focus, all-out' },
   { id: 'best', label: 'Best wave', help: 'The wave you liked most', scale: { kind: 'wave' } },
   { id: 'weakest', label: 'Weakest wave', help: 'The wave you liked least', scale: { kind: 'wave' } },
   // Revision 3: one tap, the wave and where in it (`momentT`). Retired by
@@ -196,6 +210,9 @@ export interface Scorecard {
   momentT?: number;
   /** Revision 4: 1 calm to 5 frantic. */
   intensity?: number;
+  /** Revision 4 (round 11): how hard the player tried, 1 casual / not
+   *  really trying to 5 full focus, all-out. */
+  effort?: number;
   /** Revision 4: the waves rated on the draft (the log's `waveRatings`),
    *  in wave order. */
   waves?: WaveScore[];

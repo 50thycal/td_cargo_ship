@@ -17,6 +17,7 @@ import type { PlayLog } from '../../../src/v3/sim/playlog';
 import { funOfLog, SAVE_NAMES, SHAPE_NAMES, waveName, type FunResult, type Save } from '../../../src/v3/sim/funMetrics';
 import { measure, mean } from './measure';
 import { mirrorRun, type PlayerRun } from './fit';
+import { lowEffort, runEffort } from '../../../src/v3/sim/feedback';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
@@ -150,9 +151,13 @@ for (const [name, p] of Object.entries(review.playtest)) {
     entry.you = { lost1to10: sum(me.lost.slice(0, 10)), boss: me.lost.slice(10, 13) };
     if (predict[log.map]) entry.cardPrediction = { lost1to10: predict[log.map][0], boss: predict[log.map].slice(1) };
   }
+  // Round 11: how hard the player said they tried (a low-effort run is a
+  // weak sample: weigh it less).
+  const effort = runEffort(log);
+  if (effort !== undefined) entry.effort = { rating: effort, low: lowEffort(effort) };
   out[name] = entry;
   // A readable summary.
-  console.log(`\n== ${name} (${p.log}, ${log.map}, exact replay: ${fun.exact})`);
+  console.log(`\n== ${name} (${p.log}, ${log.map}, exact replay: ${fun.exact}${effort !== undefined ? `, effort ${effort}${lowEffort(effort) ? ' LOW: weigh less' : ''}` : ''})`);
   console.log(`lost by wave: ${me.lost.join(' ')}  (waves 1-10: ${sum(me.lost.slice(0, 10))}; boss ${me.lost.slice(10).join('/') || '-'})`);
   if (entry.bot) {
     const b = entry.bot as { lost1to10: number; boss: (number | null)[]; won: number; curve: { n: number; mean: number | null }[] };

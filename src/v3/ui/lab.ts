@@ -14,7 +14,7 @@ import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStat
 import type { LabResult, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, suggestWaves, waveChips, waveLabel, waveScoreText, type ScoreCategory, type Scorecard, type WaveScore } from '../data/scorecard';
-import type { MomentKind, Rating } from '../sim/feedback';
+import { RUN_RATING_AXES, type MomentKind, type Rating } from '../sim/feedback';
 import { ratingRows } from './notes';
 
 /** The review page for the Test Lab: it shows what was marked here (Claude
@@ -773,7 +773,7 @@ export interface VerdictDraft {
    *  the player cleared is not put back). */
   suggested?: { best?: number; weakest?: number };
   prefilled?: boolean;
-  /** Any other card: the normal game's three 1–5 rows (the log's
+  /** Any other card: the normal game's 1–5 rows (Effort too; the log's
    *  `rating`). */
   rating?: Rating;
 }
@@ -1005,7 +1005,7 @@ function chipRow(c: ScoreCategory, label: string, hint: string, opts: { v: numbe
 /** The scorecard (round 11; revision 4, data/scorecard.ts), as the rating
  *  rows of the review screen: the player's last scores on top, then one
  *  row per question (Fun, Difficulty, Intensity, the boss rounds, the
- *  comparison, Play again), a tap on a chip to answer (again to clear),
+ *  comparison, Play again, Effort), a tap on a chip to answer (again to clear),
  *  every row optional, and Skip to fold it away (with `alsoHide`: the
  *  Best and Weakest rows under the timeline). */
 export function scorecardEl(played: number, d: VerdictDraft, ctx: ScorecardContext = {}, alsoHide: HTMLElement[] = []): HTMLElement {
@@ -1158,10 +1158,10 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const waveRows = scored !== undefined ? waveRowsEl(scored, d, ctx) : null;
   if (scored !== undefined) sheet.append(scorecardEl(scored, d, ctx, waveRows ? [waveRows] : []));
   else {
-    // Any other card: the normal game's three rows (the log's rating).
+    // Any other card: the normal game's rows, Effort too (the log's rating).
     const rate = el('section', 'v3-score v3-lab-rating');
     rate.dataset.labRating = '1';
-    const rows = ratingRows(d.rating ?? {});
+    const rows = ratingRows(d.rating ?? {}, RUN_RATING_AXES);
     // The rows keep their own state; the draft follows each tap.
     rows.el.addEventListener('click', () => (d.rating = rows.value()));
     const eyebrow = el('div', 'v3-score-head');

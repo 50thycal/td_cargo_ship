@@ -30,17 +30,43 @@ export const NOTE_TAGS: { id: NoteTag; label: string }[] = [
 ];
 
 /** 1 to 5 each. Difficulty: 1 easy, 5 brutal. Fun: 1 a chore, 5 a blast.
- *  Intensity: 1 calm, 5 frantic. */
+ *  Intensity: 1 calm, 5 frantic. Effort (the whole run's rating only): 1
+ *  casual, not really trying; 5 full focus, all-out. */
 export interface Rating {
   difficulty?: number;
   fun?: number;
   intensity?: number;
+  effort?: number;
 }
-export const RATING_AXES: { id: keyof Rating; label: string; low: string; high: string }[] = [
+export type RatingAxis = { id: keyof Rating; label: string; low: string; high: string };
+/** The axes a volley, a wave and the whole run are rated on. */
+export const RATING_AXES: RatingAxis[] = [
   { id: 'difficulty', label: 'Difficulty', low: 'easy', high: 'brutal' },
   { id: 'fun', label: 'Fun', low: 'a chore', high: 'a blast' },
   { id: 'intensity', label: 'Intensity', low: 'calm', high: 'frantic' },
 ];
+/** How hard the player tried (the player, round 11: "a rating for me to
+ *  rate how hard I tried, so we know if it was a fluke or if it truly is
+ *  hard"). Asked of the whole run only, never of a volley or a wave. */
+export const EFFORT_AXIS: RatingAxis = { id: 'effort', label: 'Effort', low: 'casual / not really trying', high: 'full focus, all-out' };
+/** The whole run's rows on the review screen: the three axes and Effort. */
+export const RUN_RATING_AXES: RatingAxis[] = [...RATING_AXES, EFFORT_AXIS];
+/** An effort this low or lower marks a run the player didn't try hard on:
+ *  the bot fit and the seesaw read weigh it less. */
+export const LOW_EFFORT = 2;
+
+/** How hard the player said they tried on a run (1-5), from its log: the
+ *  run's rating (the normal game's review screen) or, on a Test Lab map
+ *  card, its scorecard. Absent: not rated. */
+export function runEffort(log: { rating?: Rating; labResult?: { score?: { effort?: number } } }): number | undefined {
+  const v = log.rating?.effort ?? log.labResult?.score?.effort;
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5 ? v : undefined;
+}
+
+/** Did the player say they weren't really trying (effort <= LOW_EFFORT)? */
+export function lowEffort(effort: number | undefined): boolean {
+  return effort !== undefined && effort <= LOW_EFFORT;
+}
 
 /** The player's rating of a whole wave, given (optionally) on the weapon
  *  draft straight after it (docs/design/v3-rate-and-review.md): the same
