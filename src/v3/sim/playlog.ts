@@ -262,12 +262,17 @@ import type { EncounterSetup } from '../data/encounters';
  *      a boss round's `subs`). The Saltgate card, which played today's
  *      convoy controls with no encounters, now plays these: a v37 Saltgate
  *      card log no longer replays to the same game; the campaign plays as
- *      it did. */
-export const LOG_VERSION = 38;
+ *      it did.
+ *  39: the player's round 11 answer (the hub, "Softer: 2 / 3 / 4"): the
+ *      Shield boost breaks after AB.shield.hits = 2 / 3 / 4 hits at level
+ *      1 / 2 / MAX (was 1 / 2 / 3; campaign and lab). A v38 log that drew
+ *      the Shield no longer replays to the same game. (The Effort rating
+ *      added beside it is not sim input.) */
+export const LOG_VERSION = 39;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [38];
+export const LOG_REPLAYS: readonly number[] = [39];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

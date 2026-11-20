@@ -277,10 +277,11 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 38 (Saltgate Canal rebuilt; after 37, the Archipelago, and 36, the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(38);
-    expect(LOG_REPLAYS).toEqual([38]);
-    expect(replaysHere(38)).toBe(true);
+  it('the log is version 39 (the Shield takes 2 / 3 / 4 hits; after 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger); only its own version replays here', () => {
+    expect(LOG_VERSION).toBe(39);
+    expect(LOG_REPLAYS).toEqual([39]);
+    expect(replaysHere(39)).toBe(true);
+    expect(replaysHere(38)).toBe(false);
     expect(replaysHere(37)).toBe(false);
     expect(replaysHere(36)).toBe(false);
     expect(replaysHere(34)).toBe(false);
