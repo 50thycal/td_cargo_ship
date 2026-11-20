@@ -197,12 +197,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      stand in for a map's own extras (`replaces.extras`).
  *      All of it is lab only, under the encounter layer: a campaign run
  *      plays as it did, and a v30 Island or Behemoth card log played its
- *      shared waves. */
-export const LOG_VERSION = 31;
+ *      shared waves.
+ *  32: the player's round 8 (docs/design/v3-ch1-marrow.md "After round
+ *      8", v3-ch2-island.md "The debuts"): Lee of Marrow's radar tower
+ *      takes 6 (was 4: three missiles or shells, not two; campaign and
+ *      lab), and Marrow's waves 7-10 send 10% more (MAP_FIRE, lab); the
+ *      Island's waves 3-5 are the Torpedo Sub's, Armored Drone's and
+ *      Scavenger Drone's debut waves, drones only around each (lab;
+ *      `replaces.extras` may stand in for a jet or a bomber). A v31 Marrow
+ *      log, or a v31 Island card log, no longer replays to the same game. */
+export const LOG_VERSION = 32;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [31];
+export const LOG_REPLAYS: readonly number[] = [32];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

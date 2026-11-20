@@ -77,9 +77,11 @@ Each weapon alone, forced at every draft (12 seeds, the player's Armory, game ve
 
 ## The debut
 
-**All four of chapter 2's new enemies debut here,** one a wave, as the wave planner brings a chapter's enemies in on its first map (`mapDebut`, `planFoes`; `debuts()` lists them): the Attack Helicopter on wave 2, the Torpedo Sub on wave 3, the Armored Drone on wave 4, the Scavenger Drone on wave 5. Rule `m-enemy` asks for each to have a wave alone (or with drones only) before it mixes in. Only the helicopter gets that: wave 2's encounter gives up the wave's two shells, so its first wave is it and drones. The others come into full waves. Changing that is a campaign planner change, so it is a question for the player (below).
+**All four of chapter 2's new enemies debut here,** one a wave from wave 2, as the wave planner brings a chapter's enemies in on its first map (`mapDebut`, `planFoes`; `debuts()` lists them): the Attack Helicopter on wave 2, the Torpedo Sub on wave 3, the Armored Drone on wave 4, the Scavenger Drone on wave 5.
 
-Each new enemy now says which chapter brought it the first time it shows (rule `m-debut-tag`): "NEW · The Narrows: Attack helicopter". Chapter 1's enemies keep "NEW: …" as before. Nothing from a later chapter: the encounters send only drones, shells, guided missiles and a strafer, all in the map's table by their waves (`tests/v3/encounters.test.ts`).
+**Since log v32 (the player's round 8), each has a light debut wave of its own** (rule `m-enemy`: alone, or with drones only, before it mixes in). Waves 2–5 send nothing but drones around the new enemy: wave 2 gives up its two shells (as before), and waves 3–5 give up every shell, missile and aircraft the shared wave would send (the subs' and trucks' loads with them; `replaces.extras` now takes a strafer or a bomber too) and send swarms in their place. The new enemy is the one new thing on the water. The island's first shell and the periscopes between the lanes now come on wave 6. Test: `tests/v3/mapRules.test.ts` ("a light debut wave on the Island").
+
+Each new enemy says which chapter brought it the first time it shows (rule `m-debut-tag`): "NEW · The Narrows: Attack helicopter". The banner is a first-meeting tip: it shows once per device, and only at Call-outs: All (see "What is not satisfied"). Chapter 1's enemies keep "NEW: …" as before. Nothing from a later chapter: the encounters send only drones, shells, guided missiles and a strafer, all in the map's table by their waves (`tests/v3/encounters.test.ts`).
 
 ## The ten waves (v1, encounter rev 4)
 
@@ -89,9 +91,9 @@ One encounter a wave, none repeated. From wave 6 the encounters send most of the
 | --- | --- | --- | --- | --- |
 | 1 | teach | Point-blank (`island-point-blank`) | island west silo, 3 drones | the ship beside the island |
 | 2 | teach | From the far shore (`island-far-shore`) | far middle silo, 5 drones; island east silo, 3 drones; the wave's 2 shells taken out | the north lane; beside the island |
-| 3 | first stakes | Shells off the island (`island-shells`) | island east silo, 1 shell; island west silo, 4 drones | beside the island; halfway along |
-| 4 | first stakes | Off the west tip (`island-west-tip`) | west sub between the lanes, 2 shells; island east silo, 4 drones | halfway along; beside the island |
-| 5 | combine | Both lanes (`island-both-lanes`) | far east silo, 2 guided; island west silo, 5 drones | any ship; halfway along |
+| 3 | first stakes | Swarms on both sides (`island-quiet-water`), the Torpedo Sub's debut | island west silo, 5 drones; island east silo, 5 drones; the wave's 4 shells taken out | halfway along; beside the island |
+| 4 | first stakes | A swarm for each lane (`island-two-lanes`), the Armored Drone's debut | far middle silo, 5 drones; island east silo, 6 drones; the wave's shells, missile and jet taken out | the north lane; beside the island |
+| 5 | combine | Both lanes (`island-both-lanes`), the Scavenger Drone's debut | far middle silo, 5 + 4 drones; island west silo, 5 drones; the wave's shells, bomber and jet taken out | the north lane; halfway along |
 | 6 | combine | Front and behind (`island-behind`) | south-west sub, 2 shells; island west 5 drones and east 1 shell; far middle 4 drones | halfway along; beside the island; in place of the first supersonic |
 | 7 | escalate | Down the south lane (`island-strafe`) | a jet from the west; island east 4 drones; far east 1 guided; far middle 4 drones | the lane; beside the island; the north lane |
 | 8 | escalate | Both silos on the island (`island-crossfire`) | island west 4 drones, then east 3; far middle 3 drones | beside the island; in place of a cluster and a supersonic |
@@ -161,6 +163,24 @@ As on chapter 1's maps (Kesh 4%, Marrow 0% without the Armory), the baseline sta
 
 **For comparison,** the same card on the map's own convoy with no encounters (`quick.ts --no-enc`, 16 seeds, the player's Armory) wins 31% and loses 5.1 ships in waves 1–10: most of the drop from 92% is the production convoy and chapter 2's shared waves, not the encounters. The first encounter draft, aimed hard at the danger stretch, took the bot to 0% (6.0 ships in waves 1–10); the final one is easier than the shared waves.
 
+### After round 8: the debut waves (log v32)
+
+Waves 3–5 now send drones only around their new enemy (see "The debut"). The rest of the map is unchanged. 48 seeds (900–947, `quick.ts`), and the record reports (24 seeds):
+
+| | v31 | v32 |
+| --- | --- | --- |
+| The player's Armory, 48 seeds: won; lost 1–10; lost 1–5 | 44%; 4.19; 0.92 | 40%; 4.65; **0.79** |
+| Lost per wave 2–5 (48 seeds) | .13 .17 .19 .36 | .13 .17 .19 .32 |
+| Lost per wave 6–10 (48 seeds) | .41 .78 .80 .69 1.02 | .38 .91 .93 .98 1.29 |
+| The latest Armory, 48 seeds: won; lost 1–10; lost 1–5 | 42%; 4.44; 0.81 | 40%; 4.13; **0.56** |
+| Report, the player's Armory (24): won; 1–10; 1–5; boss r1 / r2 / r3 | 50%; 3.9; 0.88; 1.28 / 1.71 / 1.64 | 33%; 4.8; 0.63; 1.08 / 1.58 / 1.80 |
+| Report, the latest Armory (24): won; 1–10; 1–5 | 50%; 4.7; 0.75 | 42%; 3.8; 0.42 |
+| Report, no Armory (24): won; 1–10; 1–5 | 0%; 5.7; 1.87 | 0%; 4.9; 0.83 |
+| `w-budget` (player's Armory) | PASS (w2 ×0.87) | PASS (w6 ×0.87) |
+
+- **Waves 1–5 are in the band now** (0.4–0.8: 0.79 and 0.56 on 48 seeds, 0.63 and 0.42 on the reports), and no debut wave loses more than the wave before it by much: the new enemy is the wave's one new thing.
+- **The win rate is under the 50–70% asked, before and after.** On 48 seeds v31 already won 42–44% (the card's 50% was a 24-seed read); v32 reads 40% with both Armories. Waves 6–10 read higher on v32 (the debut waves changed nothing there; the sim is chaotic, and the same 48 seeds move ±0.3 a wave between near-identical builds). Two easings were tried and dropped: waves 7–10 at 93% of their own fire (won 48% / 58%, but waves 8–10 fell to ×0.76–0.80 of their shared wave, outside rule `w-budget`), and wave 9's island swarm moved to the far shore (won 33% / 48%: no better). A question for the player (hub).
+
 ### Chapter 2 difficulty (rule `m-difficulty`)
 
 With the player's Armory the bot wins 50% (the latest Armory: 50%), the bottom of the 50–70% aimed for, against Kesh's 13% and Marrow's 79% on v29. Waves 1–10 lose 3.9 ships (a step over chapter 1's 3.1–3.75), waves 1–5 0.88 (in the 0.4–0.8 band's top, just over), and the boss rounds read 1.3 / 1.7 / 1.6 on the bot, a little under the 1.5 / 2 / 2.5 asked: with the bot's boss bias on chapter 1 (1.4–2.5×) that is about 0.6–1 a round for the player.
@@ -175,16 +195,18 @@ From `island-player.md`:
 ## What is not satisfied, or uncertain
 
 - **The south lane's way in takes 28% of its hull damage (rule: under 25%).** The early third lies west of the island, in reach of the far west silo's shells and supersonic missiles and the west sub spot; the shared waves send that fire, and the encounters already aim away from it (wave 3's swarm moved from `near` to `mid` for this). Without the Armory it passes (24%); the north lane passes in every report.
-- **Three of four new enemies get no debut wave alone** (above).
+- **The debut banner shows once per device, at Call-outs: All only.** A player who met chapter 2's enemies in the Test Lab's enemy cards has already seen it, so on the Island card the debut waves come with no banner. A question for the player (hub).
 - **The counter kit only matches the bot's own draft** (9.1 against 9.3 ships a run), while clearly beating the off-counter kit; the Gunship Pair alone beats both.
-- **Waves 1–5 lose 0.88** (target 0.4–0.8): the Torpedo Sub's and Armored Drone's debuts on waves 3–4.
+- **Waves 1–5 lost 0.88 on v31** (target 0.4–0.8); since the debut waves (v32) 0.42–0.79. **The win rate** reads 40% on 48 seeds (v31: 42–44%), under the 50–70% asked (above, "After round 8").
 - **Boss rounds are a little under target and round 3 is not above round 2** on the bot (1.71 / 1.64). Five helicopters read 2.4–3.3 in round 3 during tuning, a cliff after round 2; this is the middle.
 - **The bot numbers move a lot with small changes.** One more drone or shell in a wave moved later waves by up to ±0.7 of a ship on the same 24 seeds (the sim is chaotic: the bot's drafts and the wave planner's dice change). 48-seed reads were used to choose between versions.
 - **No player data** on chapter 2 maps yet: the bot's bias here is unknown.
 
-## The play log (v31)
+## The play log (v31, then v32)
 
 `LOG_VERSION` 31, `LOG_REPLAYS` `[31]` (`src/v3/sim/playlog.ts`), shared with the Behemoth Run. The base branch moved to v30 (#178) while this was built and was merged in. All of chapter 2's change is lab only, under the encounter layer: the campaign plays as it did (apart from the debut banner's text, which is UI only), and a v30 Island card log played the shared waves. The map-lab baseline's twelve runs differed only in their log version; it was rewritten with `--write` and replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 31.
+
+Log v32 (round 8): the debut waves; the map-lab baseline changed only its version and was rewritten; the version pins moved to 32. The Test Lab's "Ready to test" lists the Island at v32.
 
 ## Tests
 
@@ -194,10 +216,13 @@ From `island-player.md`:
   - the Island's wave 8 plans one cluster and one supersonic fewer than the shared wave (`replaces.extras`), and only chapter 2's encounters do that;
   - the Gunship Wall's rounds: the helicopters, swarms, shells and missiles, rising; a rev 3 log and the campaign play the event as it was; 15–30 s a round.
 - `tests/v3/foes.test.ts`: `foeDebutTag` (rule `m-debut-tag`).
+- `tests/v3/mapRules.test.ts` (log v32): waves 2–5 plan only their debut enemy and drones; no game code reads `MAP_PLANS`; the draft deals the same cards on every map of a chapter.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command.
 - `e2e/v3-map-cards.mjs`: the hub card says so; `?lab=map-island` opens the full map with encounters rev 4 and no command. `e2e/v3-encounters.mjs`: the map with no authored encounters is now the Needle.
 
 ## What to look for when you play
 
-The island sits right beside both lanes, and its two silos fire on the ships passing it with almost no warning: the first drones on wave 1, a shell on wave 3, a periscope off its west tip on wave 4, and both silos at once on wave 8. Your shots come from the carrier, far to the south, so watch whether you can get to the island's swarms in time, or whether only helpers sitting with the convoy can. A third of the ships take the fast north lane between the island and the far shore: the far shore aims its swarms and missiles there (waves 2, 5, 9), furthest from your gun. Chapter 2's four new enemies arrive here, one a wave from wave 2 (each now says "NEW · The Narrows"). Tell us whether the island felt like the problem, whether waves 1–5 now threaten you without a cliff later, and whether the Gunship Wall's three rounds rise. If you draft the Gunship Pair, say whether it made the map feel solved.
+The island sits right beside both lanes, and its two silos fire on the ships passing it with almost no warning: the first drones on wave 1, both silos at once on wave 3, a shell and a periscope from wave 6. Your shots come from the carrier, far to the south. A third of the ships take the fast north lane between the island and the far shore: the far shore aims its swarms and missiles there, furthest from your gun. Chapter 2's four new enemies arrive here, one a wave on waves 2–5, each in a wave of its own with nothing else but drones. Tell us whether each new enemy felt like the new thing in its wave, whether waves 1–5 threaten you without a cliff later, and whether the Gunship Wall's three rounds rise.
+
+(Round 8: this section no longer names a weapon to try. The counter kit above is a design note for the bots, never shown in the game or on the hub.)

@@ -166,7 +166,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-island.md,
     // v3-ch2-behemoth.md): the same.
     expect(arc('island').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
-      'island-point-blank', 'island-far-shore', 'island-shells', 'island-west-tip', 'island-both-lanes',
+      'island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes',
       'island-behind', 'island-strafe', 'island-crossfire', 'island-north-gap', 'island-run-past',
     ]);
     expect(arc('behemoth').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
