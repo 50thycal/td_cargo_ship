@@ -148,7 +148,7 @@ The Shield Wall is the map's own event: armored drones from launch points along 
 | 2 | 8 (4) | 1 (5 s) | 2 (9, 12 s) |
 | 3 | 9 (3) | 1 (4 s) | 2 (9, 13 s) |
 
-The cluster and the shells go at the ship nearest the north headland (aim `near`): the queue at the mouth and the ship in the Needle. The block goes for the middle ship of the convoy, as before. `MAP_PLANS.needle.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test). The intro cards are the shared ones (log v30): "Boss round", "Convoy restored, 6 ships can still be lost", "The boss: Shield Wall", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
+The cluster and the shells go at the ship nearest the north headland (aim `near`): the queue at the mouth and the ship in the Needle. The block goes for the middle ship of the convoy, as before. `MAP_PLANS.needle.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test). The intro cards are the shared ones (log v30), after the convoy is restored: "Boss round", "Convoy restored" (and the ships that can still be lost), "The boss: Shield Wall", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
 
 ## Bot results, before and after (24 seeds, 900–923)
 
@@ -233,7 +233,7 @@ From `needle-player.md`:
 
 - `tests/v3/encounters.test.ts`:
   - the ten listed, rev 4, v1 only, none at rev 3 (the map with no authored encounters is now the Archipelago);
-  - the budget, legality, warning and replay checks cover the map;
+  - the budget, legality, warning and replay checks cover the map (the warning check now finds an authored jet's own arrow when another of the wave's jets was warned of in between: wave 7's jet and the wave's own fly close together);
   - the Shield Wall's rounds: the block's size, the clusters and the shells, rising; all aimed at the queue from the headlands; a rev 3 log and the campaign play the event as it was; 15–30 s a round;
   - the signature: from wave 4 each of the wave's new enemies is a wall of 2 armored drones out of one base, the wave no bigger than the shared wave; waves 1–3, the campaign and the shared wave draw their own; the Island's signature stays one enemy each.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
@@ -243,6 +243,6 @@ From `needle-player.md`:
 
 ## What to look for when you play
 
-Watch the mouth. The ships sail wide over the open water in the west, then the funnel closes them into single file and they slow and queue at the mouth, right between the two enemy headlands: the south one is on your side of the strait, nearer your carrier than any enemy site so far. Wave 1 sends a few drones off the south headland at the queue; wave 3 the first cluster over it from the north headland. From wave 4 small walls of armored drones come in every wave, two at a time, plates first, as the boss's Shield Wall does in one big block; on wave 7 a jet strafes the column end to end; on wave 8 a heavy comes from the south headland's short range. The open water in the west is the safe part: only a sub (waves 4 and 6) and the climax reach it. The question to answer: did the queue at the mouth feel like the place to defend, and did the armored walls feel like the Shield Wall arriving early, or like more of the same drones? In the boss rounds one block of armored drones flies at one ship plates first and banks twice on the way; a cluster comes over the queue early in each round and a shell late. Tell us whether round 1 feels too light and whether the three rise.
+Watch the mouth. The ships sail wide over the open water in the west, then the funnel closes them into single file and they slow and queue at the mouth, right between the two enemy headlands: the south one is on your side of the strait, nearer your carrier than any enemy site so far. Wave 1 sends a few drones off the south headland at the queue; wave 3 the first cluster over it from the north headland. From wave 4 small walls of armored drones come in every wave, two at a time, plates first, as the boss's Shield Wall does in one big block; on wave 7 a jet strafes the column end to end; on wave 8 a heavy comes from the south headland's short range. The open water in the west is the safe part: the subs (waves 4 and 6), some swarms from the west shore and the climax reach it. The question to answer: did the queue at the mouth feel like the place to defend, and did the armored walls feel like the Shield Wall arriving early, or like more of the same drones? In the boss rounds one block of armored drones flies at one ship plates first and banks twice on the way; a cluster comes over the queue early in each round and shells into the Needle late. Tell us whether round 1 feels too light and whether the three rise.
 
 (This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)
