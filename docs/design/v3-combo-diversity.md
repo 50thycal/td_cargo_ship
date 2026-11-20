@@ -238,3 +238,36 @@ npm run v3:combo-sweep -- --stage=pairs --maps=island,behemoth,needle,archipelag
 npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v37-ch2 --maps=island,behemoth,needle,archipelago --json=tools/v3/combo-sweep/results/v37-ch2/diversity.json
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
+
+## Saltgate Canal: chapter 2's fifth map (game version 38)
+
+> 2026-11-20. Saltgate Canal rebuilt to the map rules (docs/design/v3-ch2-saltgate.md), with a signature of its own: a strike on the locks (torpedo subs for half the wave's new enemies, and the wave's clusters at the ships held in a lock) from wave 4. The player's rule: its best kits and best weapon alone must differ from the other four chapter 2 maps', and Air Strike, the best single on three of them, should not become a fourth's. Saltgate was swept at version 38 the same way: singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16. The other four maps play the same game at 38 as at 37 (the build changes nothing of theirs), so they are read from `results/v37-ch2`. Results: `tools/v3/combo-sweep/results/v38-ch2`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Island (v37) | **Air Strike + Thermobaric Shell + Point Defense** 6.6 | Air Strike + Point Defense + Gunship Pair 7.8 | Flak Cannon + Drone Screen + Gunship Pair 8.4 | Air Strike + Point Defense + Drone Screen 8.4 | Railgun + Tesla Arc + Overdrive 8.6 |
+| The Behemoth Run (v37) | **Air Strike + Drone Screen + Supply Run** 4.0 | Air Strike + Drone Screen + Full Steam 4.7 | Frigate Escort + Gravity Well + Shield 5.2 | Air Strike + Gravity Well + Drone Screen 5.6 | Thermobaric Shell + Flak Cannon + Full Steam 5.9 |
+| The Needle of Bosk (v37) | **Scattergun + Railgun + Supply Run** 5.3 | Shrapnel Shell + Gravity Well + Gunship Pair 6.2 | Shrapnel Shell + Railgun + Supply Run 6.9 | Shrapnel Shell + Flak Cannon + Gunship Pair 7.3 | Gravity Well + Railgun + Supply Run 7.3 |
+| The Archipelago (v37) | **Air Strike + Shrapnel Shell + Gravity Well** 3.2 | Air Strike + Frigate Escort + Gunship Pair 3.6 | Air Strike + Shrapnel Shell + Overdrive 3.8 | Air Strike + Overdrive + Full Steam 3.8 | Air Strike + Frigate Escort + Seeker Pod 3.9 |
+| Saltgate Canal (v38) | **Air Strike + Gunship Pair + Full Steam** 5.6 ±0.7, won 81% | Air Strike + Thermobaric Shell + Point Defense 6.0 | Frigate Escort + Point Defense + Supply Run 6.3 | Air Strike + Flak Cannon + Point Defense 7.1 | Air Strike + Frigate Escort + Thermobaric Shell 7.3 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, Saltgate against the Island / Behemoth / Needle / Archipelago | **0.11** (Air Strike + Thermobaric Shell + Point Defense: the Island's #1, Saltgate's #2) / 0 / 0 / 0 |
+| The same, Saltgate against itself (two halves of its seeds) | 0.67 |
+| #1 kit | its own |
+| Best weapon alone | **Point Defense** 5.8 (Scattergun 6.0, Air Strike 6.3); Air Strike on the Island, the Behemoth Run and the Archipelago, the Gunship Pair on the Needle |
+| Rank correlation of the weapons alone, Saltgate against the Island / Behemoth / Needle / Archipelago | 0.70 / 0.84 / 0.35 / 0.60 |
+
+### Reading
+
+- **Saltgate's kits are its own but for one:** its #1 kit is no other map's; its #2 is the Island's #1. Both maps fire point-blank at ships from silos close over them, and Point Defense answers both.
+- **Its best weapon alone is Point Defense, not Air Strike**, so Air Strike stays the best single on three maps of five. The top three singles are a tie on 12 seeds (5.8 / 6.0 / 6.3), and Air Strike is in four of Saltgate's five best kits.
+- **An earlier build** (the swarms still aimed at the ships coming in, the boss's first round with two subs) read Point Defense best alone too (5.8, then the Railgun and Scattergun 6.5, Air Strike 6.8), and also shared one kit with the Island (Air Strike + Point Defense + Gunship Pair, the Island's #2, then Saltgate's #1).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=saltgate --out=tools/v3/combo-sweep/results/v38-ch2
+npm run v3:combo-sweep -- --stage=pairs --maps=saltgate --out=tools/v3/combo-sweep/results/v38-ch2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v38-ch2 --maps=saltgate --json=tools/v3/combo-sweep/results/v38-ch2/diversity.json
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=saltgate --seeds=4
+```

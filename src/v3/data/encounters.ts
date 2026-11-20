@@ -96,8 +96,12 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 };
  *  and once it is gone the ship nearest where it stood. Rev 4, chapter 2's
  *  Behemoth Run (docs/design/v3-ch2-behemoth.md): 'vip', the supertanker
  *  while it sails, else the ship furthest along. (The Island needs no aim
- *  of its own: 'near' from a far-shore silo is the north lane's ship.) */
-export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip';
+ *  of its own: 'near' from a far-shore silo is the north lane's ship.)
+ *  Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
+ *  'lock', the ship held at a lock (in its chamber, or queued at its shut
+ *  entry gate), the lock nearest the launcher first; with none held there,
+ *  the ship nearest the launcher. */
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -3685,6 +3689,255 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Saltgate Canal (log v38, docs/design/v3-ch2-saltgate.md): the canal's
+ *  two locks. Ships wait in each chamber while it fills, still, under the
+ *  silos over the locks: most of the encounters' fire goes at the ship held
+ *  at the lock nearest the launcher (aim 'lock'). Bases: 0 the west shore
+ *  (drones, shells), 1 the silo over the west lock (guided, clusters), 2
+ *  over the lake (heavies, supersonic), 3 the east lock's silo (drones,
+ *  clusters), 4 the east shore (shells, guided); subs 0 the west sea, 1 the
+ *  east sea. */
+const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'saltgate-first-lock',
+    map: 'saltgate',
+    waves: [1],
+    role: 'teach',
+    name: 'At the first lock',
+    callout: 'Drones at the lock',
+    premise: 'The first ships stop in the west lock while it fills, and a few drones come off the west shore at them.',
+    decision: 'The first look at the locks: a ship in a chamber cannot move, so the drones will reach it unless you get them first.',
+    counters: 'Tap the drones as they cross the sea; the ship in the lock will still be there.',
+    succeeds: 'Nothing is sunk on wave 1; the drones are shot down over the west sea or the lock.',
+    notes: {
+      sites: 'The west shore silo (220, 150).',
+      target: 'The ship held at the west lock (in its chamber or at its shut gate): aim \'lock\'.',
+      usesMap: 'Shows the map\'s mechanic on wave 1: ships wait in a lock\'s chamber while it fills, sitting still under the silos.',
+    },
+    beats: [{ at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lock' }],
+    replaces: { drones: 3 },
+  },
+  {
+    id: 'saltgate-chamber',
+    map: 'saltgate',
+    waves: [2],
+    role: 'teach',
+    name: 'Shells into the chamber',
+    callout: 'Shells at the lock',
+    premise: 'A shell comes over from the west shore at a ship waiting in the west lock, then drones come off the east lock\'s silo.',
+    decision: 'A shell never misses a ship that cannot move: the ones in a lock must be covered first.',
+    counters: 'The shell as it climbs, then the drones.',
+    succeeds: 'The shell is shot down in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'The west shore silo (220, 150; a shell), then the east lock\'s silo (1220, 240; drones).',
+      target: 'The shell at the ship held at the lock nearest the silo (the west lock), the drones at any ship.',
+      usesMap: 'A ship in a chamber is a still target: a shell lands where it was aimed, in place of the wave\'s two shells.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'lock' },
+      { at: 0.35, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 4, ballistic: 2 },
+  },
+  {
+    id: 'saltgate-both-locks',
+    map: 'saltgate',
+    waves: [3],
+    role: 'teach',
+    name: 'Both locks',
+    callout: 'Both locks at once',
+    premise: 'A guided missile drops off the silo over the west lock at the ship inside, while drones come off the east lock\'s silo and the west shore.',
+    decision: 'The first stakes: two locks, two silos right over them, and almost no warning from either.',
+    counters: 'The missile the moment it lifts off; the drones as they leave.',
+    succeeds: 'A close call at a lock in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; drones), the west shore silo (220, 150; drones).',
+      target: 'The missile at the ship held at the west lock, under its silo; the swarms at any ship.',
+      usesMap: 'The silo over a lock fires point-blank at ships that cannot move, in place of the wave\'s shells and guided missile.',
+    },
+    beats: [
+      { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.4, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 4, guided: 1 },
+  },
+  {
+    id: 'saltgate-cluster',
+    map: 'saltgate',
+    waves: [4],
+    role: 'combine',
+    name: 'A cluster over the chamber',
+    callout: 'A cluster missile',
+    premise: 'A cluster missile lifts off over the west lock and splits above the ships waiting in it; swarms come off both shores.',
+    decision: 'The ships in a chamber sit side by side: one cluster that splits there finds several at once.',
+    counters: 'The cluster as it climbs, before it splits; then the swarms.',
+    succeeds: 'The cluster is shot down before it splits in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'The silo over the west lock (580, 240; a cluster), the west shore silo (220, 150) and the east lock\'s silo (1220, 240; swarms).',
+      target: 'The cluster at the ship held at the west lock, the swarms at any ship.',
+      usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells and its cluster (the first torpedo sub comes with the wave).',
+    },
+    beats: [
+      { at: 0.35, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 2, ballistic: 5, extras: { cluster: 1 } },
+  },
+  {
+    id: 'saltgate-two-gates',
+    map: 'saltgate',
+    waves: [5],
+    role: 'combine',
+    name: 'Two gates',
+    callout: 'Both chambers at once',
+    premise: 'A guided missile off the silo over the west lock at the ship inside and a swarm off the east lock\'s silo, at the same moment; swarms off the west shore follow.',
+    decision: 'Both ends of the canal at once: the missile at the west lock, or the swarm from the east?',
+    counters: 'The missile while it crosses, the swarm as it leaves, the west swarms last.',
+    succeeds: 'One lock is saved first and the other takes a hit or a close call in most runs.',
+    notes: {
+      sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; a swarm), the west shore silo (220, 150; two swarms).',
+      target: 'The missile at the ship held at the west lock, the swarms at any ship.',
+      usesMap: 'Both ends of the canal at once (rule g-split), in place of the wave\'s shells, guided missiles, its heavy and its cluster.',
+    },
+    beats: [
+      { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
+  },
+  {
+    id: 'saltgate-periscope',
+    map: 'saltgate',
+    waves: [6],
+    role: 'combine',
+    name: 'A periscope off the gate',
+    callout: 'Shells from the sea',
+    premise: 'A periscope rises in the east sea and lobs shells at the ships held at the east lock, while swarms come off the west shore and the east lock\'s silo.',
+    decision: 'Shells from the sea at a lock full of still ships, while swarms come from both ends: the shells or the swarms?',
+    counters: 'The shells as they climb, the swarms before they reach the canal.',
+    succeeds: 'A close call at a lock in most runs; the losses are at the locks, not on the lake.',
+    notes: {
+      sites: 'A submarine in the east sea (1480, 610; shells), the west shore silo (220, 150; two swarms), the east lock\'s silo (1220, 240; a swarm).',
+      target: 'The three shells at the ship held at the lock nearest the sub (the east lock), the swarms at any ship.',
+      usesMap: 'The open sea beyond the east gate, behind the convoy, at the lock, in place of the wave\'s shells, guided missiles and its heavy.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lock' },
+      { at: 0.35, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.6, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 2, ballistic: 6, guided: 2, extras: { heavy: 1 } },
+  },
+  {
+    id: 'saltgate-strafe',
+    map: 'saltgate',
+    waves: [7],
+    role: 'escalate',
+    name: 'Down the canal',
+    callout: 'A jet down the canal',
+    premise: 'A strafer runs in from the west down the canal while the ships wait in the locks, and swarms come off the east lock\'s silo and the west shore.',
+    decision: 'A jet along a line of ships that cannot get out of its way, while swarms come from both ends.',
+    counters: 'The jet as it comes in, the swarms after.',
+    succeeds: 'The jet is shot down or passes with a hit or two; a close call at a lock.',
+    notes: {
+      sites: 'A strafer from the west edge, the east lock\'s silo (two swarms) and the west shore silo (a swarm).',
+      target: 'The jet along the canal, the swarms at any ship.',
+      usesMap: 'The canal is one straight line of held ships: a jet down it finds them all, in place of the wave\'s shells, a cluster and one jet (its cluster was the step to a cliff).',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.65, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+    ],
+    replaces: { drones: 2, ballistic: 6, extras: { cluster: 1, strafer: 1 } },
+  },
+  {
+    id: 'saltgate-both-chambers',
+    map: 'saltgate',
+    waves: [8],
+    role: 'escalate',
+    name: 'Both chambers',
+    callout: 'Clusters over both locks',
+    premise: 'A cluster lifts off over each lock, a few seconds apart, at the ships waiting inside; swarms come off both shores.',
+    decision: 'Two clusters, a canal apart, each over a full chamber: which one first?',
+    counters: 'Each cluster as it climbs, the nearest lock first; the swarms between.',
+    succeeds: 'Most clusters are shot down before they split; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The silo over the west lock (580, 240) and the east lock\'s silo (1220, 240; a cluster each, then a swarm from the east one), the west shore silo (three swarms).',
+      target: 'Each cluster at the ship held at the lock nearest its silo; one swarm at the ship halfway along, the rest at any ship.',
+      usesMap: 'Both chambers, a canal apart (rule g-split), in place of the wave\'s shells, both its clusters, its heavy and one of its jets.',
+    },
+    beats: [
+      { at: 0.4, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.4, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 3, ballistic: 8, extras: { cluster: 2, heavy: 1, strafer: 1 } },
+  },
+  {
+    id: 'saltgate-gate-by-gate',
+    map: 'saltgate',
+    waves: [9],
+    role: 'escalate',
+    name: 'Gate by gate',
+    callout: 'A missile and a periscope',
+    premise: 'A guided missile drops off the silo over the west lock at the ship inside, a periscope in the west sea lobs shells at the ships coming in, and swarms come all wave.',
+    decision: 'A missile with almost no warning at the lock, and a periscope behind the convoy: the chamber first, or the sub?',
+    counters: 'The missile the moment it lifts off; the shells as they climb; the swarms between.',
+    succeeds: 'A close call at a lock in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The silo over the west lock (580, 240; guided), a submarine in the west sea (200, 610; shells), the east lock\'s silo (three swarms) and the west shore silo (a swarm).',
+      target: 'The missile at the ship held at the west lock, the three shells at the ships coming in (the west sea, the map\'s safe stretch, gets its one wave here), the last swarm at the ship halfway along, the others at any ship.',
+      usesMap: 'The lock and the sea before it, short warning and behind, in place of the wave\'s shells, guided missiles, a cluster and a heavy.',
+    },
+    beats: [
+      { at: 0.35, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.35, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.55, kind: 'ballistic', count: 3, gap: 0.75, from: sub(0), aim: 'rear' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
+    ],
+    replaces: { drones: 3, ballistic: 8, guided: 3, extras: { cluster: 1, heavy: 1 } },
+  },
+  {
+    id: 'saltgate-climax',
+    map: 'saltgate',
+    waves: [10],
+    role: 'climax',
+    name: 'Through both locks',
+    callout: 'Every lock at once',
+    premise: 'Once the wave\'s own fire is spent, a cluster over each lock, a few seconds apart; swarms off both shores all wave.',
+    decision: 'Both locks at once at the end, and the ships cannot move: the fullest chamber first.',
+    counters: 'The clusters before they split, the swarms between.',
+    succeeds: 'A close call at both locks in most runs; the climax is the hardest wave.',
+    notes: {
+      sites: 'The silo over the west lock and the east lock\'s silo (a cluster each, 4 s apart) after the wave\'s own fire; the west shore and east lock\'s silos (five swarms) all wave.',
+      target: 'Each cluster at the ship held at the lock nearest its silo, two swarms at the ship halfway along, the others at any ship.',
+      usesMap: 'Both locks at the top of the climb, in place of the wave\'s shells, most guided missiles, a heavy, the clusters, a supersonic and a jet; the climax may reach the lake.',
+    },
+    beats: [
+      { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
+      { at: 1, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.35, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.9, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 10, guided: 5, extras: { heavy: 1, cluster: 2, supersonic: 1, strafer: 1 } },
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
@@ -3696,11 +3949,12 @@ export const ENCOUNTERS: Encounter[] = [
   ...KESH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...MARROW_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md,
-  // v3-ch2-needle.md, v3-ch2-archipelago.md).
+  // v3-ch2-needle.md, v3-ch2-archipelago.md, v3-ch2-saltgate.md).
   ...ISLAND_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...BEHEMOTH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...NEEDLE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...ARCHIPELAGO_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  ...SALTGATE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ];
 
 /** The rev an encounter came in. */
@@ -3740,11 +3994,12 @@ export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
  *  the Island and the Behemoth Run (rev 4: docs/design/v3-ch2-island.md,
  *  v3-ch2-behemoth.md). */
 export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap;
-/** Chapter 2: the Island, the Behemoth Run, the Needle of Bosk and the
- *  Archipelago (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md,
- *  v3-ch2-needle.md, v3-ch2-archipelago.md). */
-export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago';
-export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago'];
+/** Chapter 2: the Island, the Behemoth Run, the Needle of Bosk, the
+ *  Archipelago and Saltgate Canal (docs/design/v3-ch2-island.md,
+ *  v3-ch2-behemoth.md, v3-ch2-needle.md, v3-ch2-archipelago.md,
+ *  v3-ch2-saltgate.md). */
+export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | 'saltgate';
+export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -3836,6 +4091,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
   needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
   archipelago: { v1: { name: 'Original', idea: 'One encounter a wave, built on the chain of islets: fire from the islets, through the gaps between them, from the far shore and from behind, at once; drone motherships off the west islets from wave 4.', callouts: false } },
+  saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; torpedo subs in the seas at either end from wave 4.', callouts: false } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -3917,6 +4173,9 @@ export interface MapSignature {
   escort?: FoeId;
   jets?: BeatAim;
   heavies?: BeatAim;
+  /** Saltgate Canal (log v38): the wave's own cluster missiles fly at this
+   *  ('lock': the ships held at the lock nearest their silo). */
+  clusters?: BeatAim;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -3939,6 +4198,16 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // from an edge: it locks the pickups in its ring (the mothership's drop
   // among them) until it is shot down.
   archipelago: { from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' },
+  // Saltgate Canal (log v38, docs/design/v3-ch2-saltgate.md): a strike on
+  // the locks, from wave 4. Torpedo Subs, Run the Canal's opening: half the
+  // wave's new enemies (rounded up) are periscopes in the seas at either end
+  // of the canal, under water and out of reach, their slow torpedoes at the
+  // ships queueing for the west lock and leaving the east one (only the
+  // torpedoes can be shot; a torpedo sinks a cargo ship, so all of them was
+  // too many). And the wave's own cluster missiles, off the silos over the
+  // locks, go for the ships held in them, splitting over a full chamber (the
+  // boss rounds' clusters do the same).
+  saltgate: { from: 4, foe: 'torpedoSub', foeShare: 0.5, clusters: 'lock' },
 };
 
 /** A map's signature for a wave under a run's encounter setup (none before
@@ -3996,6 +4265,10 @@ export interface BossRound {
    *  each wave of the pack, `fast` of the subs with a fast torpedo. */
   helis?: number;
   heliHp?: number;
+  /** Saltgate Canal's Run the Canal (log v38): `subs` Torpedo Subs as the
+   *  round opens (the event's own: 2); `helis`, `heliHp`, `volleys`, `block`,
+   *  `cols`, `swarms` and `size` as above. */
+  subs?: number;
   volleys?: number;
   packs?: number[];
   fast?: number;
@@ -4117,6 +4390,19 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
   { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 3, gap: 1.5, base: 0 }, { kind: 'ballistic', at: 3, count: 5, gap: 1.75, base: 3, aim: 'rear' }, { kind: 'cluster', at: 4, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 6, count: 1, base: 2, aim: 'lead' }] },
 ];
 
+/** Saltgate Canal's Run the Canal (log v38, docs/design/v3-ch2-saltgate.md):
+ *  chapter 2's finale, its three phases as they are (Torpedo Subs as the
+ *  round opens, a gunship over the far bank by a lock, then a block of
+ *  armored drones; before: 2 subs, 1 helicopter of 4 hits, a block of 4 and
+ *  one swarm of 5, every round), more of each round by round, with clusters
+ *  and guided missiles off the silos over the locks at the ships held in
+ *  them (aim 'lock'). */
+export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
+  { subs: 3, helis: 1, heliHp: 4, block: 4, cols: 2, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 6, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 9, count: 1, base: 4, aim: 'lock' }] },
+  { subs: 3, helis: 1, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 5, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 8, count: 1, base: 4, aim: 'lock' }] },
+  { subs: 3, helis: 2, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }, { kind: 'cluster', at: 12, count: 1, base: 3, aim: 'lock' }] },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -4155,6 +4441,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   behemoth: { rounds: BEHEMOTH_BOSS_ROUNDS },
   needle: { rounds: NEEDLE_BOSS_ROUNDS },
   archipelago: { rounds: ARCHIPELAGO_BOSS_ROUNDS },
+  saltgate: { rounds: SALTGATE_BOSS_ROUNDS },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or
@@ -4204,6 +4491,7 @@ const AIM_TEXT: Record<BeatAim, string> = {
   mid: 'aimed at the ship halfway along the lane',
   post: 'aimed at the radar tower (once it is gone, the ship nearest where it stood)',
   vip: 'aimed at the supertanker (when none is out, the lead ship)',
+  lock: 'aimed at a ship held at the lock nearest it (none there, the ship nearest it)',
 };
 
 const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;

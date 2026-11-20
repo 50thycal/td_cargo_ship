@@ -251,12 +251,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      `kind` and `escort`), the Supply Raid's rounds (MAP_BOSS.archipelago;
  *      a boss round's `fire` may send a mothership, `cargoWeapons`). A v36
  *      Archipelago card log no longer replays to the same game; the
- *      campaign plays as it did. */
-export const LOG_VERSION = 37;
+ *      campaign plays as it did.
+ *  38: Saltgate Canal rebuilt to the map rules (docs/design/
+ *      v3-ch2-saltgate.md; lab, under the encounter layer): one encounter
+ *      a wave (SALTGATE_R4) and a new aim, 'lock' (the ship held at the
+ *      lock nearest the launcher); the map's own convoy (flow 1, pairs);
+ *      a strike on the locks from wave 4 (MAP_SIGNATURE.saltgate: torpedo
+ *      subs for half the wave's new enemies, and the wave's clusters at the
+ *      locks, its new `clusters`); Run the Canal's rounds (MAP_BOSS.saltgate;
+ *      a boss round's `subs`). The Saltgate card, which played today's
+ *      convoy controls with no encounters, now plays these: a v37 Saltgate
+ *      card log no longer replays to the same game; the campaign plays as
+ *      it did. */
+export const LOG_VERSION = 38;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [37];
+export const LOG_REPLAYS: readonly number[] = [38];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
