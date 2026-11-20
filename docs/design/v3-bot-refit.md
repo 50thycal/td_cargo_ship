@@ -185,3 +185,66 @@ The other recorded biases (from 2026-11-17):
 | Marrow | 2 / 4.25 | 1 / 0 / 1 against 0.29 / 1.00 / 1.71 |
 
 Kesh's waves match; its boss reads about 2.5× too hard on the bot. Marrow reads about 2× too hard in waves 1–10 and 1.4× in the boss rounds. **RECORDED BIAS, new: the bot reads Marrow's waves 1–10 about twice as hard as the player (one run).**
+
+## Boosts (2026-11-20)
+
+The combo sweep rated Overdrive among the weakest weapons, yet the player won both runs they played with Overdrive + Scattergun + Supply Run and lost nothing in their boss rounds. The suspicion was that the bot fires boosts and grabs pickups late. This round measured it.
+
+**How.** A boost starts the moment its pickup is tapped, so "firing" a boost is taking its pickup. `tools/v3/bot-fit/boosts.ts` replays a log and lists every weapon pickup: when it dropped and was taken, the board at both moments (threats on screen, threats under 3 s from impact, a danger reading against the wave's own peak), the stakes (boss round, losses left), the rack, and how the boost was spent (seconds it ran, whether the wave's end cut it short, taps and shots inside it). It ran on the player's five boost runs that still have raw logs (Overdrive: Gauntlet v26, Marrow v28; Supply Run: Strait v26, Harbor v26, Kesh v29), each replayed on the build it was played on (all 13 waves exact, Strait 10), against 8 mirrors each on the same build (same seed, Armory, card setup and picks). `mimic.ts` has not changed since v26, so the new bot was dropped into those builds as is. Totals: `results/boosts-2026-11-20.json`.
+
+**What the player does, and what the bot did** (phase 2 fit, now `you-p2`):
+
+| Overdrive | You | Bot before | Bot after |
+| --- | --- | --- | --- |
+| Taken (of 15 / 98 / 88 dropped) | 14 | 95 | 84 |
+| Drop to take, median s | 2.1 | 1.0 | 1.5 |
+| Threats under 3 s from impact at the take | 0.86 | 1.59 | 0.68 |
+| Takes with nothing under 2 s from impact | 57% | 41% | 75% |
+| Shots a second while it runs | **1.38** | 0.95 | **1.41** |
+| … against the run's usual rate | **1.82×** | 1.25× | **1.82×** |
+| Taps a second while it runs, against usual | 1.48× | 1.11× | 1.65× |
+| Cut short by the wave's end | 36% | 46% | 46% |
+
+| Supply Run | You | Bot (before and after) |
+| --- | --- | --- |
+| Drop to take, median s | 1.7 | 0.9 |
+| Threats under 3 s at the take | 1.04 | 1.02 |
+| Taps a second while it runs, against usual | 1.06× | 1.60× |
+| Kills a second while it runs | 0.68 | 0.94 |
+
+1. **The bot was not late. It was early.** Since the phase 2 refit (`grab`) it takes every pickup, boosts included, about twice as fast as the player does now (weapons 1.0 s against 1.7 s; Overdrive 1.0 s against 2.1 s). The old finding (the bot reaching a Supply Run 2.6–6 s late) is fixed and over-fixed.
+2. **The player takes Overdrive in a lull.** They do not break off from a threat about to land to tap it: at the take, under one threat is within 3 s of impact (0.86), where the bot broke off mid-fight (1.59). For Supply Run the player and the bot took it on the same board (1.04 and 1.02).
+3. **The big one: under Overdrive the player shoots far more.** Free rounds turn them loose: 1.82× their usual shots a second, where the bot fired only 1.25× (it kept passing over covered threats, resting between bursts and keeping its bursts short as if rounds still cost). Kills a second inside Overdrive are about the same on both sides, so the extra shots go into threats the bot let through.
+4. Supply Run: the bot already got more out of it than the player (it taps every crate), so nothing changed there. A first version made every boost wait for a lull; Supply Run then lost about a ship a run more in the sweep (crates came late) and Shield about 1.4 (a Shield is wanted while missiles are in the air), with no evidence from the player for either. So only Overdrive waits (`lull`).
+5. Stakes and the rack: no clear habit. The player took Overdrive with the rack a little lower than the bot (0.62 against 0.73; 0.17 in the two boss-round takes), and with about as many losses left. Too few takes to fit.
+
+**The change** (`src/v3/sim/mimic.ts`, a new knob `boosts`; `you` has it, `you-p2` is phase 2 unchanged to compare against, and the other personas inherit it from `you`):
+
+| Knob | Value | What it does |
+| --- | --- | --- |
+| `lull` | Overdrive | The boosts that wait for a lull. |
+| `calm` | 2 s | A noticed Overdrive pickup waits until no threat the bot has seen is under 2 s from impact… |
+| `wait` | 3 s | …or until it has waited 3 s more. |
+| `rest` | 0.45 | Under Overdrive, rests between bursts × 0.45. |
+| `burst` | +1 | Under Overdrive, one more tap a burst. |
+| `cover` | 0.3 | Under Overdrive, passes over a covered threat 0.3× as often (a spare shot costs nothing). |
+
+`BOT_REV` (3) in `mimic.ts` names the bot's revision; the combo sweep keys its cache on it.
+
+**Fit, all 26 of the player's runs** (calibration on today's build, v31, 6 dice a run; `results/calibration-2026-11-20-boosts.json`). No number moved more than the dice do:
+
+| | You | Bot before (`you-p2`) | Bot after (`you`) |
+| --- | --- | --- | --- |
+| Ships lost, waves 1–5 | 0.42 | 0.65 | 0.68 |
+| Runs with no loss by wave 5 | 65% | 62% | 59% |
+| Ships lost, waves 6–10 | 3.50 | 3.70 | 3.68 |
+| Ships lost a boss round | 0.65 | 1.06 | 1.04 |
+| Taps a second | 1.13 | 1.14 | 1.18 |
+| Kills a shot | 0.69 | 0.75 | 0.72 |
+| Weapon pickups a minute | 2.60 | 2.86 | 2.82 |
+
+So the change does not close the boss-round gap (the bot still loses about 1.6× the player's ships there): that gap is not about boosts. On the player's 14 boost runs alone (first version, every boost waiting) it was the same: boss 1.14 before, 1.25 after, against the player's 0.67.
+
+**Still off (recorded biases).**
+- **RECORDED BIAS, new: the bot grabs pickups faster than the player**, about 1.25 s from a drop against the player's 1.6–2.0 s (weapons, ammo, repairs). It leans toward the bot doing better with pickups than the player. Slowing it was not tried: the bot already loses more than the player in waves 1–5 and the boss rounds, and a slower grab would widen that.
+- The bot takes Overdrive in a lull more strictly than the player (75% of Overdrive takes with nothing under 2 s, against the player's 57%), and taps a little more under Overdrive (1.65× against 1.48×); its shots match.
