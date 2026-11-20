@@ -5760,12 +5760,17 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         ? GUIDED.boostFrom + (1 - GUIDED.boostFrom) * (th.age / GUIDED.boost)
         : th.kind === 'supersonic'
           ? supersonicPace(th.age)
-          : 1;
+          : th.kind === 'cluster'
+            ? clusterPace(th.age)
+            : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
-    if (th.kind === 'cluster' && th.target !== CARRIER_TARGET && d < CLUSTER.splitRange) {
-      splitCluster(g, th);
+    if (th.kind === 'cluster' && th.target !== CARRIER_TARGET) {
+      // Round 12: armed only after its climb (CLUSTER.armAfter); until then
+      // it is a missile in the air, nothing to split and nothing to hit
+      // (its own damage is 0: only its bomblets do harm).
+      if (clusterArmed(th) && d < CLUSTER.splitRange) splitCluster(g, th);
     } else {
       checkImpact(g, th);
     }
@@ -6026,6 +6031,17 @@ export function child(g: Game, parent: Threat, kind: ThreatKind, target: number,
   };
   if (g.tel) g.tel.spawn(g, th, 'child', parent);
   return th;
+}
+
+/** Round 12: a cluster's pace through its climb off the rail, from
+ *  CLUSTER.climbFrom up to full at CLUSTER.armAfter. */
+export function clusterPace(age: number): number {
+  return age >= CLUSTER.armAfter ? 1 : CLUSTER.climbFrom + (1 - CLUSTER.climbFrom) * (age / CLUSTER.armAfter);
+}
+
+/** Round 12: a cluster can split only once it has flown CLUSTER.armAfter s. */
+export function clusterArmed(th: Threat): boolean {
+  return th.age >= CLUSTER.armAfter;
 }
 
 /** A cluster that reaches its split range becomes bomblets aimed at the ships

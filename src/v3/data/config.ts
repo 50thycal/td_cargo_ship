@@ -266,6 +266,15 @@ export const CLUSTER = {
   turnRate: 2,
   /** It splits this far from its target. */
   splitRange: 200,
+  /** Round 12 (the player: "sometimes it just comes straight off the trucks
+   *  or silos and immediately breaks into the cluster munitions and doesn't
+   *  give the player any chance to intercept"): a cluster never splits in
+   *  its first `armAfter` s of flight, however close it was launched. It
+   *  climbs off the rail at `climbFrom` of its pace, up to full pace at
+   *  `armAfter`, so one launched next to its ships is still a missile in the
+   *  air to shoot for 1.3 s; it splits as soon as it is armed and in range. */
+  armAfter: 1.3,
+  climbFrom: 0.45,
   bomblets: 4,
   /** Bomblets look for ships within this range of the split. */
   spread: 300,
