@@ -1,8 +1,0 @@
-island (12 runs, the bot drafting for itself; ships lost a run, every wave played: 11.58)
-  attack helicopters: 182; first volley 7.45 s after coming in (127 never fired); volleys 0.64 each; shot down 0.99
-  torpedo subs: 37; torpedoes 1 a sub; steps with a sub hurt 1522
-  scavengers: 31; shot down 0.94; alive 2.79 s
-behemoth (12 runs, the bot drafting for itself; ships lost a run, every wave played: 10.5)
-  attack helicopters: 35; first volley 6.21 s after coming in (28 never fired); volleys 0.34 each; shot down 0.97
-  torpedo subs: 224; torpedoes 0.11 a sub; steps with a sub hurt 8537
-  scavengers: 36; shot down 0.92; alive 2.51 s

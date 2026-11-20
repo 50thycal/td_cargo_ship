@@ -1,0 +1,12 @@
+island (12 runs, the plain gun; ships lost a run, every wave played: 15.33, waves 1-10 8.75)
+  attack helicopters: 288; first volley 6.76 s after coming in (186 never fired); volleys 0.75 each; shot down 0.99; missiles a run: waves 1-10 9.75, boss rounds 14.42 (from 12 helicopters)
+  torpedo subs: 12; torpedoes 1 a sub; steps with a sub hurt 592
+  sunk by, waves 1-10 (a run): drone 3.33, ballistic 2.5, guided 0.58, heavy 0.5, torpedoSub 0.42, bomber 0.42, attackHeli 0.33, strafer 0.33, cluster 0.17, supersonic 0.17
+  sunk by (a run): drone 5.25, attackHeli 3.67, ballistic 3.17, guided 1.25, heavy 0.5, torpedoSub 0.42, bomber 0.42, strafer 0.33, cluster 0.17, supersonic 0.17
+  scavengers: 12; shot down 1; alive 2.93 s
+behemoth (12 runs, the plain gun; ships lost a run, every wave played: 18.92, waves 1-10 14.33)
+  attack helicopters: 34; first volley 5.58 s after coming in (25 never fired); volleys 0.44 each; shot down 1; missiles a run: waves 1-10 2.5, boss rounds 0 (from 0 helicopters)
+  torpedo subs: 66; torpedoes 0.97 a sub; steps with a sub hurt 3380
+  sunk by, waves 1-10 (a run): ballistic 2.42, torpedoSub 2, guided 1.5, drone 1.5, heavy 1.25, cluster 0.5, bomber 0.25, hydra 0.08, strafer 0.08, rocketTruck 0.08
+  sunk by (a run): torpedoSub 2.92, ballistic 2.42, heavy 1.92, guided 1.58, drone 1.5, strafer 1.17, cluster 0.5, bomber 0.25, hydra 0.08, rocketTruck 0.08
+  scavengers: 36; shot down 0.94; alive 2.65 s
