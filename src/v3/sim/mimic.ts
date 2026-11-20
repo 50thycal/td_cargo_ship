@@ -21,7 +21,8 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyEncounters, applyFreePlay, applyLab, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { isBoost } from '../data/roster';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
 import type { LabSetup } from './lab';
@@ -104,6 +105,18 @@ export interface Persona {
    *  (× `late`) and the boss rounds (× `boss`), and once noticed it gets the
    *  next tap, even in the middle of a burst. In place of `pickup`. */
   grab?: { median: number; sigma: number; late: number; boss: number };
+  /** Boosts as the player plays them (the boosts round, docs/design/
+   *  v3-bot-refit.md, "Boosts"). A boost starts the moment its pickup is
+   *  tapped, and the player takes Overdrive in a lull: once noticed
+   *  (`grab`), a pickup of a boost in `lull` waits until no threat it has
+   *  seen is under `calm` s from impact, or until it has waited `wait` s
+   *  more. (Only Overdrive: the player's logs show no wait for Supply Run,
+   *  and a Shield or Full Steam is wanted while the danger is on.) While shots are
+   *  free (Overdrive) it shoots the way the player does, much more: rests
+   *  between bursts × `rest`, `burst` more taps a burst, and it passes over
+   *  a threat already covered only `cover`× as often (a spare shot costs
+   *  nothing). */
+  boosts?: { lull: AbilityId[]; calm: number; wait: number; rest: number; burst: number; cover: number };
   /** Flow step it turns the ships up to early in wave 1, with the odds of each. */
   flow: { step: number; weight: number }[];
   /** One formation change, in waves `from`–`to` (none when `to` < `from`). */
@@ -201,11 +214,11 @@ export const YOU_R12: Persona = {
  *  stakes rise, and tapped at once, even mid-burst), passes over covered
  *  threats more, keeps a burst going after a kill, and waits for the
  *  reload more often. */
-export const YOU: Persona = {
+export const YOU_P2: Persona = {
   ...YOU_R12,
-  id: 'you',
-  label: 'You',
-  blurb: 'Fitted to your own logs: your rhythm, aim and habits, noise included. Plays at 1× and now and then rushes a wave; grabs pickups fast, faster when it counts.',
+  id: 'you-p2',
+  label: 'You (phase 2)',
+  blurb: 'The phase 2 fit, kept to compare against: grabs every pickup as soon as it notices it, boosts included, and shoots no faster under Overdrive.',
   speed: 1,
   rush: { share: 0.15, speed: 1.5, tempo: 0.8 },
   grab: { median: 1.5, sigma: 0.5, late: 0.65, boss: 0.4 },
@@ -216,6 +229,24 @@ export const YOU: Persona = {
   waitDry: 0.7,
   dryStop: 0.3,
 };
+
+/** You, the boosts round (docs/design/v3-bot-refit.md, "Boosts"): phase
+ *  2's fit, plus boosts the way the player plays them (fitted to the
+ *  player's five boost runs, logs v26-v29, replayed on their own builds).
+ *  The player takes Overdrive in a lull rather than mid-fight, and under
+ *  Overdrive fires about 1.8× their usual shots a second, where the phase 2
+ *  bot fired 1.25×. */
+export const YOU: Persona = {
+  ...YOU_P2,
+  id: 'you',
+  label: 'You',
+  blurb: 'Fitted to your own logs: your rhythm, aim and habits, noise included. Plays at 1× and now and then rushes a wave; grabs pickups fast, faster when it counts; takes a boost in a lull and fires freely under Overdrive.',
+  boosts: { lull: ['overdrive'], calm: 2, wait: 3, rest: 0.45, burst: 1, cover: 0.3 },
+};
+
+/** Bumped whenever a fitted persona changes how it plays: tools that cache
+ *  bot runs (the combo sweep) key their cache on it. 2: the boosts round; 3: only Overdrive waits for a lull. */
+export const BOT_REV = 3;
 
 /** What the bot can do: exactly what a player's touches can. */
 export interface BotIO {
@@ -358,7 +389,7 @@ export class Mimic {
         if (!th.dead && n > this.pausedAt && n + this.scale(p.interrupt, false) <= t) fresh = true;
         if (!th.dead && n <= t) up = true;
       }
-      const rested = p.restCap !== undefined && up && t - this.pausedAt >= this.scale(p.restCap);
+      const rested = p.restCap !== undefined && up && t - this.pausedAt >= this.scale(p.restCap * (this.free(g) ? p.boosts!.rest : 1));
       if (!fresh && !rested) return;
     }
     // Structures (rigs, the Citadel...) only get a look when nothing else is up.
@@ -389,13 +420,14 @@ export class Mimic {
           this.tapsLeft = 0;
           this.second = null;
           this.pausedAt = t;
-          this.nextTap = t + this.scale(this.logNormal(p.pause));
+          this.nextTap = t + this.rest(g);
           return;
         }
       }
       // Its interceptor is already away: on to an open threat close by, or
       // done with this burst.
-      if (th && p.coverSense && covered(g, th) && this.rng.chance(p.coverSense)) {
+      const cover = (p.coverSense ?? 0) * (this.free(g) ? p.boosts!.cover : 1);
+      if (th && cover && covered(g, th) && this.rng.chance(cover)) {
         const next = nearest(
           seen.filter((s) => s.id !== th!.id && !covered(g, s)),
           finger,
@@ -405,7 +437,7 @@ export class Mimic {
           this.tapsLeft = 0;
           this.second = null;
           this.pausedAt = t;
-          this.nextTap = t + this.scale(this.logNormal(p.pause));
+          this.nextTap = t + this.rest(g);
           return;
         }
         th = next;
@@ -417,7 +449,7 @@ export class Mimic {
       // A fired interceptor is on its way: often move on to the next one.
       if (r === 'fire' && th && p.hop && this.rng.chance(p.hop)) {
         const next = nearest(
-          seen.filter((s) => s.id !== th!.id && !(p.coverSense && covered(g, s))),
+          seen.filter((s) => s.id !== th!.id && !(cover && covered(g, s))),
           finger,
           p.hopReach ?? 220,
         );
@@ -432,7 +464,7 @@ export class Mimic {
         this.second = null;
         this.pausedAt = t;
       }
-      this.nextTap = t + (this.tapsLeft > 0 ? this.scale(this.rng.range(...p.burstGap) * (two ? 0.5 : 1), false) : this.scale(this.logNormal(p.pause)));
+      this.nextTap = t + (this.tapsLeft > 0 ? this.scale(this.rng.range(...p.burstGap) * (two ? 0.5 : 1), false) : this.rest(g));
       return;
     }
 
@@ -450,9 +482,11 @@ export class Mimic {
     }
     // A threat with an interceptor already on its way is often passed over.
     let pool = seen;
-    if (p.coverSense) {
+    const free = this.free(g);
+    const cover = (p.coverSense ?? 0) * (free ? p.boosts!.cover : 1);
+    if (cover) {
       const open = seen.filter((s) => !covered(g, s));
-      if (open.length && open.length < seen.length && this.rng.chance(p.coverSense)) pool = open;
+      if (open.length && open.length < seen.length && this.rng.chance(cover)) pool = open;
     }
     const urgent = pool.reduce((a, b) => (timeToImpact(g, b) < timeToImpact(g, a) ? b : a));
     // Otherwise whatever catches the eye: any threat on screen, the ones
@@ -460,7 +494,7 @@ export class Mimic {
     const panic = timeToImpact(g, urgent) < p.panic && (p.panicShare === undefined || this.rng.chance(p.panicShare));
     const pick = panic || this.rng.chance(p.urgent) ? urgent : this.glance(pool);
     this.target = pick.id;
-    this.tapsLeft = 1 + weightedIndex(this.rng, p.burst);
+    this.tapsLeft = 1 + weightedIndex(this.rng, p.burst) + (free ? p.boosts!.burst : 0);
     this.second = null;
     this.thumb = 0;
     this.offset = [null, null];
@@ -475,6 +509,17 @@ export class Mimic {
     }
     this.nextTap = t;
     this.act(g, io, drafts);
+  }
+
+  /** Shots are free (Overdrive running) and this persona plays boosts
+   *  the player's way: it shoots freely (see `boosts`). */
+  private free(g: Game): boolean {
+    return !!this.persona.boosts && (boostLevel(g, 'overdrive') > 0 || g.overdriveT > 0);
+  }
+
+  /** A rest between bursts (game s); shorter while shots are free. */
+  private rest(g: Game): number {
+    return this.scale(this.logNormal(this.persona.pause)) * (this.free(g) ? this.persona.boosts!.rest : 1);
   }
 
   /** Real seconds → this player's game seconds: their game speed, and (for
@@ -570,13 +615,27 @@ export class Mimic {
         at = t - pk.age + this.scale(this.logNormal(p) * k);
         this.pickupAt.set(pk.id, at);
       }
-      if (at <= t && !due && !pickupLocked(g, pk)) due = pk;
+      if (at <= t && !due && !pickupLocked(g, pk) && this.boostReady(g, pk, at, t)) due = pk;
     }
     if (this.pickupAt.size > g.pickups.length + 16) {
       const on = new Set(g.pickups.map((pk) => pk.id));
       for (const id of this.pickupAt.keys()) if (!on.has(id)) this.pickupAt.delete(id);
     }
     return due;
+  }
+
+  /** `boosts`: a boost's pickup, once noticed (at `at`), waits for a lull:
+   *  no threat it has seen under `calm` s from impact, or `wait` s gone.
+   *  Any other pickup is ready at once. */
+  private boostReady(g: Game, pk: Game['pickups'][number], at: number, t: number): boolean {
+    const b = this.persona.boosts;
+    if (!b || pk.kind !== 'weapon' || !isBoost(pk.weapon) || !b.lull.includes(pk.weapon!)) return true;
+    if (t - at >= this.scale(b.wait, false)) return true;
+    for (const th of g.threats) {
+      if (th.dead || (this.noticeAt.get(th.id) ?? Infinity) > t) continue;
+      if (timeToImpact(g, th) < this.scale(b.calm, false)) return false;
+    }
+    return true;
   }
 
   private glance(seen: Threat[]): Threat {
@@ -903,7 +962,7 @@ export const TIRED: Persona = {
 export const PERSONA_ORDER = ['you', 'tryhard', 'sniper', 'casual', 'tired', 'distracted', 'rusher', 'masher', 'novice'] as const;
 
 export const PERSONAS: Record<string, Persona> = Object.fromEntries(
-  [YOU, TRYHARD, CASUAL, DISTRACTED, RUSHER, MASHER, SNIPER, NOVICE, TIRED, YOU_R12, TRYHARD_R12, YOU_V1].map((p) => [p.id, p]),
+  [YOU, TRYHARD, CASUAL, DISTRACTED, RUSHER, MASHER, SNIPER, NOVICE, TIRED, YOU_P2, YOU_R12, TRYHARD_R12, YOU_V1].map((p) => [p.id, p]),
 );
 // Weapon ids the taste list may name must exist.
 for (const p of Object.values(PERSONAS)) for (const id of p.taste) if (!(id in ABILITIES)) throw new Error(`persona ${p.id} names unknown ability ${id}`);

@@ -1,0 +1,113 @@
+# V3 combo diversity: are the best kits different on each map?
+
+> 2026-11-20, game version 31 (LOG_VERSION), the "you" bot after the boosts round (BOT_REV 3), your Armory (Quick Reload 5, Damage Control 4, Stockpile 5). Made by `tools/v3/combo-sweep/diversity.ts` and `mix.ts` from the sweep's singles and pairs (`tools/v3/combo-sweep/results/v31`, `v31-ch2`; per-map kits in `v31/diversity.json`). Nothing here was retuned.
+
+You asked: "Main action item here is to see if there is diversity of best combos per the maps. If one combo is the top for all maps, then that suggests our design for the maps and waves are all the same."
+
+## Headline
+
+- **No kit is the best on more than one map.** Each of the seven maps has its own #1 kit, and their top-5 lists barely overlap: a Jaccard of **0.02** between maps (0 = nothing shared, 1 = the same five). On one map, the top 5 read from two halves of its seeds agree at **0.38**, so the maps differ far more than the noise.
+- **Three pairs of maps do share a kit near the top:** the Island's #1 is the Behemoth Run's #2 (Point Defense + Supply Run + Shield), the Strait's #1 is Harbor's #3, and the Gauntlet's #1 is Kesh's #2.
+- **They agree on the weapons underneath.** **Air Strike** is the best weapon alone on all five chapter 1 maps. **Supply Run** is in a top-5 kit on all seven maps, Point Defense and Air Strike on six. The weapons alone rank much the same from map to map (rank correlation 0.53).
+- **So the maps reward different combinations of the same core**, not different first picks. Chapter 2 adds one clear answer of its own: **Shield** is in all five of the Behemoth Run's top kits and three of the Island's.
+- **Why:** waves 1–10 throw much the same thing on every map: drones and shells are 60–80% of what shows. Only the boss rounds differ, and they are 3 of 13 waves.
+
+## Each map's top 5 kits
+
+Each map's own 6 best pairs with each third weapon its chapter deals, screened on 6 seeds of that map; that map's 10 best kits again on 16 seeds. Ships lost a run over all 13 waves (± one standard error) and the share won under the normal loss limit. Kits within about 1.5 ships of each other are a tie.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Strait | **Air Strike + Gravity Well + Supply Run** 7.1 ±1.0, won 75% | Air Strike + Point Defense + Gravity Well 7.6 | Air Strike + Point Defense + Supply Run 8.9 | Air Strike + Boomerang + Gravity Well 9.1 | Thermobaric + Point Defense + Supply Run 9.2 |
+| The Gauntlet | **Air Strike + Scattergun + Point Defense** 7.2 ±0.7, 44% | Scattergun + Gravity Well + Tesla Arc 7.3 | Frigate Escort + Thermobaric + Supply Run 7.4 | Shrapnel + Gravity Well + Railgun 7.6 | Shrapnel + Frigate Escort + Supply Run 7.6 |
+| Harbor Mouth | **Point Defense + Drone Screen + Supply Run** 9.8 ±0.7, 50% | Frigate Escort + Scattergun + Gravity Well 10.3 | Air Strike + Gravity Well + Supply Run 10.3 | Frigate Escort + Gravity Well + Railgun 10.6 | Flak + Gravity Well + Supply Run 10.8 |
+| The Kesh Hook | **Point Defense + Tesla Arc + Overdrive** 8.3 ±1.1, 50% | Air Strike + Scattergun + Point Defense 8.4 | Air Strike + Thermobaric + Point Defense 8.9 | Tesla Arc + Drone Screen + Supply Run 9.0 | Thermobaric + Tesla Arc + Drone Screen 9.3 |
+| Lee of Marrow | **Frigate Escort + Drone Screen + Supply Run** 3.9 ±0.4, 100% | Air Strike + Flak + Supply Run 4.0 | Gravity Well + Railgun + Drone Screen 4.1 | Air Strike + Frigate Escort + Drone Screen 4.2 | Gravity Well + Drone Screen + Supply Run 4.2 |
+| The Island (ch. 2) | **Point Defense + Supply Run + Shield** 7.1 ±0.9, 63% | Air Strike + Frigate Escort + Thermobaric 8.1 | Shrapnel + Shield + Full Steam 8.4 | Shrapnel + Point Defense + Shield 8.8 | Air Strike + Frigate Escort + Gravity Well 8.9 |
+| The Behemoth Run (ch. 2) | **Boomerang + Supply Run + Shield** 6.3 ±0.4, 88% | Point Defense + Supply Run + Shield 7.8 | Frigate Escort + Supply Run + Shield 7.9 | Flak + Point Defense + Shield 8.0 | Point Defense + Railgun + Shield 8.0 |
+
+The Island and the Behemoth Run were swept with chapter 2's draft (chapter 1's weapons plus the Charge Lance, Gunship Pair, Shield and Full Steam).
+
+## How much the maps overlap
+
+| Measure | Result | Reads as |
+| --- | --- | --- |
+| Jaccard of the top-5 kits, map against map (mean of 21 pairs of maps) | **0.02** | almost no shared kits |
+| The same, one map against itself (two halves of its 16 seeds) | 0.38 | what noise alone allows |
+| Pairs of maps sharing any top-5 kit | 3 of 21 (Island–Behemoth, Strait–Harbor, Gauntlet–Kesh; one kit each) | |
+| Maps where the same kit is #1 | **1 of 7** for every kit | every map has its own #1 |
+| Maps where the same weapon is best alone | **5 of 7** (Air Strike; the Island: Gunship Pair; the Behemoth Run: Frigate Escort) | the first pick is the same |
+| Rank correlation of the weapons alone, map against map (mean) | **0.53** | weapons rank much alike |
+| Top-10 pairs, chapter 1, ranked on waves 1–10 only / boss rounds only (Jaccard) | 0.12 / 0.12 | pairs at 6 seeds are mostly noise |
+
+Weapons in each map's top-5 kits (how many of the five):
+
+| Weapon | Strait | Gauntlet | Harbor | Kesh | Marrow | Island | Behemoth | Maps |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Supply Run | 3 | 2 | 3 | 1 | 3 | 1 | 3 | **7** |
+| Point Defense | 3 | 1 | 1 | 3 | 0 | 2 | 3 | 6 |
+| Air Strike | 4 | 1 | 1 | 2 | 2 | 2 | 0 | 6 |
+| Gravity Well | 3 | 2 | 4 | 0 | 2 | 1 | 0 | 5 |
+| Frigate Escort | 0 | 2 | 2 | 0 | 2 | 2 | 1 | 5 |
+| Thermobaric Shell | 1 | 1 | 0 | 2 | 0 | 1 | 0 | 4 |
+| Railgun | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 4 |
+| Drone Screen | 0 | 0 | 1 | 2 | 4 | 0 | 0 | 3 |
+| Scattergun | 0 | 2 | 1 | 1 | 0 | 0 | 0 | 3 |
+| Flak Cannon | 0 | 0 | 1 | 0 | 1 | 0 | 1 | 3 |
+| Shield (ch. 2) | – | – | – | – | – | 3 | **5** | 2 of 2 |
+| Tesla Arc | 0 | 1 | 0 | 3 | 0 | 0 | 0 | 2 |
+| Shrapnel Shell | 0 | 2 | 0 | 0 | 0 | 2 | 0 | 2 |
+| Boomerang | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 2 |
+| Overdrive | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
+| Full Steam (ch. 2) | – | – | – | – | – | 1 | 0 | 1 |
+
+Some map leans do show: Marrow favours Drone Screen (4 of 5), Kesh Tesla Arc (3 of 5), Harbor Gravity Well (4 of 5), the Strait Air Strike (4 of 5).
+
+## Why the core is shared: what each map throws
+
+The threats that showed on screen, as a share of all of them (`mix.ts`, 2 seeds a map):
+
+| Map | Waves 1–10 | Boss rounds |
+| --- | --- | --- |
+| The Strait | drones 53%, shells 15%, sprinters 8%, guided 8% | sprinters 65%, darts 19%, Hydras 16% |
+| The Gauntlet | shells 34%, drones 33%, sprinters 8%, guided 7% | drones 51%, rocket trucks 49% |
+| Harbor Mouth | shells 35%, drones 20%, sprinters 7%, bomblets 6% | drones 34%, rocket trucks 22%, sprinters 15%, shells 12%, Hydras 12% |
+| The Kesh Hook | shells 44%, drones 27%, sprinters 8%, guided 5% | drones 91% |
+| Lee of Marrow | shells 37%, drones 35%, guided 7%, sprinters 7% | darts 50%, Hydras 28%, drones 16% |
+| The Island | drones 45%, shells 31%, guided 6% | drones 48%, helicopter rockets 25%, attack helicopters 14% |
+| The Behemoth Run | drones 52%, shells 25%, guided 7% | torpedoes 52%, subs 33%, guided 15% |
+
+- **Waves 1–10 ask the same question on every map.** Drones plus shells are 60–80% of what shows, with the same handful of sprinters, guided missiles and strafers. Ten of the 13 waves ask "can you thin a swarm and stop a shell?" Air Strike, Point Defense and Gravity Well answer that best anywhere, and Supply Run keeps any of them loaded. That is why the first pick is the same everywhere.
+- **The boss rounds differ** (sprinters on the Strait, rocket trucks on the Gauntlet, a drone storm at Kesh, Hydras at Marrow, helicopters at the Island, torpedoes on the Behemoth Run). That is where the second and third slots change, so the full kits differ.
+
+**Where two maps share a kit:**
+- **The Island and the Behemoth Run (Point Defense + Supply Run + Shield).** Shield blocks missiles, drones and boats for 15 s. Both maps' waves 1–10 are the most drone-heavy in the game (45% and 52%), and both boss rounds are a stream of missiles at the ships: helicopter rocket pairs at the Island, torpedo spreads and cruise missiles on the Behemoth Run. A shield over the hulls is the right answer to both, so chapter 2's two maps ask one question: "survive a missile stream".
+- **The Strait and Harbor (Air Strike + Gravity Well + Supply Run).** Both open with the most drones in chapter 1's waves (the Strait 53%), and both boss rounds are fast swarms coming in a line (the Strait's sprinters; Harbor's drones and sprinter swarm). A well that pulls a swarm together and a strike that lands on it suit both.
+- **The Gauntlet and Kesh (Air Strike + Scattergun + Point Defense).** Both have shell-heavy waves (34% and 44%) and drone boss rounds (the Gauntlet's swarms with the trucks; Kesh's Drone Storm).
+
+## Suggestions (nothing applied)
+
+To make the maps ask different questions, change waves 1–10, not only the bosses:
+1. **Give each map one signature threat in waves 1–10,** at 20–30% of what shows from waves 4–5 on: the boss round's own kind arriving early. For example rocket trucks on the Gauntlet's shore roads, torpedoes and subs on the Behemoth Run, helicopters at the Island, Hydras at Marrow. Today those threats are 0–2% of waves 1–10.
+2. **Split chapter 2's two maps.** Today both end in a missile stream that Shield answers. One of them should end in something Shield does not stop: the Behemoth Run's supertanker problem could be about the heavies that go for it (Railgun, Frigate Escort), and the Island's about the close silos with no warning (Point Defense, Gravity Well).
+3. **Thin the shared drone-and-shell base where a map's problem is something else.** Kesh and the Gauntlet both lean on shells (34–44%), the Strait and Harbor on drones and swarms. A map whose problem is the neck (Harbor) or the hook (Kesh) could swap part of that base for what the problem needs.
+4. **A check for rule `m-kits`.** Today it asks that a map's counter kit beats the bot's own draft. A second check could ask that no two maps of a chapter share a top-3 kit (chapter 2 fails it today: the Island's #1 is the Behemoth Run's #2), and that the best weapon alone is not the same on every map of a chapter (chapter 1 fails it: Air Strike on all five).
+5. **Air Strike is the one weapon everywhere** in chapter 1: best alone by about 2 ships a run (7.0 against 8.8 for Point Defense next). If one weapon should not be the answer to every map, this is the one to look at. That is a design call, not a balance emergency.
+
+## How far to trust it
+
+- This is the "you" bot, not you. It plays your rhythm and aim and now your Overdrive, but reads the boss rounds harder than you do (docs/design/v3-bot-refit.md).
+- Loadouts are forced: every draft deals the next card of the kit, which is the best case for a kit.
+- The top 10 got 16 seeds a map. A kit's standard error is about 0.4–1.1 ships, so neighbours in a top 5 are often a tie. What shows the lists really differ is 0.02 between maps against 0.38 within a map.
+- Each map's triples come from its own 6 best pairs (6 seeds). A kit whose pairs all ranked below that on the map was not tried.
+- The Laser Cutter is left out because the bot cannot swipe. The Charge Lance is tapped but never charged, so it is undersold.
+- An earlier pass (bot revision 2, where every boost waited for a lull) undersold Shield and Supply Run. It gave the same headline (Jaccard 0.02, Air Strike first alone on five maps) with Shield in fewer chapter 2 kits.
+
+```
+npm run v3:combo-sweep -- --stage=singles --out=tools/v3/combo-sweep/results/v31
+npm run v3:combo-sweep -- --stage=pairs --out=tools/v3/combo-sweep/results/v31
+npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth --out=tools/v3/combo-sweep/results/v31-ch2
+npm run v3:combo-sweep -- --stage=pairs --maps=island,behemoth --out=tools/v3/combo-sweep/results/v31-ch2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v31,tools/v3/combo-sweep/results/v31-ch2 --json=tools/v3/combo-sweep/results/v31/diversity.json
+npx vite-node tools/v3/combo-sweep/mix.ts -- --seeds=2
+```
