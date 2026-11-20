@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-19',
-  headline: 'Merged: the UI overhaul (opens straight into V3, command-room look, “Ready to test” first in the Test Lab) and the bot that plays Overdrive like you. Being built: your Armory overhaul (the lift, Scrap, Deck Guns) and the round 8 changes (Marrow’s tower, The Island’s debut waves, no kit nudges). Needs you: play Kesh, Marrow, The Island and The Behemoth Run, and four quick questions (Overdrive, map signatures, the Behemoth’s boss, new Armory upgrades).',
+  headline: 'Ready for you: play the four maps in Test Lab → Ready to test (Kesh, Marrow, The Island, The Behemoth Run; play log v32). Being built, merged after your play: the Armory overhaul (Scrap, the lift, Deck Guns), Overdrive’s buff, chapter 2’s signature threats and the Behemoth’s new boss.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -115,9 +115,13 @@ export const STATUS = {
     { n: 183, title: 'Armory overhaul brainstorm page', state: 'merged' },
     { n: 184, title: 'UI overhaul: straight into V3, command-room look, Test Lab “Ready to test”', state: 'merged' },
     { n: 185, title: 'The bot plays Overdrive like you; best kits per map', state: 'merged' },
+    { n: 186, title: 'Hub: Armory marks', state: 'merged' },
+    { n: 187, title: 'Logs upload from any web address', state: 'merged' },
+    { n: 188, title: 'Round 8 (log v32): Marrow’s tower 6 HP, The Island’s debut waves and banners, no kit nudges', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Merged #188 (play log v32): Marrow’s radar tower takes 3 hits instead of 2 (it falls around wave 8 for the bot, was 7; waves 7–10 send 10% more fire so Marrow stays where it was), each Narrows enemy debuts on its own drones-only wave on The Island with its “NEW · The Narrows” banner on the map card, and the Test Lab pause screen no longer shows an encounter’s counters. The Island reads a little hard for the bot (about 40% won against 50–70%): your play decides. Your round 9 answers are being built, to merge after your playtest: Overdrive level 1 lasts 18 s, The Island and The Behemoth Run each get a signature threat, and the Behemoth’s boss becomes heavy missiles at the supertanker. The four new Armory cards (Lifeboats, Salvage Crews, Boilers, Quartermaster) come after Scrap.' },
     { date: '2026-11-20', what: 'Your Armory marks filed. Being built now: the lift (Quick Reload −40% at level 5, Stockpile drops 3.25× as often and last 2.5× as long, Long Loads refills your rack on every pickup); Scrap (40 a wave, 50 a boss round, 150 a clear, 250 a first clear; a duplicate card pays 100; levels 2–5 cost 150 / 300 / 500 / 800, and you choose which card to level; a lost run keeps its Scrap; your current levels stay); Deep Magazine moves to the Supply bay (no “Stores”) and gets a real level 3; the Armory’s Point Defense is renamed Deck Guns. Not now: the other systems. Merged: #185 (the bot plays Overdrive like you; combo diversity).' },
     { date: '2026-11-20', what: 'The bot now plays boosts like you, measured on your five boost runs. It wasn’t late to pickups (it grabs them faster than you since the refit); what it missed was Overdrive itself: you take it when nothing is about to hit and fire 1.8× as fast under it. The bot now does both. Its fit to your 26 runs is unchanged (boss rounds still read about 1.6× harder than you play them, which is not about boosts). Overdrive is still weak alone (12th of 15), so a buff is in Needs you. Combo diversity: each map has its own best kit (no kit is #1 on two maps), but the early waves are mostly drones and shells everywhere, so Air Strike is the best first pick on every chapter 1 map: docs/design/v3-combo-diversity.md. Also merged: the UI overhaul (#184): the game opens straight into V3 with the carrier command-room look, Settings are grouped, and the Test Lab puts “Ready to test” first, with tools folded away (the old versions are at ?legacy=1).' },
     { date: '2026-11-20', what: 'The Armory brainstorm is ready on its own page (https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N). Headline: keep all 11 upgrades, change five (the three weak ones lifted, Deep Magazine’s empty level 3, and the Armory’s Point Defense renamed Deck Guns so it doesn’t clash with the weapon). The lift measured: Quick Reload 4.5 → 6.7 ships saved a run, Stockpile 3.1 → 5.8, Long Loads 3.3 → 5.2 (it now refills your rack on every pickup, because longer loads did nothing); the middle of the Armory is 7–8. Unlocks: Scrap, 40 a wave and more for clears, spent on the cards you choose; your three cards max in about 8 runs instead of 20. Also started: a UI overhaul, so the game opens straight into V3 with a carrier command-room look, and the Test Lab puts “Ready to test” first.' },
@@ -150,59 +154,15 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
-    id: 'r10-armory-new',
-    kind: 'question',
-    title: 'New Armory upgrades: how many, once Scrap is in?',
-    text: 'You left this one open on the Armory page. Candidates: Quartermaster (re-roll a weapon draft), Siege Shells (extra damage to bosses and structures), Boilers (the convoy sails faster). Spares: Drill Sergeant, Salvage Crews, Lifeboats.',
-    options: [
-      'None until the lift and Scrap have been played (recommended: see how the new Armory feels first)',
-      'Three: Quartermaster, Siege Shells, Boilers',
-      'One or two (say which in the note)',
-    ],
-  },
-  {
-    id: 'r9-overdrive-buff',
-    kind: 'question',
-    title: 'Overdrive: buff it now that the bot plays it like you?',
-    text: 'The bot now takes Overdrive in a lull and fires 1.8× as fast under it, as you do (it used to break off mid-fight and fire only 1.25×). Even so, Overdrive alone loses 10.6 ships a run, 12th of 15 weapons (Air Strike alone: 7.0). Your Overdrive + Scattergun + Supply Run kit improved from 11.1 to 9.9, still behind the best kits (about 7–8).',
-    options: [
-      'Buff it: level 1 lasts 18 s, as level 2 does now (recommended: the smallest change that lifts the early levels you draft most)',
-      'Buff it differently: when Overdrive ends, your rack refills',
-      'Leave it as a combo piece',
-    ],
-  },
-  {
-    id: 'r9-map-signature',
-    kind: 'question',
-    title: 'Give each map its own signature threat?',
-    text: 'Good news first: no kit is the best on more than one map, so the maps do reward different answers. But on every map waves 1–10 are 60–80% drones and shells, so Air Strike is the best first pick on all five chapter 1 maps, and Supply Run is in a top-5 kit on all seven maps. Only the boss rounds really differ. Idea: each map leans on its own threat (its boss’s kind) for about a quarter of waves 4–10, so the early picks differ too.',
-    options: [
-      'Yes, starting with chapter 2 (The Island and The Behemoth Run) (recommended)',
-      'Yes, on every rebuilt map',
-      'No: the boss rounds are enough',
-    ],
-  },
-  {
-    id: 'r9-ch2-split',
-    kind: 'question',
-    title: 'The Island and The Behemoth Run share a best kit',
-    text: 'Both bosses are missile streams, so Point Defense + Supply Run + Shield is The Island’s best kit and The Behemoth Run’s second; Shield is in all five of the Behemoth’s top kits. Changing one boss would make the two maps ask different questions.',
-    options: [
-      'Change the Behemoth’s boss to something Shield doesn’t stop, such as heavy missiles at the supertanker (recommended; ties in with deciding its strength after you play it)',
-      'Change The Island’s boss instead',
-      'Leave both',
-    ],
-  },
-  {
     id: 'r8-play-ch2',
     kind: 'item',
     title: 'Play The Island and The Behemoth Run',
-    text: 'In the Test Lab (live now, #180 merged). The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
+    text: 'In the Test Lab’s “Ready to test” row (play log v32: The Island now debuts each new enemy on its own wave, with its banner). The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
   },
   {
     id: 'r8-replay-ch1',
     kind: 'item',
-    title: 'Replay Kesh and Marrow (play log v30 or later)',
+    title: 'Replay Kesh and Marrow (Test Lab → Ready to test)',
     text: 'In the Test Lab (live now, #178 merged). Look for: a real threat by wave 3, a steady rise with no cliff at waves 9–10, the four boss intro cards, and a blank verdict sheet. Use “Rate wave N” at the weapon picks: waves 1–4 are the ones to judge. Approve when played (with a note), or Change if the climb still feels wrong.',
   },
 ];
@@ -210,6 +170,42 @@ export const NEEDS = [
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r9-overdrive-buff',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Buff it: level 1 lasts 18 s. Being built.',
+    at: '2026-11-20',
+    title: 'Overdrive: buff it now that the bot plays it like you?',
+    text: '',
+  },
+  {
+    id: 'r9-map-signature',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Yes, chapter 2 first: The Island and The Behemoth Run each get a signature threat in waves 4–10. Being built.',
+    at: '2026-11-20',
+    title: 'Give each map its own signature threat?',
+    text: '',
+  },
+  {
+    id: 'r9-ch2-split',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Change the Behemoth’s boss to something Shield doesn’t stop (heavy missiles at the supertanker). Being built; strength tuned from your play.',
+    at: '2026-11-20',
+    title: 'The Island and The Behemoth Run share a best kit',
+    text: '',
+  },
+  {
+    id: 'r10-armory-new',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Four: Lifeboats, Salvage Crews, Boilers and Quartermaster (your note). Built after Scrap lands.',
+    at: '2026-11-20',
+    title: 'New Armory upgrades: how many, once Scrap is in?',
+    text: '',
+  },
   {
     id: 'r9-armory-page',
     kind: 'item',
