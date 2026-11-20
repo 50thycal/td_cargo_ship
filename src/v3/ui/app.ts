@@ -487,13 +487,16 @@ export class App {
     const fit = () => this.fitTyping();
     window.visualViewport?.addEventListener('resize', fit);
     window.visualViewport?.addEventListener('scroll', fit);
+    // Round 12 (the player, on the wave rating's note, an iPhone home-screen
+    // app: "I can't see the text when I'm typing"): the one-line note boxes
+    // (the wave rating's) are typed in the same way as the text areas.
     this.overlay.addEventListener('focusin', (e) => {
-      if (e.target instanceof HTMLTextAreaElement) this.enterTyping(e.target);
+      if (typingBox(e.target)) this.enterTyping(e.target);
     });
     this.overlay.addEventListener('focusout', () => {
       // Late enough that a tap on Save lands on the button where it was.
       setTimeout(() => {
-        if (!(document.activeElement instanceof HTMLTextAreaElement && this.overlay.contains(document.activeElement))) this.leaveTyping();
+        if (!(typingBox(document.activeElement) && this.overlay.contains(document.activeElement))) this.leaveTyping();
       }, 250);
     });
     new ResizeObserver(() => this.resize()).observe(this.root);
@@ -4662,7 +4665,7 @@ export class App {
     // A dialog with a text box can be used with the phone held upright too
     // (the player: "give feedback with my phone up"): no "turn your phone"
     // notice over it.
-    this.root.classList.toggle('noting', !!panel.querySelector('textarea, .v3-enc-script'));
+    this.root.classList.toggle('noting', !!panel.querySelector('textarea, .v3-enc-script, .v3-wave-rate-text'));
     this.overlay.dataset.screen = screen;
     // A panel taller than the screen scrolls under its header: only then
     // does the header need a backing of its own.
@@ -4691,11 +4694,11 @@ export class App {
    *  sideways) or under it (upright), and the few controls it can't do
    *  without (the verdict sheet's Keep / Tune / Cut: `data-typing-keep`).
    *  Everything else is folded away until the keyboard goes. */
-  private enterTyping(box: HTMLTextAreaElement): void {
+  private enterTyping(box: HTMLTextAreaElement | HTMLInputElement): void {
     const panel = this.overlay.querySelector('.v2-panel');
     if (!panel) return;
     this.leaveTyping();
-    const ACTS = '.v2-btn-row, .v3-lab-sheet-acts';
+    const ACTS = '.v2-btn-row, .v3-lab-sheet-acts, .v3-rate-actions';
     const KEEP = '[data-typing-keep]';
     const keep = new Set<Element>();
     const mark = (e: Element | null) => {
@@ -4719,6 +4722,11 @@ export class App {
     }
     this.root.classList.add('typing');
     this.fitTyping();
+    // Where the browser doesn't pan the box into view itself (an iPhone
+    // home-screen app), bring it in once the keyboard is up.
+    setTimeout(() => {
+      if (document.activeElement === box) box.scrollIntoView({ block: 'nearest' });
+    }, 350);
   }
 
   private leaveTyping(): void {
@@ -4735,6 +4743,12 @@ export class App {
     this.overlay.replaceChildren();
     delete this.overlay.dataset.screen;
   }
+}
+
+/** A box a dialog is typed in: a text area, or a one-line text box (the
+ *  wave rating's note, round 12). */
+function typingBox(e: EventTarget | Element | null): e is HTMLTextAreaElement | HTMLInputElement {
+  return e instanceof HTMLTextAreaElement || (e instanceof HTMLInputElement && e.type === 'text');
 }
 
 /** Round 4's new pickups get a one-line banner the first time one drops. */

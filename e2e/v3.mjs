@@ -314,7 +314,25 @@ try {
     await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="intensity"] [data-n="5"]').click();
     await page.locator('[data-screen="rate"] [data-wave-rate-note]').click();
     await page.locator('[data-screen="rate"] .v3-wave-rate-text').fill('Swarm from the left');
-    const wr = await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
+    // Round 12 (the player, on an iPhone home-screen app: "I can't see the
+    // text when I'm typing"): typing the note, the box and Next sit in what
+    // the keyboard leaves (stood in for here as 150 px), its text light on
+    // the dark box.
+    await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.setProperty('--vv-h', '150px'));
+    await page.waitForTimeout(150);
+    const rateTyping = await page.evaluate(() => {
+      const box = document.querySelector('[data-screen="rate"] .v3-wave-rate-text');
+      const r = box.getBoundingClientRect();
+      const next = document.querySelector('[data-rate-next]').getBoundingClientRect();
+      const cs = getComputedStyle(box);
+      const lum = (c) => { const m = c.match(/\d+(\.\d+)?/g)?.map(Number) ?? [0, 0, 0]; return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255; };
+      return { on: !!document.querySelector('.typing'), box: Math.round(r.bottom), h: Math.round(r.height), next: Math.round(next.bottom), ink: lum(cs.webkitTextFillColor || cs.color), bg: lum(cs.backgroundColor) };
+    });
+    check(rateTyping.on && rateTyping.box <= 150 && rateTyping.h >= 30 && rateTyping.next <= 150 && rateTyping.ink - rateTyping.bg > 0.6, `typing the wave's note: the box and Next above the keyboard, light text on a dark box (${JSON.stringify(rateTyping)})`);
+    await page.locator('[data-screen="rate"] .v3-wave-rate-text').blur();
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.querySelector('.v2-overlay').parentElement.style.removeProperty('--vv-h'));
+    const wr =await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
     check(wr.list?.length === 1 && wr.list[0].wave === 1 && JSON.stringify(wr.list[0].rating) === '{"fun":4,"intensity":5}' && wr.list[0].note === 'Swarm from the left' && wr.steps === steps && wr.phase === 'draft', `the wave's rating lands in the log at once, the game untouched (${JSON.stringify(wr)})`);
     await page.locator('[data-rate-next]').click();
   }

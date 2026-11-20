@@ -5312,6 +5312,19 @@ a.v3-lab-page {
   box-shadow: 0 0 0 3px rgb(242 193 78 / 0.18);
 }
 
+.typing .typing-box {
+  -webkit-text-fill-color: #ffffff;
+  opacity: 1;
+}
+
+/* Round 12: a one-line box (the wave rating's note) keeps its line's
+   height at the top of what the keyboard leaves. */
+.typing input.typing-box {
+  height: 48px !important;
+  min-height: 48px;
+  align-self: start;
+}
+
 .typing .typing-box::placeholder {
   color: #a9bccb;
   opacity: 1;
@@ -6826,6 +6839,12 @@ a.v3-lab-page {
   border: 1px solid var(--panel-edge);
   background: #08131a;
   color: var(--ink);
+  /* Round 12 ("I can't see the text when I'm typing"): iOS paints a text
+     box's text with its own fill unless told; light on the dark box. */
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--gold);
+  color-scheme: dark;
+  opacity: 1;
   font: inherit;
   /* 16 px: anything smaller and iOS zooms the page in on focus. */
   font-size: 16px;
