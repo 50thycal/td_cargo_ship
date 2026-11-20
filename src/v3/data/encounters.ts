@@ -3512,19 +3512,19 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Islet by islet',
     callout: 'Swarms down the chain',
-    premise: 'Each islet in turn, west to east, sends a swarm at the ship passing it, and a shell comes over from the far shore.',
-    decision: 'Three launch points one after another: each swarm has a short flight to the ship beside its islet.',
+    premise: 'Each islet in turn, west to east, sends a swarm at the convoy, and a shell comes over from the far shore at the ships coming in.',
+    decision: 'Three launch points one after another down the chain: each swarm comes from a new place.',
     counters: 'Each swarm as it leaves its islet; the shell as it climbs.',
     succeeds: 'The swarms are shot down in most runs; no ship lost in most runs.',
     notes: {
       sites: 'The west, middle and east islets\' silos in turn, then the north-west shore silo (560, 75; a shell).',
-      target: 'Each swarm at the ship nearest its islet, the shell at the ship least far along.',
+      target: 'The swarms at any ship, the shell at the ship least far along.',
       usesMap: 'The chain itself: every islet is a silo close to the lane, in place of the wave\'s shells.',
     },
     beats: [
-      { at: 0.25, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
-      { at: 0.25, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
-      { at: 0.25, plus: 5, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'near' },
+      { at: 0.25, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.25, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+      { at: 0.25, plus: 5, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
       { at: 0.6, kind: 'ballistic', count: 1, from: base(3), aim: 'rear' },
     ],
     replaces: { drones: 2, ballistic: 6 },
@@ -3546,9 +3546,9 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The strait end to end: the long reach in the west, the short one in the east, in place of the wave\'s shells and guided missiles.',
     },
     beats: [
-      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'rear' },
+      { at: 0.35, kind: 'ballistic', count: 3, gap: 0.75, from: sub(2), aim: 'rear' },
       { at: 0.35, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
-      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'rear' },
       { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
     ],
     replaces: { drones: 0, ballistic: 6, guided: 2 },
@@ -3574,7 +3574,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.4, plus: 1.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'near' },
       { at: 0.4, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
-      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(1) },
     ],
     replaces: { drones: 0, ballistic: 8, guided: 1 },
   },
@@ -4098,9 +4098,9 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  the far shore and a cluster off the west islet at the ships coming in
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
-  { swarms: 6, size: 6, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 5, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 8, count: 1, base: 0, aim: 'rear' }] },
-  { swarms: 7, size: 7, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 5, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 8, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 5, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 2, gap: 5, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 7, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 5, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 7, size: 9, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 2, gap: 3, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
