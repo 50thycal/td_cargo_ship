@@ -81,7 +81,7 @@ export function setupVersion(s: Pick<EncounterSetup, 'version'> | null | undefin
 /** Where a beat's launches come from: a base of the map (its index), a
  *  submarine at one of the map's surfacing spots, or an aircraft from one
  *  edge (+1: the left, flying right). */
-export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 };
+export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { road: number };
 
 /** Who a beat is aimed at, decided as each launch leaves: any ship (the
  *  sim's own pick), the ship furthest along, the ship nearest the narrows
@@ -114,6 +114,10 @@ export interface Beat {
   gap?: number;
   from: BeatFrom;
   aim?: BeatAim;
+  /** A Rocket Truck down a pop-up road (`from: { road }`, log v42,
+   *  Saltgate Canal's first truck): the salvos it fires (absent: a truck's
+   *  own, FOE.rocketTruck.salvos). */
+  salvos?: number;
 }
 
 /** An enemy pair placed by an encounter (v3): one set of the pair (data/
@@ -201,6 +205,7 @@ export interface Encounter {
 
 const base = (i: number): BeatFrom => ({ base: i });
 const sub = (i: number): BeatFrom => ({ sub: i });
+const road = (i: number): BeatFrom => ({ road: i });
 
 /** The original nine (slice 5), version 1. Their beats are rev 1's. */
 const V1: Omit<Encounter, 'version' | 'callout'>[] = [
@@ -3723,21 +3728,22 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [2],
     role: 'teach',
     name: 'Shells into the chamber',
-    callout: 'Shells at the lock',
-    premise: 'A shell comes over from the west shore at a ship waiting in the west lock, then drones come off the east lock\'s silo.',
-    decision: 'A shell never misses a ship that cannot move: the ones in a lock must be covered first.',
-    counters: 'The shell as it climbs, then the drones.',
-    succeeds: 'The shell is shot down in most runs; no ship lost on wave 2.',
+    callout: 'A truck at the lock',
+    premise: 'A shell comes over from the west shore at a ship waiting in the west lock, a rocket truck drives down to the bank beside it, then drones come off the east lock\'s silo.',
+    decision: 'A shell never misses a ship that cannot move, and the truck will fire at the same lock once it is up: the shell, or the truck before it sets up?',
+    counters: 'The shell as it climbs, the truck on its way down the road, then the drones.',
+    succeeds: 'The truck is shot before it fires in most runs; no ship lost on wave 2.',
     notes: {
-      sites: 'The west shore silo (220, 150; a shell), then the east lock\'s silo (1220, 240; drones).',
-      target: 'The shell at the ship held at the lock nearest the silo (the west lock), the drones at any ship.',
-      usesMap: 'A ship in a chamber is a still target: a shell lands where it was aimed, in place of the wave\'s two shells.',
+      sites: 'The west shore silo (220, 150; a shell), the pop-up road by the west lock\'s exit (690, down to the bank; a truck), then the east lock\'s silo (1220, 240; drones).',
+      target: 'The shell and the truck\'s two salvos at the ship held at the lock nearest them (the west lock), the drones at any ship.',
+      usesMap: 'A ship in a chamber is a still target: a shell lands where it was aimed, and a truck on the bank beside it fires point-blank (log v42: the first look at the trucks that come to the locks from wave 4), in place of the wave\'s two shells and a swarm.',
     },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'lock' },
+      { at: 0.2, kind: 'rocketTruck', count: 1, from: road(0), aim: 'lock', salvos: 2 },
       { at: 0.35, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 4, ballistic: 2 },
+    replaces: { drones: 9, ballistic: 2 },
   },
   {
     id: 'saltgate-both-locks',
@@ -4176,6 +4182,9 @@ export interface MapSignature {
   /** Saltgate Canal (log v38): the wave's own cluster missiles fly at this
    *  ('lock': the ships held at the lock nearest their silo). */
   clusters?: BeatAim;
+  /** Saltgate Canal (log v42): the wave's Rocket Trucks fire their salvos
+   *  at this ('lock': the ships held at the lock nearest the truck). */
+  trucks?: BeatAim;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -4198,17 +4207,36 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // from an edge: it locks the pickups in its ring (the mothership's drop
   // among them) until it is shot down.
   archipelago: { from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' },
-  // Saltgate Canal (log v38, docs/design/v3-ch2-saltgate.md): a strike on
-  // the locks, from wave 4. Torpedo Subs, Run the Canal's opening: half the
-  // wave's new enemies (rounded up) are periscopes in the seas at either end
-  // of the canal, under water and out of reach, their slow torpedoes at the
-  // ships queueing for the west lock and leaving the east one (only the
-  // torpedoes can be shot; a torpedo sinks a cargo ship, so all of them was
-  // too many). And the wave's own cluster missiles, off the silos over the
-  // locks, go for the ships held in them, splitting over a full chamber (the
-  // boss rounds' clusters do the same).
-  saltgate: { from: 4, foe: 'torpedoSub', foeShare: 0.5, clusters: 'lock' },
+  // Saltgate Canal (log v42, docs/design/v3-ch2-saltgate.md; the player's
+  // answer to the v38 card: "switch the signature for the canal ... make it
+  // the boss the trucks"): the trucks come to the locks, from wave 4. Half
+  // the wave's new enemies (rounded up) are Rocket Trucks, the Gatecrashers'
+  // own, down the pop-up roads to the bank by each lock, their salvos at the
+  // ships held there (`trucks`: 'lock'); a truck can be shot on the way in.
+  // And the wave's own cluster missiles, off the silos over the locks or a
+  // truck, go for the ships held in them, splitting over a full chamber (the
+  // boss rounds' clusters do the same). Log v38-v41: Torpedo Subs in place
+  // of the trucks (the player: put the subs on a more open map).
+  saltgate: { from: 4, foe: 'rocketTruck', foeShare: 0.5, clusters: 'lock', trucks: 'lock' },
 };
+
+/** A map's new enemies that come as another (log v42, lab only, under the
+ *  encounter layer as the signature, waves 1-10): Saltgate Canal sends no
+ *  Torpedo Sub (the player: "we can make the [sub] on a different map that's
+ *  more open"), so a sub the planner draws there comes as a Rocket Truck,
+ *  the same weight out of the wave (both are heavy: a drone swarm and a
+ *  missile, rule w-budget). The campaign plays the planner as it was. */
+export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Record<FoeId, FoeId>>>> = {
+  saltgate: { torpedoSub: 'rocketTruck' },
+};
+
+/** The enemy a drawn one comes as on this map, under a run's encounter
+ *  setup (itself with no layer, before rev 4, on the shared wave or past
+ *  wave 10). */
+export function swapFoe(map: MapId, wave: number, id: FoeId, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): FoeId {
+  if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return id;
+  return (MAP_FOE_SWAP as Partial<Record<MapId, Partial<Record<FoeId, FoeId>>>>)[map]?.[id] ?? id;
+}
 
 /** A map's signature for a wave under a run's encounter setup (none before
  *  rev 4, past wave 10, or on the shared wave: `only: []`). */
@@ -4239,6 +4267,35 @@ export interface BossTune {
    *  missiles at the radar tower as the round opens (while it stands; once
    *  it is gone, at the ship nearest where it stood). */
   rounds?: BossRound[];
+  /** Log v42 (Saltgate Canal's Gatecrashers): the boss's name under the
+   *  encounter layer, when its rounds are a new boss on the map's event
+   *  (the event's id stays; the campaign plays the event as it was). */
+  name?: string;
+  /** Log v42: the boss's trucks (BossRound `trucks`): hits each, their
+   *  speed driving in (× a truck's own), how far apart they park along the
+   *  bank, how long a wreck stalls the trucks behind it on its road, and
+   *  how long a truck marks its ship (a red line from the truck) before
+   *  each salvo. */
+  truck?: { hp: number; drive: number; spacing: number; stall: number; mark: number };
+}
+
+/** Log v42 (Saltgate Canal's Gatecrashers): a column of Rocket Trucks
+ *  down to the bank by a lock (`lock`: 0 the west, 1 the east), on the
+ *  enemy's bank (`north`, down the pop-up road by the lock's exit) or your
+ *  own (`south`, up from the bottom of the screen), parking along the bank
+ *  over the chamber. The first sets out `at` s into the round, the rest
+ *  `gap` s apart; each fires `salvos` salvos at the ship held at the lock
+ *  nearest it, and the first `clusters` of the column fire a cluster
+ *  missile in place of their first salvo (it can be shot down; a salvo
+ *  cannot). */
+export interface TruckRun {
+  at: number;
+  lock: number;
+  bank: 'north' | 'south';
+  count: number;
+  gap: number;
+  salvos: number;
+  clusters?: number;
 }
 
 export interface BossRound {
@@ -4282,6 +4339,9 @@ export interface BossRound {
    *  weapon back twice a round, a Shield or an Air Strike held at its best
    *  covered the whole round. */
   cargoWeapons?: number[];
+  /** Saltgate Canal's Gatecrashers (log v42): its truck columns, in place
+   *  of Run the Canal's subs, gunships and block. */
+  trucks?: TruckRun[];
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -4390,18 +4450,51 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
   { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 3, gap: 1.5, base: 0 }, { kind: 'ballistic', at: 3, count: 5, gap: 1.75, base: 3, aim: 'rear' }, { kind: 'cluster', at: 4, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 6, count: 1, base: 2, aim: 'lead' }] },
 ];
 
-/** Saltgate Canal's Run the Canal (log v38, docs/design/v3-ch2-saltgate.md):
- *  chapter 2's finale, its three phases as they are (Torpedo Subs as the
- *  round opens, a gunship over the far bank by a lock, then a block of
- *  armored drones; before: 2 subs, 1 helicopter of 4 hits, a block of 4 and
- *  one swarm of 5, every round), more of each round by round, with clusters
- *  and guided missiles off the silos over the locks at the ships held in
- *  them (aim 'lock'). */
+/** Saltgate Canal's Gatecrashers (log v42, docs/design/v3-ch2-saltgate.md;
+ *  the player's answer to the v38 card: "a shit ton of trucks for one of the
+ *  boss ones, like they all drive in and they can shoot missiles, and it
+ *  could be pretty intense if all the ships are clustered together"): Rocket
+ *  Trucks drive down to the banks by the locks and fire at the ships held
+ *  there. Round 1 a column on the enemy's bank by the west lock; round 2
+ *  more, from both banks; round 3 a mass charge at both locks, the leaders
+ *  of the north columns firing cluster missiles over the full chambers. A
+ *  truck can be shot on the way in (a wreck stalls the trucks behind it),
+ *  raises its launcher (a ring fills round it) and marks its ship before
+ *  each salvo. Log v38-v41: Run the Canal, rising (Torpedo Subs, a gunship,
+ *  an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
-  { subs: 3, helis: 1, heliHp: 4, block: 4, cols: 2, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 6, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 9, count: 1, base: 4, aim: 'lock' }] },
-  { subs: 3, helis: 1, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 5, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 8, count: 1, base: 4, aim: 'lock' }] },
-  { subs: 3, helis: 2, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }, { kind: 'cluster', at: 12, count: 1, base: 3, aim: 'lock' }] },
+  {
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 5, gap: 1.2, salvos: 2 }],
+    swarms: 1,
+    size: 5,
+    fire: [],
+  },
+  {
+    trucks: [
+      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1.2, salvos: 2 },
+      { at: 4, lock: 0, bank: 'south', count: 3, gap: 1.2, salvos: 2 },
+    ],
+    swarms: 1,
+    size: 5,
+    fire: [],
+  },
+  {
+    trucks: [
+      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1, salvos: 2, clusters: 1 },
+      { at: 2, lock: 1, bank: 'north', count: 4, gap: 1, salvos: 2, clusters: 1 },
+      { at: 5, lock: 0, bank: 'south', count: 3, gap: 1, salvos: 2 },
+      { at: 7, lock: 1, bank: 'south', count: 3, gap: 1, salvos: 2 },
+    ],
+    swarms: 1,
+    size: 5,
+    fire: [],
+  },
 ];
+
+/** The Gatecrashers' trucks: 3 hits each (a wave's truck takes 4), in at
+ *  1.6 × a truck's speed, parked 58 px apart, a wreck stalling the ones
+ *  behind it 2 s, each salvo's ship marked 0.9 s before it. */
+export const SALTGATE_TRUCK = { hp: 3, drive: 1.6, spacing: 58, stall: 2, mark: 0.9 };
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
@@ -4441,7 +4534,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   behemoth: { rounds: BEHEMOTH_BOSS_ROUNDS },
   needle: { rounds: NEEDLE_BOSS_ROUNDS },
   archipelago: { rounds: ARCHIPELAGO_BOSS_ROUNDS },
-  saltgate: { rounds: SALTGATE_BOSS_ROUNDS },
+  saltgate: { rounds: SALTGATE_BOSS_ROUNDS, name: 'Gatecrashers', truck: SALTGATE_TRUCK },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or
@@ -4480,6 +4573,7 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   strafer: ['strafer', 'strafers'],
   bomber: ['bomber', 'bombers'],
   supersonic: ['supersonic missile', 'supersonic missiles'],
+  rocketTruck: ['rocket truck', 'rocket trucks'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
@@ -4502,7 +4596,7 @@ const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of 
 export function beatText(b: Beat): string {
   const names = BEAT_NAME[b.kind] ?? [b.kind, b.kind];
   const what = `${b.count} ${b.count === 1 ? names[0] : names[1]}`;
-  const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
+  const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : 'road' in b.from ? `down road ${b.from.road + 1}` : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
   const gap = b.count > 1 ? `, ${b.gap ?? (b.kind === 'drone' ? 0.35 : 1.5)} s apart` : '';
   return `${whenText(b.at, b.plus)}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}`;
 }

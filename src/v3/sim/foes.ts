@@ -10,6 +10,7 @@ import { THREATS, VIEW, type ThreatKind } from '../data/config';
 import { DEBUT_SLOTS, FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
+import type { BeatAim } from '../data/encounters';
 import { EV } from '../data/events';
 import { hydraDartPace, hydraDarts, walkingBarrage } from './events';
 import type { TelImpact } from './telemetry';
@@ -33,6 +34,8 @@ import {
   type Launch,
   type Ship,
   type Threat,
+  aimBeat,
+  atLock,
 } from './game';
 
 /** Something a foe fires that no interceptor can stop (en-unstoppable: the
@@ -157,6 +160,15 @@ export interface FoeData {
    *  first volley goes. */
   stop?: number;
   wait?: number;
+  /** A Rocket Truck (log v42, Saltgate Canal): who its salvos go for
+   *  ('lock': the ship held at the lock nearest it), the ship its next
+   *  salvo is marked on (a red line from the truck, from the moment it
+   *  starts raising and between salvos), the salvos it came with, and how
+   *  many of them are a cluster missile instead (the first). */
+  aim?: BeatAim;
+  mark?: number;
+  full?: number;
+  clusters?: number;
   stall?: number;
   drive?: number;
   /** An Attack Helicopter: the wave second it may open fire, that it holds
@@ -344,10 +356,14 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'rocketTruck': {
       const roads = g.map.roads.popups;
       if (!roads.length) return;
-      const road = rng.pick(roads);
+      // Log v42 (Saltgate Canal): an encounter's truck takes its own road,
+      // its own salvos and its aim.
+      const road = l.road !== undefined ? roads[l.road % roads.length] : rng.pick(roads);
       const th = spawnThreat(g, 'rocketTruck', road.from.x, road.from.y, 'truck');
       th.target = CARRIER_TARGET;
-      th.foe = data({ path: [road.from, road.to], along: 0, n: FOE.rocketTruck.salvos });
+      if (l.enc) th.enc = l.enc;
+      const n = l.salvos ?? FOE.rocketTruck.salvos;
+      th.foe = data({ path: [road.from, road.to], along: 0, n, ...(l.salvos !== undefined ? { full: n } : {}), ...(l.aim ? { aim: l.aim } : {}) });
       th.heading = Math.atan2(road.to.y - road.from.y, road.to.x - road.from.x);
       return;
     }
@@ -1855,6 +1871,7 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
       f.state = 1;
       f.t = 0;
       if (!f.wait) cue(g, 'truck.raise', th.x, th.y);
+      if (!f.wait) markShip(g, th, f);
     }
   } else if (f.state === 1) {
     // A convoy truck waits its turn before it raises.
@@ -1862,6 +1879,7 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
       f.wait = Math.max(0, f.wait! - dt);
       f.t = 0;
       if (f.wait === 0) cue(g, 'truck.raise', th.x, th.y);
+      if (f.wait === 0) markShip(g, th, f);
     } else if (f.t >= R.raise) {
       f.state = 2;
       f.t = R.gap;
@@ -1872,9 +1890,29 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
       // time ... a lot less damage"): one ship, a ripple of small rockets.
       f.t = 0;
       f.n -= 1;
-      const pool = targetable(g);
-      const s = pool.length ? g.rng.foes.pick(pool) : null;
-      f.ripple = { id: g.nextId++, ship: s ? s.id : -1, left: R.perSalvo, next: 0 };
+      if (f.aim) {
+        // Log v42 (Saltgate Canal): at the ship it marked (still afloat),
+        // else the one held at the lock nearest it now; its first salvos a
+        // cluster missile if it carries one (that one can be shot down).
+        if ((f.clusters ?? 0) > 0) {
+          f.clusters! -= 1;
+          const c = spawnThreat(g, 'cluster', th.x, th.y, 'truck');
+          c.from = th.id;
+          if (th.enc) c.enc = th.enc;
+          aimBeat(g, c, f.aim);
+          cue(g, 'truck.fire', th.x, th.y);
+          f.ripple = undefined;
+        } else {
+          const marked = targetable(g).find((o) => o.id === f.mark) ?? lockShip(g, th);
+          f.ripple = { id: g.nextId++, ship: marked ? marked.id : -1, left: R.perSalvo, next: 0 };
+        }
+        if (f.n > 0) markShip(g, th, f);
+        else f.mark = undefined;
+      } else {
+        const pool = targetable(g);
+        const s = pool.length ? g.rng.foes.pick(pool) : null;
+        f.ripple = { id: g.nextId++, ship: s ? s.id : -1, left: R.perSalvo, next: 0 };
+      }
     }
     const r = f.ripple;
     while (r && r.left > 0 && f.t >= r.next) {
@@ -1902,6 +1940,31 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   th.x = p.x;
   th.y = p.y;
   th.heading = p.heading + (f.state === 4 ? Math.PI : 0);
+}
+
+/** The ship a lock-aimed truck goes for (log v42, Saltgate Canal): one
+ *  held at the lock nearest it (in its chamber or queued at its gate), else
+ *  the ship nearest it. */
+function lockShip(g: Game, th: Threat): Ship | undefined {
+  const pool = targetable(g);
+  if (!pool.length) return undefined;
+  const held = pool.filter((s) => atLock(g, s));
+  const near = (a: Ship, b: Ship) => (dist(b.x, b.y, th.x, th.y) < dist(a.x, a.y, th.x, th.y) ? b : a);
+  return (held.length ? held : pool).reduce(near);
+}
+
+/** A lock-aimed truck marks the ship its next salvo goes for. */
+function markShip(g: Game, th: Threat, f: FoeData): void {
+  if (!f.aim) return;
+  f.mark = lockShip(g, th)?.id;
+}
+
+/** The ship a truck has marked, while the mark shows (drawn as a red line
+ *  from the truck): raising, or up between salvos. */
+export function truckMark(g: Game, th: Threat): Ship | undefined {
+  const f = th.foe;
+  if (th.kind !== 'rocketTruck' || !f?.aim || f.mark === undefined || (f.state !== 1 && f.state !== 2) || (f.wait ?? 0) > 0 || f.n <= 0) return undefined;
+  return g.ships.find((s) => s.id === f.mark);
 }
 
 /** The `k`th rocket of a salvo at its ship (or the carrier), aimed where the
@@ -2151,7 +2214,7 @@ export function foeHarmed(th: Threat): boolean {
   if (!f) return false;
   switch (th.kind) {
     case 'rocketTruck':
-      return f.n < FOE.rocketTruck.salvos;
+      return f.n < (f.full ?? FOE.rocketTruck.salvos);
     case 'diveBomber':
     case 'torpedoSub':
       return f.state >= 1;

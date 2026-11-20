@@ -6,7 +6,7 @@ import { THREATS, VIEW } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
 import type { Point } from '../data/maps';
-import { shellAt, siegeUp, type FoeMark } from '../sim/foes';
+import { shellAt, siegeUp, truckMark, type FoeMark } from '../sim/foes';
 import { C, deltaWing, hpPips, missile } from './render';
 
 /** Draw a new enemy; false if `th` isn't one of them. */
@@ -405,6 +405,25 @@ function drawRocketTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   if (st === 1) elev = Math.min(1, (f?.t ?? 0) / R.raise);
   else if (st === 2) elev = 1;
   else if (st === 3) elev = 1 - Math.min(1, (f?.t ?? 0) / R.lower);
+  // Log v42 (Saltgate Canal): a lock-aimed truck marks the ship its next
+  // salvo goes for, a dashed red line from the truck, while it raises and
+  // between its salvos.
+  const marked = truckMark(g, th);
+  if (marked) {
+    ctx.save();
+    ctx.strokeStyle = Math.floor(g.t * 6) % 2 ? 'rgba(255,77,61,0.9)' : 'rgba(255,77,61,0.5)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([7, 6]);
+    ctx.beginPath();
+    ctx.moveTo(th.x, th.y);
+    ctx.lineTo(marked.x, marked.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(marked.x, marked.y, 22, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
   if (st === 1) {
     const k = elev;
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';

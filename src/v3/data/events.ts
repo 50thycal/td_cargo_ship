@@ -21,6 +21,7 @@ import { RULES } from './config';
 import type { AbilityId } from './abilities';
 import { FOE, type FoeId } from './foes';
 import type { MapId } from './maps';
+import { bossTune } from './encounters';
 
 export type EventId =
   // Chapter 1: Home Waters
@@ -93,6 +94,15 @@ export const EVENTS: Record<EventId, EventDef> = {
   'siege-of-vey': { id: 'siege-of-vey', kind: 'map', name: 'Siege of Vey', foe: 'tender', also: ['bodyguard', 'lure', 'cloud'], rules: [], look: 'Repair ships, a guarded heavy, then firebombs round the Citadel: a real last stand?' },
   'siren-field': { id: 'siren-field', kind: 'bonus', name: 'Siren Field', foe: 'lure', rules: ['lureAll'], look: 'A bonus wave for a player with helpers: five beacons and every helper pulled away. Did you feel alone?' },
 };
+
+/** What the player reads as the boss's name (log v42): its event's, or,
+ *  under the encounter layer (rev 4), the name the map's boss tuning gives
+ *  a new boss on the map's event (Saltgate Canal's Gatecrashers; the
+ *  campaign and a log before rev 4 play Run the Canal, and read it). */
+export function eventName(id: EventId, map?: MapId, rev?: number): string {
+  const tune = map && EVENT_MAPS[map] === id ? bossTune(map, rev) : undefined;
+  return tune?.name ?? EVENTS[id].name;
+}
 
 /** Every event: the map events in campaign order, then the bonus events. */
 export const EVENT_ORDER = Object.keys(EVENTS) as EventId[];
@@ -532,15 +542,15 @@ export interface IntroCard {
  *  "BOSS ROUND", then the convoy restored and the ships that can still be
  *  lost (`left`; `restored` false: no restore, only the ships left), then
  *  the boss's name, then "Round 1 of 3". Rounds 2 and 3: "Round 2 of 3". */
-export function bossIntroCards(id: EventId, run: number, runs: number, left: number, restored: boolean): IntroCard[] {
+export function bossIntroCards(id: EventId, run: number, runs: number, left: number, restored: boolean, name: string = EVENTS[id].name): IntroCard[] {
   const d = EVENT.introCard;
   const ships = `${left} ship${left === 1 ? '' : 's'}`;
-  const round = { key: 'round' as const, eyebrow: EVENTS[id].name, title: `Round ${run} of ${runs}` };
+  const round = { key: 'round' as const, eyebrow: name, title: `Round ${run} of ${runs}` };
   if (run !== 1) return [{ ...round, at: 0, until: d * 1.5 }];
   const cards: Omit<IntroCard, 'at' | 'until'>[] = [
     { key: 'boss', title: 'Boss round' },
     restored ? { key: 'restore', title: 'Convoy restored', sub: `${ships} can still be lost` } : { key: 'restore', title: `${ships} left`, sub: 'can still be lost' },
-    { key: 'name', eyebrow: 'The boss', title: EVENTS[id].name },
+    { key: 'name', eyebrow: 'The boss', title: name },
     { ...round, sub: `Survive the next ${runs} rounds` },
   ];
   // The last card holds to the first launch (the breather and the calm).

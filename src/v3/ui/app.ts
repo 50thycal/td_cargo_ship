@@ -61,7 +61,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, eventName, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -1183,7 +1183,7 @@ export class App {
     const bossTo = lastEventWave();
     if (!list.length) {
       const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
-      box.append(el('p', 'v3-enc-none', boss ? `${bossRound(g.event!.run, g.event!.runs)}: ${EVENTS[g.event!.id].name}, the map's own event (no authored encounter).` : g.event?.bonus ? `Bonus wave: ${EVENTS[g.event.id].name} (no authored encounter).` : quietText(waveScale(g.map.id, version, g.wave))));
+      box.append(el('p', 'v3-enc-none', boss ? `${bossRound(g.event!.run, g.event!.runs)}: ${eventName(g.event!.id, g.map.id, g.enc.setup.rev)}, the map's own event (no authored encounter).` : g.event?.bonus ? `Bonus wave: ${EVENTS[g.event.id].name} (no authored encounter).` : quietText(waveScale(g.map.id, version, g.wave))));
     }
     for (const e of list) {
       const card = el('div', 'v3-enc-card');
@@ -1212,7 +1212,7 @@ export class App {
     if (more) box.append(el('p', 'v3-enc-none', `Every version of this map: this wave sends ${Math.round(more * 100)}% more of its own drones and missiles.`));
     const arcLine = el('p', 'v3-enc-arc');
     arcLine.append(el('b', '', 'Arc'));
-    for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? EVENTS[evId].name : null, version)) {
+    for (const a of arcGroups(g.map.id, EVENT_WAVE, evId ? bossTo : 0, evId ? eventName(evId, g.map.id, g.enc.setup.rev) : null, version)) {
       const now = g.wave >= a.from && g.wave <= a.to;
       const chip = el('span', now ? 'now' : '', `${a.from === a.to ? a.from : `${a.from}–${a.to}`} ${a.name}`);
       if (now) chip.dataset.now = '1';
@@ -1823,11 +1823,11 @@ export class App {
           if (!ev.bonus && ev.runs && ev.runs > 1 && ev.run) {
             const left = Math.max(0, Math.ceil(g.tempo.lossLimit - shipsSunk(g)));
             const restored = g.events.some((e) => e.kind === 'restore');
-            this.startBossIntro(g, ev.id, bossIntroCards(ev.id, ev.run, ev.runs, left, restored));
-          } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '');
+            this.startBossIntro(g, ev.id, bossIntroCards(ev.id, ev.run, ev.runs, left, restored, eventName(ev.id, g.map.id, g.enc?.setup.rev)));
+          } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '', eventName(ev.id, g.map.id, g.enc?.setup.rev));
           break;
         case 'specialEnd':
-          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '');
+          this.showEventOutcome(ev.id, ev.outcome, ev.bonus, ev.runs ? bossRound(ev.run!, ev.runs) : '', eventName(ev.id, g.map.id, g.enc?.setup.rev));
           break;
         case 'encounter': {
           // Round 12: an encounter's call-out as its warning shows (v2, Set
@@ -1998,7 +1998,7 @@ export class App {
   /** A special event begins: its card in the middle of the field through
    *  the breather. It names the event and any rule in force; it never says
    *  how to beat it (the player's rule). */
-  private showEventCard(id: EventId, wave: number, tag: string): void {
+  private showEventCard(id: EventId, wave: number, tag: string, name: string = EVENTS[id].name): void {
     const def = EVENTS[id];
     const card = this.eventCard;
     card.className = `v3-event-card${tag === 'bonus' ? ' bonus' : ''}`;
@@ -2011,12 +2011,12 @@ export class App {
     const eyebrow = tag === 'bonus' ? 'Bonus event' : tag ? `${tag} · wave ${wave}` : `Special event · wave ${wave}`;
     delete card.dataset.bossCard;
     delete card.dataset.bossKey;
-    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', def.name), ...(def.rules.length ? [rules] : []));
+    card.replaceChildren(el('span', 'v3-event-eyebrow', eyebrow), el('b', 'v3-event-name', name), ...(def.rules.length ? [rules] : []));
     this.flashEventCard(3200);
   }
 
   /** A special event is over: its outcome, and what it paid. */
-  private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number, tag: string): void {
+  private showEventOutcome(id: EventId, outcome: EventOutcome, bonus: number, tag: string, name: string = EVENTS[id].name): void {
     const card = this.eventCard;
     this.bossIntro = null;
     delete card.dataset.bossCard;
@@ -2024,7 +2024,7 @@ export class App {
     card.className = `v3-event-card outcome ${outcome}`;
     card.dataset.eventOutcome = outcome;
     card.replaceChildren(
-      el('span', 'v3-event-eyebrow', `${EVENTS[id].name}${tag ? ` · ${tag}` : ''}`),
+      el('span', 'v3-event-eyebrow', `${name}${tag ? ` · ${tag}` : ''}`),
       el('b', 'v3-event-name', OUTCOME_NAME[outcome]),
       el('span', 'v3-event-bonus', bonus ? `+${bonus.toLocaleString()} bonus` : outcome === 'broken' ? 'No bonus' : ''),
     );
@@ -4349,7 +4349,7 @@ export class App {
         const o = e.outcome as EventOutcome;
         const chip = el('span', `v3-result-event-chip ${o}`);
         const label = e.kind === 'bonus' ? 'Bonus event' : e.runs ? bossRound(e.run!, e.runs) : 'Special event';
-        chip.append(el('i', '', label), el('b', '', EVENTS[e.id].name), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
+        chip.append(el('i', '', label), el('b', '', e.kind === 'bonus' ? EVENTS[e.id].name : eventName(e.id, g.map.id, g.enc?.setup.rev)), el('em', '', OUTCOME_NAME[o]), ...(e.bonus ? [el('small', '', `+${e.bonus.toLocaleString()}`)] : []));
         evLine.append(chip);
       }
       const whole = endingOutcome(g);

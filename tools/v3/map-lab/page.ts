@@ -249,7 +249,7 @@ const findings2 = findingsOf(GROUPS2, FINDINGS2 as Finding[], EVIDENCE2);
 
 const ROLE: Record<string, string> = { teach: 'Teaches', combine: 'Combines', escalate: 'Escalates', climax: 'Climax' };
 const from = (b: (typeof ENCOUNTERS)[number]['beats'][number], map: keyof typeof MAPS) =>
-  'base' in b.from ? `base ${b.from.base + 1} of ${MAPS[map].bases.length}` : 'sub' in b.from ? 'a submarine' : 'an aircraft';
+  'base' in b.from ? `base ${b.from.base + 1} of ${MAPS[map].bases.length}` : 'sub' in b.from ? 'a submarine' : 'road' in b.from ? 'a truck on a road' : 'an aircraft';
 const encounterCards = ENCOUNTERS.map(
   (e) => `<article class="item" data-id="ml2-enc-${e.id}" id="ml2-enc-${e.id}">
 <header><span class="kind" data-kind="decision">${esc(MAPS[e.map].name)} · waves ${e.waves[0]} to ${e.waves[e.waves.length - 1]} · ${ROLE[e.role]}</span><h4>${esc(e.name)}</h4></header>
