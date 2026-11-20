@@ -451,10 +451,9 @@ ${newSection}
   for (const coll of COLLS) Object.assign(state[coll], local[coll] || {});
   paintAll();
   const note = document.getElementById('store');
-  const use = window.claude && window.claude.use;
-  if (!use) { note.textContent = 'Open this page on claude.ai, signed in, to save your marks for the next session. Marks made here stay in this browser.'; return; }
   const timer = setTimeout(() => { note.textContent = 'The review store isn’t answering yet. Marks you make are kept in this browser until it does.'; }, 10000);
-  Promise.resolve(use('db')).then((d) => {
+  const waitClaude = () => new Promise((res) => { let n = 0; const t = () => { if (window.claude && window.claude.use) return res(window.claude); if (++n > 100) return res(null); setTimeout(t, 100); }; t(); });
+  waitClaude().then((c) => c ? c.use('db') : null).then((d) => {
     if (!d) { clearTimeout(timer); note.textContent = 'Saving isn’t available in this view. Marks stay in this browser.'; return; }
     db = d;
     note.textContent = 'Your marks save to this page for the next session to read.';

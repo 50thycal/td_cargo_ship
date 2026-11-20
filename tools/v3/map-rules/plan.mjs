@@ -114,6 +114,7 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'The Armory brainstorm is ready on its own page (https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N). Headline: keep all 11 upgrades, change five (the three weak ones lifted, Deep Magazine’s empty level 3, and the Armory’s Point Defense renamed Deck Guns so it doesn’t clash with the weapon). The lift measured: Quick Reload 4.5 → 6.7 ships saved a run, Stockpile 3.1 → 5.8, Long Loads 3.3 → 5.2 (it now refills your rack on every pickup, because longer loads did nothing); the middle of the Armory is 7–8. Unlocks: Scrap, 40 a wave and more for clears, spent on the cards you choose; your three cards max in about 8 runs instead of 20. Also started: a UI overhaul, so the game opens straight into V3 with a carrier command-room look, and the Test Lab puts “Ready to test” first.' },
     { date: '2026-11-19', what: 'Your round 8 answers filed (review-2026-11-19-r8.json). Being built now, three in parallel: (1) Marrow’s radar tower 4 → about 6 hit points, each Narrows enemy its own light debut wave on The Island, and anything in the game that nudges you toward a counter kit removed; (2) the bot taught to fire boosts like you from your logs, then Overdrive and the other boosts re-measured, plus a check of whether each map has its own best combos (if one kit tops every map, the maps ask the same question); (3) the Armory brainstorm as a review page: every upgrade keep or cut, categories, XP earned in a run and spent at the end, three other systems, new upgrades, and the lift for the weak ones. Waiting for your play: the Behemoth’s boss and Kesh’s early losses.' },
     { date: '2026-11-19', what: 'Chapter 2 started (#180, play log v31): The Island and The Behemoth Run rebuilt. The Island: the enemy island beside both lanes is the problem; its two silos fire with almost no warning, a third of the ships take the fast north lane under the far shore, and all four Narrows enemies debut here. The Behemoth Run: a slow supertanker sails under the enemy shore and most aimed fire goes for it (sunk: 3 ships lost; home: every ship repaired and a weapon drop). On these maps the bot has no runs of yours yet, so its bias is unknown: your first runs calibrate it. Uncertain: the Behemoth’s boss rounds swing between 0 and 3+ (the tanker counts three), its round 1 is light, and its wave 10 often isn’t the hardest because the tanker is already home.' },
     { date: '2026-11-19', what: 'Merged #178, the chapter 1 polish (play log v30). On your setup the bot’s Kesh no longer spikes on wave 7 and Marrow’s wave 10 drops from 1.43 to 0.78 ships, with the losses spread over waves 6–9. Two things it did not fully reach: with your Armory, Kesh’s waves 1–5 are tense but still rarely sink a ship (Point Defense 4 and Aegis eat the drones and shells), and on your Marrow replay the radar tower fell on wave 4, which is a big part of why the end hit so hard. Both are questions in Needs you. The reference maps have a milder flat start too (waves 1–2 quiet everywhere) but they climb without a cliff, so they stay as they are.' },
@@ -142,6 +143,12 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
+  {
+    id: 'r9-armory-page',
+    kind: 'item',
+    title: 'Mark the Armory overhaul page',
+    text: 'Your full Armory brainstorm is on its own review page: https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N. Every upgrade (keep / change / cut), the measured lift for Quick Reload, Stockpile and Long Loads (not applied yet), Scrap earned in a run and spent at the end (survivor.io style), three other systems (Refit Points, Commendations, Branching Levels), three new upgrades, and 10 questions. Approve here once you’ve marked it.',
+  },
   {
     id: 'r8-play-ch2',
     kind: 'item',

@@ -374,7 +374,7 @@ In `src/v3/data/armory.ts` the lift would be: `RELOAD = [1, 0.92, 0.84, 0.76, 0.
 
 ## The review page
 
-A published artifact with a database (capability `db`), made by `node tools/v3/armory-ideas/page.mjs <out.html>`. Link: _to be added when it is published._
+A published artifact with a database (capability `db`), made by `node tools/v3/armory-ideas/page.mjs <out.html>`. Link: https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N (store: `reviews/{itemId}` {verdict, note}, `answers/{questionId}` {choice, note}; ids `ar1-`).
 
 | Collection | Fields | Ids |
 | --- | --- | --- |
