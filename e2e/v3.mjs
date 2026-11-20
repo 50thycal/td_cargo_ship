@@ -1493,6 +1493,44 @@ try {
     check(quit, 'leaving the app mid-wave (no pagehide) seals the run as a quit');
     await lc.close();
   }
+
+  // ---- Round 12: the Test Lab's Retry wave N and Skip to boss ----
+  // The player: "when I fail like this in the test lab have an option to
+  // reset that wave so I can try again or I can also skip forward to the
+  // boss wave". On the pause menu and the end screen of a test; each starts
+  // a new log marked `retry`.
+  {
+    const rp = await browser.newPage({ viewport: { width: 874, height: 402 }, hasTouch: true });
+    const errs = [];
+    rp.on('pageerror', (e) => errs.push(e.message));
+    await rp.goto(`${BASE_URL}/v3.html?lab=map-island&seed=11`, { waitUntil: 'networkidle' });
+    await rp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
+    await rp.reload({ waitUntil: 'networkidle' });
+    await rp.waitForSelector('.lab-on');
+    await rp.waitForTimeout(800);
+    await labMenu(rp);
+    const pauseJumps = await rp.evaluate(() => ({ retry: document.querySelector('.v2-pause-panel [data-lab-retry]')?.textContent, skip: !!document.querySelector('.v2-pause-panel [data-lab-skip]') }));
+    check(pauseJumps.retry === 'Retry wave 1' && pauseJumps.skip, `a full map test's pause menu has Retry wave 1 and Skip to boss (${JSON.stringify(pauseJumps)})`);
+    const first = await rp.evaluate(() => window.__v3.log().id);
+    await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await rp.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    const skipped = await rp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { wave: g.wave, event: g.event?.run, runs: g.event?.runs, retry: l.retry, first: l.firstWave, lab: !!l.lab?.loadout, on: document.querySelector('.v2-root').classList.contains('lab-on'), hud: document.querySelector('.v3-hud-wave')?.dataset.waveCount }; });
+    check(skipped.wave === 11 && skipped.event === 1 && skipped.runs === 3 && skipped.retry?.skip === true && skipped.retry?.of === first && skipped.first === 11 && skipped.lab && skipped.on && skipped.hud === 'BOSS 1/3', `Skip to boss: a new log from boss round 1, marked as a skip of the run before, still in the Test Lab (${JSON.stringify(skipped)})`);
+    await rp.waitForTimeout(1500);
+    await labMenu(rp);
+    const second = await rp.evaluate(() => window.__v3.log().id);
+    const retryLabel = await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-retry]')?.textContent);
+    check(retryLabel === 'Retry the boss rounds' && !(await rp.$('.v2-pause-panel [data-lab-skip]')), `in the boss rounds: Retry the boss rounds, no Skip (${retryLabel})`);
+    // Done, then Retry from the end screen.
+    await rp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-done]').click());
+    await rp.waitForSelector('[data-screen="lab-verdict"] [data-lab-jumps] [data-lab-retry]');
+    await rp.evaluate(() => document.querySelector('[data-lab-jumps] [data-lab-retry]').click());
+    await rp.waitForFunction(() => window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    const retried = await rp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { wave: g.wave, waveT: g.waveT, retry: l.retry, levels: g.levels }; });
+    check(retried.wave === 11 && retried.waveT < 2 && retried.retry?.of === second && retried.retry?.wave === 11 && !retried.retry?.skip, `Retry from the end screen: boss round 1 again from its start, a new log marked as a retry of the run before (${JSON.stringify(retried)})`);
+    check(errs.length === 0, `no page errors in the Test Lab jumps (${errs.join('; ')})`);
+    await rp.close();
+  }
 } finally {
   await browser.close();
 }
