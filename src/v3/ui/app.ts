@@ -201,10 +201,10 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  attackHeli: 'Hovers beside the lane firing missile pairs, then moves. Six hits, or shoot its missiles.',
-  torpedoSub: 'Up for a few seconds: three hits. It fires three to five torpedoes one by one, each at a ship, now and then a fast amber one. Shoot it first, or get off the dashed lines.',
+  attackHeli: 'Fires missile pairs at the nearest ship as soon as one is in range, on the way in too, then hovers and moves. Six hits, or shoot its missiles.',
+  torpedoSub: 'Stays under water, only its periscope up: you can\'t hit it. It fires three to five torpedoes one by one, each at a ship, now and then a fast amber one, then dives away. Shoot the torpedoes, or get off the dashed lines.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
-  scavenger: 'Any pickup inside its red ring is locked: you can\'t take it while the drone is there. Shoot it down to free them.',
+  scavenger: 'Any pickup inside its red ring is locked: you can\'t take it while the drone is there. Three hits to shoot it down and free them.',
   stealthJet: 'No warning: a strafing jet with only a short run-in. Three hits.',
   stealthBomber: 'No warning: a flying wing with three missiles. Six hits, or shoot what it drops.',
   diveBomber: 'The red circle is where it hits. The plane dives in from the top: shoot it, or move the ships out. Its red bomb can\'t be stopped.',
@@ -4125,12 +4125,12 @@ export class App {
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
-      // A weapon this chapter adds to the draft says so on its card.
+      // A weapon this chapter adds to the draft says so on its card: a band
+      // across the card's top edge (the 2026-11-20 playtest: "on top of the
+      // card and not overlapped on the middle of card").
       const chapter = chapterOf(g.map.id);
-      if (id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id)) {
-        card.dataset.debut = String(chapter);
-        art.append(el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`));
-      }
+      const debut = id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id) ? el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`) : null;
+      if (debut) card.dataset.debut = String(chapter);
       // The Test Lab (round 8: "I didn't see the grapple upgrade"): the
       // weapon under test is the first card, and says so.
       if (id !== 'resupply' && g.lab?.weapon === id) {
@@ -4151,7 +4151,7 @@ export class App {
       // Only what is particular to this card (round 5: every card said "drops
       // as a pickup, 15 s in the gun", which is how every weapon works).
       // A number keeps its unit on the same line ("1.5 s", not "1.5 / s").
-      card.append(top, art, el('strong', 'v2-card-name', name), level, el('span', 'v2-card-text', text.replace(/(\d) s\b/g, '$1\u00a0s')));
+      card.append(...(debut ? [debut] : []), top, art, el('strong', 'v2-card-name', name), level, el('span', 'v2-card-text', text.replace(/(\d) s\b/g, '$1\u00a0s')));
       return card;
     });
     const row = el('div', 'v2-card-row');
@@ -4702,7 +4702,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
   attackHeli: 'Helicopters did the most damage: six hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
-  torpedoSub: 'Torpedoes did the most damage: shoot the sub while it is up, or switch formation off the dashed line.',
+  torpedoSub: 'Torpedoes did the most damage: shoot the torpedoes on their dashed lines (the sub itself can\'t be hit), or switch formation off the line.',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
   stealthJet: 'Stealth strafers did the most damage: Point Defense answers a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',

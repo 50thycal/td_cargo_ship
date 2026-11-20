@@ -213,12 +213,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      Magazine adds a round at every level (11 at level 5, was 10). A v32
  *      log with any of those four in its `armory` no longer replays to the
  *      same game; one without them does, but only its own version replays
- *      here. */
-export const LOG_VERSION = 33;
+ *      here.
+ *  34: the player's 2026-11-20 playtest notes (docs/design/
+ *      v3-playtest-fixes.md): the Shield boost breaks after AB.shield.hits
+ *      hits stopped (every missile, drone, shell or boat it stops is one,
+ *      whatever its damage); the Attack Helicopter fires whenever a ship is
+ *      in range, on the way to its spot too; the Torpedo Sub stays under
+ *      water and can't be hit (nothing targets it, nor the Nuke; only its
+ *      torpedoes can be shot); the Scavenger Drone takes three hits (was
+ *      one). A v33 log with any of those four no longer replays to the
+ *      same game. */
+export const LOG_VERSION = 34;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [33];
+export const LOG_REPLAYS: readonly number[] = [34];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

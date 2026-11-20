@@ -39,8 +39,8 @@ export const FOES: Record<FoeId, FoeDef> = {
   sprinter: { id: 'sprinter', name: 'Sprint Drones', chapter: 1, cat: 'strike', kind: 'sprinter', from: 'base', blurb: 'A swarm that flares a booster near its ship and sprints in.' },
   hydra: { id: 'hydra', name: 'Hydra Missile', chapter: 1, cat: 'strike', kind: 'hydra', from: 'base', blurb: 'Kill it and it splits into two darts. Kill it early.' },
   rocketTruck: { id: 'rocketTruck', name: 'Rocket Truck', chapter: 1, cat: 'platform', kind: 'rocketTruck', from: 'road', blurb: 'Raises a launcher, then fires salvos of red rockets you can\'t stop. Kill the truck.' },
-  attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Hovers beside the lane firing missile pairs, and moves.' },
-  torpedoSub: { id: 'torpedoSub', name: 'Torpedo Sub', chapter: 2, cat: 'platform', kind: 'torpedoSub', from: 'water', blurb: 'Surfaces and fires three to five torpedoes one by one, each at a ship down a line on the water, now and then a fast one, and dives.' },
+  attackHeli: { id: 'attackHeli', name: 'Attack Helicopter', chapter: 2, cat: 'platform', kind: 'attackHeli', from: 'edge', blurb: 'Fires missile pairs at the convoy as soon as a ship is in range, hovers beside the lane, and moves.' },
+  torpedoSub: { id: 'torpedoSub', name: 'Torpedo Sub', chapter: 2, cat: 'platform', kind: 'torpedoSub', from: 'water', blurb: 'Stays under water, its periscope up, out of reach: fires three to five torpedoes one by one, each at a ship down a line on the water, now and then a fast one, and dives away. Only the torpedoes can be shot.' },
   armored: { id: 'armored', name: 'Armored Drone', chapter: 2, cat: 'strike', kind: 'armored', from: 'base', blurb: 'A plate on its nose. Hit it as it banks, or go round with a blast.' },
   scavenger: { id: 'scavenger', name: 'Scavenger Drone', chapter: 2, cat: 'support', kind: 'scavenger', from: 'edge', blurb: 'Hovers over your pickups: any pickup inside its ring is locked until it is shot down or leaves.' },
   stealthJet: { id: 'stealthJet', name: 'Stealth Strafer', chapter: 3, cat: 'platform', kind: 'stealthJet', from: 'edge', blurb: 'A strafing jet with no warning. Only its short run-in.' },
@@ -150,7 +150,11 @@ export const FOE = {
   // faster (EV's `drive`), but none drives off faster (it was drive ×
   // back, about 7 ×).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
-  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25 },
+  // The 2026-11-20 playtest ("it should just be able to start attacking it
+  // doesn't need to go to a specific spot"; log v34): it fires whenever a
+  // ship is within `range` px and it is `edge` px inside the screen, on the
+  // way in too; its first volley `first` s after it may (a beat to see it).
+  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25, range: 560, edge: 30, first: 0.6 },
   // Round 7 ("the torpedo sub will fire three to five, and then sometimes
   // fast ones"): every sub fires a spread of `spread` torpedoes (three to
   // five) on headings at least `fan` rad apart: the first `aimed` at a

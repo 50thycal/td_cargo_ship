@@ -132,7 +132,20 @@ export function isMunitionKind(k: ThreatKind): boolean {
  *  first SUPERSONIC.rail (0.4 s) of its lock only; then it lifts off and is
  *  a target, its lock line still showing. */
 export function released(th: Threat): boolean {
-  return !th.dead && !(th.kind === 'supersonic' && th.age < SUPERSONIC.rail);
+  return !th.dead && !racked(th) && !untouchable(th);
+}
+
+/** A supersonic still on its launcher's rail (round 13): no target yet. */
+function racked(th: Threat): boolean {
+  return th.kind === 'supersonic' && th.age < SUPERSONIC.rail;
+}
+
+/** The Torpedo Sub stays under water, its periscope up (the 2026-11-20
+ *  playtest: "should not be able to be attacked only their torpedoes can";
+ *  log v34): no shot, blast or helper touches it, nor the Nuke. It dives
+ *  away on its own once it has fired. */
+export function untouchable(th: Threat): boolean {
+  return th.kind === 'torpedoSub';
 }
 
 /** A supersonic's share of its full speed at `age` (log v27): none on the
@@ -4210,13 +4223,10 @@ function callSorties(g: Game, n: number, quiet: number): void {
   const air: readonly ThreatKind[] = AB.bomberWing.air;
   for (const th of g.threats) {
     if (!released(th) || !onScreen(th.x, th.y)) continue;
-    const kind = air.includes(th.kind) ? 'air' : th.kind === 'torpedoSub' ? 'sub' : null;
+    // (A Torpedo Sub is never a target: log v34.)
+    const kind = air.includes(th.kind) ? 'air' : null;
     if (!kind || taken(kind, th.id)) continue;
     picks.push({ kind, ref: th.id, x: th.x, y: th.y, score: 110 + th.hp, from: sortieRun(th.x, th.vx).dir });
-  }
-  for (const m of g.foe.marks) {
-    if (m.kind !== 'periscope' || !onScreen(m.x, m.y) || taken('sub', -m.id)) continue;
-    picks.push({ kind: 'sub', ref: -m.id, x: m.x, y: m.y, score: 108 });
   }
   for (const r of g.raiders) {
     if (!bombableRaider(r) || !onScreen(r.x, r.y) || taken('truck', r.id)) continue;
@@ -5946,7 +5956,7 @@ function predict(th: Threat, ahead: number): Point {
 }
 
 export function damageThreat(g: Game, th: Threat, amount: number, drops = true, by: HurtSrc = 'other', weapon?: AbilityId): void {
-  if (th.dead) return;
+  if (th.dead || untouchable(th)) return;
   // Still on its launcher (round 13): only the Nuke touches it.
   if (!released(th) && by !== 'nuke') return;
   // The Citadel can't be hurt while any shield generator stands.
@@ -6411,7 +6421,7 @@ function knockOut(g: Game, r: Raider): void {
  *  with it: it never flies. Not a kill of its own (the launcher's was). */
 function scrubRacked(g: Game, on: (th: Threat) => boolean): void {
   for (const m of g.threats) {
-    if (m.dead || released(m) || !on(m)) continue;
+    if (m.dead || !racked(m) || !on(m)) continue;
     m.dead = true;
     addFx(g, 'boom', m.x, m.y, { life: 0.5, r: 20 });
   }
