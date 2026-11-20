@@ -4175,6 +4175,9 @@ export interface MapSignature {
   escort?: FoeId;
   jets?: BeatAim;
   heavies?: BeatAim;
+  /** Saltgate Canal (log v38): the wave's own cluster missiles fly at this
+   *  ('lock': the ships held at the lock nearest their silo). */
+  clusters?: BeatAim;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -4197,12 +4200,16 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // from an edge: it locks the pickups in its ring (the mothership's drop
   // among them) until it is shot down.
   archipelago: { from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' },
-  // Saltgate Canal (log v38, docs/design/v3-ch2-saltgate.md): Torpedo Subs,
-  // Run the Canal's opening, from wave 4: periscopes in the seas at either
-  // end of the canal, under water and out of reach, their slow torpedoes at
-  // the ships queueing for the west lock and leaving the east one. Only the
-  // torpedoes can be shot.
-  saltgate: { from: 4, foe: 'torpedoSub', foeShare: 0.5 },
+  // Saltgate Canal (log v38, docs/design/v3-ch2-saltgate.md): a strike on
+  // the locks, from wave 4. Torpedo Subs, Run the Canal's opening: half the
+  // wave's new enemies (rounded up) are periscopes in the seas at either end
+  // of the canal, under water and out of reach, their slow torpedoes at the
+  // ships queueing for the west lock and leaving the east one (only the
+  // torpedoes can be shot; a torpedo sinks a cargo ship, so all of them was
+  // too many). And the wave's own cluster missiles, off the silos over the
+  // locks, go for the ships held in them, splitting over a full chamber (the
+  // boss rounds' clusters do the same).
+  saltgate: { from: 4, foe: 'torpedoSub', foeShare: 0.5, clusters: 'lock' },
 };
 
 /** A map's signature for a wave under a run's encounter setup (none before

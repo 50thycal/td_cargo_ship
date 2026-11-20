@@ -1285,7 +1285,9 @@ function startWave(g: Game): void {
       }
       const base = pickBase(g, u.kind, rng);
       if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
-      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : {};
+      // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
+      // cluster missiles go for the ships held at the locks.
+      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : {};
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
     }
   });
