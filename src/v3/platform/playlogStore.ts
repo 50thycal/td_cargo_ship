@@ -41,11 +41,28 @@ function onVercel(): boolean {
   return location.protocol === 'https:' && location.hostname.endsWith('.vercel.app');
 }
 
+/** The public site's log endpoint, for builds served from anywhere else. */
+export const REMOTE_LOG_URL = 'https://td-cargo-ship.vercel.app/api/playlog';
+
+/** Web builds served from another address (another host, a LAN or local
+ *  server) send their logs to the public site. The store app does not. */
+function offsiteWeb(): boolean {
+  const web = location.protocol === 'https:' || location.protocol === 'http:';
+  // Local dev and the e2e preview servers never send logs anywhere.
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  return web && !local && !onVercel();
+}
+
+function logUrl(): string | null {
+  if (onVercel()) return '/api/playlog';
+  return offsiteWeb() ? REMOTE_LOG_URL : null;
+}
+
 export type Channel = 'artifact' | 'server' | null;
 
 export async function logChannel(): Promise<Channel> {
   if (await artifactDb()) return 'artifact';
-  return onVercel() ? 'server' : null;
+  return logUrl() ? 'server' : null;
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -82,9 +99,12 @@ const sentKey = (log: PlayLog): string => `${log.id}@${log.summary?.steps ?? 0}`
 
 async function post(log: PlayLog): Promise<boolean> {
   const body = JSON.stringify(log);
-  const res = await fetch('/api/playlog', {
+  const url = logUrl();
+  if (!url) return false;
+  const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    // text/plain keeps a cross-site send a "simple" request (no preflight).
+    headers: { 'content-type': url.startsWith('/') ? 'application/json' : 'text/plain' },
     body,
     // Lets a send started as the page closes finish; browsers cap it at 64 KiB.
     keepalive: body.length < 60_000,
@@ -94,7 +114,7 @@ async function post(log: PlayLog): Promise<boolean> {
 
 async function send(log: PlayLog): Promise<boolean> {
   const db = await artifactDb();
-  if (!db && !onVercel()) return false;
+  if (!db && !logUrl()) return false;
   try {
     if (db) await db.collection(DB_COLLECTION).doc(log.id).set(fitForDb(log));
     else if (!(await post(log))) return false;
