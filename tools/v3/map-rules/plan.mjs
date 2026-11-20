@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-19',
-  headline: 'Ready for you: play the four maps in Test Lab → Ready to test (Kesh, Marrow, The Island, The Behemoth Run; play log v32). Being built, merged after your play: the Armory overhaul (Scrap, the lift, Deck Guns), Overdrive’s buff, chapter 2’s signature threats and the Behemoth’s new boss.',
+  headline: 'Your playtest is read (all four Keep, fun 4–5); my take is in the log. Building overnight: your playtest notes (Shield breaks after hits, helicopters fire at once, the torpedo sub stays underwater, wave rating on its own screen, “Wave N of 10”, NEW tag on top, tougher Scavenger), the round 9 changes (Overdrive, chapter 2 signature threats, the Behemoth’s new boss), and the next map: The Needle of Bosk. Merged: the Armory overhaul with Scrap.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -118,9 +118,12 @@ export const STATUS = {
     { n: 186, title: 'Hub: Armory marks', state: 'merged' },
     { n: 187, title: 'Logs upload from any web address', state: 'merged' },
     { n: 188, title: 'Round 8 (log v32): Marrow’s tower 6 HP, The Island’s debut waves and banners, no kit nudges', state: 'merged' },
+    { n: 189, title: 'Hub update', state: 'merged' },
+    { n: 190, title: 'Armory overhaul (log v33): the lift, Scrap, Deck Guns', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Your playtest read (four runs, all Keep, fun 4–5, difficulty “right” on all three you rated). Kesh: the climb works (nothing lost before wave 8, “much better”), the boss broke you in round 3 (5 ships): that is the spike to watch. Marrow: lost on wave 8 with losses spread over waves 4–8, no single cliff. The Island: your best run yet (fun 5, intensity 5, boss 5), losses rising steadily from wave 9. The Behemoth Run: lost on wave 6; 3 of your 5 early losses were one drone strike on the tanker (it counts 3), so its early waves hit harder for you than for the bot (0.7 a run in waves 1–5): the round 9 changes ease its wave 5 and turn its boss into a jet strike on the tanker, and its strength gets tuned again from your next run. Your notes are all being built overnight: the NEW tag on top of draft cards; Shield breaks after a number of hits; helicopters fire as soon as they have a target; the wave rating gets its own screen between waves; “Wave N of 10” on every map with boss rounds shown as boss rounds; the weapon-stealing Scavenger drone gets more health; the torpedo sub can’t be shot, only its torpedoes, and shows as a shadow with a periscope. Also merged: #190, the Armory overhaul (Scrap, the lift, Deck Guns). Started: the next map, The Needle of Bosk.' },
     { date: '2026-11-20', what: 'Merged #188 (play log v32): Marrow’s radar tower takes 3 hits instead of 2 (it falls around wave 8 for the bot, was 7; waves 7–10 send 10% more fire so Marrow stays where it was), each Narrows enemy debuts on its own drones-only wave on The Island with its “NEW · The Narrows” banner on the map card, and the Test Lab pause screen no longer shows an encounter’s counters. The Island reads a little hard for the bot (about 40% won against 50–70%): your play decides. Your round 9 answers are being built, to merge after your playtest: Overdrive level 1 lasts 18 s, The Island and The Behemoth Run each get a signature threat, and the Behemoth’s boss becomes heavy missiles at the supertanker. The four new Armory cards (Lifeboats, Salvage Crews, Boilers, Quartermaster) come after Scrap.' },
     { date: '2026-11-20', what: 'Your Armory marks filed. Being built now: the lift (Quick Reload −40% at level 5, Stockpile drops 3.25× as often and last 2.5× as long, Long Loads refills your rack on every pickup); Scrap (40 a wave, 50 a boss round, 150 a clear, 250 a first clear; a duplicate card pays 100; levels 2–5 cost 150 / 300 / 500 / 800, and you choose which card to level; a lost run keeps its Scrap; your current levels stay); Deep Magazine moves to the Supply bay (no “Stores”) and gets a real level 3; the Armory’s Point Defense is renamed Deck Guns. Not now: the other systems. Merged: #185 (the bot plays Overdrive like you; combo diversity).' },
     { date: '2026-11-20', what: 'The bot now plays boosts like you, measured on your five boost runs. It wasn’t late to pickups (it grabs them faster than you since the refit); what it missed was Overdrive itself: you take it when nothing is about to hit and fire 1.8× as fast under it. The bot now does both. Its fit to your 26 runs is unchanged (boss rounds still read about 1.6× harder than you play them, which is not about boosts). Overdrive is still weak alone (12th of 15), so a buff is in Needs you. Combo diversity: each map has its own best kit (no kit is #1 on two maps), but the early waves are mostly drones and shells everywhere, so Air Strike is the best first pick on every chapter 1 map: docs/design/v3-combo-diversity.md. Also merged: the UI overhaul (#184): the game opens straight into V3 with the carrier command-room look, Settings are grouped, and the Test Lab puts “Ready to test” first, with tools folded away (the old versions are at ?legacy=1).' },
@@ -153,23 +156,30 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
-  {
-    id: 'r8-play-ch2',
-    kind: 'item',
-    title: 'Play The Island and The Behemoth Run',
-    text: 'In the Test Lab’s “Ready to test” row (play log v32: The Island now debuts each new enemy on its own wave, with its banner). The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
-  },
-  {
-    id: 'r8-replay-ch1',
-    kind: 'item',
-    title: 'Replay Kesh and Marrow (Test Lab → Ready to test)',
-    text: 'In the Test Lab (live now, #178 merged). Look for: a real threat by wave 3, a steady rise with no cliff at waves 9–10, the four boss intro cards, and a blank verdict sheet. Use “Rate wave N” at the weapon picks: waves 1–4 are the ones to judge. Approve when played (with a note), or Change if the climb still feels wrong.',
-  },
+
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r8-replay-ch1',
+    kind: 'item',
+    verdict: 'approve',
+    note: '“Yes much better.” Kesh (v32): lost in boss round 3, 0 ships lost to wave 7 then 1, 0, 3, boss 0 / 1 / 5; fun 4, “right”, boss 4. Marrow (v32): lost on wave 8 (1, 1, 0, 1, 3 from wave 4); fun 4, “right”, intensity 4.',
+    at: '2026-11-20',
+    title: 'Replay Kesh and Marrow',
+    text: '',
+  },
+  {
+    id: 'r8-play-ch2',
+    kind: 'item',
+    verdict: 'approve',
+    note: 'The Island (played on v31): won, 9 lost, boss 1 / 1 / 3, fun 5, intensity 5, boss 5. The Behemoth Run (v32): lost on wave 6 (5 ships by wave 5, 3 of them one drone hit on the tanker); fun 4, “right”. All four: Keep.',
+    at: '2026-11-20',
+    title: 'Play The Island and The Behemoth Run',
+    text: '',
+  },
   {
     id: 'r9-overdrive-buff',
     kind: 'question',

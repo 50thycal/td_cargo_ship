@@ -1,6 +1,6 @@
 # The Island: map card (map rebuild, chapter 2)
 
-**Date:** 2026-11-19. The Island (`island`, chapter 2 "The Narrows", the 6th map, the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after chapter 1's Kesh Hook and Lee of Marrow (`docs/design/v3-ch1-kesh.md`, `v3-ch1-marrow.md`) and with the Behemoth Run (`docs/design/v3-ch2-behemoth.md`). Encounter rev 4; play log v31.
+**Date:** 2026-11-19. The Island (`island`, chapter 2 "The Narrows", the 6th map, the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after chapter 1's Kesh Hook and Lee of Marrow (`docs/design/v3-ch1-kesh.md`, `v3-ch1-marrow.md`) and with the Behemoth Run (`docs/design/v3-ch2-behemoth.md`). Encounter rev 4; play log v31, then v32 (round 8) and v33 (round 9: the signature threat, "After round 9").
 
 Code:
 - `src/v3/data/encounters.ts`: `ISLAND_R4` (ten encounters), `ISLAND_BOSS_ROUNDS` and `MAP_BOSS.island`, `REBUILT_MAPS` (via `CHAPTER_TWO_MAPS`), all in one chapter 2 block;
@@ -8,6 +8,7 @@ Code:
 - `src/v3/data/convoy.ts`: `MAP_CONVOY.island` (the map's own convoy, no command);
 - `src/v3/sim/game.ts`: `replaces.extras` (`makeRoom`): an encounter may stand in for one of the map's own extras (supersonic, heavy, cluster);
 - `src/v3/sim/events.ts`: the Gunship Wall reads its rounds from `MAP_BOSS` (`gunshipRound`), and a round can add launches of its own (`fire`);
+- `src/v3/data/encounters.ts` `MAP_SIGNATURE` and the wave planner in `src/v3/sim/game.ts` (log v33): from wave 6 the wave's new enemies are attack helicopters;
 - `src/v3/data/foes.ts` and `src/v3/ui/app.ts`: rule `m-debut-tag` for enemies (`foeDebutTag`): a chapter 2 enemy's first banner reads "NEW · The Narrows: Attack helicopter", as the chapter's new weapon cards do.
 
 Bot reports: `tools/v3/map-report/results/island.md` (no Armory), `island-player.md` (the player's usual Armory, with fun measures and the heat map) and `island-latest.md` (the player's latest Armory: Wide Warhead 5, Point Defense 4, Supply Lines 3; new `--armory=latest`). A quick tuning read: `tools/v3/map-report/quick.ts`.
@@ -181,6 +182,57 @@ Waves 3–5 now send drones only around their new enemy (see "The debut"). The r
 - **Waves 1–5 are in the band now** (0.4–0.8: 0.79 and 0.56 on 48 seeds, 0.63 and 0.42 on the reports), and no debut wave loses more than the wave before it by much: the new enemy is the wave's one new thing.
 - **The win rate is under the 50–70% asked, before and after.** On 48 seeds v31 already won 42–44% (the card's 50% was a 24-seed read); v32 reads 40% with both Armories. Waves 6–10 read higher on v32 (the debut waves changed nothing there; the sim is chaotic, and the same 48 seeds move ±0.3 a wave between near-identical builds). Two easings were tried and dropped: waves 7–10 at 93% of their own fire (won 48% / 58%, but waves 8–10 fell to ×0.76–0.80 of their shared wave, outside rule `w-budget`), and wave 9's island swarm moved to the far shore (won 33% / 48%: no better). A question for the player (hub).
 
+### After round 9: the signature threat (log v33)
+
+The player's round 9 (r9-map-signature, docs/design/v3-combo-diversity.md): waves 1–10 were 60–80% drones and shells on every map, so Air Strike was the best first pick everywhere. Each chapter 2 map now brings its boss round's own kind early.
+
+- **The Island's signature: attack helicopters off the island, the Gunship Wall's own, from wave 6.** The wave planner's new enemies in waves 6–10 (2, 2, 2, 2, then 3: `foeCount`) are all attack helicopters (`MAP_SIGNATURE.island`, `src/v3/data/encounters.ts`; the planner in `src/v3/sim/game.ts`). They hover beside the lanes alongside the island (the danger stretch) and fire missile pairs. Each stands in for the enemy the planner drew, taking out of the wave what that one would have, so the wave's launches stay the shared wave's (rule `w-budget`); the dice are drawn as before.
+- **The debut waves 2–5 are as they were** (each its one new enemy, drones only).
+- Lab only, under the encounter layer: the campaign and a shared wave (`only: []`) draw their enemies as before.
+- Overdrive lasts 18 s from level 1 (r9-overdrive-buff); the bot's own drafts pick it now and then.
+
+What shows (`tools/v3/combo-sweep/mixwaves.ts`, 4 seeds, tough; a helicopter counted with its missiles):
+
+| | v32 | v33 |
+| --- | --- | --- |
+| Signature share of waves 4–10, by count / by hits | 1% / 5% | **8% / 22%** |
+| The same, waves 6–10 | 1% / 6% | 11% / 26% |
+| Attack helicopters a run, waves 4–10 | about 2 | about 11 |
+
+By count the helicopters are 8% of what shows, under the 20–30% asked: the bot shoots most of them before they fire many missiles, and a helicopter is one threat against a swarm's five. By the hits it takes to clear a wave (a helicopter is 6, a drone 1) they are 22–26% of the work. See "What is not satisfied".
+
+Bot results (24 seeds, 900–923; `report.ts --kits=plan`), v32 against v33:
+
+| The player's Armory | v32 | v33 |
+| --- | --- | --- |
+| Won (normal) | 33% | **58%** |
+| Ships lost in waves 1–10 / 1–5 (normal) | 4.8 / 0.62 | 4.7 / 0.62 |
+| Boss r1 / r2 / r3 (normal, reached) | 1.08 / 1.58 / 1.80 | 0.62 / 1.88 / 1.20 |
+| Tough curve 1–10 | 0 .12 .08 .08 .33 .38 .83 1.00 1.17 1.83 | 0 .12 .08 .08 .33 .33 .96 1.08 .88 1.96 |
+| `w-budget` | PASS (w2, w5, w6 ×0.87) | PASS (w2, w5 ×0.87) |
+| `w-cliff` | FLAG (w7 0.38 → 0.83) | FLAG (w7 0.33 → 0.96, w10 0.88 → 1.96) |
+| `m-stretches` | FLAG (south lane cold early 25%) | PASS |
+| Kits (won; lost 1–10) | counter 38%, 4.2; off-counter 29%, 5.0 | counter 38%, 4.4; off-counter 33%, 5.0 |
+
+| The latest Armory | v32 | v33 |
+| --- | --- | --- |
+| Won (normal) | 42% | 54% |
+| Ships lost in waves 1–10 / 1–5 (normal) | 3.8 / 0.42 | 3.5 / 0.42 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.44 / 1.69 / 1.75 | 0.37 / 2.05 / 1.37 |
+| Checks | `w-cliff`, `w-budget` (w2 ×0.85), `m-stretches` FLAG | the same three FLAG |
+
+| No Armory | v32 | v33 |
+| --- | --- | --- |
+| Won; lost 1–10 / 1–5 | 0%; 4.9 / 0.83 | 0%; 5.5 / 0.83 |
+
+On 48 seeds (900–947, `quick.ts`), the steadier read: the player's Armory won 40% → 46% (lost 1–10 4.65 → 4.81, 1–5 0.79 → 0.79, boss 1.00 / 1.28 / 1.96 → 0.72 / 1.64 / 1.42); the latest Armory 40% → 50% (4.13 → 3.81, 0.56 → 0.56, boss 0.43 / 1.97 / 1.79 → 0.49 / 2.06 / 1.44).
+
+- **Waves 1–5 are unchanged** (the debut waves): 0.62–0.79 with the player's Armory, 0.42–0.56 with the latest, in the 0.4–0.8 band.
+- **The win rate is about the bottom of 50–70% now** (46–58% with the player's Armory, 50–54% with the latest). The helicopters are no harder for the bot than the enemies they stand in for (the bot shoots them down early), and this build changes nothing else on the Island; part of the rise is the run-to-run spread (±10 points on 24 seeds).
+- **Boss rounds about 0.7 / 1.8 / 1.3 against 1.5 / 2 / 2.5:** round 1 light and round 3 not above round 2, as before (the Gunship Wall was not changed this round).
+- **A cliff at wave 10 on the tough curve** with the player's Armory (0.88 → 1.96 on 24 seeds; 0.82 → 1.36 on 48).
+- Two easings for the win rate were tried and dropped (waves 6–10 sending three shells fewer and a slow swarm more each): taking shells out removes whole submarine salvos, so the waves fell to ×0.65–0.80 of the shared wave (rule `w-budget`, ±15%), though the bot won 50%.
+
 ### Chapter 2 difficulty (rule `m-difficulty`)
 
 With the player's Armory the bot wins 50% (the latest Armory: 50%), the bottom of the 50–70% aimed for, against Kesh's 13% and Marrow's 79% on v29. Waves 1–10 lose 3.9 ships (a step over chapter 1's 3.1–3.75), waves 1–5 0.88 (in the 0.4–0.8 band's top, just over), and the boss rounds read 1.3 / 1.7 / 1.6 on the bot, a little under the 1.5 / 2 / 2.5 asked: with the bot's boss bias on chapter 1 (1.4–2.5×) that is about 0.6–1 a round for the player.
@@ -194,6 +246,8 @@ From `island-player.md`:
 
 ## What is not satisfied, or uncertain
 
+- **The signature is 8% of what shows in waves 4–10, not 20–30%** (log v33): 22% of the hits it takes to clear those waves. More helicopters would need more of the wave taken out for them, and taking shells out drops the wave under the ±15% band ("After round 9"). A question for the player (hub): by count or by weight?
+
 - **The south lane's way in takes 28% of its hull damage (rule: under 25%).** The early third lies west of the island, in reach of the far west silo's shells and supersonic missiles and the west sub spot; the shared waves send that fire, and the encounters already aim away from it (wave 3's swarm moved from `near` to `mid` for this). Without the Armory it passes (24%); the north lane passes in every report.
 - **The debut banner shows once per device, at Call-outs: All only.** A player who met chapter 2's enemies in the Test Lab's enemy cards has already seen it, so on the Island card the debut waves come with no banner. A question for the player (hub).
 - **The counter kit only matches the bot's own draft** (9.1 against 9.3 ships a run), while clearly beating the off-counter kit; the Gunship Pair alone beats both.
@@ -206,6 +260,8 @@ From `island-player.md`:
 
 `LOG_VERSION` 31, `LOG_REPLAYS` `[31]` (`src/v3/sim/playlog.ts`), shared with the Behemoth Run. The base branch moved to v30 (#178) while this was built and was merged in. All of chapter 2's change is lab only, under the encounter layer: the campaign plays as it did (apart from the debut banner's text, which is UI only), and a v30 Island card log played the shared waves. The map-lab baseline's twelve runs differed only in their log version; it was rewritten with `--write` and replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 31.
 
+Log v33 (round 9): the signature helicopters (lab only) and Overdrive's 18 s at level 1 (campaign and lab); the map-lab baseline (the Strait, the Gauntlet and Harbor) changed its version and one run where the bot draws Overdrive, and was rewritten; the version pins moved to 33. The Test Lab's "Ready to test" lists the Island at v33.
+
 Log v32 (round 8): the debut waves; the map-lab baseline changed only its version and was rewritten; the version pins moved to 32. The Test Lab's "Ready to test" lists the Island at v32.
 
 ## Tests
@@ -215,6 +271,7 @@ Log v32 (round 8): the debut waves; the map-lab baseline changed only its versio
   - the budget, legality, warning and replay checks cover the map;
   - the Island's wave 8 plans one cluster and one supersonic fewer than the shared wave (`replaces.extras`), and only chapter 2's encounters do that;
   - the Gunship Wall's rounds: the helicopters, swarms, shells and missiles, rising; a rev 3 log and the campaign play the event as it was; 15–30 s a round.
+- `tests/v3/encounters.test.ts` (log v33): from wave 6 the wave's new enemies are attack helicopters, as many as the planner draws; waves 2–5 and the campaign and the shared wave draw their own.
 - `tests/v3/foes.test.ts`: `foeDebutTag` (rule `m-debut-tag`).
 - `tests/v3/mapRules.test.ts` (log v32): waves 2–5 plan only their debut enemy and drones; no game code reads `MAP_PLANS`; the draft deals the same cards on every map of a chapter.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
@@ -223,6 +280,6 @@ Log v32 (round 8): the debut waves; the map-lab baseline changed only its versio
 
 ## What to look for when you play
 
-The island sits right beside both lanes, and its two silos fire on the ships passing it with almost no warning: the first drones on wave 1, both silos at once on wave 3, a shell and a periscope from wave 6. Your shots come from the carrier, far to the south. A third of the ships take the fast north lane between the island and the far shore: the far shore aims its swarms and missiles there, furthest from your gun. Chapter 2's four new enemies arrive here, one a wave on waves 2–5, each in a wave of its own with nothing else but drones. Tell us whether each new enemy felt like the new thing in its wave, whether waves 1–5 threaten you without a cliff later, and whether the Gunship Wall's three rounds rise.
+The island sits right beside both lanes, and its two silos fire on the ships passing it with almost no warning: the first drones on wave 1, both silos at once on wave 3, a shell and a periscope from wave 6. Your shots come from the carrier, far to the south. A third of the ships take the fast north lane between the island and the far shore: the far shore aims its swarms and missiles there, furthest from your gun. Chapter 2's four new enemies arrive here, one a wave on waves 2–5, each in a wave of its own with nothing else but drones. From wave 6 (log v33) the island's own attack helicopters come in every wave, two or three of them, hovering beside the lanes as in the Gunship Wall. Tell us whether the Island now feels like its own map, whether each new enemy felt like the new thing in its wave, whether waves 1–5 threaten you without a cliff later, and whether the Gunship Wall's three rounds rise.
 
 (Round 8: this section no longer names a weapon to try. The counter kit above is a design note for the bots, never shown in the game or on the hub.)

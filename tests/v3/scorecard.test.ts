@@ -276,10 +276,12 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 33 (the Armory overhaul: the lift and Deep Magazine\'s rounds); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(33);
-    expect(LOG_REPLAYS).toEqual([33]);
-    expect(replaysHere(33)).toBe(true);
+  it('the log is version 35 (the 2026-11-20 playtest: Shield hits, the helicopter, the sub out of reach, the Scavenger; after 34, round 9); only its own version replays here', () => {
+    expect(LOG_VERSION).toBe(35);
+    expect(LOG_REPLAYS).toEqual([35]);
+    expect(replaysHere(35)).toBe(true);
+    expect(replaysHere(34)).toBe(false);
+    expect(replaysHere(33)).toBe(false);
     expect(replaysHere(32)).toBe(false);
     expect(replaysHere(31)).toBe(false);
     expect(replaysHere(30)).toBe(false);

@@ -28,7 +28,7 @@
 import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gradeEvent, worstOutcome, type EventId, type EventOutcome, type EventRule } from '../data/events';
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
-import { RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
+import { PLANE, RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
 import { bossTune, type BossFire, type BossRound } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
@@ -469,6 +469,15 @@ function fireStep(g: Game, ev: EventRun, k: number): void {
   const list: BossFire[] = (bossRound(g, ev)?.fire ?? []).flatMap((f) => Array.from({ length: f.count ?? 1 }, () => f));
   const f = list[k];
   if (!f) return;
+  // A strike jet (log v33, the Behemoth Run's strike on the tanker): in
+  // from the edges in turn, its warning arrow first, down the lane its aim
+  // names ('vip': the supertanker's).
+  if (f.kind === 'strafer') {
+    g.queue.push({ at: g.waveT + PLANE.warn, kind: 'strafer', base: -1, side: k % 2 ? -1 : 1, ...(f.aim ? { aim: f.aim } : {}) });
+    g.queue.sort((x, y) => x.at - y.at);
+    sent(ev, f.kind);
+    return;
+  }
   const kb = liveBases(g, f.kind);
   const b = f.base !== undefined && !g.baseDown[f.base] ? f.base : kb[k % kb.length];
   if (b === undefined) return;

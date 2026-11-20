@@ -214,20 +214,33 @@ import type { EncounterSetup } from '../data/encounters';
  *      log with any of those four in its `armory` no longer replays to the
  *      same game; one without them does, but only its own version replays
  *      here.
- *  34: the player's 2026-11-20 playtest notes (docs/design/
+ *  34: the player's round 9 (docs/design/v3-combo-diversity.md, "Round
+ *      9"; built as 33 beside the Armory overhaul, merged after it as
+ *      34): Overdrive lasts 18 s from level 1 (was 15; level 2 and MAX
+ *      21 s, was 18; campaign and lab); chapter 2's maps each get a signature
+ *      threat (MAP_SIGNATURE, lab: the Island's new enemies are attack
+ *      helicopters from wave 6; the Behemoth Run's jets and heavies go for
+ *      the supertanker from wave 4), and the Behemoth Run's boss rounds are
+ *      a strike on the tanker led by jets, which the Shield never stops,
+ *      in place of most of the Wolf Pack's subs (MAP_BOSS, lab; a boss
+ *      round's `fire` may send jets). A v33 log with Overdrive,
+ *      or a v33 Island or Behemoth card log, no longer replays to the same
+ *      game.
+ *  35: the player's 2026-11-20 playtest notes (docs/design/
  *      v3-playtest-fixes.md): the Shield boost breaks after AB.shield.hits
  *      hits stopped (every missile, drone, shell or boat it stops is one,
- *      whatever its damage); the Attack Helicopter fires whenever a ship is
- *      in range, on the way to its spot too; the Torpedo Sub stays under
- *      water and can't be hit (nothing targets it, nor the Nuke; only its
- *      torpedoes can be shot); the Scavenger Drone takes three hits (was
- *      one). A v33 log with any of those four no longer replays to the
- *      same game. */
-export const LOG_VERSION = 34;
+ *      whatever its damage); the Attack Helicopter fires whenever it is on
+ *      screen, on the way to its spot too (HP 5, was 6); the Torpedo Sub
+ *      stays under water and can't be hit (nothing targets it, nor the
+ *      Nuke; only its torpedoes can be shot) and fires two (was three to
+ *      five; the Wolf Pack's one or two, was two or three); the Scavenger
+ *      Drone takes three hits (was one). A v34 log with any of those no
+ *      longer replays to the same game. */
+export const LOG_VERSION = 35;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [34];
+export const LOG_REPLAYS: readonly number[] = [35];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

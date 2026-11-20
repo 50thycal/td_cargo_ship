@@ -78,7 +78,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, signatureOf, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -1186,10 +1186,19 @@ function startWave(g: Game): void {
     replace('drone', 1);
     units.push({ kind: k % 2 ? 'bomber' : 'strafer', size: 1 });
   }
-  for (const id of labFoes(g, cut(foeCount(g.wave), len)) ?? planFoes(g, cut(foeCount(g.wave), len))) {
+  // A map's signature threat (log v33, round 9; lab only, MAP_SIGNATURE):
+  // the planner's new enemies, drawn as ever (so the dice don't move), then
+  // the first of them stand in as the map's own, each taking out of the
+  // wave what the one it stands in for would have (so the wave's launches
+  // are the shared wave's, rule w-budget).
+  const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
+  const drawn = labFoes(g, cut(foeCount(g.wave), len)) ?? planFoes(g, cut(foeCount(g.wave), len));
+  const signed = sig?.foe ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
+  for (let k = 0; k < drawn.length; k++) {
+    const id = drawn[k];
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
-    units.push({ kind: FOES[id].kind, size: 1 });
+    units.push({ kind: FOES[k < signed ? sig!.foe! : id].kind, size: 1 });
   }
   // The lab's authored encounters: what each will send comes out of the
   // wave as it now stands (after the aircraft and the new enemies took
@@ -1234,7 +1243,7 @@ function startWave(g: Game): void {
     for (const u of raidUnits[r]) {
       const at = raid.at + rng.range(0, RAID.window);
       if (u.kind === 'strafer' || u.kind === 'bomber') {
-        queue.push({ at, kind: u.kind, base: -1, side: rng.chance(0.5) ? 1 : -1 });
+        queue.push({ at, kind: u.kind, base: -1, side: rng.chance(0.5) ? 1 : -1, ...(u.kind === 'strafer' && sig?.jets ? { aim: sig.jets } : {}) });
         continue;
       }
       // A new enemy that doesn't come out of a base comes on its own.
@@ -1244,7 +1253,8 @@ function startWave(g: Game): void {
       }
       const base = pickBase(g, u.kind, rng);
       if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
-      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base });
+      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : {};
+      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
     }
   });
   g.raids = raids;
@@ -1376,7 +1386,9 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         g.raiderQueue.sort((x, y) => x.at - y.at);
         start = Math.min(start, up);
       } else {
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, side: b.from.air, enc: e.id });
+        // Log v33 (round 9): a jet aimed 'vip' flies down the supertanker's
+        // own lane (vipRoute), the Behemoth Run's strike on the tanker.
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, side: b.from.air, enc: e.id, ...(b.aim === 'vip' ? { aim: 'vip' as const } : {}) });
         start = Math.min(start, at - PLANE.warn);
       }
     }
@@ -4727,7 +4739,7 @@ function stepSim(g: Game, dt: number): void {
   for (const l of g.queue) {
     if (l.at - g.waveT > PLANE.warn) break;
     if ((l.kind === 'strafer' || l.kind === 'bomber') && l.y === undefined) {
-      const r = planeRoute(g, l.kind, g.rng.threats);
+      const r = (l.aim === 'vip' && vipRoute(g)) || planeRoute(g, l.kind, g.rng.threats);
       l.y = r.y;
       if (r.lane !== undefined) {
         l.lane = r.lane;
@@ -5381,6 +5393,17 @@ export function laneBends(ch: Channel): boolean {
   return false;
 }
 
+/** Log v33 (round 9, the Behemoth Run's strike on the supertanker): an
+ *  aircraft's line down the middle of the map's VIP lane (round it, where
+ *  it bends), or none on a map without one. */
+export function vipRoute(g: Game): { y: number; lane?: number; lat?: number } | null {
+  const lane = g.map.channels.findIndex((c) => c.vip);
+  if (lane < 0) return null;
+  const ch = g.map.channels[lane];
+  if (laneBends(ch)) return { y: lanePoint(ch, 0).y, lane, lat: 0 };
+  return { y: lanePoint(ch, 0).y };
+}
+
 /** The line an aircraft flies. A strafing jet lines up on the densest band of
  *  hulls (a tight block is its favourite target); a bomber flies just outside
  *  a shipping channel and drops its missiles in. Where the lane curves, the
@@ -5435,7 +5458,7 @@ export function routePose(g: Game, r: { lane: number; s: number; dir: number; la
 
 export function launchPlane(g: Game, l: Launch): void {
   const side = l.side ?? 1;
-  const route = l.y === undefined ? planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
+  const route = l.y === undefined ? (l.aim === 'vip' && vipRoute(g)) || planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
   const y = route.y;
   let x = side > 0 ? -60 : VIEW.width + 60;
   let sy = y;

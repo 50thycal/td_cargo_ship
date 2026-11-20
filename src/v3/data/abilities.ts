@@ -388,8 +388,8 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     evolved: 'Hyper Overdrive',
     answers: 'Running dry',
     levels: [
-      'Shots cost no rounds for 15 s',
-      'Lasts 18 s',
+      'Shots cost no rounds for 18 s',
+      'Lasts 21 s',
       'Every shot fires twice: two shells, two beams, two blades, side by side',
     ],
     how: 'Free rounds: keep firing',
@@ -679,7 +679,10 @@ export const AB = {
   // the rack but it is already full at the end"): level 2 lasts `time`× the
   // weapon time (18 s) instead, and so does MAX. (At 20 s, MAX won 54% of
   // the sweep's runs, the top of the table, up from 41%; at 18 s, 49%.)
-  overdrive: { twin: 34, time: [1, 1.2, 1.2] },
+  // Round 9 (the player, r9-overdrive-buff: it was 12th of 15 alone on the
+  // combo sweep): level 1 lasts 18 s, as level 2 did; level 2 and MAX 21 s,
+  // so each level still adds something (docs/design/v3-combo-diversity.md).
+  overdrive: { twin: 34, time: [1.2, 1.4, 1.4] },
   /** Full Steam: the convoy's speed ×; Ramming Speed rams within `ram` px. */
   fullSteam: { mult: [1.6, 2, 2], ram: 38 },
 } as const;

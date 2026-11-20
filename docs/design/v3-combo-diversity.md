@@ -111,3 +111,63 @@ npm run v3:combo-sweep -- --stage=pairs --maps=island,behemoth --out=tools/v3/co
 npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v31,tools/v3/combo-sweep/results/v31-ch2 --json=tools/v3/combo-sweep/results/v31/diversity.json
 npx vite-node tools/v3/combo-sweep/mix.ts -- --seeds=2
 ```
+
+## Round 9: chapter 2 after the signature threats and the new Behemoth boss (game version 33)
+
+> 2026-11-20. The player chose r9-map-signature (a signature threat per map, chapter 2 first), r9-ch2-split (the Behemoth Run's boss becomes something the Shield doesn't stop) and r9-overdrive-buff. Same method as above, chapter 2 only: the "you" bot (BOT_REV 3), your Armory, singles on 12 seeds, every pair on 6, each map's 6 best pairs with every third weapon on 6, its 10 best kits on 16. "Before" is game version 32 (the build you are playtesting), run again the same way; "after" is version 33. Results: `tools/v3/combo-sweep/results/v32-ch2`, `v33-ch2`.
+
+What changed (docs/design/v3-ch2-island.md and v3-ch2-behemoth.md, "After round 9"):
+- **The Island:** from wave 6 the wave's new enemies are all attack helicopters, the Gunship Wall's own (`MAP_SIGNATURE`). The debut waves 2–5 are as they were.
+- **The Behemoth Run:** from wave 4 the wave's jets strafe the supertanker's lane and its heavies go for the tanker. The boss rounds are now a strike on the tanker led by strike jets (8, 9, then 11 a round), which the Shield never stops, with a heavy at the tanker and at most one sub. (The Shield blocks heavies as it blocks every missile, so heavies alone, the example you gave, would not have split the kit.)
+
+### Each map's top 5 kits
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Island, before | **Point Defense + Supply Run + Shield** 6.5 ±0.8, won 75% | Scattergun + Boomerang + Shield 7.4 | Point Defense + Drone Screen + Shield 8.1 | Point Defense + Tesla Arc + Shield 8.1 | Point Defense + Overdrive + Shield 8.4 |
+| The Island, after | **Point Defense + Supply Run + Overdrive** 7.6 ±0.7, 56% | Gunship Pair + Supply Run + Shield 7.7 | Air Strike + Shrapnel + Shield 8.2 | Air Strike + Shrapnel + Tesla Arc 8.4 | Shrapnel + Gravity Well + Railgun 8.9 |
+| The Behemoth Run, before | **Boomerang + Supply Run + Shield** 6.3 ±0.4, 88% | Point Defense + Supply Run + Shield 7.8 | Frigate Escort + Supply Run + Shield 7.9 | Flak + Point Defense + Shield 8.0 | Point Defense + Railgun + Shield 8.0 |
+| The Behemoth Run, after | **Flak + Gravity Well + Drone Screen** 5.2 ±1.1, 75% | Gravity Well + Railgun + Supply Run 5.9 | Shrapnel + Frigate Escort + Supply Run 6.3 | Railgun + Drone Screen + Full Steam 6.3 | Gravity Well + Railgun + Drone Screen 6.4 |
+
+Ships lost a run over all 13 waves (± one standard error, 16 seeds), and the share won.
+
+### Overlap and the first pick
+
+| Measure | Before (v32) | After (v33) |
+| --- | --- | --- |
+| Jaccard of the top-5 kits, the Island against the Behemoth Run | 0.11 (one shared kit: Point Defense + Supply Run + Shield, the Island's #1 and the Behemoth's #2) | **0** (no kit shared) |
+| The same, one map against itself (two halves of its seeds) | 0.25 / 0.43 | 0.25 / 0.43 |
+| Shield in the top-5 kits, the Island / the Behemoth Run | **5 / 5** | 2 / **0** |
+| Best weapon alone, the Island / the Behemoth Run | Point Defense 7.0 / Frigate Escort 7.8 | **Shield 6.3 / Shield 7.3** |
+| Air Strike alone: rank, the Island / the Behemoth Run | #5 (8.6) / #3 (10.3) | **#2 (7.1) / #2 (7.8)** |
+| Rank correlation of the weapons alone between the two maps | 0.63 | 0.68 |
+
+What shows (`mix.ts`, 2 seeds a map; `mixwaves.ts`, 4 seeds, for the signature's share):
+
+| Map | Waves 1–10, before | Waves 1–10, after | Boss rounds, before | Boss rounds, after |
+| --- | --- | --- | --- | --- |
+| The Island | drones 57%, shells 20%, guided 5% | drones 57%, shells 20%, helicopters 4% and their missiles 3% | drones 46%, helicopter missiles 29%, helicopters 14% | drones 54%, helicopters 16%, their missiles 16% |
+| The Behemoth Run | drones 52%, shells 25%, guided 7% | drones 51%, shells 23%, guided 6% (its jets and heavies now at the tanker) | torpedoes 52%, subs 33%, guided 15% | **jets 75%**, torpedoes 9%, heavies 8%, subs 5% |
+
+The signature's share of waves 4–10: the Island 1% → 8% of what shows (5% → 22% of the hits it takes to clear them); the Behemoth Run 6% → 6% (19% → 19% by hits: the jets and heavies were already there; they now go for the tanker).
+
+### Reading
+
+- **The two chapter 2 maps no longer share a kit.** Their top 5s have nothing in common (Jaccard 0, was 0.11), and the Shield, in all ten top kits before, is in none of the Behemoth Run's and two of the Island's. The Behemoth's best kits now fight aircraft and heavies (Flak, Gravity Well, Drone Screen, Railgun); the Island's mix area fire and helpers (Shrapnel, Air Strike, Point Defense, the Gunship Pair).
+- **Air Strike is not #1 alone on either map, but it climbed to #2 on both.** The best weapon alone is the Shield on both maps now (6.3 and 7.3; it was 4th and 2nd). A forced single levels to MAX (18 s and Reflect, which bounces blocked missiles back), and the helicopters' missile pairs and the heavies are missiles: alone, it still covers most of what both maps send. In a kit it no longer leads.
+- **So the first pick is the same on both maps again** (the Shield), while the kits differ. If one weapon should not be the first pick everywhere in chapter 2, the Shield is the one to look at, not the maps: it blocks everything but a jet. A question for the player (hub).
+- **By count, the signature is under the 20–30% asked** (8% and 6% of what shows in waves 4–10): helicopters, heavies and jets are few big threats, and more of them would need more of each wave taken out than the ±15% budget allows. By the hits it takes to clear them they are about a fifth to a quarter of waves 4–10. A question for the player (hub): which measure did you mean?
+
+### How far to trust it
+
+- As above: the "you" bot, forced loadouts, 16 seeds for the top 10 (standard errors 0.4–1.1, so neighbours in a top 5 tie), and only kits whose pairs made the map's top 6.
+- The singles are 12 seeds (standard errors about 0.5–1): the Shield's lead over Air Strike alone is 0.5–0.8 of a ship, inside two standard errors.
+- The Behemoth Run's boss reads very differently by Armory (docs/design/v3-ch2-behemoth.md): this sweep is your usual Armory, which mends hulls; with your latest Armory the jets do far more.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth --out=tools/v3/combo-sweep/results/v33-ch2
+npm run v3:combo-sweep -- --stage=pairs --maps=island,behemoth --out=tools/v3/combo-sweep/results/v33-ch2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v33-ch2 --maps=island,behemoth --json=tools/v3/combo-sweep/results/v33-ch2/diversity.json
+npx vite-node tools/v3/combo-sweep/mix.ts -- --seeds=2 --maps=island,behemoth
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --seeds=4
+```

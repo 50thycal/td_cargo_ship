@@ -1,0 +1,118 @@
+{
+ "read": "2026-11-20",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {
+  "r8-replay-ch1": {
+   "verdict": "approve",
+   "note": "Yes much better "
+  },
+  "r8-play-ch2": {
+   "verdict": "approve",
+   "note": ""
+  }
+ },
+ "playtest": {
+  "island": {
+   "log": "v3-20261120000322-77396",
+   "v": 31,
+   "end": "won",
+   "lostByWave": [
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    2,
+    1,
+    1,
+    3
+   ],
+   "verdict": "keep",
+   "fun": 5,
+   "intensity": 5,
+   "boss": 5
+  },
+  "marrow": {
+   "log": "v3-20261120035031-61174",
+   "v": 32,
+   "end": "lost",
+   "lostAtWave": 8,
+   "cum": [
+    0,
+    0,
+    0,
+    1,
+    2,
+    2,
+    3,
+    6
+   ],
+   "verdict": "keep",
+   "fun": 4,
+   "difficulty": "right",
+   "intensity": 4
+  },
+  "behemoth": {
+   "log": "v3-20261120040209-61175",
+   "v": 32,
+   "end": "lost",
+   "lostAtWave": 6,
+   "cum": [
+    0,
+    1,
+    1,
+    2,
+    5,
+    6
+   ],
+   "verdict": "keep",
+   "fun": 4,
+   "difficulty": "right",
+   "intensity": 3
+  },
+  "kesh": {
+   "log": "v3-20261120040945-61176",
+   "v": 32,
+   "end": "lost",
+   "lostAtWave": 13,
+   "cum": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    4,
+    4,
+    5,
+    10
+   ],
+   "bossRounds": [
+    0,
+    1,
+    5
+   ],
+   "verdict": "keep",
+   "fun": 4,
+   "difficulty": "right",
+   "intensity": 4,
+   "boss": 4
+  }
+ },
+ "notes": [
+  "Draft-card NEW label on top of the card, not over its middle",
+  "Shield too OP: break after N hits (count hits, not damage)",
+  "Helicopter should start attacking at once, not fly to a spot",
+  "Mid-round wave review on its own page (missed at the bottom of the draft)",
+  "Wave counter: N of 10 on all maps, not of 13",
+  "Scavenger (weapon-drop stealing) drone needs more health",
+  "Torpedo attack sub: not attackable, only its torpedoes; stays underwater with periscope and shadow"
+ ]
+}
