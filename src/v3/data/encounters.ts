@@ -3616,7 +3616,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'Most shells are shot down; the wave hurts but does not end the run.',
     notes: {
       sites: 'Submarines in the west gap (565, 335) and the east gap (1035, 335), the silos on the west, middle and east islets (swarms).',
-      target: 'The west gap\'s shells at the ship least far along, the east gap\'s at the ship nearest it, one swarm at the lead ship, the others at any ship.',
+      target: 'The west gap\'s shells at the ship least far along, the east gap\'s at the ship nearest it, one swarm at the ship halfway along, the others at any ship.',
       usesMap: 'The gaps between the islets, both at once, in place of the wave\'s shells and a heavy.',
     },
     beats: [
@@ -3625,7 +3625,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
       { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
-      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'mid' },
     ],
     replaces: { drones: 4, ballistic: 10, extras: { heavy: 1 } },
   },
@@ -3642,7 +3642,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at the west end in most runs; the wave hurts but does not end the run.',
     notes: {
       sites: 'The west islet\'s silo (a cluster, then a swarm), the middle islet\'s silo (swarms), the east islet\'s silo (a swarm).',
-      target: 'The cluster at any ship, the last swarm at the lead ship (by the carrier), the others at any ship.',
+      target: 'The cluster at any ship, the last swarm at the ship halfway along, the others at any ship.',
       usesMap: 'The whole chain at once, its west end first, in place of the wave\'s shells, a cluster and a heavy.',
     },
     beats: [
@@ -3650,7 +3650,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 1.5, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
-      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'mid' },
     ],
     replaces: { drones: 2, ballistic: 10, extras: { cluster: 1, heavy: 1 } },
   },
@@ -3667,7 +3667,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at the west end or on the lead ship in most runs; the climax is the hardest wave.',
     notes: {
       sites: 'The west islet\'s silo (cluster, swarms), the middle and east islets\' silos (swarms, guided), the climax after the wave\'s own fire.',
-      target: 'The cluster at the ship least far along, the missile and two swarms at the lead ship, the other swarms at any ship.',
+      target: 'The cluster at the ship least far along, the missile at the lead ship, two swarms at the ship halfway along, the others at any ship.',
       usesMap: 'The map\'s problem from every side, in place of the wave\'s shells, most guided missiles, a heavy, a cluster, a supersonic and a jet; the climax may reach the safe stretch.',
     },
     beats: [
@@ -3678,8 +3678,8 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'drone', count: 3, gap: 0.35, from: base(2) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(1) },
       { at: 0.75, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
-      { at: 0.4, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
-      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'lead' },
+      { at: 0.4, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'mid' },
     ],
     replaces: { drones: 4, ballistic: 12, guided: 4, extras: { heavy: 1, cluster: 1, supersonic: 1, strafer: 1 } },
   },
@@ -4113,8 +4113,8 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
   { swarms: 6, size: 7, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 8, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 10, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
