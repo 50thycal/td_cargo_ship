@@ -117,7 +117,7 @@ const REWORKED: Partial<Record<AbilityId, string>> = {
   focus: 'Hold the left button to slow time; its dial is now your slow motion left, not the boost\'s time. Clear?',
   wildCard: 'From level 2 each pickup also brings one random passive (frigates, gunships, drones...) for 8 s. Fun?',
   grapnel: 'A thrown threat now bursts on the first threat it hits; a tough one keeps its health and flies on. Right?',
-  overdrive: 'Level 2 now lasts 18 s (was a refill you never saw). Worth the level?',
+  overdrive: 'Free rounds now last 18 s from level 1 (was 15), and 21 s from level 2. Worth a slot now?',
   frigate: 'A new drop while they sail off: they keep going and a fresh pair sails in. Smoother?',
   droneScreen: 'Out of targets, the drones fly home and land on the deck. Better?',
   aegis: 'It now fires only at missiles, bombs and drones about to hit a ship, never at the planes: right?',
