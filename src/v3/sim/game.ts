@@ -1178,13 +1178,27 @@ function startWave(g: Game): void {
   const signed = sig?.foe ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
-    // The swarm it stands in for (log v34: a signature block is no bigger).
-    const swarm = units.find((u) => u.kind === 'drone')?.size ?? 1;
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     // The Needle of Bosk (log v34, MAP_SIGNATURE `block`): a small wall of
-    // armored drones out of one base, in place of that swarm.
-    const size = k < signed && sig!.block ? Math.max(1, Math.min(sig!.block, swarm)) : 1;
+    // armored drones out of one base. The wall stands in for a swarm as any
+    // new enemy does, and its other drones come out of the wave's own, one
+    // for one (the biggest swarm in a raid, else the biggest that trickles
+    // in), so the wave sends no more (rule w-budget).
+    let size = 1;
+    if (k < signed && sig!.block) {
+      for (let more = sig!.block - 1; more > 0; more--) {
+        const r = units.reduce((b, u, i) => (u.kind === 'drone' && (b < 0 || u.size > units[b].size) ? i : b), -1);
+        if (r >= 0) {
+          if (--units[r].size <= 0) units.splice(r, 1);
+        } else {
+          const t = swarms.slice(0, trickle).reduce((b, n, i) => (n > 1 && (b < 0 || n > swarms[b]) ? i : b), -1);
+          if (t < 0) break;
+          swarms[t]--;
+        }
+        size++;
+      }
+    }
     units.push({ kind: FOES[k < signed ? sig!.foe! : id].kind, size });
   }
   // The lab's authored encounters: what each will send comes out of the

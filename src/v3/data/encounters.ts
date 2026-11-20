@@ -3329,7 +3329,7 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'A strafer from the west edge, the north headland\'s silo (a shell), the west silo on the north shore and the south headland\'s silo (swarms).',
       target: 'The jet along the lane (the densest band, the queue), the shell and the south swarm at the ship nearest each headland, the west swarm at any ship.',
-      usesMap: 'Single file is the map\'s shape: a jet\'s line and the column are the same line, in place of the wave\'s own jet, its clusters and most of its shells.',
+      usesMap: 'Single file is the map\'s shape: a jet\'s line and the column are the same line, in place of a cluster and most of the wave\'s shells.',
     },
     beats: [
       { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
@@ -3337,7 +3337,7 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'near' },
     ],
-    replaces: { drones: 8, ballistic: 6, guided: 1, extras: { cluster: 2, strafer: 1 } },
+    replaces: { drones: 8, ballistic: 6, guided: 1, extras: { cluster: 1 } },
   },
   {
     id: 'needle-heavy',
@@ -3362,7 +3362,7 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 4, ballistic: 8, guided: 1, extras: { heavy: 1, mothership: 1, cluster: 3, strafer: 1 } },
+    replaces: { drones: 5, ballistic: 8, guided: 1, extras: { heavy: 1, mothership: 1, cluster: 3, strafer: 1 } },
   },
   {
     id: 'needle-crossfire',
@@ -3396,20 +3396,19 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'Run the Needle',
     callout: 'Everything at the Needle',
-    premise: 'Once the wave\'s own fire is spent, a cluster from the north headland over the queue, a swarm from the south headland, a missile from the east silo at the lead ship and a periscope in the open water; swarms from both ends all wave.',
-    decision: 'The whole strait at once: the queue under both headlands, the lead ship on its way out, the ships still coming in.',
-    counters: 'The cluster before it splits, the swarms, the sub\'s shells as they climb, the missile last.',
+    premise: 'Once the wave\'s own fire is spent, a cluster from the north headland over the queue, a swarm from the south headland, and a missile from the east silo at the lead ship; swarms from both ends all wave.',
+    decision: 'The whole strait at once: the queue under both headlands, the lead ship on its way out, the swarms over the open water.',
+    counters: 'The cluster before it splits, the swarms, the missile last.',
     succeeds: 'A close call at the mouth or on the lead ship in most runs; the climax is the hardest wave.',
     notes: {
-      sites: 'The north headland\'s silo (cluster), the south headland\'s (swarms), the west silo on the north shore (swarms), the east silo (guided), a submarine at the north-west sub spot, the climax after the wave\'s own fire.',
-      target: 'The cluster and the first south swarm at the ship nearest each headland, the missile at the lead ship, the sub\'s shells at the ship least far along, the other swarms at any ship.',
+      sites: 'The north headland\'s silo (cluster), the south headland\'s (swarms), the west silo on the north shore (swarms), the east silo (guided), the climax after the wave\'s own fire.',
+      target: 'The cluster and the first south swarm at the ship nearest each headland, the missile at the lead ship, the other swarms at any ship.',
       usesMap: 'The map\'s problem and both ends of the strait, in place of most of the wave\'s shells and missiles, its heavies, clusters, a jet and a bomber; the climax may reach the safe stretch.',
     },
     beats: [
       { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(2), aim: 'near' },
       { at: 1, plus: 3, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'near' },
       { at: 1, plus: 4, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 1, plus: 5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
       { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
@@ -3557,6 +3556,11 @@ export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, Version
  *  the ten. */
 const KESH_CLIMB = [1, 0.9, 1, 1.05, 1.05, 1.08, 1.08, 1.06, 0.93, 0.85];
 const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
+/** The Needle of Bosk (log v34, docs/design/v3-ch2-needle.md): its shared
+ *  waves 6-10 are the hardest of chapter 2 for the bot (the headlands'
+ *  clusters and shells reach a queue of ships nose to tail), so they send a
+ *  tenth less, within ±15% (rule w-budget). */
+const NEEDLE_EASE = [1, 1, 1, 1, 1, 0.92, 0.9, 0.9, 0.9, 0.87];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -3565,7 +3569,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   // Chapter 2.
   island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane; attack helicopters off the island from wave 6.', callouts: false } },
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
-  needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
+  needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false, scale: NEEDLE_EASE } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -3803,9 +3807,9 @@ export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
  *  at the mouth (aim 'near': the ship nearest the silo) and, from round 2,
  *  shells. */
 export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
-  { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 6, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 10, count: 1, base: 2, aim: 'near' }] },
-  { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 5, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 10, count: 1, base: 2, aim: 'near' }] },
-  { block: 10, cols: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 9, count: 2, gap: 2, base: 2, aim: 'near' }] },
+  { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 6, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
+  { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 5, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
+  { block: 10, cols: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 13, count: 1, base: 2, aim: 'near' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
