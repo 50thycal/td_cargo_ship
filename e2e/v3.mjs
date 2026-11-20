@@ -606,7 +606,7 @@ try {
     await cp.click('[data-lab-bring]');
     check(await cp.evaluate(() => !document.querySelector('.v2-overlay.open') && document.querySelector('.v2-pause').textContent === 'II'), 'Bring one on the pause menu closes it: the game goes on');
     const all = await titlesFor(2500);
-    check(all.some((t) => t.startsWith('NEW:')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
+    check(all.some((t) => t.startsWith('NEW:') || t.startsWith('NEW · ')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
     // Off, from Settings: kept across a reload, and no hint, wave or test card.
     await cp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
     await cp.locator('.v2-settings-btn').tap();
