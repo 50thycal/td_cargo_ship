@@ -402,7 +402,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'For 15 s, ships and the carrier take no damage from missiles, drones and boats; breaks on the first hit',
       'Takes 2 hits before it breaks; every hit it blocks puts 1 round back in the rack',
-      'Takes 3 hits and lasts 18 s; a blocked missile bounces back and bursts on what is behind it',
+      'Lasts 18 s and takes 3 hits; a blocked missile bounces back and bursts on what is behind it',
     ],
     how: 'Your hulls are shielded',
   },
