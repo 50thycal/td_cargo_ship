@@ -218,18 +218,20 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     problem: 'Two locks stop the convoy: every ship waits still in a chamber while it fills, right under the silos over the locks, so the enemy fires at ships that cannot move, with banks close on both sides and little warning.',
     // The fire comes point-blank off the lock silos and from the seas at
     // ships that cannot move: each ship's own Point Defense needs no warning
-    // and no reach; the Railgun's line runs down the straight canal and the
-    // Scattergun's spread meets threats close in. The Thermobaric Shell is
-    // too slow for the short warning, the Tesla Arc's chain wants threats
-    // bunched near the carrier, and Full Steam cannot hurry a ship through a
-    // shut gate (forced, the combo sweep's singles: docs/design/
-    // v3-ch2-saltgate.md, Kits). Every weapon is in chapter 2's draft.
-    counters: ['aegis', 'railgun', 'scatter'],
-    offCounter: ['thermo', 'tesla', 'fullSteam'],
+    // and no reach, the Gunship Pair's rockets go for the thickest bunch of
+    // ships (a full chamber), and Supply Run keeps the rack full through the
+    // long waits at the gates. The Seeker Pod's long flight is too late for
+    // a silo 200 px from its target, the Shield breaks after its few hits on
+    // a chamber that takes a cluster's bomblets at once, and Full Steam
+    // cannot hurry a ship through a shut gate (forced, 16 seeds: 6.6 ships
+    // lost against 10.3; docs/design/v3-ch2-saltgate.md, The counters).
+    // Every weapon is in chapter 2's draft.
+    counters: ['aegis', 'gunships', 'supplyRun'],
+    offCounter: ['seeker', 'shield', 'fullSteam'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east down the canal at the campaign\'s own schedule; each lock takes what its chamber holds, shuts and fills, so the ships sail in short bursts and wait, bunched and still, at each gate.',
-    stretches: { danger: 'early', safe: 'late' },
+    stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'Run the Canal, rising: Torpedo Subs as the round opens (2, 3, 3; the event sends 2), a gunship over the far bank by a lock (1, 1, then 2; 4 then 5 hits), a block of armored drones (4, 6, 6; the event sends 4) and drone swarms (2 of 5, 2 of 6, 3 of 6; the event sends 1 of 5), with clusters and guided missiles off the silos over the locks at the ships held in them (encounters rev 4, MAP_BOSS; lab only).',
+      plan: 'Run the Canal, rising: Torpedo Subs as the round opens (3 a round; the event sends 2), a gunship over the far bank by a lock (1, 1, then 2, one over each lock; 4 then 5 hits), a block of armored drones (4, 6, 6; the event sends 4) and drone swarms of 5 (2, 3, 3; the event sends 1), with clusters off the silos over the locks (1, 1, 2) and a guided missile from the east shore (rounds 1 and 2) at the ships held in the locks (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
     },
   },
