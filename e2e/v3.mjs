@@ -164,7 +164,7 @@ try {
   }
   const lvBtn3 = page.locator('[data-armory-bar="warhead"] [data-armory-level]');
   check((await lvBtn3.getAttribute('data-cost')) === '300' && (await lvBtn3.isDisabled()) && /need 50 more/.test(await lvBtn3.textContent()), 'the next level is greyed with what is missing (300, need 50 more)');
-  check(/Next:.*180% blast/.test(await page.locator('[data-armory-bar="warhead"]').textContent()), 'the bar says what the next level gives');
+  check(/Next:.*220% blast/.test(await page.locator('[data-armory-bar="warhead"]').textContent()), 'the bar says what the next level gives');
   await page.screenshot({ path: `${SHOT_DIR}/02-armory.png` });
   await page.click('[data-bay="hull"]');
   check((await page.locator('.v3-armory-card[data-armory="pointdef"] .v2-card-name').textContent()) === 'Deck Guns', 'the Armory\'s Point Defense reads Deck Guns');

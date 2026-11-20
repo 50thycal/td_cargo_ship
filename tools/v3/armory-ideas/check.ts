@@ -5,7 +5,7 @@
 // every wave played (no loss limit), the "you" bot, on the five chapter 1
 // maps, paired with "none" on the same seeds.
 //
-//   npx vite-node tools/v3/armory-ideas/check.ts -- --set=lift --seeds=12 --part=0/4 > out.jsonl
+//   npx vite-node tools/v3/armory-ideas/check.ts -- --set=lift --seeds=12 --part=0/4 [--maps=marrow] > out.jsonl
 //   node tools/v3/armory-ideas/check-sum.mjs out*.jsonl > check-results.json
 //
 // Sets:
@@ -29,7 +29,7 @@ import { playCombo } from '../combo-sweep/play';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
-const MAPS: MapId[] = ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow'];
+const MAPS = (opt('maps')?.split(',') ?? ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow']) as MapId[];
 const set = opt('set') ?? 'lift';
 const seeds = Array.from({ length: Number(opt('seeds') ?? 12) }, (_, k) => Number(opt('from') ?? 900) + k);
 const [part, parts] = (opt('part') ?? '0/1').split('/').map(Number);
