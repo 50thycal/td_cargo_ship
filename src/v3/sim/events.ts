@@ -33,7 +33,7 @@ import { bossTune, type BossFire, type BossRound } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
-import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSpot, wetRun } from './foes';
+import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
 import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
@@ -856,7 +856,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // a fast one in their spread.
       const E = wolfRound(g, ev);
       const S = FOE.torpedoSub;
-      const spots = openWater(g, E.packs[s.k], 150);
+      const spots = openWater(g, E.packs[s.k], 150, true);
       spots.forEach((p, k) => {
         const spread = E.spread[0] + rng.int(E.spread[1] - E.spread[0] + 1);
         const fast = ev.fastAt.includes(ev.subs) ? rng.int(spread) : -1;
@@ -1280,18 +1280,31 @@ function laneBeacons(g: Game, ev: EventRun, k: number): void {
   });
 }
 
-/** Open water for `n` boats, each `apart` px from the others: the map's sub
- *  spots, then points along its bomber lines; clear of land, the lanes'
- *  middles and the carrier. */
-function openWater(g: Game, n: number, apart: number): Point[] {
+/** Every point openWater picks from: the map's sub spots, then points along
+ *  its bomber lines; clear of land, the lanes' middles and the carrier.
+ *  (Round 12's sub audit reads it: tools/v3/sub-audit.) */
+export function openWaterSpots(g: Game): Point[] {
   const c = g.map.carrier;
   const cands: Point[] = [...g.map.subSpots];
   for (const y of g.map.bomberLines) for (let x = 200; x <= VIEW.width - 200; x += 200) cands.push({ x, y });
   const ok = (p: Point) => !onLand(g, p.x, p.y) && dist(p.x, p.y, c.x, c.y) > 170 && p.x > 120 && p.x < VIEW.width - 120 && p.y > 90 && p.y < VIEW.height - 90 && !inLane(g, p);
+  return cands.filter(ok);
+}
+
+/** Open water for `n` boats, each `apart` px from the others: the map's sub
+ *  spots, then points along its bomber lines; clear of land, the lanes'
+ *  middles and the carrier. Round 12: for torpedo subs (`subs`), the good
+ *  sites first (foes.ts subSite: the sub's shadow clear of land, a torpedo
+ *  line to a lane), the rest only to make up the number. */
+function openWater(g: Game, n: number, apart: number, subs = false): Point[] {
   const out: Point[] = [];
-  for (const p of g.rng.foes.shuffle(cands.filter(ok))) {
-    if (out.length >= n) break;
-    if (out.every((o) => dist(o.x, o.y, p.x, p.y) >= apart)) out.push(p);
+  const order = g.rng.foes.shuffle(openWaterSpots(g));
+  const passes = subs ? [order.filter((p) => subSite(g, p)), order.filter((p) => !subSite(g, p))] : [order];
+  for (const pass of passes) {
+    for (const p of pass) {
+      if (out.length >= n) break;
+      if (out.every((o) => dist(o.x, o.y, p.x, p.y) >= apart)) out.push(p);
+    }
   }
   return out;
 }

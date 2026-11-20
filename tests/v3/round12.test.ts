@@ -3,7 +3,9 @@
 
 import { describe, expect, it } from 'vitest';
 import { CLUSTER } from '../../src/v3/data/config';
+import { MAP_ORDER } from '../../src/v3/data/maps';
 import { clusterPace, createGame, spawnThreat, step, type Game } from '../../src/v3/sim/game';
+import { SUB_SIGHT, onLand, subClear, subLaneSight, subSite, subSpot } from '../../src/v3/sim/foes';
 
 const DT = 1 / 60;
 const run = (g: Game, seconds: number, each?: () => void) => {
@@ -64,5 +66,43 @@ describe('cluster missiles: a window to shoot them before they split', () => {
     });
     expect(splitD).toBeGreaterThan(0);
     expect(splitD).toBeLessThanOrEqual(CLUSTER.splitRange + 10);
+  });
+});
+
+describe('torpedo subs surface on open water with a torpedo line (the sub audit)', () => {
+  // Saltgate Canal is being reworked in parallel (its boss and encounter
+  // data): its east sub spot sees too little of the canal (2 of 9 points)
+  // and is left for that rework. subSpot passes it over (below).
+  const KNOWN = new Set(['saltgate 1480,610']);
+
+  for (const id of MAP_ORDER) {
+    it(`${id}: every sub spot clear of land, with a torpedo line to a lane`, () => {
+      const g = createGame(id, 1, 1);
+      for (const p of g.map.subSpots) {
+        if (KNOWN.has(`${id} ${p.x},${p.y}`)) continue;
+        expect(onLand(g, p.x, p.y), `${id} (${p.x}, ${p.y}) on land`).toBe(false);
+        expect(subClear(g, p), `${id} (${p.x}, ${p.y}): land under the sub's shadow`).toBe(true);
+        expect(subLaneSight(g, p), `${id} (${p.x}, ${p.y}): torpedo line`).toBeGreaterThanOrEqual(SUB_SIGHT);
+      }
+    });
+  }
+
+  it('a sub surfaces only at a good site while the map has one', () => {
+    for (const id of MAP_ORDER) {
+      const g = createGame(id, 7, 1);
+      if (!g.map.subSpots.some((p) => subSite(g, p))) continue;
+      for (let k = 0; k < 40; k++) {
+        const p = subSpot(g, g.rng.foes);
+        expect(subSite(g, p), `${id} (${p.x}, ${p.y})`).toBe(true);
+      }
+    }
+  });
+
+  it('the check catches a spot on land, by the shore, or behind land', () => {
+    const g = createGame('needle', 1, 1);
+    // The Needle's old east spot: a torpedo line to 2 of 9 lane points.
+    expect(subSite(g, { x: 1500, y: 252 })).toBe(false);
+    const shore = g.map.land[0].points[0];
+    expect(subClear(g, shore)).toBe(false);
   });
 });
