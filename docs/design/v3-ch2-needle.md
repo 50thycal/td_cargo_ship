@@ -11,7 +11,7 @@ Code:
 - `src/v3/data/lab.ts`: "Ready to test" lists the Needle at v34;
 - `tools/v3/combo-sweep/mix.ts`, `mixwaves.ts`: the Needle among the maps, its signature the armored drones.
 
-Bot reports: `tools/v3/map-report/results/needle.md` (no Armory), `needle-player.md` (the player's usual Armory, with fun measures and the heat map) and `needle-latest.md` (the player's latest Armory: Wide Warhead 5, Point Defense 4, Supply Lines 3). Tuning reads with `tools/v3/map-report/quick.ts` (48 seeds).
+Bot reports: `tools/v3/map-report/results/needle.md` (no Armory), `needle-player.md` (the player's usual Armory, with fun measures and the heat map) and `needle-latest.md` (the player's latest Armory: Wide Warhead 5, Point Defense 4, Supply Lines 3). Tuning reads: the bot as `tools/v3/map-report/quick.ts` plays it, on 48 seeds at a time (900–947 and 948–995).
 
 ## The problem
 
@@ -25,10 +25,10 @@ Bases and spots are counted from 1, as the pause screen counts them.
 
 | Site | Where | Fires | Its job in the waves |
 | --- | --- | --- | --- |
-| West silo (base 1) | North shore (300, 92) | drones, guided | Long-warning swarms over the open water (w2, w5–10), the guided missile at the lead ship (w5). |
+| West silo (base 1) | North shore (300, 92) | drones, guided | Long-warning swarms over the open water (w2, w4–10), the guided missile at the lead ship (w5). |
 | North-shore silo (base 2) | North shore (700, 100) | shells, supersonic | The shared waves' own: shells and supersonic missiles down the funnel. |
-| North headland (base 3) | Over the Needle (1120, 290) | clusters, shells | The signature place: the clusters over the queue (w3, w10, every boss round) and shells into the gap (w2, w5, w7–9, every boss round). |
-| South headland (base 4) | Enemy land south of the Needle, on your side (1130, 650) | drones, clusters, heavies | Point-blank swarms at the mouth (w1, w3, w5, w7, w9), swarms (w4, w6, w8, w10) and the heavy (w8). |
+| North headland (base 3) | Over the Needle (1120, 290) | clusters, shells | The signature place: the clusters over the queue (w3, w10, every boss round) and shells into the gap (w2, w5, w7, w9, every boss round). |
+| South headland (base 4) | Enemy land south of the Needle, on your side (1130, 650) | drones, clusters, heavies | Point-blank swarms at the queue (w1, w3, w5–7, w10), other swarms (w4–6, w8–10) and the heavy (w8). |
 | East silo (base 5) | Far shore past the Needle (1490, 88) | guided, supersonic | Missiles at the lead ship on its way out (w6, w10). |
 | North-west sub spot (spot 1) | Open water west of the funnel (200, 208) | sub salvos | Shells at the ships still coming in (w4). |
 | East sub spot (spot 2) | Past the Needle (1500, 252) | sub salvos | Shells at the lead ship coming out (w9). |
@@ -57,10 +57,10 @@ How much of waves 4–10 it is (`tools/v3/combo-sweep/mixwaves.ts`, 4 seeds, the
 | | Waves 4–10 | Waves 6–10 | Boss rounds |
 | --- | --- | --- | --- |
 | Share of the threats that show | 11% | 11% | 59% |
-| Share of the hits it takes to clear them, hulls only (an armored drone 2) | 16% | 16% | n/a |
+| Share of the hits it takes to clear them, hulls only (an armored drone 2) | 16% | 16% | 74% |
 | The same, every plate hit counted (an armored drone 2 + its plate 4) | 36% | 36% | 90% |
 
-The plate takes a shot only from the front, and the walls fly plates first at the convoy, so most of the carrier's shots meet a plate: the share by hits is between the two, about a quarter of waves 4–10, inside the 20–30% asked (the Island's helicopters are 22%, the Behemoth's jets and heavies 20%, by the same tool). By count it is 11%: a wall is two drones where a helicopter is one platform.
+The plate takes a shot only from the front, and the walls fly plates first at the convoy, so many of the carrier's shots meet a plate and some (a blast, a helper from the side, a wall banking) go round it: the share by hits lies between the two, about a quarter of waves 4–10 by our estimate, inside the 20–30% asked (the Island's helicopters are 22%, the Behemoth's jets and heavies 20%, by the same tool). By count it is 11%: a wall is two drones where a helicopter is one platform.
 
 ## The counters
 
