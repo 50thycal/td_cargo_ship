@@ -192,6 +192,27 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch2-archipelago.md
+  archipelago: {
+    problem: 'A chain of enemy islets lines the one lane: the islets, the gaps between them, the far shore and the water behind the convoy all fire, so threats come from several directions at once, and the west end, where the ships come in, is the longest reach from your carrier.',
+    // Every threat ends on the one lane, from whichever side it came: the
+    // Air Strike's jet down that row takes all that converge on it (a
+    // mothership's five hits among them), each ship's own Point Defense
+    // needs no reach to the far west end, and the Flak Cannon's cloud waits
+    // over the lane where they arrive. The Seeker Pod's long flight is too
+    // late at the long reach, the Railgun's line takes one direction at a
+    // time, and the Drone Screen fights one drone at a time (forced, the
+    // combo sweep's singles: docs/design/v3-ch2-archipelago.md, Kits).
+    // Every weapon is in chapter 2's draft.
+    counters: ['airstrike', 'aegis', 'flak'],
+    offCounter: ['seeker', 'railgun', 'droneScreen'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east down one lane under the chain of islets, coming in at the far west end, a long reach from the carrier, and delivering in the east beside it.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'The Supply Raid from every side: the event\'s cargo runs and scavengers, one weapon in the round\'s first cargo run and supplies only in the second (the event gives one for each weapon held, in both); its drone swarms off the islets (6 of 7, 6 of 9, 6 of 9; the event sends 5 of 6 every round), and the signature with them: 2, 3, then 3 drone motherships off the west islet early in the round, with 3, 4, then 5 shells from the far shore and clusters off the west islet at the ships coming in, and a guided missile from the east islet at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

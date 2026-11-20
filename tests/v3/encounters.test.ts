@@ -156,7 +156,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -180,6 +180,11 @@ describe('a campaign run has no encounter layer', () => {
       'needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands',
       'needle-way-out', 'needle-strafe', 'needle-heavy', 'needle-crossfire', 'needle-run',
     ]);
+    // The Archipelago (docs/design/v3-ch2-archipelago.md): the same.
+    expect(arc('archipelago').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'archipelago-west-islet', 'archipelago-gap', 'archipelago-front-back', 'archipelago-islet-chain', 'archipelago-both-ends',
+      'archipelago-behind', 'archipelago-strafe', 'archipelago-both-gaps', 'archipelago-cluster', 'archipelago-run',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -195,8 +200,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('archipelago')).toBe(false);
-    expect(encountersFor('archipelago', 5)).toEqual([]);
+    expect(hasEncounters('saltgate')).toBe(false);
+    expect(encountersFor('saltgate', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -655,7 +660,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago'], e.id).toContain(e.map);
   });
 
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
@@ -861,7 +866,7 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
       expect((e.sent.guided ?? 0) + (e.sent.heavy ?? 0), `run ${e.run}`).toBe(0);
     }
     expect(off.game.eventLog.map((e) => e.sent.torpedoSub)).toEqual([7, 7, 7]);
-    // Seed 204: the tryhard bot, starting at the boss with no weapon, sees
+    // Seed 218: the tryhard bot, starting at the boss with no weapon, sees
     // all three rounds (it breaks the first and the third).
     const on = playMimic('behemoth', 204, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.behemoth!.rounds!;
@@ -925,6 +930,55 @@ describe('the Needle of Bosk\'s boss rounds (log v35, MAP_BOSS): the Shield Wall
     }
     // More each round (a cluster over the queue is worth about four drones).
     const weight = rounds.map((r) => r.block! + 4 * fired(r, 'cluster') + 2 * fired(r, 'ballistic'));
+    for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+    roundLengths(done);
+  }, 90_000);
+});
+
+describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid from every side rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('more and bigger swarms, drone motherships off the west islet, shells and clusters at the ships coming in, each round more', () => {
+    const off = playMimic('archipelago', 218, opts);
+    const old = playMimic('archipelago', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own 5 swarms of 6, its scavengers and
+    // nothing else.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => [e.id, e.sent.drone, e.sent.scavenger, e.sent.mothership ?? 0, e.sent.ballistic ?? 0])).toEqual([
+      ['supply-raid', 30, 6, 0, 0],
+      ['supply-raid', 30, 6, 0, 0],
+      ['supply-raid', 30, 6, 0, 0],
+    ]);
+    // Seed 218: the tryhard bot, starting at the boss with no weapon, sees
+    // all three rounds.
+    const on = playMimic('archipelago', 218, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.archipelago!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['supply-raid', 1], ['supply-raid', 2], ['supply-raid', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.drone)).toEqual(done.map((e) => rounds[e.run! - 1].swarms! * rounds[e.run! - 1].size!));
+    // The cargo runs and the scavengers are the event's own.
+    expect(done.map((e) => e.sent.scavenger)).toEqual(done.map(() => 6));
+    for (const kind of ['mothership', 'ballistic', 'cluster', 'guided'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(done.map((e) => fired(rounds[e.run! - 1], kind)));
+    for (const r of rounds) {
+      // One weapon in the round's first cargo run, supplies only in the
+      // second (the event's own: one for each weapon held, in both).
+      expect(r.cargoWeapons).toEqual([1, 0]);
+      // The swarms lead; the map's signature is in every round.
+      expect(r.swarms! * r.size!, 'the swarms lead').toBeGreaterThan(r.fire!.reduce((a, f) => a + (f.count ?? 1), 0));
+      expect(fired(r, 'mothership'), 'motherships').toBeGreaterThanOrEqual(2);
+      for (const f of r.fire ?? []) {
+        expect(MAPS.archipelago.bases[f.base!].kinds).toContain(f.kind);
+        // The motherships, shells and clusters come at the west end, the
+        // long reach (a mothership flies at the carrier, over the convoy).
+        if (f.kind === 'mothership' || f.kind === 'cluster') expect(f.base).toBe(0);
+        if (f.kind === 'ballistic' || f.kind === 'cluster') expect(f.aim).toBe('rear');
+      }
+    }
+    // More each round (a mothership is worth about four drones, a cluster
+    // three, a shell or a missile two).
+    const weight = rounds.map((r) => r.swarms! * r.size! + 4 * fired(r, 'mothership') + 3 * fired(r, 'cluster') + 2 * (fired(r, 'ballistic') + fired(r, 'guided')));
     for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
     roundLengths(done);
   }, 90_000);
@@ -1018,6 +1072,43 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(kinds(camp, 'armored').length).toBeLessThanOrEqual(foeCount(6));
     // The other signatures are one enemy each, as before.
     expect(MAP_SIGNATURE.island!.block).toBeUndefined();
+  });
+
+  it('the Archipelago (log v37): from wave 4 the wave\'s new enemies are drone motherships, out of the bases that launch them, each with a scavenger', () => {
+    const sig = MAP_SIGNATURE.archipelago!;
+    expect(sig).toMatchObject({ from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' });
+    expect(sig.foe).toBeUndefined();
+    const launchers = MAPS.archipelago.bases.map((b, i) => (b.kinds.includes('mothership') ? i : -1)).filter((i) => i >= 0);
+    expect(launchers).toEqual([0, 3]);
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('archipelago', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('archipelago', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const foes = (g: Game) => g.queue.filter((l) => l.at < 1e8 && isFoe(l.kind)).length;
+        if (w >= 4) {
+          expect(signatureOf('archipelago', w, on.enc!.setup), `wave ${w}`).toBeDefined();
+          // Every new enemy the wave draws is a mothership, on top of the
+          // map's own (its extras from wave 6; wave 6's encounter stands in
+          // for its one), each with a Scavenger Drone: no other new enemy.
+          const own = kinds(shared, 'mothership').length - (w === 6 ? 1 : 0);
+          expect(kinds(on, 'mothership').length, `wave ${w} seed ${seed}`).toBe(own + foeCount(w));
+          expect(kinds(on, 'scavenger').length, `wave ${w} seed ${seed}`).toBe(foeCount(w));
+          expect(foes(on), `wave ${w} seed ${seed}`).toBe(foeCount(w));
+          for (const l of kinds(on, 'mothership')) expect(launchers).toContain(l.base);
+          // Launch for launch, within the wave budget (rule w-budget).
+          expect(Math.abs(planned(on) / planned(shared) - 1), `wave ${w} seed ${seed}`).toBeLessThanOrEqual(0.2);
+        } else expect(signatureOf('archipelago', w, on.enc!.setup), `wave ${w}`).toBeUndefined();
+        expect(signatureOf('archipelago', w, shared.enc!.setup)).toBeUndefined();
+      }
+    // The campaign plays the planner as it was: the map's own motherships only.
+    const camp = createGame('archipelago', 1, 6);
+    expect(camp.enc).toBeFalsy();
+    expect(kinds(camp, 'mothership').length).toBe(1);
+    // The other signatures name a foe, and bring no escort.
+    expect(MAP_SIGNATURE.island!.kind).toBeUndefined();
+    expect(MAP_SIGNATURE.needle!.escort).toBeUndefined();
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {

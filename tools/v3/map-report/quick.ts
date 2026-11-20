@@ -1,6 +1,7 @@
 // A quick bot read while tuning a map (no fun pass, no heat map, no kits):
 //   npx vite-node tools/v3/map-report/quick.ts -- --map=island [--seeds=24]
 //       [--armory=player|latest|none] [--no-enc] [--tough] [--taste=a+b+c]
+//       [--from=900] (the first seed: --from=948 reads the next 48)
 // Prints won %, ships lost per wave (over the runs that reached it) and the
 // boss rounds, in a few lines. For tuning only: the bot report (report.ts)
 // is the record.
@@ -18,7 +19,8 @@ const a = opt('armory') ?? 'player';
 const armory = a === 'latest' ? LATEST_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const taste = opt('taste')?.split('+') as AbilityId[] | undefined;
 const tough = args.includes('--tough');
-const ds = Array.from({ length: n }, (_, k) => playReportRun(map, 900 + k, { armory, tough, noEncounters: args.includes('--no-enc'), ...(taste ? { taste } : {}) }).digest);
+const from = Number(opt('from') ?? 900);
+const ds = Array.from({ length: n }, (_, k) => playReportRun(map, from + k, { armory, tough, noEncounters: args.includes('--no-enc'), ...(taste ? { taste } : {}) }).digest);
 const W = 13;
 const reached = (w: number) => ds.filter((d) => d.reached.includes(w + 1));
 const lost = Array.from({ length: W }, (_, w) => {
