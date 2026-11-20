@@ -3220,7 +3220,6 @@ export class App {
     // Two columns that fit a phone held sideways: Audio and Playtest on the
     // left, Gameplay on the right.
     const play = this.setCard('Playtest', [notes]);
-    play.append(el('p', 'v3-set-foot', `Build ${__BUILD__} · log v${LOG_VERSION} · ${VERSION}`));
     const left = el('div', 'v3-set-col');
     left.append(this.setCard('Audio', this.soundRows()), play);
     const right = el('div', 'v3-set-col');
@@ -3268,7 +3267,9 @@ export class App {
     }
     const grid = el('div', 'v3-set-grid');
     grid.append(...cards);
-    this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu()), grid]);
+    // The build, as a readout in the head (it says which build a log is from).
+    const build = el('span', 'v3-set-build', `BUILD ${__BUILD__} · LOG v${LOG_VERSION}`);
+    this.showOverlay('v2-settings', [this.screenHead('Settings', () => this.showMenu(), build), grid]);
   }
 
   /** Settings in the App Store build: Sound (and haptics), and the game card:
