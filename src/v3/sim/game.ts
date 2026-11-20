@@ -6280,6 +6280,12 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
       th.from = r.id;
       if (r.enc) th.enc = r.enc;
       if (r.aim) aimBeat(g, th, r.aim);
+      // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
+      // cluster missiles, off a truck as off a silo, go for the locks.
+      else if (th.kind === 'cluster') {
+        const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
+        if (sig?.clusters) aimBeat(g, th, sig.clusters);
+      }
       r.fireT = gap;
     }
     return r.rounds.length === 0 && r.fireT <= 0;

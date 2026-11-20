@@ -4402,7 +4402,7 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   { subs: 2, helis: 1, heliHp: 4, block: 4, cols: 2, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 6, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 9, count: 1, base: 4, aim: 'lock' }] },
   { subs: 3, helis: 1, heliHp: 5, block: 5, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 5, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 8, count: 1, base: 4, aim: 'lock' }] },
-  { subs: 3, helis: 2, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }, { kind: 'cluster', at: 10, count: 1, base: 3, aim: 'lock' }] },
+  { subs: 3, helis: 2, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

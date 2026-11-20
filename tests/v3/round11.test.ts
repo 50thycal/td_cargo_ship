@@ -220,7 +220,9 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('needle')).toEqual({ convoy: 'tactical', encounters: true });
     // The Archipelago (docs/design/v3-ch2-archipelago.md): the same.
     expect(mapProduction('archipelago')).toEqual({ convoy: 'tactical', encounters: true });
-    expect(mapProduction('saltgate')).toEqual({ convoy: 'current', encounters: false });
+    // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the same.
+    expect(mapProduction('saltgate')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('battery')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold');
   });
