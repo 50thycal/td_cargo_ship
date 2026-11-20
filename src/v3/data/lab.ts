@@ -712,6 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'archipelago', log: 36, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },
   { map: 'behemoth', log: 34, tag: 'Polished', note: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike. Shield no help?' },
   { map: 'island', log: 34, tag: 'Polished', note: 'Attack helicopters off the island from wave 6, as in the boss. Does the map feel its own?' },

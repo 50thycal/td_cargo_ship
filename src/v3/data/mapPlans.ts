@@ -192,6 +192,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch2-archipelago.md
+  archipelago: {
+    problem: 'A chain of enemy islets lines the one lane: the islets, the gaps between them, the far shore and the water behind the convoy all fire, so threats come from several directions at once, and the west end, where the ships come in, is the longest reach from your carrier.',
+    // COUNTERS (filled from the combo sweep: docs/design/v3-ch2-archipelago.md, Kits).
+    counters: ['railgun', 'droneScreen', 'flak'],
+    offCounter: ['gunships', 'shield', 'frigate'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east down one lane under the chain of islets, coming in at the far west end, a long reach from the carrier, and delivering in the east beside it.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'The Supply Raid from every side: the event\'s cargo runs and scavengers, its drone swarms off the islets (6 of 6, 7 of 8, 7 of 8; the event sends 5 of 6 every round), and the signature with them: 2, 3, then 3 drone motherships off the west islet, with shells from the far shore and clusters off the west islet at the ships coming in, and a guided missile from the east islet at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

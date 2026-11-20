@@ -3565,7 +3565,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The shells as they climb, the swarm before it reaches the lane, the missile while it crosses.',
     succeeds: 'A close call at the west end in most runs; the losses are in the west, not by the carrier.',
     notes: {
-      sites: 'A submarine by your own shore in the west (500, 742), the west islet (swarm), the middle islet (guided), the east islet (swarm).',
+      sites: 'A submarine by your own shore in the west (500, 742), the west islet\'s silo (swarm), the middle islet\'s silo (guided), the east islet\'s silo (swarm).',
       target: 'The shells, the missile and the west swarm at the ship least far along or nearest its islet, the east swarm at any ship.',
       usesMap: 'Behind and in front of the long reach at once, in place of the wave\'s shells and guided missiles.',
     },
@@ -3584,7 +3584,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [7],
     role: 'escalate',
     name: 'A jet from the west',
-    callout: 'A jet down the lane',
+    callout: 'A jet from the west',
     premise: 'A strafer runs in from the west down the lane, a shell comes over the islets from the far shore, and the islets send swarms.',
     decision: 'A jet from the side the carrier is furthest from, while the islets keep firing.',
     counters: 'The jet as it comes in, the shell as it climbs, the swarms last.',
@@ -3615,7 +3615,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The shells as they climb, a salvo at a time; the swarms between.',
     succeeds: 'Most shells are shot down; the wave hurts but does not end the run.',
     notes: {
-      sites: 'Submarines in the west gap (565, 335) and the east gap (1035, 335), the west, middle and east islets (swarms).',
+      sites: 'Submarines in the west gap (565, 335) and the east gap (1035, 335), the silos on the west, middle and east islets (swarms).',
       target: 'The west gap\'s shells at the ship least far along, the east gap\'s at the ship nearest it, the swarms at any ship.',
       usesMap: 'The gaps between the islets, both at once, in place of the wave\'s shells and a heavy.',
     },
@@ -3635,24 +3635,23 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'A cluster over the west',
     callout: 'A cluster at the rear',
-    premise: 'A cluster missile off the west islet at the ships coming in, a swarm off the middle islet, and a periscope by your own shore in the east at the lead ship; swarms all wave.',
-    decision: 'The cluster splits over the ships furthest from you; the lead ship is under fire from behind at the same time.',
-    counters: 'The cluster as it climbs, before it splits; then the swarm and the shells.',
+    premise: 'A cluster missile off the west islet at the ships coming in, then a swarm off the middle islet; swarms from all three islets all wave.',
+    decision: 'The cluster splits over the ships furthest from you, while swarms come from every islet.',
+    counters: 'The cluster as it climbs, before it splits; then the swarms.',
     succeeds: 'A close call at the west end in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The west islet (a cluster, then a swarm), the middle islet (swarms), a submarine by your own shore in the east (1490, 742), the east islet (a swarm).',
-      target: 'The cluster at the ship least far along, the shells at the lead ship, the swarms at any ship.',
-      usesMap: 'Both ends and both sides, in place of the wave\'s shells, a cluster and a heavy.',
+      sites: 'The west islet\'s silo (a cluster, then a swarm), the middle islet\'s silo (swarms), the east islet\'s silo (a swarm).',
+      target: 'The cluster at the ship least far along, the swarms at any ship.',
+      usesMap: 'The long reach under the whole chain, in place of the wave\'s shells, a cluster and a heavy.',
     },
     beats: [
       { at: 0.45, kind: 'cluster', count: 1, from: base(0), aim: 'rear' },
       { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
-      { at: 0.45, plus: 3.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(5), aim: 'lead' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
       { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
     ],
-    replaces: { drones: 6, ballistic: 10, extras: { cluster: 1, heavy: 1 } },
+    replaces: { drones: 4, ballistic: 10, extras: { cluster: 1, heavy: 1 } },
   },
   {
     id: 'archipelago-run',
@@ -3666,7 +3665,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The shells and the cluster before they reach the west end, the swarms, the missile last.',
     succeeds: 'A close call at the west end or on the lead ship in most runs; the climax is the hardest wave.',
     notes: {
-      sites: 'A submarine by your own shore in the west (500, 742), the west islet (cluster), the middle and east islets (swarms, guided), the climax after the wave\'s own fire.',
+      sites: 'A submarine by your own shore in the west (500, 742), the west islet\'s silo (cluster, swarms), the middle and east islets\' silos (swarms, guided), the climax after the wave\'s own fire.',
       target: 'The shells and the cluster at the ship least far along, the missile at the lead ship, the swarms at any ship.',
       usesMap: 'The map\'s problem from every side, in place of the wave\'s shells, most guided missiles, a heavy, a cluster, a supersonic and a jet; the climax may reach the safe stretch.',
     },
@@ -4099,8 +4098,8 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
   { swarms: 6, size: 6, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 9, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 10, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
