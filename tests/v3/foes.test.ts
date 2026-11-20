@@ -285,18 +285,19 @@ describe('chapter 1: Home Waters', () => {
 });
 
 describe('chapter 2: The Narrows', () => {
-  it('an Attack Helicopter flies to its marked spot, settles, fires pairs, moves after two and leaves after six', () => {
+  it('an Attack Helicopter flies to its marked spot, firing pairs from the moment it is on screen (log v35), moves after two at its spot and leaves after six', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'attackHeli', base: -1 });
     const h = live(g, 'attackHeli')[0];
     expect(h.hp).toBe(THREATS.attackHeli.hp);
     const spot = { x: h.foe!.px, y: h.foe!.py };
-    run(g, 20, () => h.foe!.state === 2);
-    expect(Math.hypot(h.x - spot.x, h.y - spot.y)).toBeLessThan(14);
-    // Its pairs: one-hit missiles you can shoot.
-    run(g, 0.1);
+    // Its first pair before it reaches the spot: one-hit missiles you can shoot.
+    run(g, 20, () => live(g, 'heliRocket').length > 0);
     const rockets = live(g, 'heliRocket');
     expect(rockets).toHaveLength(FOE.attackHeli.pair);
+    expect(h.foe!.state).toBeLessThan(2);
+    run(g, 20, () => h.foe!.state === 2);
+    expect(Math.hypot(h.x - spot.x, h.y - spot.y)).toBeLessThan(14);
     expect(rockets.every((r) => r.hp === 1 && r.parent === 'attackHeli')).toBe(true);
     // After two pairs it moves somewhere else.
     run(g, 20, () => h.foe!.state === 0);
@@ -399,8 +400,13 @@ describe('chapter 2: The Narrows', () => {
     const age = p.age;
     run(g, 1);
     expect(p.age).toBe(age);
-    g.ammo = 6;
-    tap(g, sc.x, sc.y, 40);
+    // Three hits since log v35 (the 2026-11-20 playtest).
+    expect(sc.hp).toBe(3);
+    for (let k = 0; k < 3 && !sc.dead; k++) {
+      g.ammo = 6;
+      tap(g, sc.x, sc.y, 40);
+      run(g, 1.5, () => sc.dead);
+    }
     run(g, 3, () => sc.dead);
     expect(g.kills.scavenger).toBe(1);
     expect(pickupLocked(g, p)).toBe(false);

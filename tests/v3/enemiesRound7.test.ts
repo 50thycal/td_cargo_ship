@@ -107,8 +107,10 @@ describe('Torpedo Sub: "the torpedo sub will fire three to five, and then someti
       for (const spread of spreads(seed, 12)) {
         total += 1;
         counts.add(spread.length);
-        expect(spread.length).toBeGreaterThanOrEqual(3);
-        expect(spread.length).toBeLessThanOrEqual(5);
+        // (Log v35: the sub can't be hit, so it fires FOE.torpedoSub.spread:
+        // two, was three to five.)
+        expect(spread.length).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
+        expect(spread.length).toBeLessThanOrEqual(FOE.torpedoSub.spread[1]);
         // All from the sub. (Round 8: one by one, each at a ship, in place
         // of the fan: enemiesRound8.test.ts.)
         expect(new Set(spread.map((t) => `${t.foe!.sx},${t.foe!.sy}`)).size).toBe(1);
@@ -121,13 +123,13 @@ describe('Torpedo Sub: "the torpedo sub will fire three to five, and then someti
         }
       }
     }
-    expect([...counts].sort()).toEqual([3, 4, 5]);
+    expect([...counts].sort()).toEqual(Array.from({ length: FOE.torpedoSub.spread[1] - FOE.torpedoSub.spread[0] + 1 }, (_, k) => FOE.torpedoSub.spread[0] + k));
     expect(FOE.torpedoSub.fastChance).toBe(0.25);
     expect(fastSubs / total).toBeGreaterThan(0.1);
     expect(fastSubs / total).toBeLessThan(0.45);
   });
 
-  it('it fires later than the lone torpedo did (3.0 s up from round 8; 2.4 in round 7), and a sub killed before then fires nothing', () => {
+  it('it fires later than the lone torpedo did (3.0 s up from round 8; 2.4 in round 7); since log v35 it can\'t be killed, so it always fires', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
     run(g, FOE.torpedoSub.warn + 0.05);
@@ -136,8 +138,9 @@ describe('Torpedo Sub: "the torpedo sub will fire three to five, and then someti
     run(g, 2.8);
     expect(live(g, 'torpedo')).toHaveLength(0);
     damageThreat(g, sub, 99);
+    expect(sub.dead).toBe(false);
     run(g, 2);
-    expect(live(g, 'torpedo')).toHaveLength(0);
+    expect(live(g, 'torpedo').length).toBeGreaterThan(0);
   });
   it('the same seed fires the same spreads, and a Free Play run with the sub replays exactly from its log', () => {
     const a = spreads(5, 6).map((s) => s.map((t) => [t.heading, t.speed, t.foe!.fast ?? 0]));

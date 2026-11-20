@@ -87,8 +87,8 @@ describe('boss rounds: what the player reads for the map\'s ending', () => {
     const card = labCard('map-strait')!;
     const s = { came: 0, killed: 0, harm: 0, sunk: 0, early: 0, firstShot: [], weaponKills: 0, clean: 2, held: 1, broken: 0 } as never;
     expect(labCountText(card, s, 9, 13, { plays: 'full', wave: 10 })).toBe('full map · wave 10 of 10');
-    expect(labCountText(card, s, 10, 13, { plays: 'full', wave: EVENT_WAVE })).toBe('full map · boss round 1/3');
-    expect(labCountText(card, s, 12, 13, { plays: 'full', wave: 13 })).toBe('full map · boss round 3/3');
+    expect(labCountText(card, s, 10, 13, { plays: 'full', wave: EVENT_WAVE })).toBe('full map · boss round 1 of 3');
+    expect(labCountText(card, s, 12, 13, { plays: 'full', wave: 13 })).toBe('full map · boss round 3 of 3');
     expect(evidenceLines(card, s, 13, 'full')[1]).toBe('Boss rounds: Clean 2 · Held 1 · Broken 0');
     expect(MAP_CARD_PLAYS).toBe('Full map: waves 1–10 and 3 boss rounds');
   });

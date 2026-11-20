@@ -102,8 +102,8 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
       for (let n = 0; n < 6; n++) {
         const shots = salvo(g);
         counts.add(shots.length);
-        expect(shots.length).toBeGreaterThanOrEqual(3);
-        expect(shots.length).toBeLessThanOrEqual(5);
+        expect(shots.length).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
+        expect(shots.length).toBeLessThanOrEqual(FOE.torpedoSub.spread[1]);
         for (let k = 1; k < shots.length; k++) expect(shots[k].t - shots[k - 1].t).toBeCloseTo(FOE.torpedoSub.stagger, 1);
         const ids = shots.map((s) => s.th.target);
         for (const id of ids) expect(g.ships.some((s) => s.id === id) || id >= 0).toBe(true);
@@ -121,10 +121,10 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
         if (g.ships.length >= 3) expect(distinct.size).toBeGreaterThanOrEqual(2);
       }
     }
-    expect([...counts].sort()).toEqual([3, 4, 5]);
+    expect([...counts].sort()).toEqual(Array.from({ length: FOE.torpedoSub.spread[1] - FOE.torpedoSub.spread[0] + 1 }, (_, k) => FOE.torpedoSub.spread[0] + k));
   });
 
-  it('it fires its first 3 s after it comes up; killed part way, the rest don\'t go', () => {
+  it('it fires its first 3 s after it comes up; it can\'t be killed part way (log v35), so the rest go', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
     run(g, FOE.torpedoSub.warn + 0.05);
@@ -134,8 +134,9 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
     run(g, sub.foe!.fireAt! + 0.1);
     expect(live(g, 'torpedo')).toHaveLength(1);
     damageThreat(g, sub, 99);
+    expect(sub.dead).toBe(false);
     run(g, 3);
-    expect(g.threats.filter((t) => t.kind === 'torpedo').length).toBeLessThanOrEqual(1);
+    expect(g.threats.filter((t) => t.kind === 'torpedo').length).toBe(FOE.torpedoSub.spread[0]);
   });
 
   it('no torpedo ever runs onto land, on any map (subs as in the waves, the Wolf Pack and Run the Canal)', () => {
