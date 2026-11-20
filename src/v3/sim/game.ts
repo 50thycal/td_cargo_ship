@@ -1285,7 +1285,9 @@ function startWave(g: Game): void {
       }
       const base = pickBase(g, u.kind, rng);
       if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
-      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : {};
+      // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
+      // cluster missiles go for the ships held at the locks.
+      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : {};
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
     }
   });
@@ -1491,6 +1493,14 @@ function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
         : aim === 'rear'
           ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
           : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
+  // Chapter 2's Saltgate Canal (log v38): the ship held at a lock, in its
+  // chamber or waiting at its shut entry gate, the lock nearest the
+  // launcher first; no ship held there, the ship nearest the launcher.
+  if (aim === 'lock') {
+    const held = pool.filter((s) => atLock(g, s));
+    const near = (a: Ship, b: Ship) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a);
+    pick = held.length ? held.reduce(near) : pool.reduce(near);
+  }
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
     const near = mouth === undefined ? [] : pool.filter((s) => s.x >= mouth - 220 && s.x <= mouth + 260);
@@ -1501,6 +1511,13 @@ function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   const tp = targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
 }
+
+/** Is a ship held at a lock (Saltgate Canal): in a lock's chamber, or in
+ *  the queue short of its entry gate (within LOCK_QUEUE px of it)? */
+export function atLock(g: Game, s: Ship): boolean {
+  return (g.map.locks ?? []).some((l) => s.x >= l.x0 - LOCK_QUEUE && s.x <= l.x1);
+}
+const LOCK_QUEUE = 120;
 
 /** A count shortened with the wave, keeping at least one of anything the
  *  full wave has, so every threat still shows up in a dev short wave. */
@@ -6263,6 +6280,12 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
       th.from = r.id;
       if (r.enc) th.enc = r.enc;
       if (r.aim) aimBeat(g, th, r.aim);
+      // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
+      // cluster missiles, off a truck as off a silo, go for the locks.
+      else if (th.kind === 'cluster') {
+        const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
+        if (sig?.clusters) aimBeat(g, th, sig.clusters);
+      }
       r.fireT = gap;
     }
     return r.rounds.length === 0 && r.fireT <= 0;

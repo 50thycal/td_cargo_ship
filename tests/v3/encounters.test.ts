@@ -156,7 +156,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -185,6 +185,11 @@ describe('a campaign run has no encounter layer', () => {
       'archipelago-west-islet', 'archipelago-gap', 'archipelago-front-back', 'archipelago-islet-chain', 'archipelago-both-ends',
       'archipelago-behind', 'archipelago-strafe', 'archipelago-both-gaps', 'archipelago-cluster', 'archipelago-run',
     ]);
+    // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the same.
+    expect(arc('saltgate').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates',
+      'saltgate-periscope', 'saltgate-strafe', 'saltgate-both-chambers', 'saltgate-gate-by-gate', 'saltgate-climax',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -200,8 +205,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('saltgate')).toBe(false);
-    expect(encountersFor('saltgate', 5)).toEqual([]);
+    expect(hasEncounters('battery')).toBe(false);
+    expect(encountersFor('battery', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -660,7 +665,37 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate'], e.id).toContain(e.map);
+  });
+
+  // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
+  // 'lock', the ship held at the lock nearest the launcher.
+  it('Saltgate Canal: a launch aimed at the locks goes for a ship held at the lock nearest its silo; the locks are the stake in nine waves of ten', () => {
+    const locks = MAPS.saltgate.locks!;
+    const held = (s: { x: number }) => locks.some((l) => s.x >= l.x0 - 120 && s.x <= l.x1);
+    // Wave 3: a guided missile off the silo over the west lock, as ships
+    // wait in it.
+    const { g, out } = aimed('saltgate', 3, 'saltgate-both-locks');
+    const silo = g.map.bases[1];
+    const missile = out.find((o) => o.th.kind === 'guided')!;
+    expect(missile).toBeDefined();
+    const target = missile.ships.find((s) => s.id === missile.th.target)!;
+    expect(held(target), `target at x ${target.x.toFixed(0)}`).toBe(true);
+    // The nearest held ship to the silo: in the west lock, under it.
+    expect(d(target, silo)).toBeCloseTo(Math.min(...missile.ships.filter(held).map((s) => d(s, silo))), 3);
+    expect(target.x).toBeLessThan(locks[0].x1 + 1);
+    // With no ship held at a lock, the ship nearest the launcher.
+    const early = aimed('saltgate', 1, 'saltgate-first-lock', (gg) => {
+      gg.map = { ...gg.map, locks: [] };
+    });
+    for (const { th, ships } of early.out) {
+      const t = ships.find((s) => s.id === th.target)!;
+      expect(d(t, early.g.map.bases[0])).toBeCloseTo(Math.min(...ships.map((s) => d(s, early.g.map.bases[0]))), 3);
+    }
+    // Every wave but the jet's (wave 7, down the canal's line of held ships).
+    const at = arc('saltgate').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'lock'))).map((a) => a.wave);
+    expect(at).toEqual([1, 2, 3, 4, 5, 6, 8, 9, 10]);
+    expect(LAYER_MAPS.filter((m) => m !== 'saltgate').some((m) => ENCOUNTERS.some((e) => e.map === m && e.beats.some((b) => b.aim === 'lock')))).toBe(false);
   });
 
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
@@ -984,6 +1019,50 @@ describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid fr
   }, 90_000);
 });
 
+describe('Saltgate Canal\'s boss rounds (log v38, MAP_BOSS): Run the Canal rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('more subs, gunships, armored drones and swarms each round, with clusters and missiles off the lock silos at the ships held in the locks', () => {
+    const off = playMimic('saltgate', 208, opts);
+    const old = playMimic('saltgate', 208, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own 2 subs, a gunship, a block of 4 and
+    // a swarm of 5, every round.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    expect(off.game.eventLog.map((e) => [e.id, e.sent.torpedoSub, e.sent.attackHeli, e.sent.armored, e.sent.drone, e.sent.cluster ?? 0])).toEqual([
+      ['run-the-canal', 2, 1, 4, 5, 0],
+      ['run-the-canal', 2, 1, 4, 5, 0],
+      ['run-the-canal', 2, 1, 4, 5, 0],
+    ]);
+    // Seed 208: the tryhard bot, starting at the boss with no weapon, sees
+    // all three rounds through.
+    const on = playMimic('saltgate', 208, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.saltgate!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['run-the-canal', 1], ['run-the-canal', 2], ['run-the-canal', 3]]);
+    const done = on.game.eventLog;
+    expect(done.map((e) => e.sent.torpedoSub)).toEqual(rounds.map((r) => r.subs));
+    expect(done.map((e) => e.sent.attackHeli)).toEqual(rounds.map((r) => r.helis));
+    expect(done.map((e) => e.sent.armored)).toEqual(rounds.map((r) => r.block));
+    expect(done.map((e) => e.sent.drone)).toEqual(rounds.map((r) => r.swarms! * r.size!));
+    for (const kind of ['cluster', 'guided'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(rounds.map((r) => fired(r, kind)));
+    for (const r of rounds) {
+      // The event's phases are all there, each at least the event's own.
+      expect(r.subs!).toBeGreaterThanOrEqual(2);
+      expect(r.helis!).toBeGreaterThanOrEqual(1);
+      expect(r.block!).toBeGreaterThanOrEqual(4);
+      for (const f of r.fire ?? []) {
+        expect(MAPS.saltgate.bases[f.base!].kinds).toContain(f.kind);
+        expect(f.aim).toBe('lock');
+      }
+    }
+    // More each round (a sub is worth about four drones, a gunship hit,
+    // an armored drone or a cluster two, a guided missile two).
+    const weight = rounds.map((r) => r.swarms! * r.size! + 4 * r.subs! + r.helis! * r.heliHp! + 2 * r.block! + 2 * (fired(r, 'cluster') + fired(r, 'guided')));
+    for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+    roundLengths(done);
+  }, 90_000);
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -1109,6 +1188,63 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     // The other signatures name a foe, and bring no escort.
     expect(MAP_SIGNATURE.island!.kind).toBeUndefined();
     expect(MAP_SIGNATURE.needle!.escort).toBeUndefined();
+  });
+
+  it('Saltgate Canal (log v38): from wave 4 a strike on the locks: half the wave\'s new enemies are torpedo subs, and its cluster missiles go for the ships held in a lock', () => {
+    const sig = MAP_SIGNATURE.saltgate!;
+    expect(sig).toMatchObject({ from: 4, foe: 'torpedoSub', foeShare: 0.5, clusters: 'lock' });
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('saltgate', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('saltgate', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('saltgate', seed, w);
+        if (w >= 4) {
+          expect(signatureOf('saltgate', w, on.enc!.setup), `wave ${w}`).toBeDefined();
+          // At least half the wave's new enemies (rounded up) are torpedo
+          // subs; the rest are drawn as ever (a sub among them now and then).
+          expect(kinds(on, 'torpedoSub').length, `wave ${w} seed ${seed}`).toBeGreaterThanOrEqual(Math.ceil(foeCount(w) / 2));
+          // The wave's own clusters off a silo fly at the locks; an
+          // encounter's keep their own aim.
+          for (const l of kinds(on, 'cluster').filter((x) => !x.enc)) expect(l.aim, `wave ${w}`).toBe('lock');
+          // Launch for launch, within the wave budget (rule w-budget).
+          expect(Math.abs(planned(on) / planned(shared) - 1), `wave ${w} seed ${seed}`).toBeLessThanOrEqual(0.2);
+        } else expect(signatureOf('saltgate', w, on.enc!.setup), `wave ${w}`).toBeUndefined();
+        expect(signatureOf('saltgate', w, shared.enc!.setup)).toBeUndefined();
+        // Lab only: the campaign's and the shared wave's clusters keep no aim.
+        for (const l of [...kinds(camp, 'cluster'), ...kinds(shared, 'cluster')]) expect(l.aim).toBeUndefined();
+        expect(camp.enc).toBeFalsy();
+      }
+    // Played (nobody shooting, no ship sunk, so the convoy reaches the
+    // locks): every cluster of the wave's own, off a silo or a truck, goes
+    // for a ship held at a lock when one is held there.
+    const locks = MAPS.saltgate.locks!;
+    const held = (s: { x: number }) => locks.some((l) => s.x >= l.x0 - 120 && s.x <= l.x1);
+    let seen = 0;
+    for (const w of [7, 9, 10])
+      for (const seed of [1, 2, 3]) {
+        const g = createGame('saltgate', seed, w);
+        applyEncounters(g, VER('v1'));
+        g.tempo = { ...g.tempo, lossLimit: 999 };
+        g.carrierHp = 999;
+        const ids = new Set<number>();
+        for (let i = 0; i < 80 / DT && g.phase === 'wave' && g.wave === w; i++) {
+          for (const s of g.ships) s.hp = 99;
+          step(g, DT);
+          for (const th of g.threats)
+            if (th.kind === 'cluster' && !th.enc && !ids.has(th.id)) {
+              ids.add(th.id);
+              if (!g.ships.some(held)) continue;
+              const t = g.ships.find((s) => s.id === th.target);
+              expect(t && held(t), `wave ${w} seed ${seed}: cluster ${th.id} at a held ship`).toBe(true);
+              seen++;
+            }
+        }
+      }
+    expect(seen).toBeGreaterThan(0);
+    // The other signatures leave the clusters alone.
+    for (const m of ['island', 'behemoth', 'needle', 'archipelago'] as const) expect(MAP_SIGNATURE[m]!.clusters, m).toBeUndefined();
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
