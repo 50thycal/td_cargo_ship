@@ -6,6 +6,34 @@
 
 You asked: "Are we running bot tests on all possible combination of the weapon load outs?? ... we should do that same with the armory too." This is that sweep: every weapon on its own, every pair, the best pairs with every third weapon, the best and worst triples again on more seeds, and the Armory builds. The "you" bot played about 11,000 runs on the Strait, the Gauntlet, Harbor Mouth, Kesh and Marrow. It was first run on game version 28, then run again in full on version 29 (Marrow's slowing radar, Kesh's harder Drone Storm, the calm before every boss). Everything below is version 29.
 
+## Boosts re-judged (2026-11-20, game version 31)
+
+You chose "Teach the bot to use boosts like you first, then decide". The bot now plays boosts the way you do (docs/design/v3-bot-refit.md, "Boosts"). What the replays of your logs showed:
+- The bot was not late with boosts. It was early.
+- What it missed is that **under Overdrive you fire about 1.8× your usual shots a second**, where the bot fired 1.25×, and that you take Overdrive in a lull, not mid-fight.
+
+The bot now does both. Then Overdrive and every boost weapon were played again on game version 31, before (`you-p2`) and after (`you`). These numbers are version 31, so they do not compare with the version 29 tables below.
+
+| Ships lost a run, all 13 waves | Before | After | Rank alone, after |
+| --- | --- | --- | --- |
+| **Overdrive alone**, chapter 1's five maps, 12 seeds | 10.8 (won 38%) | 10.6 (35%) | 12th of 15 |
+| **Overdrive alone**, 24 fresh seeds a map (`check-one.ts`) | 11.9 | 11.5 | |
+| Overdrive alone, the Island and the Behemoth Run | 14.2 (13%) | 12.3 (25%) | 14th of 19 |
+| **Overdrive + Scattergun + Supply Run**, 24 fresh seeds a map | 11.1 | **9.9** | |
+| Supply Run alone, chapter 1 / chapter 2 | 13.9 / 17.1 | unchanged | 15th of 15 / 18th of 19 |
+| Shield alone, chapter 2 | 8.5 | unchanged | 2nd of 19 |
+| Full Steam alone, chapter 2 | 14.4 | unchanged | 17th of 19 |
+| _For scale: Air Strike alone, chapter 1; the plain gun; the bot drafting for itself_ | 7.0; 18.2; 10.6 | | |
+
+Overdrive alone, 24 fresh seeds a map, by map (before → after): the Strait 15.7 → 15.9, the Gauntlet 10.2 → 10.5, Harbor 15.7 → 14.3, Kesh 12.2 → 11.5, Marrow 5.8 → 5.4. Your kit (Overdrive + Scattergun + Supply Run): the Strait 13.9 → 11.1, the Gauntlet 8.9 → 9.0, Harbor 14.3 → 13.2, Kesh 11.9 → 10.9, Marrow 6.7 → 5.2.
+
+- **Overdrive alone barely moves** (0.2–0.4 of a ship, inside the noise). Playing it your way does not rescue it, so the bot was not the reason it rated low.
+- **Your kit gains 1.2 ships a run.** Free rounds fired freely help most with a Scattergun loaded. That is still behind the best kits (7–8). It does not explain your two clean wins: those were on version 24's Strait and Harbor, two runs against 48 bot runs a map here.
+- **Verdict: Overdrive still needs a buff.** It is 12th of 15 alone, about 3.5 ships behind the best weapon, and adds little to a kit unless a spray weapon is loaded.
+- Supply Run, Shield and Full Steam play as before. Waiting for a lull hurt them in a first try, and your logs showed no wait for Supply Run.
+
+### The version 29 sweep
+
 **The short version**
 - **No kit makes a map trivial.**
   - The triples stage flagged one: Shrapnel Shell + Scattergun + Flak Cannon on Marrow (4 seeds: won all, no ship lost in half). On 16 seeds (`tools/v3/combo-sweep/check-one.ts`) it lost 5.6 ships a run, won 81%, and lost no ship in only 2 of 16.
@@ -40,7 +68,7 @@ You asked: "Are we running bot tests on all possible combination of the weapon l
 
 **Overdrive + Scattergun + Supply Run.** The bot still does not find this kit strong: 19th of the 20 confirmed triples, 11.7 ships a run, 28% won, worst on the Strait (15.4).
 
-That is the opposite of what you found: it won both runs you played with it, with no boss losses. Overdrive and Supply Run are both boosts, and the bot's weak spot is how it plays boosts and pickups (docs/design/v3-bot-refit.md: you load a Scattergun in the first second of a boss round, and the bot reaches the Supply Run late). So the likely reading is that **you get far more out of this kit than the bot does**, not that the kit is weak. Before anyone tunes it, replay one of your Overdrive + Scattergun + Supply Run logs next to the bot (the `playtest-fidelity` check). The sweep cannot settle it.
+That is the opposite of what you found: it won both runs you played with it, with no boss losses. Overdrive and Supply Run are both boosts, and the bot's weak spot is how it plays boosts and pickups (docs/design/v3-bot-refit.md: you load a Scattergun in the first second of a boss round, and the bot reaches the Supply Run late). So the likely reading is that **you get far more out of this kit than the bot does**, not that the kit is weak. Before anyone tunes it, replay one of your Overdrive + Scattergun + Supply Run logs next to the bot (the `playtest-fidelity` check). The sweep cannot settle it. *(Done 2026-11-20: see "Boosts re-judged" above. The bot now plays Overdrive your way and the kit gains about a ship, but it stays behind the best kits.)*
 
 **The counter kits (rule `m-kits`).** The rule asks that a map's counter kit does clearly better than other kits. It still fails on Harbor Mouth and Kesh.
 - Their counter kit (Overdrive + Railgun + Focus) lost 17.3 and 16.8 ships a run.
@@ -55,7 +83,7 @@ On Marrow the counter kit is level with the bot's own draft (6.3 each).
 - Your usual build uses two of the three weakest. With the counter kit it loses 12.7 ships a run; Wide Warhead + Armor Plating + Stockpile loses 6.0.
 
 ### Proposals for you (nothing here is applied)
-1. **Overdrive.** Alone it ties Seeker Pod at 11.7 ships a run, ahead of only Supply Run and the Laser Cutter, and is in two of the four worst triples. First check whether the bot plays it as you do (above). If the bot is right, give Overdrive a stronger level 1 or a longer run.
+1. **Overdrive.** Alone it ties Seeker Pod at 11.7 ships a run, ahead of only Supply Run and the Laser Cutter, and is in two of the four worst triples. The bot now plays it as you do (above), and it is still weak: give Overdrive a stronger level 1 or a longer run.
 2. **Seeker Pod and Tesla Arc** are the weakest shooting weapons on their own: about 11–12 ships a run alone, against 8.4–9.4 for the best. A small buff to either would widen the good choices.
 3. **Harbor Mouth and Kesh need a new counter kit** (rule `m-kits`): one the chapter 1 draft can deal (no Focus) and that beats the bot's own draft. Candidates from the sweep:
    - Harbor Mouth: Point Defense + Railgun + Supply Run, the best there.
@@ -68,7 +96,7 @@ On Marrow the counter kit is level with the bot's own draft (6.3 each).
 7. **Marrow and Kesh after version 29.** Marrow now plays easy for the bot (83% won drafting for itself, above the chapter's 50–75% aim) and Kesh hard (8%). Wait for your replay before touching either: the bot read your Marrow twice as hard as you played it, and boss rounds harder too.
 
 ### How far to trust it
-- The bot is not you. It fits your play well on ordinary waves but is weaker with boosts and fast pickups. That matters most for Overdrive, Supply Run and the boss rounds.
+- The bot is not you. It fits your play well on ordinary waves and (since 2026-11-20) plays Overdrive your way, but it grabs pickups faster than you and reads the boss rounds harder.
 - A forced loadout is the best case: every draft deals the next card of the kit. A real draft is luckier for some kits than others.
 - Seeds are few in the middle stages: 6 a map for pairs and 4 for triples. A pair or triple a ship or so apart is a tie. The confirm stage, at 12 seeds, is the one to quote.
 - The fun measure here is tension only (rises and calms each second). It barely tells the loadouts apart. "Saves", the measure that forks a run, cannot be read on a forced-draft run: its log does not replay.
