@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-19',
-  headline: 'Chapter 2 has started: The Island and The Behemoth Run are rebuilt (#180, play log v31), and chapter 1’s polish is live. Next for you: replay Kesh and Marrow, then play the two new maps. Their questions are in Needs you: the Behemoth’s boss against its win rate, how the new enemies debut, and the Gunship Pair.',
+  headline: 'Your answers are in and being built: Marrow’s tower gets more hit points, each Narrows enemy gets its own debut wave on The Island, no more nudging toward counter kits, the bot learns to use boosts like you (then Overdrive is judged again), and a check of whether each map has its own best combos. Also coming: a review page for the full Armory brainstorm. Your play of Kesh, Marrow, The Island and The Behemoth Run decides the Behemoth boss and Kesh’s early losses.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -114,6 +114,8 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'The Armory brainstorm is ready on its own page (https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N). Headline: keep all 11 upgrades, change five (the three weak ones lifted, Deep Magazine’s empty level 3, and the Armory’s Point Defense renamed Deck Guns so it doesn’t clash with the weapon). The lift measured: Quick Reload 4.5 → 6.7 ships saved a run, Stockpile 3.1 → 5.8, Long Loads 3.3 → 5.2 (it now refills your rack on every pickup, because longer loads did nothing); the middle of the Armory is 7–8. Unlocks: Scrap, 40 a wave and more for clears, spent on the cards you choose; your three cards max in about 8 runs instead of 20. Also started: a UI overhaul, so the game opens straight into V3 with a carrier command-room look, and the Test Lab puts “Ready to test” first.' },
+    { date: '2026-11-19', what: 'Your round 8 answers filed (review-2026-11-19-r8.json). Being built now, three in parallel: (1) Marrow’s radar tower 4 → about 6 hit points, each Narrows enemy its own light debut wave on The Island, and anything in the game that nudges you toward a counter kit removed; (2) the bot taught to fire boosts like you from your logs, then Overdrive and the other boosts re-measured, plus a check of whether each map has its own best combos (if one kit tops every map, the maps ask the same question); (3) the Armory brainstorm as a review page: every upgrade keep or cut, categories, XP earned in a run and spent at the end, three other systems, new upgrades, and the lift for the weak ones. Waiting for your play: the Behemoth’s boss and Kesh’s early losses.' },
     { date: '2026-11-19', what: 'Chapter 2 started (#180, play log v31): The Island and The Behemoth Run rebuilt. The Island: the enemy island beside both lanes is the problem; its two silos fire with almost no warning, a third of the ships take the fast north lane under the far shore, and all four Narrows enemies debut here. The Behemoth Run: a slow supertanker sails under the enemy shore and most aimed fire goes for it (sunk: 3 ships lost; home: every ship repaired and a weapon drop). On these maps the bot has no runs of yours yet, so its bias is unknown: your first runs calibrate it. Uncertain: the Behemoth’s boss rounds swing between 0 and 3+ (the tanker counts three), its round 1 is light, and its wave 10 often isn’t the hardest because the tanker is already home.' },
     { date: '2026-11-19', what: 'Merged #178, the chapter 1 polish (play log v30). On your setup the bot’s Kesh no longer spikes on wave 7 and Marrow’s wave 10 drops from 1.43 to 0.78 ships, with the losses spread over waves 6–9. Two things it did not fully reach: with your Armory, Kesh’s waves 1–5 are tense but still rarely sink a ship (Point Defense 4 and Aegis eat the drones and shells), and on your Marrow replay the radar tower fell on wave 4, which is a big part of why the end hit so hard. Both are questions in Needs you. The reference maps have a milder flat start too (waves 1–2 quiet everywhere) but they climb without a cliff, so they stay as they are.' },
     { date: '2026-11-19', what: 'Your v29 replays of Kesh and Marrow, and what I take from them. (1) The fixes worked where they aimed: Kesh’s boss cost you 1, 3, 0 ships, up from 0, 0, 1, and you rated it 3 instead of “way too easy”. (2) The real problem is the shape: on both maps you lost nothing for 6–9 waves and rated waves 1–4 fun 1, intensity 1, then lost everything in the last 2–4 waves (Marrow 1, 1, 2, 2 and out on wave 10; Kesh 3 on wave 10). That is a cliff, and it is why fun dropped from 4 to 3. The fix is earlier pressure, not more at the end: a real threat by wave 3 and a steady rise after, so wave 10 is the top of a climb. (3) Your “Kesh is too easy” tags and note this time were the previous run’s: the verdict sheet carried them over. Fixed next build; I counted only your new scores. (4) Your boss card sequence is going in as you described it. (5) Loaded weapons keep clearing at a wave’s end, as you chose.' },
@@ -142,42 +144,16 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
+    id: 'r9-armory-page',
+    kind: 'item',
+    title: 'Mark the Armory overhaul page',
+    text: 'Your full Armory brainstorm is on its own review page: https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N. Every upgrade (keep / change / cut), the measured lift for Quick Reload, Stockpile and Long Loads (not applied yet), Scrap earned in a run and spent at the end (survivor.io style), three other systems (Refit Points, Commendations, Branching Levels), three new upgrades, and 10 questions. Approve here once you’ve marked it.',
+  },
+  {
     id: 'r8-play-ch2',
     kind: 'item',
     title: 'Play The Island and The Behemoth Run',
     text: 'In the Test Lab (live now, #180 merged). The Island: does the island feel like the problem, do waves 1–5 threaten you without a cliff later, do the Gunship Wall’s rounds rise? The Behemoth: does guarding the tanker feel like a real choice against guarding the convoy; is the Wolf Pack’s round 1 too light and are rounds 2–3 too swingy? Your runs also calibrate the bot for chapter 2. Approve when played (with a note), or Change.',
-  },
-  {
-    id: 'r8-behemoth-boss',
-    kind: 'question',
-    title: 'The Behemoth Run: boss strength against win rate',
-    text: 'At the boss target (about 1.5 / 2 / 2.5 ships a round) the three rounds add up to the 6 ships you can lose after the convoy restore, so the bot wins only about 42% (aim 50–70%). Its waves are fine; it is the boss.',
-    options: [
-      'Ease rounds 2–3 to about 1.5 / 1.8 for around 55% won (recommended: a run you play well should usually survive the boss)',
-      'Keep the boss at target and accept about 40% for the bot',
-      'Decide after I play it',
-    ],
-  },
-  {
-    id: 'r8-ch2-debuts',
-    kind: 'question',
-    title: 'Chapter 2’s new enemies: how should they debut?',
-    text: 'All four Narrows enemies arrive on The Island, one a wave from wave 2. Only the Attack Helicopter gets a wave with nothing else but drones; the others arrive mixed into a normal wave. Each shows “NEW · The Narrows” on its first banner.',
-    options: [
-      'Give each new enemy its own light debut wave on The Island (recommended: your note was that each new enemy should have its own debut)',
-      'Keep it as it is',
-      'Spread them across chapter 2’s maps (one or two per map)',
-    ],
-  },
-  {
-    id: 'r8-gunships',
-    kind: 'question',
-    title: 'The Gunship Pair on The Island',
-    text: 'Alone it loses 6.6 ships a run and wins 92% for the bot: the best single weapon on any map swept so far, though not “trivial” by the sweep’s bar. It is part of the Island’s counter kit.',
-    options: [
-      'Leave it; trim it only if it feels like it solves the map when you play (recommended)',
-      'Trim it a little now',
-    ],
   },
   {
     id: 'r8-replay-ch1',
@@ -185,61 +161,83 @@ export const NEEDS = [
     title: 'Replay Kesh and Marrow (play log v30 or later)',
     text: 'In the Test Lab (live now, #178 merged). Look for: a real threat by wave 3, a steady rise with no cliff at waves 9–10, the four boss intro cards, and a blank verdict sheet. Use “Rate wave N” at the weapon picks: waves 1–4 are the ones to judge. Approve when played (with a note), or Change if the climb still feels wrong.',
   },
-  {
-    id: 'r8-early-losses',
-    kind: 'question',
-    title: 'Kesh’s early waves: pressure, or real losses?',
-    text: 'Kesh now throws a real threat at you by wave 3, but with your Armory (Point Defense 4, Aegis) the bot playing your setup sinks almost nothing before wave 6 (0.04 ships, against a 0.3–0.6 target). Going further means breaking the “move at most 15% of a wave” budget.',
-    options: [
-      'Pressure without losses is fine: a scare, not a sinking (recommended: your early-wave note was about boredom, not losses; your replay decides)',
-      'Waves 3–5 should cost a ship now and then: push harder',
-      'Decide after my replay',
-    ],
-  },
-  {
-    id: 'r8-marrow-tower',
-    kind: 'question',
-    title: 'Marrow’s radar tower: keep it fragile?',
-    text: 'On your v29 Marrow run the tower fell on wave 4; the bot loses it around wave 7. Once it falls the slow-down field is gone, which is a big part of why waves 7–10 hit so hard. It takes 4 hits today.',
-    options: [
-      'Give it more hit points (about 6) so it usually lasts into the late waves (recommended: the field you asked for should matter when it counts)',
-      'Keep it fragile: protecting it is the job',
-      'Let it repair between waves',
-    ],
-  },
-  {
-    id: 'r7-counter-kits',
-    kind: 'item',
-    title: 'New counter kits for Harbor Mouth and Kesh (from the combo test)',
-    text: 'Their kit today is Overdrive + Railgun + Focus. Focus is a chapter 3 weapon, so the chapter 1 draft never offers it, and the kit does worse than the bot’s own picks on both maps (rule: a map’s counter kit should clearly beat other kits). Proposed: Harbor Mouth, Point Defense + Railgun + Supply Run (the best set there: 9.3 ships lost over 13 waves, against 13.0 for the bot’s own picks). Kesh, Air Strike + Flak Cannon + Point Defense (7.3, against 12.1). A counter kit shows in the map’s blurb and nudges the draft toward it. Approve, Change (with a note), or Cut to keep the current kits.',
-  },
-  {
-    id: 'r7-armory',
-    kind: 'question',
-    title: 'The Armory: the Supply bay is weak and Armor Plating is strong. Retune?',
-    text: 'Each upgrade alone at level 5, ships saved a run: Armor Plating 13, Damage Control 9, Proximity Fuse and Point Defense 7; at the bottom Stockpile 2, Quick Reload 3, Long Loads 4. The Armory matters about twice as much as the weapons you draft, and a Supply card often feels like a wasted pick.',
-    options: [
-      'Lift the weak ones (Stockpile, Quick Reload, Long Loads) toward the middle; leave Armor Plating (recommended: no upgrade you own gets worse)',
-      'Trim Armor Plating a little and lift the weak ones',
-      'Leave the Armory as it is for now',
-    ],
-  },
-  {
-    id: 'r7-overdrive',
-    kind: 'question',
-    title: 'Overdrive is weak for the bot but strong for you. What should we trust?',
-    text: 'The bot rates Overdrive among the weakest weapons (11.7 ships lost alone, in two of the four worst sets) and your Overdrive + Scattergun + Supply Run kit 19th of 20 confirmed sets. You won both runs you played with it, with no boss losses. The bot is known to play boosts and pickups late.',
-    options: [
-      'Teach the bot to use boosts like you first, then decide (recommended: the same fix makes every boost’s numbers trustworthy)',
-      'Buff Overdrive now (a stronger level 1 or a longer burst)',
-      'Leave it: it’s a skill weapon, strong in good hands',
-    ],
-  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r7-counter-kits',
+    kind: 'item',
+    verdict: 'change',
+    note: 'No nudging: the player finds kits through play. Counter kits stay internal notes only (anything player-facing is being removed). The real question from the combo test: do maps have different best combos? Being measured now.',
+    at: '2026-11-19',
+    title: 'New counter kits for Harbor Mouth and Kesh',
+    text: '',
+  },
+  {
+    id: 'r7-armory',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Lift the weak ones, and run a full Armory brainstorm: keep or cut each upgrade, categories, unlocks (XP collected in a run and spent at the end, survivor.io style), three other ways to change the system, and how many new upgrades. Being prepared as a review page; the lift goes in with it.',
+    at: '2026-11-19',
+    title: 'The Armory: the Supply bay is weak and Armor Plating is strong. Retune?',
+    text: '',
+  },
+  {
+    id: 'r7-overdrive',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Teach the bot to use boosts like you first, then decide. Being built now.',
+    at: '2026-11-19',
+    title: 'Overdrive is weak for the bot but strong for you. What should we trust?',
+    text: '',
+  },
+  {
+    id: 'r8-behemoth-boss',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Decide after playing it.',
+    at: '2026-11-19',
+    title: 'The Behemoth Run: boss strength against win rate',
+    text: '',
+  },
+  {
+    id: 'r8-ch2-debuts',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Each new enemy gets its own light debut wave on The Island. Being built now.',
+    at: '2026-11-19',
+    title: 'Chapter 2’s new enemies: how should they debut?',
+    text: '',
+  },
+  {
+    id: 'r8-early-losses',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Decide after the replay.',
+    at: '2026-11-19',
+    title: 'Kesh’s early waves: pressure, or real losses?',
+    text: '',
+  },
+  {
+    id: 'r8-gunships',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Leave it; trim only if it feels like it solves the map.',
+    at: '2026-11-19',
+    title: 'The Gunship Pair on The Island',
+    text: '',
+  },
+  {
+    id: 'r8-marrow-tower',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'More hit points (about 6, from 4). Being built now.',
+    at: '2026-11-19',
+    title: 'Marrow’s radar tower: keep it fragile?',
+    text: '',
+  },
   {
     id: 'r6-replay-ch1',
     kind: 'item',

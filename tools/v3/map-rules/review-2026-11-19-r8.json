@@ -1,0 +1,17 @@
+{
+ "read": "2026-11-19",
+ "page": "https://claude.ai/artifact/LeZK1fL9QFusN5qQNAoAmb",
+ "reviews": {
+  "r7-counter-kits": { "verdict": "change", "note": "No so we really should not nudge the player with these kits \n\nThey should just figure that out alone through play testing \n\nThis telemetry pass was just to see what works well in pairs not to move things around between maps\n\nMain actions item here is to see if there is diversity of best combos per the maps. If one combo is the top for all maps, then that suggest our design for the maps and waves are all the same " }
+ },
+ "answers": {
+  "r7-armory": { "choice": 0, "label": "Lift the weak ones (Stockpile, Quick Reload, Long Loads) toward the middle; leave Armor Plating", "note": "Let’s run a full brainstorm on the armory too this has never gotten an overhaul \n\nSo let’s look at all the existing upgrades  and decide which ones to keep and also see if we need the change anything about the armory system such as the categories \n\nHow they are unlocked such as exp collected in game ( I think how survivor io did this is exp and you use that to upgrade the ones you find at the end of game \n\nThen o want you to come up with three ideas on other ways to change the armory system \n\nAnd then decide how many new upgrades to make if any " },
+  "r7-overdrive": { "choice": 0, "label": "Teach the bot to use boosts like you first, then decide" },
+  "r8-behemoth-boss": { "choice": 2, "label": "Decide after I play it" },
+  "r8-ch2-debuts": { "choice": 0, "label": "Give each new enemy its own light debut wave on The Island" },
+  "r8-early-losses": { "choice": 2, "label": "Decide after my replay" },
+  "r8-gunships": { "choice": 0, "label": "Leave it; trim only if it feels like it solves the map" },
+  "r8-marrow-tower": { "choice": 0, "label": "Give it more hit points (about 6)" }
+ },
+ "pending": ["r8-replay-ch1", "r8-play-ch2"]
+}

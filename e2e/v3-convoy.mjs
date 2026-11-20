@@ -237,6 +237,8 @@ try {
   check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'hold:1,release:1,hold:0:cooldown', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
 
   // The Map Analytics screen lists them.
+  // The UI overhaul: Map Analytics is in the hub's Tools drawer.
+  await page.tap('[data-lab-tools-open]');
   await page.tap('[data-maplab-open]');
   await page.waitForSelector('[data-maplab]');
   await page.waitForFunction(() => { const s = window.__v3.mapLab()?.state(); return s && s.runs.length >= 1 && !s.busy; }, null, { timeout: 60000 });

@@ -871,7 +871,7 @@ export class App {
       return card;
     });
     const classic = el('a', 'v2-classic', 'Play the classic version →');
-    classic.href = './index.html';
+    classic.href = './index.html?legacy=1';
     // The artifact build ships V2 alone; there is no classic page to link to.
     classic.hidden = 'claude' in window;
     // V3 (abilities and the Armory) is its own page.

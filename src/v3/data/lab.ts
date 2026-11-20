@@ -691,3 +691,29 @@ export function cardChanges(cardId: string, sinceRound?: number): string[] {
     .filter((c) => sinceRound === undefined || c.round > sinceRound)
     .map((c) => c.what);
 }
+
+// ---- Ready to test (UI overhaul, docs/design/v3-ui-overhaul.md) -------------
+// The top of the Test Lab: the newest builds for the player to play, newest
+// first, one line each on what changed and what to look for. When a build
+// lands: add an entry at the top (the map, the play-log version it shipped
+// in, a short note), and drop entries that no longer need playing. An entry
+// ticks itself off once a finished run of that map at that log version or
+// later is on the device (ui/lab.ts, readyPlayed).
+
+export interface ReadyToTest {
+  map: MapId;
+  /** The play-log version (LOG_VERSION) the build shipped in. */
+  log: number;
+  /** New: the map's first rebuilt build. Polished: a pass after the
+   *  player's notes. */
+  tag: 'New' | 'Polished';
+  /** What changed and what to look for, in one short line. */
+  note: string;
+}
+
+export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'island', log: 31, tag: 'New', note: 'Island silos fire point-blank at both lanes. Can you cover the far north lane?' },
+  { map: 'behemoth', log: 31, tag: 'New', note: 'A supertanker crawls the deep lane: 8 hits, counts as 3 ships. Worth guarding?' },
+  { map: 'kesh', log: 30, tag: 'Polished', note: 'Shells hit the ship in the turn from wave 3; wave 10 is lighter. Does it climb now?' },
+  { map: 'marrow', log: 30, tag: 'Polished', note: "Early east-silo shells, outside the radar's slow. Are waves 1–6 still too easy?" },
+];

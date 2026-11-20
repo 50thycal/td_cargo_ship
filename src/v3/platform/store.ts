@@ -33,6 +33,8 @@ export const KEYS = [
   // The Test Lab: what has been tested, and the last tests' logs to rewatch.
   'straitwatch.v3.lab',
   'straitwatch.v3.lab.logs',
+  // Ready to test's ticks: the builds already played (ui/lab.ts).
+  'straitwatch.v3.lab.ready',
   // The run in progress, to continue after leaving (platform/runSave.ts).
   'straitwatch.v3.run',
 ] as const;
