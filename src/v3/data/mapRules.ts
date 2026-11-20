@@ -106,6 +106,19 @@ export interface Debut {
   wave: number;
 }
 
+/** A Test Lab map card's run (round 8, the player: each new enemy's
+ *  debut is part of the map, banner and all): does this map debut this new
+ *  enemy? Then its first sight on the card always gets the "NEW · <chapter>"
+ *  card, even on a device that has met it (the campaign says it once per
+ *  device, as before). Only the new enemies (data/foes.ts), not the
+ *  original threats. */
+export function mapDebutsFoe(map: MapId, kind: ThreatKind): boolean {
+  if (!FOE_OF_KIND[kind]) return false;
+  DEBUT_MAPS ??= new Map(debuts().map((d) => [d.kind, d.map]));
+  return DEBUT_MAPS.get(kind) === map;
+}
+let DEBUT_MAPS: Map<ThreatKind, MapId> | undefined;
+
 /** Each kind's debut: the first map (in MAP_ORDER) and wave a campaign run
  *  sends it, in campaign order. The rule m-enemy wants each new enemy alone
  *  (or with drones only) for its debut wave; that is not checked yet, only

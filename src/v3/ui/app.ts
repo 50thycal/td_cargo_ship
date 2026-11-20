@@ -121,6 +121,7 @@ import { calm, mapThumb, quietGame, thumbNow } from './thumbs';
 import { DRY_LIFE, IMPACT_LIFE, PICKUP_COLORS, RAID_LOOK, RIPPLE_LIFE, drawFrame, type Ripple } from './render';
 import { clearAll, kv } from '../platform/store';
 import { clearSeen, meet, seenTypes, type SeenId } from '../platform/seen';
+import { mapDebutsFoe } from '../data/mapRules';
 import { PRIVACY_URL, STORE, VERSION } from '../platform/flavor';
 import { haptic, hapticForCue, hapticsAvailable, hapticsEnabled, setHapticsEnabled } from '../platform/haptics';
 import { earned, gameCenterAvailable, showGameCenter, submitBest, unlock } from '../platform/gamecenter';
@@ -1892,7 +1893,14 @@ export class App {
         case 'debut':
           // Rule m-debut-tag: a chapter's new enemy says which chapter
           // brought it, as its new weapons' cards do.
-          if (this.explain(`threat:${ev.threat}`)) {
+          // Round 8: on a Test Lab map card, the map's own new enemies
+          // always get their card on their debut, seen before or not, at
+          // any Call-outs level but Off (WARN); the campaign: once a device.
+          if (g.lab?.full && !this.playback && mapDebutsFoe(g.map.id, ev.threat)) {
+            meet(`threat:${ev.threat}`);
+            const tag = foeDebutTag(ev.threat);
+            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', WARN, null);
+          } else if (this.explain(`threat:${ev.threat}`)) {
             const tag = foeDebutTag(ev.threat);
             this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
           }

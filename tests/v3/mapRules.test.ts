@@ -23,7 +23,7 @@ import { MAP_PLANS } from '../../src/v3/data/mapPlans';
 import { ABILITIES } from '../../src/v3/data/abilities';
 import { FOES, FOE_OF_KIND, FOE_ORDER, foeCount } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf, type MapId } from '../../src/v3/data/maps';
-import { debuts, kindChapter, mapKindWaves, mapListedKinds, PLAN_WAVES } from '../../src/v3/data/mapRules';
+import { debuts, kindChapter, mapDebutsFoe, mapKindWaves, mapListedKinds, PLAN_WAVES } from '../../src/v3/data/mapRules';
 import { enemyPair, memberChapter, memberKind } from '../../src/v3/data/pairs';
 import { applyEncounters, createGame, step } from '../../src/v3/sim/game';
 import { isFoe, mapDebut, newFoeState, planFoes } from '../../src/v3/sim/foes';
@@ -364,5 +364,24 @@ describe('m-enemy: chapter 2\'s new enemies each get a light debut wave on the I
         expect([...kinds].filter((k) => k !== 'drone' && k !== d.kind), `seed ${seed} wave ${d.wave} (${d.kind})`).toEqual([]);
       }
     }
+  });
+});
+
+describe('m-enemy: a map card always shows its own new enemies\' debut card (round 8)', () => {
+  // The UI (ui/app.ts, the 'debut' event): on a Test Lab map card's run a
+  // new enemy this map debuts gets its card whether or not the device has
+  // met it; the campaign keeps once a device. Pinned in the browser by
+  // e2e/v3-map-cards.mjs.
+  it('the Island debuts chapter 2\'s four; other maps and the original threats do not count', () => {
+    for (const kind of ['attackHeli', 'torpedoSub', 'armored', 'scavenger'] as const) {
+      expect(mapDebutsFoe('island', kind), kind).toBe(true);
+      expect(mapDebutsFoe('behemoth', kind), kind).toBe(false);
+      expect(mapDebutsFoe('strait', kind), kind).toBe(false);
+    }
+    // Chapter 1's new enemies debut on the Strait; a plain drone is no new enemy.
+    expect(mapDebutsFoe('strait', 'sprinter')).toBe(true);
+    expect(mapDebutsFoe('strait', 'drone')).toBe(false);
+    // Each new enemy has exactly one map that debuts it.
+    for (const f of FOE_ORDER) expect(MAP_ORDER.filter((m) => mapDebutsFoe(m, FOES[f].kind)), f).toHaveLength(1);
   });
 });
