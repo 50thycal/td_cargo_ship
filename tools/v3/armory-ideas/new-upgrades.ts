@@ -49,7 +49,10 @@ const lv = Number(opt('level') ?? 5);
  *  try; the game's own numbers are the plain configs). */
 const TRIES: [string, ArmoryLevels, (g: Game) => void][] = [
   ['boilers30', { boilers: 5 }, (g) => (g.stats = { ...g.stats, convoySpeed: 1.3 })],
+  ['boilers50', { boilers: 5 }, (g) => (g.stats = { ...g.stats, convoySpeed: 1.5 })],
   ['qm6', { quartermaster: 5 }, (g) => ((g.stats = { ...g.stats, rerolls: 6 }), (g.rerolls = 6))],
+  ['qm10', { quartermaster: 5 }, (g) => ((g.stats = { ...g.stats, rerolls: 10 }), (g.rerolls = 10))],
+  ['qm5cards', { quartermaster: 5 }, (g) => (g.stats = { ...g.stats, draftCards: 5 })],
 ];
 
 const CARDS: [string, ArmoryLevels, ((g: Game) => void)?][] = [

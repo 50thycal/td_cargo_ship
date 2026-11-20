@@ -258,7 +258,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     const p = fresh();
     // Lost in wave 7: six waves cleared, one card (new), all its Scrap kept.
     const lost = recordResult(p, 'strait', { score: 900, wave: 7, cleared: false, wavesCleared: 6, waves: 6, boss: 0 }, draw(0));
-    expect(lost.scrap).toEqual({ waves: 240, boss: 0, clear: 0, firstClear: 0, duplicates: 0, total: 240 });
+    expect(lost.scrap).toEqual({ waves: 240, boss: 0, clear: 0, firstClear: 0, duplicates: 0, salvage: 0, total: 240 });
     expect(p.scrap).toBe(240);
     // Lost in the second boss round: 10 waves and one boss round.
     const boss = recordResult(p, 'kesh', { score: 900, wave: 12, cleared: false, wavesCleared: 11, waves: 10, boss: 1 }, draw(0));
@@ -266,7 +266,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     expect(boss.scrap.duplicates).toBe(100); // Quick Reload again
     // A first clear of a map with an ending: 400 + 150 + 150 + 250, three cards (two duplicates).
     const won = recordResult(p, 'marrow', { score: 9000, wave: 13, cleared: true, wavesCleared: 13, waves: 10, boss: 3 }, draw(0));
-    expect(won.scrap).toEqual({ waves: 400, boss: 150, clear: 150, firstClear: 250, duplicates: 300, total: 1250 });
+    expect(won.scrap).toEqual({ waves: 400, boss: 150, clear: 150, firstClear: 250, duplicates: 300, salvage: 0, total: 1250 });
     expect(p.scrap).toBe(240 + 550 + 1250);
     expect(p.scrapEarned).toBe(p.scrap);
     // The same map again: no first-clear bonus.

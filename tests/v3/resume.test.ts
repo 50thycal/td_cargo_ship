@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RUN_KEY, RUN_SAVE_VERSION, canContinue, canSaveRuns, clearRun, loadRun, makeRunSave, saveRun, timeAgo, type RunSave } from '../../src/v3/platform/runSave';
 import { KEYS, _resetStoreForTests } from '../../src/v3/platform/store';
 import { Restorer, printDiff, restoreGame, runPrint, samePrint } from '../../src/v3/sim/resume';
-import { LOG_VERSION, Recorder, replay, replayTo, type PlayLog } from '../../src/v3/sim/playlog';
+import { LOG_REPLAYS, LOG_VERSION, Recorder, replay, replayTo, type PlayLog } from '../../src/v3/sim/playlog';
 import { BotRun, PERSONAS, type RunOpts } from '../../src/v3/sim/mimic';
 import { FULL_TEMPO, step, type FreePlaySetup, type Game } from '../../src/v3/sim/game';
 import type { MapId } from '../../src/v3/data/maps';
@@ -271,11 +271,15 @@ describe('resume a run in progress', () => {
     playTo(run, (g) => g.wave === 1 && g.waveT > 20);
     const save = makeRunSave(run.rec, { kind: 'campaign', ui: {}, title: 'The Kesh Hook', build: 'old' })!;
     expect(canContinue(save)).toBe(true);
-    expect(canContinue({ ...save, logVersion: LOG_VERSION - 1, log: { ...save.log, v: LOG_VERSION - 1 } })).toBe(false);
+    // (The oldest version this build no longer replays: v40 still replays
+    // v39, which the new Armory upgrades leave as it was.)
+    const old = Math.min(...LOG_REPLAYS) - 1;
+    expect(canContinue({ ...save, logVersion: old, log: { ...save.log, v: old } })).toBe(false);
+    expect(canContinue({ ...save, logVersion: LOG_VERSION - 1, log: { ...save.log, v: LOG_VERSION - 1 } })).toBe(LOG_REPLAYS.includes(LOG_VERSION - 1));
     expect(canContinue({ ...save, v: RUN_SAVE_VERSION + 1 })).toBe(false);
     // Still read (the menu says it can't be continued and offers the map).
-    saveRun({ ...save, logVersion: LOG_VERSION - 1 });
-    expect(loadRun()?.logVersion).toBe(LOG_VERSION - 1);
+    saveRun({ ...save, logVersion: old });
+    expect(loadRun()?.logVersion).toBe(old);
   });
 
   it('a run that has ended (or not begun its first wave) is not kept', () => {
