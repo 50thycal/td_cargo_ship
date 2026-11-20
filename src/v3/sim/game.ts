@@ -4055,11 +4055,21 @@ function updatePassives(g: Game, dt: number): void {
   const gw = held(g, 'gunships');
   if (!gw) for (const h of g.helis) h.leaving = true;
   const mid = g.ships.length ? { x: g.ships.reduce((a, s) => a + s.x, 0) / g.ships.length, y: g.ships.reduce((a, s) => a + s.y, 0) / g.ships.length } : { x: c.x, y: c.y - 120 };
+  // Round 12 (the player: "the level three helicopters ... overlap each
+  // other"): the row of hovers is kept whole on the screen. Each was
+  // clamped to the edge on its own, so with the convoy coming in at the
+  // screen's edge two (or all three) hovered on the same spot. Now the row
+  // slides in from the edge instead, each in its place in the row (its
+  // rank among those staying, so a gap left by one leaving closes).
+  const row = g.helis.filter((o) => !o.leaving).sort((a, b) => a.slot - b.slot || a.id - b.id);
+  const n = row.length;
+  const pitch = AB.gunships.spread * 1.8;
+  const half = ((n - 1) / 2) * pitch;
+  const cx = clamp(mid.x, 60 + half, VIEW.width - 60 - half);
   for (const h of g.helis) {
-    const n = g.helis.filter((o) => !o.leaving).length;
     const want = h.leaving
       ? { x: h.x < VIEW.width / 2 ? -200 : VIEW.width + 200, y: h.y }
-      : { x: clamp(mid.x + (h.slot - (n - 1) / 2) * AB.gunships.spread * 1.8, 60, VIEW.width - 60), y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
+      : { x: cx + (row.indexOf(h) - (n - 1) / 2) * pitch, y: clamp(mid.y - AB.gunships.above, 60, VIEW.height - 60) };
     flyHeli(g, h, want, dt);
     if (h.leaving) continue;
     h.fireT -= dt;

@@ -2,9 +2,11 @@
 // chapter 2 notes of 2026-11-20 (log v40 -> v41).
 
 import { describe, expect, it } from 'vitest';
-import { CLUSTER } from '../../src/v3/data/config';
+import { CLUSTER, VIEW } from '../../src/v3/data/config';
+import { AB } from '../../src/v3/data/abilities';
 import { MAP_ORDER } from '../../src/v3/data/maps';
-import { clusterPace, createGame, spawnThreat, step, type Game } from '../../src/v3/sim/game';
+import { clusterPace, createGame, spawnThreat, step, tap, type Game } from '../../src/v3/sim/game';
+import { shipHull } from '../../src/v3/ui/render';
 import { SUB_SIGHT, onLand, subClear, subLaneSight, subSite, subSpot } from '../../src/v3/sim/foes';
 
 const DT = 1 / 60;
@@ -66,6 +68,36 @@ describe('cluster missiles: a window to shoot them before they split', () => {
     });
     expect(splitD).toBeGreaterThan(0);
     expect(splitD).toBeLessThanOrEqual(CLUSTER.splitRange + 10);
+  });
+});
+
+describe('Gunship Pair at level 3: three helicopters, none on top of another', () => {
+  for (const x of [-40, 30, 800, 1570, 1700]) {
+    it(`the convoy's middle at x ${x}: the three hover a row apart, on the screen`, () => {
+      const g = quietGame('strait', 4);
+      g.levels.gunships = 3;
+      if (!g.slots.includes('gunships')) g.slots.push('gunships');
+      g.pickups.push({ id: g.nextId++, kind: 'weapon', weapon: 'gunships', x: 300, y: 600, age: 0 });
+      expect(tap(g, 300, 600, 30)).toBe('pickup');
+      const y = g.ships[0].y;
+      run(g, 8, () => {
+        for (const s of g.ships) {
+          s.x = x;
+          s.y = y;
+        }
+      });
+      expect(g.helis.length).toBe(3);
+      const xs = g.helis.map((h) => h.x).sort((a, b) => a - b);
+      for (let k = 1; k < xs.length; k++) expect(xs[k] - xs[k - 1], `${xs.join(', ')}`).toBeGreaterThan(AB.gunships.spread);
+      for (const h of g.helis) expect(h.x > 0 && h.x < VIEW.width, `${h.x}`).toBe(true);
+    });
+  }
+});
+
+describe('the Shield bubble fits the hull', () => {
+  it('the supertanker is twice a freighter, and its bubble with it', () => {
+    expect(shipHull(true).L).toBeGreaterThanOrEqual(2 * shipHull(false).L);
+    expect(shipHull(true).B).toBeGreaterThan(shipHull(false).B);
   });
 });
 
