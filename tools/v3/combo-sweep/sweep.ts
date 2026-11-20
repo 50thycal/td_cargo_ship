@@ -4,6 +4,11 @@
 //
 //   npm run v3:combo-sweep -- --stage=singles|pairs|triples|confirm|armory|report|all
 //       [--seeds=N] [--maps=strait,gauntlet,...] [--top=15] [--procs=N]
+//       [--persona=you] [--out=tools/v3/combo-sweep/results/<dir>]
+//
+// --persona plays another bot (e.g. you-p2, the "you" bot before the boosts
+// round). --out writes the stage files to another folder and leaves this
+// doc alone (a side sweep: another chapter's maps, another bot).
 //
 // Stages (each writes results/<stage>.json; `report` writes the doc):
 //   singles  the plain gun (Resupply at every draft), the bot drafting for
@@ -36,6 +41,7 @@ import { MAPS, chapterOf, type MapId } from '../../../src/v3/data/maps';
 import { mapPlan } from '../../../src/v3/data/mapPlans';
 import { draftPool } from '../../../src/v3/data/roster';
 import { LOG_VERSION } from '../../../src/v3/sim/playlog';
+import { BOT_REV } from '../../../src/v3/sim/mimic';
 import { PLAYER_ARMORY } from '../bot-fit/measure';
 import type { ComboJob, ComboRun } from './play';
 import { counter, runJobs } from './pool';
@@ -45,8 +51,13 @@ import { writeDoc } from './doc';
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
 
-export const OUT = 'tools/v3/combo-sweep/results';
-const CACHE = `${OUT}/cache/v${LOG_VERSION}.jsonl`;
+const RESULTS = 'tools/v3/combo-sweep/results';
+export const OUT = opt('out') ?? RESULTS;
+/** One cache for every sweep folder: a run's key names its map, seed,
+ *  loadout, Armory and persona; the file, the game (LOG_VERSION) and the
+ *  bots (BOT_REV). */
+const CACHE = `${RESULTS}/cache/v${LOG_VERSION}-bot${BOT_REV}.jsonl`;
+const persona = opt('persona') ?? 'you';
 /** The three reference maps and chapter 1's two new ones. */
 export const STD_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow'];
 /** The kit the player called "really op". */
@@ -106,6 +117,9 @@ export interface StageFile {
   stage: string;
   about: string;
   logVersion: number;
+  /** The bot that played (absent: "you") and its revision (mimic.ts BOT_REV). */
+  persona?: string;
+  botRev?: number;
   date: string;
   seeds: number[];
   maps: MapId[];
@@ -123,7 +137,7 @@ function jobsOf(c: Config, seeds: number[]): ComboJob[] {
   for (const m of maps)
     for (const seed of seeds) {
       const l = loadoutOn(c, m);
-      out.push({ map: m, seed, armory: c.armory, ...(l ? { loadout: l } : {}), ...(c.thenSelf ? { thenSelf: true } : {}), ...(c.tension ? { tension: true } : {}) });
+      out.push({ map: m, seed, armory: c.armory, ...(l ? { loadout: l } : {}), ...(c.thenSelf ? { thenSelf: true } : {}), ...(c.tension ? { tension: true } : {}), ...(persona !== 'you' ? { persona } : {}) });
     }
   return out;
 }
@@ -161,7 +175,7 @@ function save(stage: string, about: string, seeds: number[], t0: number, runs: n
   const old = readStage(stage);
   const fresh = counter.played > playedAtStart || !old || old.logVersion !== LOG_VERSION;
   const seconds = fresh ? Math.round((Date.now() - t0) / 1000) : old.seconds;
-  const f: StageFile = { stage, about, logVersion: LOG_VERSION, date: new Date().toISOString().slice(0, 10), seeds, maps, pool: POOL, seconds, runs, configs, ...(notes ? { notes } : {}) };
+  const f: StageFile = { stage, about, logVersion: LOG_VERSION, ...(persona !== 'you' ? { persona } : {}), botRev: BOT_REV, date: new Date().toISOString().slice(0, 10), seeds, maps, pool: POOL, seconds, runs, configs, ...(notes ? { notes } : {}) };
   mkdirSync(OUT, { recursive: true });
   writeFileSync(`${OUT}/${stage}.json`, `${JSON.stringify(f, tidy, 1)}\n`);
   console.log(`wrote ${OUT}/${stage}.json (${f.seconds} s)`);
@@ -350,7 +364,7 @@ async function stageArmory(): Promise<void> {
 async function main(): Promise<void> {
   const stage = opt('stage') ?? 'report';
   const t0 = Date.now();
-  console.log(`combo sweep, LOG_VERSION ${LOG_VERSION}, maps ${maps.join(', ')}, ${POOL.length} weapons in the draft: ${POOL.join(', ')}`);
+  console.log(`combo sweep, LOG_VERSION ${LOG_VERSION}, bot ${persona} (rev ${BOT_REV}), into ${OUT}, maps ${maps.join(', ')}, ${POOL.length} weapons in the draft: ${POOL.join(', ')}`);
   const left = ABILITY_ORDER.filter((id) => !POOL.includes(id));
   if (left.length) console.log(`  not dealt on these maps (left out): ${left.join(', ')}`);
   const stages: Record<string, () => Promise<void>> = { singles: stageSingles, pairs: stagePairs, triples: stageTriples, confirm: stageConfirm, armory: stageArmory };
@@ -360,7 +374,8 @@ async function main(): Promise<void> {
     playedAtStart = counter.played;
     await stages[s]();
   }
-  writeDoc();
+  // A side sweep (--out) leaves the doc to the main results.
+  if (OUT === RESULTS) writeDoc();
   console.log(`done in ${((Date.now() - t0) / 60000).toFixed(1)} min`);
 }
 

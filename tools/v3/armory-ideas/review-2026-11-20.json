@@ -1,0 +1,21 @@
+{
+ "read": "2026-11-20",
+ "page": "https://claude.ai/artifact/KHGEfp7znMRD6oSX9xbn5N",
+ "reviews": {
+  "ar1-lift-reload": { "verdict": "ok", "note": "" },
+  "ar1-lift-stockpile": { "verdict": "ok", "note": "" },
+  "ar1-lift-longload": { "verdict": "ok", "note": "" }
+ },
+ "answers": {
+  "ar1-q-lift": { "choice": 0, "label": "Yes, all three now" },
+  "ar1-q-longload": { "choice": 0, "label": "A weapon or boost pickup also refills the rack" },
+  "ar1-q-earn": { "choice": 0, "label": "Scrap: find cards at random, level the ones you choose with Scrap from every run" },
+  "ar1-q-lost": { "choice": 0, "label": "Yes, all of it" },
+  "ar1-q-save": { "choice": 0, "label": "Keep every level; Scrap starts at 0" },
+  "ar1-q-bays": { "choice": 0, "label": "Three bays; Deep Magazine moves to Supply (renamed Stores)", "note": "Different name than store tho I don’t like that " },
+  "ar1-q-pdname": { "choice": 0, "label": "Deck Guns" },
+  "ar1-q-next": { "choice": 3, "label": "None for now" }
+ },
+ "unanswered": ["ar1-q-new", "ar1-q-drops", "ar1-q-else", "upgrade cards ar1-up-*", "idea cards ar1-alt-*, ar1-new-*"],
+ "decided": "Build: lift all three, Scrap (lost runs keep it, levels kept, Scrap from 0), three bays with Deep Magazine in Supply (not named Stores), Deck Guns, Deep Magazine level 3 fixed. Not now: alternatives, new upgrades. Supply Lines: re-measured, not changed."
+}
