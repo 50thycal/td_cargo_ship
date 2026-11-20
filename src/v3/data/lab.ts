@@ -712,8 +712,8 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'island', log: 31, tag: 'New', note: 'Island silos fire point-blank at both lanes. Can you cover the far north lane?' },
+  { map: 'island', log: 32, tag: 'New', note: 'Each new enemy gets a debut wave of its own, drones only (waves 2–5). Do they read as new?' },
+  { map: 'marrow', log: 32, tag: 'Polished', note: 'The radar tower takes 3 hits now, not 2, and waves 7–10 send more. Does it last?' },
   { map: 'behemoth', log: 31, tag: 'New', note: 'A supertanker crawls the deep lane: 8 hits, counts as 3 ships. Worth guarding?' },
   { map: 'kesh', log: 30, tag: 'Polished', note: 'Shells hit the ship in the turn from wave 3; wave 10 is lighter. Does it climb now?' },
-  { map: 'marrow', log: 30, tag: 'Polished', note: "Early east-silo shells, outside the radar's slow. Are waves 1–6 still too easy?" },
 ];
