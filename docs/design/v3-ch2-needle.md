@@ -3,7 +3,7 @@
 **Date:** 2026-11-20. The Needle of Bosk (`needle`, chapter 2 "The Narrows", the 8th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island and the Behemoth Run (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`) and with their round 9 signature threats. Encounter rev 4; play log v34.
 
 Code:
-- `src/v3/data/encounters.ts`: `NEEDLE_R4` (ten encounters), `NEEDLE_BOSS_ROUNDS` and `MAP_BOSS.needle`, `MAP_SIGNATURE.needle`, `NEEDLE_EASE` (the version's wave scale), `REBUILT_MAPS` (via `CHAPTER_TWO_MAPS`), in the chapter 2 block;
+- `src/v3/data/encounters.ts`: `NEEDLE_R4` (ten encounters), `NEEDLE_BOSS_ROUNDS` and `MAP_BOSS.needle`, `MAP_SIGNATURE.needle`, `REBUILT_MAPS` (via `CHAPTER_TWO_MAPS`), in the chapter 2 block;
 - `src/v3/data/mapPlans.ts`: `MAP_PLANS.needle`;
 - `src/v3/data/convoy.ts`: `MAP_CONVOY.needle` (the map's own convoy, no command);
 - `src/v3/sim/game.ts`: a signature's `block` (the wave planner): each of the wave's new enemies comes as a small wall of armored drones, its extra drones taken out of the wave's own one for one;
@@ -110,20 +110,20 @@ None of its own. The Needle's slot is the Armored Drone (`mapDebut`), but every 
 
 ## The ten waves (v1, encounter rev 4)
 
-One encounter a wave, none repeated. From wave 4 the encounters send most of the wave's shells and clusters as drones instead (shells, clusters and jets sank most of the bot's ships on the map as it was), and stand in for some of the map's own extras (`replaces.extras`). Waves 6–10 send a little less of their shared wave (`NEEDLE_EASE`: 0.92, 0.9, 0.93, 0.9, 0.85; within ±15%, rule `w-budget`). No call-out names a site.
+One encounter a wave, none repeated. From wave 4 the encounters send the wave's shells and most of its clusters as drones instead (shells, clusters and jets sank most of the bot's ships on the map with its own convoy), and stand in for some of the map's own extras (`replaces.extras`). Every shell the shared wave would send from wave 4 on, and most of its clusters, come as drones instead, one for one or more (the wave sends ×0.95–0.98 of its launches without the encounters, rule `w-budget`). No call-out names a site.
 
 | Wave | Role | Encounter (`id`) | What it sends | Target |
 | --- | --- | --- | --- | --- |
 | 1 | teach | At the mouth (`needle-the-mouth`) | south headland, 3 drones | the ship at the mouth |
 | 2 | teach | Across the open water (`needle-open-water`) | west silo, 4 drones; north headland, 1 shell | the ship least far along; the mouth |
 | 3 | teach | The queue (`needle-queue`) | north headland, 1 cluster; south headland, 4 drones | the queue at the mouth; in place of the wave's cluster |
-| 4 | combine | Periscope in the open (`needle-periscope`) | north-west sub, 2 shells; south headland, 5 drones | the ships coming in; any ship; in place of the wave's cluster |
-| 5 | combine | Both headlands (`needle-both-headlands`) | north headland, 1 shell; south headland, 4 drones; west silo, 1 guided, then 4 drones | the mouth and the Needle; the lead ship; in place of the wave's 2 clusters |
-| 6 | combine | The way out (`needle-way-out`) | south-west sub, 2 shells; south headland, 5 drones; east silo, 1 guided; west silo, 4 drones | the ships coming in; the lead ship on its way out; in place of 2 clusters |
-| 7 | escalate | Down the column (`needle-strafe`) | a jet from the west; north headland, 1 shell; west silo, 5 drones; south headland, 4 drones | the queue in single file; in place of a cluster |
-| 8 | escalate | A heavy at the mouth (`needle-heavy`) | south headland, 1 heavy and 4 drones; north headland, 1 shell; west silo, 4 + 4 drones | the Needle and the mouth; in place of the wave's heavy, jet, 3 clusters and mothership |
-| 9 | escalate | Crossfire in the Needle (`needle-crossfire`) | north headland, 1 shell; south headland, 5 drones; east sub, 2 shells; west silo, 5 + 5 drones | the Needle; the lead ship; in place of 3 clusters, a heavy and a jet |
-| 10 | climax | Run the Needle (`needle-run`), after the wave's own fire (`at: 1`) | north headland, 1 cluster; south headland, 5 + 5 drones; east silo, 1 guided; west silo, 5 + 5 drones | the queue; the lead ship; in place of 2 heavies, 3 clusters, a jet and a bomber |
+| 4 | combine | Periscope in the open (`needle-periscope`) | north-west sub, 2 shells; south headland, 5 drones; west silo, 6 drones | the ships coming in; any ship; in place of the wave's shells and cluster |
+| 5 | combine | Both headlands (`needle-both-headlands`) | north headland, 1 shell; south headland, 4 + 4 + 5 drones; west silo, 1 guided, then 4 drones | the mouth and the Needle; the lead ship; the open water; in place of the wave's shells and 2 clusters |
+| 6 | combine | The way out (`needle-way-out`) | south-west sub, 2 shells; south headland, 5 + 5 drones; east silo, 1 guided; west silo, 7 drones | the ships coming in; the queue; the lead ship on its way out; in place of the shells, 2 clusters and the heavy |
+| 7 | escalate | Down the column (`needle-strafe`) | a jet from the west; north headland, 1 shell; south headland, 6 drones; west silo, 5 + 4 + 7 drones | the queue in single file; in place of the shells and 2 clusters |
+| 8 | escalate | A heavy at the mouth (`needle-heavy`) | south headland, 1 heavy and 4 + 7 drones; west silo, 4 + 5 + 6 drones | any ship, most of them queueing; in place of the wave's heavy, shells, jet, 3 clusters and mothership |
+| 9 | escalate | Crossfire in the Needle (`needle-crossfire`) | north headland, 1 shell; south headland, 5 + 6 drones; east sub, 2 shells; west silo, 5 + 5 + 7 drones | the Needle; the lead ship; in place of the shells, 3 clusters, a heavy and a jet |
+| 10 | climax | Run the Needle (`needle-run`), after the wave's own fire (`at: 1`) | north headland, 1 cluster; south headland, 4 swarms of 5; east silo, 1 guided; west silo, 3 swarms of 5 | the queue; the lead ship; in place of the shells, most missiles, 2 heavies, 3 clusters, a jet and a bomber |
 
 WAVE1_LINE
 
@@ -131,14 +131,14 @@ WAVE1_LINE
 
 The Shield Wall is the map's own event: armored drones from launch points along the north shore form up into one block at a muster point, then fly at one ship as one, plates forward, banking together twice on the way (their sides open to your shots for a moment). Under encounter rev 4 (`NEEDLE_BOSS_ROUNDS`, lab only: the campaign plays the event as it was):
 
-| Round | Armored drones (wide) | Cluster from the north headland | Shell into the Needle |
+| Round | Armored drones (wide) | Cluster from the north headland | Shells into the Needle |
 | --- | --- | --- | --- |
 | before (every round) | 12 (4) | 0 | 0 |
 | 1 | 8 (4) | 1 (6 s) | 1 (12 s) |
-| 2 | 9 (3) | 1 (5 s) | 1 (12 s) |
-| 3 | 10 (5) | 1 (4 s) | 1 (13 s) |
+| 2 | 8 (4) | 1 (5 s) | 2 (9, 12 s) |
+| 3 | 9 (3) | 1 (4 s) | 2 (9, 13 s) |
 
-The cluster and the shell go at the ship nearest the north headland (aim `near`): the queue at the mouth. The block goes for the middle ship of the convoy, as before. `MAP_PLANS.needle.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test). The intro cards are the shared ones (log v30): "Boss round", "Convoy restored, 6 ships can still be lost", "The boss: Shield Wall", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
+The cluster and the shells go at the ship nearest the north headland (aim `near`): the queue at the mouth and the ship in the Needle. The block goes for the middle ship of the convoy, as before. `MAP_PLANS.needle.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test). The intro cards are the shared ones (log v30): "Boss round", "Convoy restored, 6 ships can still be lost", "The boss: Shield Wall", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
 
 ## Bot results, before and after (24 seeds, 900–923)
 

@@ -5,7 +5,8 @@
 // A signature threat counts with what it fires (an attack helicopter with
 // its rockets). Two shares: of the threats that show (mix.ts's), and of
 // the hits it takes to clear them (each threat by its hit points as it
-// shows: a heavy missile is 8, a drone 1), since a few big threats can be
+// shows: a heavy missile is 8, a drone 1, an armored drone 2 and its plate
+// 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
 //   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle] [--seeds=4]
@@ -51,7 +52,10 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         const w = out[Math.min(13, g.wave) - 1];
         if (w) w[th.kind] = (w[th.kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
-        if (h) h[th.kind] = (h[th.kind] ?? 0) + th.hp / nSeeds;
+        // An armored drone's plate takes hits too (up to FOE.armored.plate
+        // from the front, the way it flies at its ship): counted with its
+        // hull (log v34, the Needle's walls).
+        if (h) h[th.kind] = (h[th.kind] ?? 0) + (th.hp + (th.kind === 'armored' ? (th.foe?.n ?? 0) : 0)) / nSeeds;
       }
     }
   }

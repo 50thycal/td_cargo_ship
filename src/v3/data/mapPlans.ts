@@ -186,7 +186,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     counters: ['aegis', 'thermo', 'gunships'],
     offCounter: ['seeker', 'frigate', 'droneScreen'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east across open water, falling into single file as the lane closes to one hull wide, queueing at the mouth and threading the Needle between the headlands.',
-    stretches: { danger: 'middle', safe: 'early' },
+    stretches: { danger: 'late', safe: 'early' },
     boss: {
       plan: 'The Shield Wall at the mouth: one block of armored drones from the north shore at one ship, plates forward, banking together (8, 9, then 10 drones, 4, 3 and 5 wide; the event sends 12 every round), each round with a cluster from the north headland over the queue early and a shell into the Needle late (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
