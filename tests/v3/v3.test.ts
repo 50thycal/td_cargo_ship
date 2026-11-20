@@ -1334,9 +1334,9 @@ describe('card text matches the numbers', () => {
     expect(L('shield', 1)).toContain(`For ${T * AB.shield.time[0]} s`);
     expect(L('shield', 2)).toContain(`puts ${AB.shield.refund[1]} round back`);
     expect(L('shield', 3)).toContain(`Lasts ${T * AB.shield.time[2]} s`);
-    // The hits it takes (log v35).
-    expect(L('shield', 1)).toContain('breaks on the first hit');
-    expect(AB.shield.hits[0]).toBe(1);
+    // The hits it takes (log v36; 2 / 3 / 4 since log v39).
+    expect(AB.shield.hits).toEqual([2, 3, 4]);
+    expect(L('shield', 1)).toContain(`breaks after ${AB.shield.hits[0]} hits`);
     expect(L('shield', 2)).toContain(`Takes ${AB.shield.hits[1]} hits`);
     expect(L('shield', 3)).toContain(`takes ${AB.shield.hits[2]} hits`);
     expect(L('fullSteam', 1)).toContain(`${AB.fullSteam.mult[0]}× faster for ${T} s`);
