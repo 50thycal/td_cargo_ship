@@ -4285,7 +4285,7 @@ export interface BossTune {
  *  own (`south`, up from the bottom of the screen), parking along the bank
  *  over the chamber. The first sets out `at` s into the round, the rest
  *  `gap` s apart; each fires `salvos` salvos at the ship held at the lock
- *  nearest it, and the first `clusters` of the column fire a cluster
+ *  nearest it, and the last `clusters` of the column fire a cluster
  *  missile in place of their first salvo (it can be shot down; a salvo
  *  cannot). */
 export interface TruckRun {
@@ -4464,15 +4464,15 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 5, gap: 1.2, salvos: 2 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, gap: 0.9, salvos: 3 }],
     swarms: 1,
     size: 5,
     fire: [],
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1.2, salvos: 2 },
-      { at: 4, lock: 0, bank: 'south', count: 3, gap: 1.2, salvos: 2 },
+      { at: 0, lock: 0, bank: 'north', count: 5, gap: 1, salvos: 2 },
+      { at: 3, lock: 0, bank: 'south', count: 4, gap: 1, salvos: 2 },
     ],
     swarms: 1,
     size: 5,
@@ -4480,10 +4480,10 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1, salvos: 2, clusters: 1 },
-      { at: 2, lock: 1, bank: 'north', count: 4, gap: 1, salvos: 2, clusters: 1 },
-      { at: 5, lock: 0, bank: 'south', count: 3, gap: 1, salvos: 2 },
-      { at: 7, lock: 1, bank: 'south', count: 3, gap: 1, salvos: 2 },
+      { at: 0, lock: 0, bank: 'north', count: 5, gap: 0.9, salvos: 2, clusters: 1 },
+      { at: 2, lock: 1, bank: 'north', count: 5, gap: 0.9, salvos: 2, clusters: 1 },
+      { at: 4, lock: 0, bank: 'south', count: 3, gap: 0.9, salvos: 2 },
+      { at: 6, lock: 1, bank: 'south', count: 3, gap: 0.9, salvos: 2 },
     ],
     swarms: 1,
     size: 5,
@@ -4494,7 +4494,7 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
 /** The Gatecrashers' trucks: 3 hits each (a wave's truck takes 4), in at
  *  1.6 × a truck's speed, parked 58 px apart, a wreck stalling the ones
  *  behind it 2 s, each salvo's ship marked 0.9 s before it. */
-export const SALTGATE_TRUCK = { hp: 3, drive: 1.6, spacing: 58, stall: 2, mark: 0.9 };
+export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2, mark: 0.9 };
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost

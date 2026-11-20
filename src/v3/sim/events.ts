@@ -1180,7 +1180,7 @@ function bankRoad(g: Game, lock: number, bank: 'north' | 'south'): Point[] {
 /** Truck `i` of a Gatecrashers column (log v42): down its road in line,
  *  parking `spacing` px behind the one ahead along the bank, its salvos at
  *  the ship held at the lock nearest it (each marked first), the column's
- *  first `clusters` firing a cluster missile in place of their first. */
+ *  last `clusters` firing a cluster missile in place of their first. */
 function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
   const tune = bossTune(g.map.id, g.enc?.setup.rev);
   const c = bossRound(g, ev)?.trucks?.[col];
@@ -1192,7 +1192,7 @@ function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
   th.target = CARRIER_TARGET;
   th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
   th.hp = th.maxHp = T.hp;
-  th.foe = foeData({ path, along: 0, n: c.salvos, full: c.salvos, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', clusters: i < (c.clusters ?? 0) ? 1 : 0 });
+  th.foe = foeData({ path, along: 0, n: c.salvos, full: c.salvos, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', clusters: i >= c.count - (c.clusters ?? 0) ? 1 : 0 });
   sent(ev, 'rocketTruck');
 }
 
