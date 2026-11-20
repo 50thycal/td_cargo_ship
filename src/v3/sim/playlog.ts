@@ -197,12 +197,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      stand in for a map's own extras (`replaces.extras`).
  *      All of it is lab only, under the encounter layer: a campaign run
  *      plays as it did, and a v30 Island or Behemoth card log played its
- *      shared waves. */
-export const LOG_VERSION = 31;
+ *      shared waves.
+ *  32: the Armory overhaul (docs/design/v3-armory-overhaul.md): Quick
+ *      Reload reloads up to 40% faster (was 30%), Stockpile drops power-ups
+ *      up to 3.25× and makes them last 2.5× (was 1.75× and 1.5×), Long
+ *      Loads refills the rack on every weapon or boost pickup, and Deep
+ *      Magazine adds a round at every level (11 at level 5, was 10). A v31
+ *      log with any of those four in its `armory` no longer replays to the
+ *      same game; one without them does, but only its own version replays
+ *      here. */
+export const LOG_VERSION = 32;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [31];
+export const LOG_REPLAYS: readonly number[] = [32];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
