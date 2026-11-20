@@ -209,10 +209,12 @@ import type { EncounterSetup } from '../data/encounters';
  *  33: the player's round 9 (docs/design/v3-combo-diversity.md, "Round
  *      9"): Overdrive lasts 18 s from level 1 (was 15; level 2 and MAX 21
  *      s, was 18; campaign and lab); chapter 2's maps each get a signature
- *      threat in waves 4-10 (the Island: attack helicopters; the Behemoth
- *      Run: heavy cruise missiles at the supertanker; lab), and the Wolf
- *      Pack's boss rounds send heavy missiles at the tanker in place of
- *      most of its torpedo subs (MAP_BOSS, lab). A v32 log with Overdrive,
+ *      threat (MAP_SIGNATURE, lab: the Island's new enemies are attack
+ *      helicopters from wave 6; the Behemoth Run's jets and heavies go for
+ *      the supertanker from wave 4), and the Behemoth Run's boss rounds are
+ *      a strike on the tanker led by jets, which the Shield never stops,
+ *      in place of most of the Wolf Pack's subs (MAP_BOSS, lab; a boss
+ *      round's `fire` may send jets). A v32 log with Overdrive,
  *      or a v32 Island or Behemoth card log, no longer replays to the same
  *      game. */
 export const LOG_VERSION = 33;

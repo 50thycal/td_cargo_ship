@@ -61,6 +61,8 @@ How they compare (the player's Armory):
 | Counter kit as the bot's taste (bot report, 24 seeds) | 3.8 in waves 1–10 | 42% |
 | Off-counter kit as taste (bot report) | 5.1 in waves 1–10 | 29% |
 
+**Log v33:** the boss is now a jet strike, which the Shield doesn't stop, and on the bot report the counter kit no longer beats the off-counter kit (both 50% won). The kit is unchanged here: the diversity re-run (docs/design/v3-combo-diversity.md, "Round 9") points at Gravity Well, Railgun and Drone Screen (in 3 of the map's top 5 each) and Flak Cannon (its #1 kit); a question for the player (hub).
+
 The counter kit loses about 3.4 ships fewer than the bot's own draft and 7.5 fewer than the off-counter kit; it wins about as often as the bot's own draft (it loses fewer ships, but the boss rounds decide the win).
 
 ## Loadouts on this map (combo sweep singles)
