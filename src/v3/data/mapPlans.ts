@@ -172,19 +172,21 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch2-needle.md
   needle: {
     problem: 'Open water narrows to a gap one hull wide: the convoy closes into single file and queues at the mouth, right between the two enemy headlands, where one cluster, one shell or one wall of armored drones finds ships nose to tail.',
-    // The headlands fire from point-blank range onto ships bunched in a
-    // line, and the armored walls come plates first: blast weapons that go
-    // round a plate and catch a whole wall or a cluster's bomblets over the
-    // queue, and helpers that hit them from the side. Aimed one-at-a-time
-    // shots spend themselves on the plates (bots, the player's Armory:
-    // docs/design/v3-ch2-needle.md, Kits). Every weapon is in chapter 2's
-    // draft.
-    counters: ['thermo', 'tesla', 'aegis'],
-    offCounter: ['railgun', 'seeker', 'scatter'],
+    // The headlands fire from point-blank range onto ships bunched nose to
+    // tail, too close for a shot from the carrier to get there first: each
+    // ship's own Point Defense, which in a column covers the ship ahead and
+    // behind; the Thermobaric Shell's blast, which goes round an armored
+    // wall's plates and takes a cluster with what is near it; the Gunship
+    // Pair's rockets at the thickest cluster, the queue. The Seeker Pod's
+    // long flight, the Tesla Arc and the Drone Screen read worst of every
+    // weapon here (bots, the player's Armory: docs/design/v3-ch2-needle.md,
+    // Kits). Every weapon is in chapter 2's draft.
+    counters: ['aegis', 'thermo', 'gunships'],
+    offCounter: ['seeker', 'tesla', 'droneScreen'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east across open water, falling into single file as the lane closes to one hull wide, queueing at the mouth and threading the Needle between the headlands.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'The Shield Wall at the mouth: one block of armored drones from the north shore at one ship, plates forward, banking together (8, 12, then 15 drones; the event sends 12 every round), with clusters from both headlands over the queue (2, 2, then 3) and, from round 2, shells from the north headland into the Needle (encounters rev 4, MAP_BOSS; lab only).',
+      plan: 'The Shield Wall at the mouth: one block of armored drones from the north shore at one ship, plates forward, banking together (8, 9, then 10 drones, 4, 3 and 5 wide; the event sends 12 every round), each round with a cluster from the north headland over the queue early and a shell into the Needle late (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
     },
   },

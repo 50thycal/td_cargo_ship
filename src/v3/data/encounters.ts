@@ -3252,14 +3252,14 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Periscope in the open',
     callout: 'A sub in the open water',
-    premise: 'A periscope rises in the open sea west of the funnel and fires at the ships coming in, while the south headland sends a swarm at the queue.',
-    decision: 'Front and back: shells at the ships still in open water, drones at the ones at the mouth.',
+    premise: 'A periscope rises in the open sea west of the funnel and fires at the ships coming in, while the south headland sends a swarm.',
+    decision: 'Front and back: shells at the ships still in open water, drones from the far end of the funnel.',
     counters: 'The shells as they climb, then the swarm.',
-    succeeds: 'The salvo is shot at in most runs; the queue takes no more than a hit.',
+    succeeds: 'The salvo is shot at in most runs; no ship lost in most runs.',
     notes: {
       sites: 'A submarine at the north-west sub spot (200, 208), then the south headland\'s silo.',
-      target: 'The shells at the ship least far along, the swarm at the ship nearest the headland.',
-      usesMap: 'The open water is safe from the headlands, not from a sub: two ends of the convoy at once.',
+      target: 'The shells at the ship least far along, the swarm at any ship.',
+      usesMap: 'The open water is safe from the headlands, not from a sub: two ends of the convoy at once, in place of most of the wave\'s shells and its cluster.',
     },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
@@ -3801,11 +3801,11 @@ export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
 ];
 
 /** The Needle of Bosk's Shield Wall (log v34, docs/design/v3-ch2-needle.md):
- *  the event's block of armored drones from the north shore, at one ship
- *  (before: 12, 4 wide, and nothing else, every round), smaller in round 1
- *  and bigger in round 3, with clusters from the headlands over the queue
- *  at the mouth (aim 'near': the ship nearest the silo) and, from round 2,
- *  shells. */
+ *  the event's block of armored drones from the north shore, plates forward,
+ *  at one ship (before: 12, 4 wide, and nothing else, every round): 8, 9,
+ *  then 10 drones, each round with a cluster from the north headland over the
+ *  queue at the mouth (aim 'near': the ship nearest the silo, early in the
+ *  round) and a shell into the Needle late in it. */
 export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
   { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 6, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
   { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 5, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
