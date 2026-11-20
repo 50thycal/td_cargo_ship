@@ -141,7 +141,7 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the same, no command.
   // The locks hold the ships themselves: each chamber takes what it holds,
   // shuts, fills and lets them out, and the ships behind wait at its gate.
-  saltgate: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  saltgate: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
   // left alone: only Hold is added.

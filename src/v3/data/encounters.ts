@@ -3780,8 +3780,8 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
-      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 0.65, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
     replaces: { drones: 2, ballistic: 5, extras: { cluster: 1 } },
   },
@@ -3803,10 +3803,10 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
-      { at: 0.4, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
-      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
     ],
-    replaces: { drones: 4, ballistic: 5, guided: 2, extras: { heavy: 1 } },
+    replaces: { drones: 4, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
   },
   {
     id: 'saltgate-periscope',
@@ -3827,7 +3827,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.35, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lock' },
       { at: 0.35, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.35, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
+      { at: 0.6, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
     ],
     replaces: { drones: 2, ballistic: 6, guided: 2, extras: { heavy: 1 } },
@@ -3875,12 +3875,12 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.4, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
-      { at: 0.4, plus: 3, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
+      { at: 0.4, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
-      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { drones: 3, ballistic: 8, extras: { cluster: 2, heavy: 1 } },
+    replaces: { drones: 3, ballistic: 8, extras: { cluster: 2, heavy: 1, strafer: 1 } },
   },
   {
     id: 'saltgate-gate-by-gate',
@@ -3900,8 +3900,8 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
-      { at: 0.35, plus: 2.5, kind: 'guided', count: 1, from: base(4), aim: 'lock' },
-      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'lock' },
+      { at: 0.35, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
@@ -3927,7 +3927,6 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
       { at: 1, plus: 3.5, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
-      { at: 1, plus: 5, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.35, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
       { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
@@ -4391,9 +4390,9 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  and guided missiles off the silos over the locks at the ships held in
  *  them (aim 'lock'). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
-  { subs: 2, helis: 1, heliHp: 4, block: 4, cols: 2, swarms: 1, size: 5, fire: [{ kind: 'cluster', at: 6, count: 1, base: 1, aim: 'lock' }] },
-  { subs: 2, helis: 1, heliHp: 5, block: 5, cols: 3, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 5, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 8, count: 1, base: 4, aim: 'lock' }] },
-  { subs: 3, helis: 1, heliHp: 5, block: 6, cols: 3, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 7, count: 1, base: 1, aim: 'lock' }, { kind: 'cluster', at: 10, count: 1, base: 3, aim: 'lock' }] },
+  { subs: 2, helis: 1, heliHp: 4, block: 4, cols: 2, swarms: 2, size: 5, fire: [{ kind: 'cluster', at: 6, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 9, count: 1, base: 4, aim: 'lock' }] },
+  { subs: 3, helis: 1, heliHp: 5, block: 5, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 5, count: 1, base: 1, aim: 'lock' }, { kind: 'guided', at: 8, count: 1, base: 4, aim: 'lock' }] },
+  { subs: 3, helis: 2, heliHp: 5, block: 6, cols: 3, swarms: 3, size: 5, fire: [{ kind: 'cluster', at: 4, count: 1, base: 1, aim: 'lock' }, { kind: 'cluster', at: 10, count: 1, base: 3, aim: 'lock' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
