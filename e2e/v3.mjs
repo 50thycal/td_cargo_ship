@@ -1111,10 +1111,12 @@ try {
     const after = await hand();
     const log = await qp.evaluate(() => { const l = window.__v3.log(); return { x: l.commands.filter((c) => c[1] === 'x').length, v: l.v, left: window.__v3.game().rerolls }; });
     check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 3 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '3', `a re-roll deals a new hand, logged, 3 left (${after.join()}; ${JSON.stringify(log)})`);
+    // The new hand takes a tap once dealt (its replay is in the unit tests:
+    // this run's wave was cleared by hand, which no log holds).
     await qp.locator('.v2-card:not([disabled])').first().tap();
     await qp.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
-    const rep = await qp.evaluate(() => { const l = window.__v3.log(); const g = window.__v3.game(); const r = window.__v3.replay(l); return { live: g.steps, rep: r.steps, wave: r.wave === g.wave }; });
-    check(rep.wave && rep.rep === rep.live, `the run with a re-roll replays from its log (${JSON.stringify(rep)})`);
+    const took = await qp.evaluate(() => Object.keys(window.__v3.game().levels));
+    check(took.length === 1 && after.includes(took[0]), `a card from the re-rolled hand is taken (${took.join()})`);
     check(!errs.length, `no page errors (${errs.join(' | ')})`);
     await qp.close();
   }
