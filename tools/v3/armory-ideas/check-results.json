@@ -1,0 +1,434 @@
+{
+ "you/kit": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 48,
+    "lost": 24.9,
+    "saved": 0,
+    "se": 0,
+    "won": 2,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    },
+    "lostPerMap": {
+     "strait": 22.08,
+     "gauntlet": 20.06,
+     "harbor": 37.31,
+     "kesh": 28.15,
+     "marrow": 17.02
+    }
+   },
+   "plating5": {
+    "seeds": 12,
+    "lost": 11.2,
+    "saved": 13.6,
+    "se": 0.9,
+    "won": 32,
+    "perMap": {
+     "strait": 9.4,
+     "gauntlet": 11.3,
+     "harbor": 20.8,
+     "kesh": 14.8,
+     "marrow": 11.6
+    },
+    "lostPerMap": {
+     "strait": 11.58,
+     "gauntlet": 7.92,
+     "harbor": 16.25,
+     "kesh": 13.25,
+     "marrow": 7
+    }
+   },
+   "pointdef5": {
+    "seeds": 12,
+    "lost": 18,
+    "saved": 6.7,
+    "se": 1.1,
+    "won": 7,
+    "perMap": {
+     "strait": 0.9,
+     "gauntlet": 7.9,
+     "harbor": 11.2,
+     "kesh": 7.4,
+     "marrow": 6.3
+    },
+    "lostPerMap": {
+     "strait": 20.08,
+     "gauntlet": 11.25,
+     "harbor": 25.92,
+     "kesh": 20.58,
+     "marrow": 12.33
+    }
+   },
+   "fuse5": {
+    "seeds": 12,
+    "lost": 18,
+    "saved": 6.8,
+    "se": 1,
+    "won": 8,
+    "perMap": {
+     "strait": 2.8,
+     "gauntlet": 8.6,
+     "harbor": 12.6,
+     "kesh": 3.3,
+     "marrow": 6.4
+    },
+    "lostPerMap": {
+     "strait": 18.17,
+     "gauntlet": 10.58,
+     "harbor": 24.5,
+     "kesh": 24.67,
+     "marrow": 12.17
+    }
+   },
+   "reload5": {
+    "seeds": 12,
+    "lost": 19.4,
+    "saved": 5.3,
+    "se": 1,
+    "won": 3,
+    "perMap": {
+     "strait": 3.2,
+     "gauntlet": 4.6,
+     "harbor": 9.2,
+     "kesh": 4.2,
+     "marrow": 5.5
+    },
+    "lostPerMap": {
+     "strait": 17.83,
+     "gauntlet": 14.58,
+     "harbor": 27.92,
+     "kesh": 23.83,
+     "marrow": 13.08
+    }
+   },
+   "longload5": {
+    "seeds": 12,
+    "lost": 19.2,
+    "saved": 5.6,
+    "se": 1,
+    "won": 13,
+    "perMap": {
+     "strait": 5.5,
+     "gauntlet": 4.4,
+     "harbor": 9.7,
+     "kesh": 3,
+     "marrow": 5.3
+    },
+    "lostPerMap": {
+     "strait": 15.5,
+     "gauntlet": 14.75,
+     "harbor": 27.42,
+     "kesh": 25,
+     "marrow": 13.25
+    }
+   },
+   "stockpile5": {
+    "seeds": 12,
+    "lost": 18.6,
+    "saved": 6.2,
+    "se": 1.1,
+    "won": 3,
+    "perMap": {
+     "strait": 6.9,
+     "gauntlet": 3.8,
+     "harbor": 7.6,
+     "kesh": 6.9,
+     "marrow": 5.7
+    },
+    "lostPerMap": {
+     "strait": 14.08,
+     "gauntlet": 15.42,
+     "harbor": 29.5,
+     "kesh": 21.08,
+     "marrow": 12.92
+    }
+   },
+   "magazine5": {
+    "seeds": 12,
+    "lost": 18.7,
+    "saved": 6.1,
+    "se": 1.1,
+    "won": 8,
+    "perMap": {
+     "strait": 3.7,
+     "gauntlet": 9.3,
+     "harbor": 5.9,
+     "kesh": 8,
+     "marrow": 3.3
+    },
+    "lostPerMap": {
+     "strait": 17.33,
+     "gauntlet": 9.83,
+     "harbor": 31.17,
+     "kesh": 20,
+     "marrow": 15.25
+    }
+   },
+   "player": {
+    "seeds": 12,
+    "lost": 10,
+    "saved": 14.7,
+    "se": 1.1,
+    "won": 40,
+    "perMap": {
+     "strait": 10.3,
+     "gauntlet": 11.8,
+     "harbor": 24,
+     "kesh": 14.8,
+     "marrow": 12.8
+    },
+    "lostPerMap": {
+     "strait": 10.75,
+     "gauntlet": 7.33,
+     "harbor": 13.08,
+     "kesh": 13.25,
+     "marrow": 5.75
+    }
+   },
+   "top": {
+    "seeds": 12,
+    "lost": 5.6,
+    "saved": 19.2,
+    "se": 1.1,
+    "won": 73,
+    "perMap": {
+     "strait": 17.3,
+     "gauntlet": 13.3,
+     "harbor": 26.3,
+     "kesh": 22.1,
+     "marrow": 16.9
+    },
+    "lostPerMap": {
+     "strait": 3.67,
+     "gauntlet": 5.83,
+     "harbor": 10.83,
+     "kesh": 5.92,
+     "marrow": 1.67
+    }
+   },
+   "pair11": {
+    "seeds": 12,
+    "lost": 16.6,
+    "saved": 8.2,
+    "se": 1.2,
+    "won": 12,
+    "perMap": {
+     "strait": 6.1,
+     "gauntlet": 9.1,
+     "harbor": 10.8,
+     "kesh": 10.3,
+     "marrow": 4.7
+    },
+    "lostPerMap": {
+     "strait": 14.92,
+     "gauntlet": 10.08,
+     "harbor": 26.33,
+     "kesh": 17.67,
+     "marrow": 13.92
+    }
+   },
+   "pair10": {
+    "seeds": 12,
+    "lost": 16.4,
+    "saved": 8.4,
+    "se": 1.1,
+    "won": 13,
+    "perMap": {
+     "strait": 7.3,
+     "gauntlet": 7.8,
+     "harbor": 12.7,
+     "kesh": 9.1,
+     "marrow": 5.2
+    },
+    "lostPerMap": {
+     "strait": 13.75,
+     "gauntlet": 11.33,
+     "harbor": 24.42,
+     "kesh": 18.92,
+     "marrow": 13.42
+    }
+   },
+   "drops5": {
+    "seeds": 48,
+    "lost": 21.2,
+    "saved": 3.7,
+    "se": 0.5,
+    "won": 4,
+    "perMap": {
+     "strait": 3.9,
+     "gauntlet": 3.9,
+     "harbor": 4.1,
+     "kesh": 3.8,
+     "marrow": 2.9
+    },
+    "lostPerMap": {
+     "strait": 18.15,
+     "gauntlet": 16.13,
+     "harbor": 33.19,
+     "kesh": 24.4,
+     "marrow": 14.13
+    }
+   }
+  }
+ },
+ "masher/kit": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 12,
+    "lost": 28.5,
+    "saved": 0,
+    "se": 0,
+    "won": 0,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    },
+    "lostPerMap": {
+     "strait": 24.75,
+     "gauntlet": 23.25,
+     "harbor": 43.67,
+     "kesh": 29.25,
+     "marrow": 21.75
+    }
+   },
+   "reload5": {
+    "seeds": 12,
+    "lost": 20.3,
+    "saved": 8.2,
+    "se": 0.9,
+    "won": 10,
+    "perMap": {
+     "strait": 3.7,
+     "gauntlet": 11.1,
+     "harbor": 11.6,
+     "kesh": 7.7,
+     "marrow": 7.2
+    },
+    "lostPerMap": {
+     "strait": 21.08,
+     "gauntlet": 12.17,
+     "harbor": 32.08,
+     "kesh": 21.58,
+     "marrow": 14.58
+    }
+   },
+   "pair11": {
+    "seeds": 12,
+    "lost": 15.4,
+    "saved": 13.1,
+    "se": 1.1,
+    "won": 17,
+    "perMap": {
+     "strait": 7.2,
+     "gauntlet": 15.8,
+     "harbor": 20.4,
+     "kesh": 11.9,
+     "marrow": 10.3
+    },
+    "lostPerMap": {
+     "strait": 17.58,
+     "gauntlet": 7.5,
+     "harbor": 23.25,
+     "kesh": 17.33,
+     "marrow": 11.5
+    }
+   },
+   "pair10": {
+    "seeds": 12,
+    "lost": 15.3,
+    "saved": 13.3,
+    "se": 1.2,
+    "won": 15,
+    "perMap": {
+     "strait": 8.8,
+     "gauntlet": 14.3,
+     "harbor": 19.4,
+     "kesh": 13.3,
+     "marrow": 10.5
+    },
+    "lostPerMap": {
+     "strait": 15.92,
+     "gauntlet": 9,
+     "harbor": 24.25,
+     "kesh": 16,
+     "marrow": 11.25
+    }
+   }
+  }
+ },
+ "you/self": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 48,
+    "lost": 21.8,
+    "saved": 0,
+    "se": 0,
+    "won": 3,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    },
+    "lostPerMap": {
+     "strait": 22.27,
+     "gauntlet": 20.23,
+     "harbor": 29.15,
+     "kesh": 21.98,
+     "marrow": 15.21
+    }
+   },
+   "drops5": {
+    "seeds": 48,
+    "lost": 18.7,
+    "saved": 3.1,
+    "se": 0.5,
+    "won": 9,
+    "perMap": {
+     "strait": 3.3,
+     "gauntlet": 1.4,
+     "harbor": 4.1,
+     "kesh": 3.5,
+     "marrow": 3.2
+    },
+    "lostPerMap": {
+     "strait": 19,
+     "gauntlet": 18.81,
+     "harbor": 25.04,
+     "kesh": 18.46,
+     "marrow": 12.04
+    }
+   }
+  }
+ }
+}

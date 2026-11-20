@@ -2721,7 +2721,7 @@ export class App {
       ['boss rounds', scrap.boss],
       ['map cleared', scrap.clear],
       ['first clear', scrap.firstClear],
-      ['cards held', scrap.duplicates],
+      ['repeat cards', scrap.duplicates],
     ];
     const ledger = el('p', 'v3-scrap-ledger');
     ledger.dataset.scrap = String(scrap.total);
