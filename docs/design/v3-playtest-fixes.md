@@ -65,7 +65,10 @@ Your five chapter 2 Test Lab runs of 2026-11-20 (log v40: Saltgate, the Archipel
 
 ### Checks
 
-- CHECKS
+- `npx tsc --noEmit`: clean. `npx vitest run --exclude '.claude/**'`: all pass. New: `tests/v3/round12.test.ts` (the cluster's climb, the sub audit on every map, the Gunship row, the Shield's fit, Retry and Skip both replaying exactly). The boss-round tests for the Archipelago and Saltgate moved to seeds where the bot still sees all three rounds (225 and 219).
+- The map-lab baseline is rewritten at v41 and replays exactly.
+- **e2e** on `vite preview`: `v3.mjs` (249 checks; new: the boss count on one line, the wave note above the keyboard, Retry and Skip), `v3-audio`, `v3-map-cards`, `v3-map-lab`, `v3-convoy`, `v3-resume` and `v3-encounters` pass. `v3-resume` had one check failing on the base already (it looked for "wave 3" after the counter became "Wave 3 of 10"): now case-blind.
+- Screenshots e2e overwrote are restored, except `img/rate-review/lab-end-top.png`, which now shows "BOSS 3/3".
 
 ## 1. The NEW tag sits on top of the card
 
