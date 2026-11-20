@@ -180,9 +180,9 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // Pair's rockets at the thickest cluster, the queue. The Frigate Escort
     // can't follow the convoy through the Needle (its frigates back out of
     // the narrows), the Seeker Pod's long flight is too late at the mouth,
-    // and the Drone Screen is the weakest helper here (bots, the player's
-    // Armory: docs/design/v3-ch2-needle.md, Kits). Every weapon is in
-    // chapter 2's draft.
+    // and the Drone Screen fights one drone at a time (forced, 7.3 ships a
+    // run against 9.6; bots, the player's Armory: docs/design/
+    // v3-ch2-needle.md, Kits). Every weapon is in chapter 2's draft.
     counters: ['aegis', 'thermo', 'gunships'],
     offCounter: ['seeker', 'frigate', 'droneScreen'],
     convoy: 'The map\'s own convoy, no commands: pairs west to east across open water, falling into single file as the lane closes to one hull wide, queueing at the mouth and threading the Needle between the headlands.',

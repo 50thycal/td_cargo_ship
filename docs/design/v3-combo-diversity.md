@@ -171,3 +171,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mix.ts -- --seeds=2 --maps=island,behemoth
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --seeds=4
 ```
+
+## The Needle of Bosk: chapter 2's third map (game version 34)
+
+> 2026-11-20. The Needle of Bosk rebuilt to the map rules (docs/design/v3-ch2-needle.md), with a signature threat of its own: small walls of armored drones from wave 4, the Shield Wall boss's own enemy. The player's rule for it: its best kits must differ from the Island's and the Behemoth Run's. All three chapter 2 maps swept again at version 34 (the Armory overhaul changed the player's Armory's Quick Reload and Stockpile since the v33 sweep above), the same way: singles on 12 seeds, every pair on 6, each map's 6 best pairs with every third weapon on 6, its 10 best kits on 16. Results: `tools/v3/combo-sweep/results/v34-ch2`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Island | **Point Defense + Supply Run + Shield** 6.2 ±0.8, won 81% | Scattergun + Point Defense + Shield 6.9 | Boomerang + Point Defense + Gunship Pair 7.3 | Air Strike + Scattergun + Supply Run 7.4 | Seeker Pod + Gravity Well + Tesla Arc 7.9 |
+| The Behemoth Run | **Air Strike + Flak Cannon + Gravity Well** 4.2 ±0.9, won 81% | Air Strike + Boomerang + Gravity Well 4.6 | Air Strike + Flak Cannon + Supply Run 4.8 | Air Strike + Frigate Escort + Supply Run 5.1 | Air Strike + Frigate Escort + Thermobaric Shell 5.6 |
+| The Needle of Bosk | **Thermobaric Shell + Boomerang + Gravity Well** 5.9 ±0.7, won 88% | Shrapnel Shell + Flak Cannon + Point Defense 6.7 | Scattergun + Flak Cannon + Supply Run 6.8 | Air Strike + Scattergun + Supply Run 6.8 | Shrapnel Shell + Point Defense + Tesla Arc 6.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits: Needle–Island / Needle–Behemoth / Island–Behemoth | **0.11** / **0** / 0 (mean 0.04) |
+| The same, one map against itself (two halves of its seeds) | 0.43 / 0.67 / 0.43 (mean 0.51) |
+| #1 kit | a different one on each map |
+| Best weapon alone | Railgun (the Island), Frigate Escort (the Behemoth Run), Shield (the Needle) |
+| Rank correlation of the weapons alone: Needle–Island / Needle–Behemoth / Island–Behemoth | 0.59 / 0.67 / 0.49 |
+
+The signature's share of waves 4–10 (`mixwaves.ts`, 4 seeds; an armored drone's plate now counted with its hull, up to 4 hits from the front): 11% of what shows, 16% of the hits counting hulls only, 36% counting every plate hit; the plate takes only shots from the front, so about a quarter in play. The boss rounds: armored drones 59% of what shows.
+
+### Reading
+
+- **The Needle's kits are its own.** Its #1 kit and its best weapon alone are its own; it shares no top-5 kit with the Behemoth Run and one with the Island (#4 on both: Air Strike + Scattergun + Supply Run, a generalist kit). The Island and the Behemoth Run still share none at version 34.
+- **Its kits lean on area fire:** the Thermobaric Shell, Shrapnel Shell and Flak Cannon are in four of its top 5. Blasts go round an armored wall's plates and burst over the queue at the mouth.
+- **The Shield is the best weapon alone on the Needle and in none of its top kits,** as on the Island in round 9: a forced single levels it to MAX (Reflect). In a kit it doesn't lead.
+- **The weapons alone rank more alike between the Needle and the other two** (0.59, 0.67) than between those two (0.49): the Needle's encounters send most of its waves' shells and clusters as drones (to keep the bot's losses in the asked range without cutting the wave budget), so its waves 1–10 look more like the chapter's shared waves; its signature walls and its boss are what set it apart.
+- **Noisy:** the Needle's singles changed a lot between two builds of its encounters (Point Defense best alone at 5.3 on the earlier build, 8.5 on the final), and neighbours in a top 5 tie.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2
+npm run v3:combo-sweep -- --stage=pairs --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v34-ch2 --maps=island,behemoth,needle --json=tools/v3/combo-sweep/results/v34-ch2/diversity.json
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --seeds=4
+```

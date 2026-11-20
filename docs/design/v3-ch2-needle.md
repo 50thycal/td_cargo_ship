@@ -35,13 +35,14 @@ Bases and spots are counted from 1, as the pause screen counts them.
 | South-west sub spot (spot 3) | By your own shore (300, 718) | sub salvos | Shells behind the convoy (w6). |
 | Coast road, pop-up road, air lines | The north shore; the south headland (1190, 940 → 545); the edges | trucks, strafers, bombers | The shared waves' own; the jet down the column (w7). |
 
-WARNING_LINE
+Warning time falls from 8.6 s on wave 1 to 5.2 s on wave 10 (−0.24 s a wave, rule `g-warning`; the shortest is wave 5, 4.7 s, the two headlands at once). It falls less steeply than on the Island and the Behemoth Run: from wave 4 most of the wave's shells come as drones, and a drone from the west silo crosses the open water with a long warning.
 
 ## The stretches
 
 The bot report cuts the lane into thirds along it: the open water in the west, the funnel and the mouth in the middle, the Needle and the way out in the east.
 
-STRETCH_LINES
+- **Danger: the mouth and the Needle**, the middle and late thirds: 41% and 47% of the hull damage in waves 1–9 (the player's Armory). The late third (the Needle itself and the way out under the east silo) is the hottest on two reports of three; the middle (the funnel and the queue at the mouth) on the third. `MAP_PLANS.needle.stretches` says danger late, safe early.
+- **Safe: the open water, the west third**: 12% (passes; was 28% on the map as it was, over the 25% line). Only the subs (waves 4 and 6), the west silo's swarms and the climax reach it.
 
 ## The convoy
 
@@ -51,35 +52,43 @@ The map's own convoy, no command (rule `m-convoy`): pairs at the reference maps'
 
 The player's round 9 (r9-map-signature): each map gets a threat of its own in waves 4–10, tied to its identity and its boss. The Needle's boss is the Shield Wall, a block of armored drones flying plates first; its signature is the same enemy in small walls (`MAP_SIGNATURE.needle`: from wave 4, every new enemy the wave planner draws is an armored drone, and each comes as a wall of 2 out of one base). An armored drone is one drone, not a platform, so a wall stands in for a drone swarm as any new enemy does, and its second drone comes out of the wave's own drones (rule `w-budget`: the wave sends no more). The Armored Drone debuts on the Island's wave 4; the Needle starts its walls on wave 4 too, a map later, so it needs no debut wave of its own.
 
-SIGNATURE_LINES
+How much of waves 4–10 it is (`tools/v3/combo-sweep/mixwaves.ts`, 4 seeds, the "you" bot drafting for itself, tough):
+
+| | Waves 4–10 | Waves 6–10 | Boss rounds |
+| --- | --- | --- | --- |
+| Share of the threats that show | 11% | 11% | 59% |
+| Share of the hits it takes to clear them, hulls only (an armored drone 2) | 16% | 16% | n/a |
+| The same, every plate hit counted (an armored drone 2 + its plate 4) | 36% | 36% | 90% |
+
+The plate takes a shot only from the front, and the walls fly plates first at the convoy, so most of the carrier's shots meet a plate: the share by hits is between the two, about a quarter of waves 4–10, inside the 20–30% asked (the Island's helicopters are 22%, the Behemoth's jets and heavies 20%, by the same tool). By count it is 11%: a wall is two drones where a helicopter is one platform.
 
 ## The counters
 
 - **Counter kit: Point Defense, Thermobaric Shell, Gunship Pair.** The headlands fire from point-blank range onto ships bunched nose to tail, too close for a shot from the carrier to get there first. Each ship's own Point Defense, which in a column covers the ship ahead and the ship behind; the Thermobaric Shell's blast, which goes round an armored wall's plates and takes a cluster with what is near it; the Gunship Pair's rockets at the thickest cluster of ships, the queue.
-- **Off-counter kit: Seeker Pod, Frigate Escort, Drone Screen.** The Frigate Escort can't follow the convoy through the Needle (its frigates back out of the narrows), the Seeker's long flight is too late at the mouth, and the Drone Screen is the weakest helper on this map.
+- **Off-counter kit: Seeker Pod, Frigate Escort, Drone Screen.** The Frigate Escort can't follow the convoy through the Needle (its frigates back out of the narrows), the Seeker's long flight is too late at the mouth, and the Drone Screen's drones fight one drone at a time. Alone, each of the three reads well on the last sweep (below): together they cover the open water and leave the queue to the shells and clusters.
 - Every weapon is in chapter 2's draft.
 
 How they compare (the player's Armory):
 
 | | Ships lost, all 13 waves | Won |
 | --- | --- | --- |
-| Counter kit, forced (combo sweep's `check-one.ts`, 16 seeds) | **7.8** ±0.7 | 56% |
-| The bot drafting for itself (combo sweep singles, 12 seeds) | 7.6 | 58% |
-| Off-counter kit, forced (16 seeds) | 9.7 ±1.1 | 44% |
-| Counter kit as the bot's taste (bot report, 24 seeds) | KIT_COUNTER | |
-| Off-counter kit as taste (bot report) | KIT_OFF | |
+| Counter kit, forced (combo sweep's `check-one.ts`, 16 seeds) | **7.3** ±0.9 | 69% |
+| The bot drafting for itself (combo sweep singles, 12 seeds) | 8.0 | 58% |
+| Off-counter kit, forced (16 seeds) | 9.6 ±0.8 | 44% |
+| Counter kit as the bot's taste (bot report, 24 seeds) | 3.0 in waves 1–10 | 63% |
+| Off-counter kit as taste (bot report) | 2.8 in waves 1–10 | 58% |
 
-The counter kit loses about 1.9 ships fewer than the off-counter kit and wins more often, but only matches the bot's own draft, as on the Island. Two other kits read about the same forced (Point Defense + Shield + Gunship Pair 7.3; Point Defense + Thermobaric + Shield 8.8), and an earlier off-counter pick (Seeker, Tesla Arc, Drone Screen) read 8.9: on this map the differences between three-weapon kits are within a ship or two, and the map's best kits (below, "Diversity") are a better guide than a forced counter kit.
+Forced, the counter kit loses about 2.3 ships fewer than the off-counter kit and wins far more often (69% against 44%), and a little fewer than the bot's own draft (8.0). As the bot's taste (it takes them first when a draft offers them, with whatever else it is dealt) the two read within noise of each other (63% and 58% won): on this map most three-weapon kits read within a ship or two, and the map's best kits (below, "Diversity") are a better guide than a forced counter kit.
 
 ## Loadouts on this map (combo sweep singles)
 
-Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 34; `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2`). Ships lost over all 13 waves:
+Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 34, the final build; `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle --out=tools/v3/combo-sweep/results/v34-ch2`). Ships lost over all 13 waves:
 
-- **Strong:** **Point Defense 5.3 (won 83%)**, Shield 6.0, Gunship Pair 6.5, Thermobaric 6.8, Railgun 6.8, Scattergun 7.1, Shrapnel 7.3.
-- **Middling:** Air Strike 7.6; the bot's own draft 7.6; Gravity Well 7.8, Flak 8.0, Boomerang 8.1, Overdrive 8.3.
-- **Weak:** Drone Screen 9.5, Tesla 9.5, Frigate Escort 9.5, Supply Run alone 10.8, Seeker 11.7, Full Steam 12.3, Charge Lance 12.4 (plain gun 12.8).
-- **Point Defense is the one to watch:** alone it loses 5.3 ships a run and wins 10 runs in 12. It is not trivial by the sweep's bar (it still loses 5.3), and it is the map's answer by design (every ship in the column covers its neighbours), but it is the best single on any chapter 2 map at v34 (the Island's best is the Railgun 6.0, the Behemoth's the Frigate Escort 6.4).
-- The Charge Lance reads badly because the bot charges it poorly; the Laser Cutter is not measured (the bot can't swipe).
+- **Strong:** **Shield 5.2**, Drone Screen 6.0 (won 75%), Railgun 6.9, Seeker 7.0, Boomerang 7.3, Frigate Escort 7.4.
+- **Middling:** Thermobaric 7.8, Overdrive 7.8, Gunship Pair 7.9; the bot's own draft 8.0; Gravity Well 8.1, Scattergun 8.2, Flak 8.3, Air Strike 8.4, Point Defense 8.5, Tesla 8.5.
+- **Weak:** Shrapnel 9.3, Supply Run alone 9.9, Full Steam 11.8, Charge Lance 12.8 (plain gun 10.5).
+- **The singles moved a lot between builds.** On an earlier build of these encounters (more shells and clusters at the queue, fewer drones) Point Defense read best alone (5.3) and the Drone Screen, Seeker and Frigate Escort among the weakest (9.5–11.7); on the final build, which sends the wave's shells and most clusters as drones, the helpers that fight drones read well and Point Defense middling. Singles are 12 seeds (a standard error of about a ship): neighbours a ship apart are a tie.
+- No single weapon makes the map trivial (the best loses 5.2 ships a run). The Charge Lance reads badly because the bot charges it poorly; the Laser Cutter is not measured (the bot can't swipe).
 
 ## Diversity: are the Needle's best kits its own?
 
@@ -89,20 +98,21 @@ The player's rule for this rebuild: the Needle's best kits must differ from the 
 | --- | --- | --- | --- | --- | --- |
 | The Island | **Point Defense + Supply Run + Shield** 6.2 ±0.8, won 81% | Scattergun + Point Defense + Shield 6.9 | Boomerang + Point Defense + Gunship Pair 7.3 | Air Strike + Scattergun + Supply Run 7.4 | Seeker Pod + Gravity Well + Tesla Arc 7.9 |
 | The Behemoth Run | **Air Strike + Flak Cannon + Gravity Well** 4.2 ±0.9, won 81% | Air Strike + Boomerang + Gravity Well 4.6 | Air Strike + Flak Cannon + Supply Run 4.8 | Air Strike + Frigate Escort + Supply Run 5.1 | Air Strike + Frigate Escort + Thermobaric Shell 5.6 |
-| The Needle of Bosk | **Boomerang + Flak Cannon + Point Defense** 5.8 ±0.6, won 81% | Air Strike + Thermobaric Shell + Shield 5.8 | Gravity Well + Railgun + Shield 6.3 | Air Strike + Supply Run + Shield 6.4 | Scattergun + Boomerang + Flak Cannon 6.5 |
+| The Needle of Bosk | **Thermobaric Shell + Boomerang + Gravity Well** 5.9 ±0.7, won 88% | Shrapnel Shell + Flak Cannon + Point Defense 6.7 | Scattergun + Flak Cannon + Supply Run 6.8 | Air Strike + Scattergun + Supply Run 6.8 | Shrapnel Shell + Point Defense + Tesla Arc 6.9 |
 
 | Measure | Result |
 | --- | --- |
-| Jaccard of the top-5 kits, map against map (all three pairs) | **0** (no kit shared) |
-| The same, one map against itself (two halves of its seeds) | 0.43 / 0.67 / 0.43 |
+| Jaccard of the top-5 kits: the Needle against the Island / against the Behemoth Run | **0.11** (one kit shared: Air Strike + Scattergun + Supply Run, #4 on both) / **0** |
+| The Island against the Behemoth Run | 0 |
+| The same, one map against itself (two halves of its seeds) | 0.43 (the Island) / 0.67 (the Behemoth Run) / 0.43 (the Needle) |
 | #1 kit | a different one on each map |
-| Best weapon alone | a different one on each map: Railgun (the Island), Frigate Escort (the Behemoth Run), **Point Defense** (the Needle) |
-| Rank correlation of the weapons alone (Needle against the Island / the Behemoth Run) | 0.44 / 0.59 |
+| Best weapon alone | a different one on each map: Railgun (the Island), Frigate Escort (the Behemoth Run), **Shield** (the Needle) |
+| Rank correlation of the weapons alone (the Needle against the Island / the Behemoth Run) | 0.59 / 0.67 (the Island against the Behemoth Run 0.49) |
 
-- **The Needle's best kits are its own.** No kit in its top 5 is in the Island's or the Behemoth Run's, its #1 kit and its best weapon alone are its own, and its weapons alone rank about as differently from the other two as they do from each other.
-- **Weapons it shares:** the Shield is in three of the Needle's top 5 and two of the Island's (none of the Behemoth Run's, since round 9's jets); Point Defense in one of the Needle's and three of the Island's; Flak in two of the Needle's and two of the Behemoth Run's; Air Strike in two of the Needle's and all five of the Behemoth Run's. The kits differ; their parts overlap, as on every map so far.
-
-SIGNATURE_SHARE
+- **The Needle's best kits are its own.** Its #1 kit and its best weapon alone are its own, no kit in its top 5 is the Behemoth Run's, and one is the Island's (#4 on both, Air Strike + Scattergun + Supply Run, a generalist kit), against 0.43 for the same map's two halves of seeds.
+- **Its kits lean on area fire.** The Thermobaric Shell, Shrapnel Shell and Flak Cannon are in four of its top 5 (blasts go round an armored wall's plates and burst over the queue); the Island's lean on Point Defense and the Shield, the Behemoth Run's on Air Strike.
+- **What it shares:** Point Defense (two of the Needle's, three of the Island's), the Scattergun and Supply Run (two each with the Island), Flak (two each with the Behemoth Run). The Shield is in none of the Needle's top 5 although it is the best weapon alone, as on the Island in round 9: a forced single levels it to MAX (Reflect).
+- **The weapons alone rank more alike** between the Needle and the other two (0.59, 0.67) than between those two (0.49): the drones the Needle's encounters send in place of shells make its waves 1–10 more like the chapter's shared waves than its boss is.
 
 ## The debut
 
@@ -125,7 +135,7 @@ One encounter a wave, none repeated. From wave 4 the encounters send the wave's 
 | 9 | escalate | Crossfire in the Needle (`needle-crossfire`) | north headland, 1 shell; south headland, 5 + 6 drones; east sub, 2 shells; west silo, 5 + 5 + 7 drones | the Needle; the lead ship; in place of the shells, 3 clusters, a heavy and a jet |
 | 10 | climax | Run the Needle (`needle-run`), after the wave's own fire (`at: 1`) | north headland, 1 cluster; south headland, 4 swarms of 5; east silo, 1 guided; west silo, 3 swarms of 5 | the queue; the lead ship; in place of the shells, most missiles, 2 heavies, 3 clusters, a jet and a bomber |
 
-WAVE1_LINE
+Wave 1 loses no ship (all three reports).
 
 ## The boss plan: the Shield Wall at the mouth
 
@@ -144,15 +154,76 @@ The cluster and the shells go at the ship nearest the north headland (aim `near`
 
 "Before" is the map card as it was: today's convoy controls, no encounters, the event as it was. "After" is this build (log v34). Commands: `npx vite-node tools/v3/map-report/report.ts -- --map=needle --seeds=24 --kits=plan [--armory=player | --armory=latest] [--no-fun]`.
 
-RESULTS_SECTION
+### The player's Armory (Quick Reload 5, Damage Control 4, Stockpile 5)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 25% | **58%** |
+| Mean end wave | 12.3 | 13.2 |
+| Ships lost in waves 1–10 (normal) | 3.0 | 2.9 |
+| Ships lost in waves 1–5 (normal) | 0.33 | **0.29** |
+| Boss r1 / r2 / r3 (normal, reached) | 2.30 / 2.10 / 1.69 | **0.50 / 1.64 / 2.11** |
+| Boss r1 / r2 / r3 (tough) | 2.21 / 2.58 / 2.79 | 0.50 / 1.75 / 2.38 |
+| Tough curve 1–10 | 0 .04 0 0 .29 .17 .29 .46 .96 1.54 | 0 .08 .08 .08 .04 .29 .38 .46 .71 .92 |
+| `w-cliff` | **FLAG** (w9 0.46 → 0.96) | PASS (biggest step w9 +0.25) |
+| `w-early` close calls from w3 | PASS (fewest w4 4.25) | PASS (fewest w4 1.63, 83% of runs) |
+| `w-budget` | PASS | PASS (furthest w3 ×0.95) |
+| `m-stretches` | **FLAG**: cold early 28% | PASS: hot late 47%, middle 41%, cold early 12% |
+| `g-warning` | PASS: 9.2 → 3.6 s | PASS: 8.6 → 5.2 s |
+| `w-first` | PASS | PASS |
+
+The record report is 24 seeds; the tuning reads on 96 (900–995, `quick.ts`-style): won **53%** (50% and 56% on the two halves), ships lost in waves 1–10 3.16, in waves 1–5 **0.53**, boss rounds 0.8 / 1.55 / 2.1 (normal, reached). The sim is chaotic: one more drone or shell in a wave moved later waves by up to ±0.4 of a ship on the same seeds, so the 96-seed reads chose between versions.
+
+### The player's latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 21% | **63%** |
+| Ships lost in waves 1–10 / 1–5 (normal) | 5.1 / 0.38 | 4.3 / 0.71 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.00 / 0.00 / 0.00 (5 runs) | 0.00 / 0.07 / 0.00 (15 runs) |
+| Tough curve 1–10 | 0 0 0 .17 .33 .38 .88 3.21 3.58 4.29 | 0 0 .33 .04 .33 .08 .71 .92 1.38 1.50 |
+| Checks | `w-cliff` **FLAG** (w7, w8), `m-stretches` **FLAG** | `w-cliff` **FLAG** (w6 0.08 → w7 0.71); the rest PASS |
+| Kits (won; lost 1–10) | | counter 79%, 3.8; off-counter 71%, 4.5 |
+
+**The Wide Warhead breaks the Shield Wall.** With the latest Armory the bot loses almost nothing in the boss rounds, before and after: a wider blast goes round the plates and takes a whole block at once. The boss is a test of the Armory as much as of the kit (see "What is not satisfied").
+
+### Baseline (no Armory)
+
+| | Before | After |
+| --- | --- | --- |
+| Won (normal) | 0% | 0% |
+| Ships lost in waves 1–10 / 1–5 (normal) | 5.1 / 1.08 | 5.5 / 1.17 |
+| Boss r1 / r2 / r3 (tough) | 2.50 / 2.67 / 2.33 | 2.13 / 3.25 / 2.88 |
+| Tough curve 1–10 | 0 0 .13 .25 .75 .83 2.25 4.83 7.08 7.71 (23.8 in all) | 0 .08 .42 .13 .54 .54 1.46 1.54 2.04 2.42 (9.2) |
+| `w-cliff` | **FLAG** (w5, w7, w8) | **FLAG** (w5, w7) |
+| `m-stretches` | **FLAG** | PASS |
+
+As on the other maps, the baseline stands in for a player with no upgrades and is far harder; the encounters are lab only.
+
+**For comparison,** the same card on the map's own convoy with no encounters (tough, the player's Armory, 32 seeds) loses 9.1 ships in waves 1–10 and 2.1 / 2.8 / 3.0 in the boss rounds: the map's own convoy (two ships at a time, queueing at the mouth) is far harder for the bot than today's convoy controls on this map, and shells (36 hull points a run), clusters (34) and jets (24) sink most of it, drones only 8. The encounters trade the shells and most clusters for drones. Fewer ships (flow 1) or a column formation did not help (9.6 and 8.8 lost).
+
+### Chapter 2 difficulty (rule `m-difficulty`)
+
+With the player's Armory the bot wins 58% (53% on 96 seeds; the latest Armory 63%): inside the 50–70% asked, the first chapter 2 map to be (the Island read 40%, the Behemoth Run 42% before round 9). Waves 1–10 lose 2.9–3.2 ships (the Island 3.9–4.8, the Behemoth 3.0), waves 1–5 0.29–0.53 (in the 0.4–0.8 band on 96 seeds, under it on the record's 24), and the boss rounds read 0.5 / 1.6 / 2.1 on the bot, rising, under the 1.5 / 2 / 2.5 asked in round 1 (see "What is not satisfied").
 
 ## Fun measures (provisional, `src/v3/sim/funMetrics.ts`)
 
-FUN_SECTION
+From `needle-player.md`:
+- **Tension rises, with a dip on wave 4:** its peak is 0.13, 0.36, 0.82, 0.44, 0.62 on waves 1–5 (wave 3's cluster over the queue is the first real moment), then 0.67–0.98 on waves 6–10 with one peak in most runs on wave 6. Boss rounds 1.5 / 2.1 / 2.2, rounds 2 and 3 pinned in most runs.
+- **Close calls** from wave 3: 1.6–5.9 a run on every wave 3–10; wave 4 is the lowest (1.6 a run, 83% of runs), wave 8 next (1.7).
+- **Saves:** 0–0.3 a run on waves 1–10 (under the provisional 0.3–0.5), boss rounds 0.2 / 0.5 / 0.7: the drones that replace the shells are cleared, or they hit; few single taps save a ship, as on the Island and the Behemoth Run.
 
 ## What is not satisfied, or uncertain
 
-UNCERTAIN_SECTION
+- **Boss round 1 is light and round 2 a little under** (0.5 and 1.6 on the bot against 1.5 and 2; round 3 2.1 against 2.5). The Shield Wall is very sensitive to the block's size: one drone more in round 2 (9 in place of 8) read 1.9–2.2 and took the win rate to 38%; at the asked 1.5 / 2 / 2.5 the three rounds add up to the loss limit after the restore, so the bot could win few runs (the Island's and the Behemoth Run's finding). This build keeps the win rate in its band and the rounds rising. A question for the player (below).
+- **The Wide Warhead breaks the boss.** With the latest Armory (Wide Warhead 5) the boss rounds read 0.0–0.1: blasts go round the plates. With the usual Armory they read as above. The boss is the one place on this map where an Armory card decides more than the kit.
+- **Waves 1–5 lose 0.29 on the record report** (24 seeds), under the 0.4–0.8 band; 0.53 on 96 seeds. Wave 4 is quiet (its shells come as drones, the walls are new): its close calls are the fewest (1.6 a run).
+- **The latest Armory reads a cliff on wave 7** (0.08 → 0.71, tough): wave 6 is very light for it; with the usual Armory wave 7 is 0.38 after 0.29.
+- **The counter kit is only a little better as the bot's taste** (63% won against 58%, the bot report), clearly better forced (7.3 ships a run against 9.6, won 69% against 44%; `check-one.ts`, 16 seeds), and no better than the bot's own draft. On this map most three-weapon kits read within a ship or two of each other.
+- **The singles and the kits are noisy here.** The best weapon alone moved from Point Defense (5.3, an earlier build) to the Shield (5.2, the final build), and the Drone Screen from among the weakest to second; the forced counter and off-counter kits disagree with the singles of their weapons. 12–16 seeds a kit leave about a ship of noise.
+- **The signature is 11% of waves 4–10 by count**, a quarter by the hits it takes (16% counting hulls, 36% counting every plate hit).
+- **No player data** on chapter 2 yet (the Island and the Behemoth Run are being playtested): the bot's bias here is unknown. On chapter 1 the bot read boss rounds 1.4–2.5× as hard as the player did.
+- **This branch carries the round 9 build** (the signature threats), which was not yet merged into the base when the Needle was built (see "The play log").
 
 ## The play log (v34)
 
