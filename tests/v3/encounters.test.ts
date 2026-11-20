@@ -962,6 +962,9 @@ describe('the Archipelago\'s boss rounds (log v36, MAP_BOSS): the Supply Raid fr
     expect(done.map((e) => e.sent.scavenger)).toEqual(done.map(() => 6));
     for (const kind of ['mothership', 'ballistic', 'cluster', 'guided'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(done.map((e) => fired(rounds[e.run! - 1], kind)));
     for (const r of rounds) {
+      // One weapon in the round's first cargo run, supplies only in the
+      // second (the event's own: one for each weapon held, in both).
+      expect(r.cargoWeapons).toEqual([1, 0]);
       // The swarms lead; the map's signature is in every round.
       expect(r.swarms! * r.size!, 'the swarms lead').toBeGreaterThan(r.fire!.reduce((a, f) => a + (f.count ?? 1), 0));
       expect(fired(r, 'mothership'), 'motherships').toBeGreaterThanOrEqual(2);
@@ -1071,9 +1074,9 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(MAP_SIGNATURE.island!.block).toBeUndefined();
   });
 
-  it('the Archipelago (log v36): from wave 4 the wave\'s new enemies are drone motherships, out of the bases that launch them', () => {
+  it('the Archipelago (log v36): from wave 4 the wave\'s new enemies are drone motherships, out of the bases that launch them, each with a scavenger', () => {
     const sig = MAP_SIGNATURE.archipelago!;
-    expect(sig).toMatchObject({ from: 4, kind: 'mothership', foeShare: 1 });
+    expect(sig).toMatchObject({ from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' });
     expect(sig.foe).toBeUndefined();
     const launchers = MAPS.archipelago.bases.map((b, i) => (b.kinds.includes('mothership') ? i : -1)).filter((i) => i >= 0);
     expect(launchers).toEqual([0, 3]);
@@ -1087,9 +1090,12 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
         if (w >= 4) {
           expect(signatureOf('archipelago', w, on.enc!.setup), `wave ${w}`).toBeDefined();
           // Every new enemy the wave draws is a mothership, on top of the
-          // map's own (its extras from wave 6): no other new enemy shows.
-          expect(kinds(on, 'mothership').length, `wave ${w} seed ${seed}`).toBe(kinds(shared, 'mothership').length + foeCount(w));
-          expect(foes(on), `wave ${w} seed ${seed}`).toBe(0);
+          // map's own (its extras from wave 6; wave 6's encounter stands in
+          // for its one), each with a Scavenger Drone: no other new enemy.
+          const own = kinds(shared, 'mothership').length - (w === 6 ? 1 : 0);
+          expect(kinds(on, 'mothership').length, `wave ${w} seed ${seed}`).toBe(own + foeCount(w));
+          expect(kinds(on, 'scavenger').length, `wave ${w} seed ${seed}`).toBe(foeCount(w));
+          expect(foes(on), `wave ${w} seed ${seed}`).toBe(foeCount(w));
           for (const l of kinds(on, 'mothership')) expect(launchers).toContain(l.base);
           // Launch for launch, within the wave budget (rule w-budget).
           expect(Math.abs(planned(on) / planned(shared) - 1), `wave ${w} seed ${seed}`).toBeLessThanOrEqual(0.2);
@@ -1100,8 +1106,9 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     const camp = createGame('archipelago', 1, 6);
     expect(camp.enc).toBeFalsy();
     expect(kinds(camp, 'mothership').length).toBe(1);
-    // The other signatures name a foe.
+    // The other signatures name a foe, and bring no escort.
     expect(MAP_SIGNATURE.island!.kind).toBeUndefined();
+    expect(MAP_SIGNATURE.needle!.escort).toBeUndefined();
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
