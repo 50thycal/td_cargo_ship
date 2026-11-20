@@ -55,9 +55,9 @@ const browser = await chromium.launch({ executablePath: findChromium(), args: ['
 const labMenu = async (page) => {
   // A run just (re)started, or a sheet closing: wait for play, or for a
   // menu or a draft (between a full run's waves) that has Done on it.
-  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
-  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
-  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]');
 };
 const fail = (msg) => {
   console.error('FAIL:', msg);
@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 33 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 34 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -296,6 +296,28 @@ try {
     await defend(page);
     await page.waitForTimeout(40);
   }
+  // Rate & review (docs/design/v3-rate-and-review.md): an optional "Rate
+  // wave 1" screen between the wave's end and the draft (the 2026-11-20
+  // playtest: "move this mid round review to be its own page"); each tap
+  // lands in the log at once, and the game is untouched. Next goes on to
+  // the draft, which no longer has the row.
+  {
+    await page.waitForSelector('[data-screen="rate"]', { timeout: 20000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SHOT_DIR}/10-rate-wave.png` });
+    const row = await page.evaluate(() => { const r = document.querySelector('[data-screen="rate"] [data-wave-rate]'); const b = r?.getBoundingClientRect(); const btns = [...document.querySelectorAll('[data-rate-skip], [data-rate-next]')].map((x) => x.getBoundingClientRect()); return r ? { wave: r.dataset.waveRate, axes: [...r.querySelectorAll('[data-axis]')].map((a) => a.dataset.axis), fits: b.bottom <= innerHeight && b.right <= innerWidth, h2: document.querySelector('.v3-rate h2')?.textContent, buttons: btns.length, btnsFit: btns.every((x) => x.bottom <= innerHeight && x.height >= 40), phase: window.__v3.game().phase } : null; });
+    check(row?.wave === '1' && row.axes.join() === 'difficulty,fun,intensity' && row.fits && row.h2 === 'Rate wave 1' && row.buttons === 2 && row.btnsFit && row.phase === 'draft', `after wave 1, its own "Rate wave 1" screen: difficulty, fun and intensity, Skip and Next on screen (${JSON.stringify(row)})`);
+    const steps = await page.evaluate(() => window.__v3.game().steps);
+    await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="fun"] [data-n="4"]').click();
+    await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
+    await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
+    await page.locator('[data-screen="rate"] [data-wave-rate] [data-axis="intensity"] [data-n="5"]').click();
+    await page.locator('[data-screen="rate"] [data-wave-rate-note]').click();
+    await page.locator('[data-screen="rate"] .v3-wave-rate-text').fill('Swarm from the left');
+    const wr = await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
+    check(wr.list?.length === 1 && wr.list[0].wave === 1 && JSON.stringify(wr.list[0].rating) === '{"fun":4,"intensity":5}' && wr.list[0].note === 'Swarm from the left' && wr.steps === steps && wr.phase === 'draft', `the wave's rating lands in the log at once, the game untouched (${JSON.stringify(wr)})`);
+    await page.locator('[data-rate-next]').click();
+  }
   await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
   await page.waitForTimeout(700);
   await page.screenshot({ path: `${SHOT_DIR}/10-draft.png` });
@@ -303,22 +325,7 @@ try {
   check(offer >= 3, `draft deals ${offer} weapon cards`);
   check((await page.locator('.v2-draft h2').textContent()) === 'Choose your weapon', 'the draft asks for a weapon');
   check(!(await page.locator('.v2-draft').textContent()).includes('15 s in the gun') && !/EVOLVES:/.test(await page.locator('.v2-card-row').textContent()), 'cards carry only their own text (no repeated drop rule, no "EVOLVES:")');
-  // Rate & review (docs/design/v3-rate-and-review.md): an optional "Rate
-  // wave 1" row under the cards; each tap lands in the log at once, and the
-  // game is untouched.
-  {
-    const row = await page.evaluate(() => { const r = document.querySelector('.v2-draft [data-wave-rate]'); const b = r?.getBoundingClientRect(); return r ? { wave: r.dataset.waveRate, axes: [...r.querySelectorAll('[data-axis]')].map((a) => a.dataset.axis), fits: b.bottom <= innerHeight && b.right <= innerWidth } : null; });
-    check(row?.wave === '1' && row.axes.join() === 'difficulty,fun,intensity' && row.fits, `the draft offers "Rate wave 1": difficulty, fun and intensity (${JSON.stringify(row)})`);
-    const steps = await page.evaluate(() => window.__v3.game().steps);
-    await page.locator('.v2-draft [data-wave-rate] [data-axis="fun"] [data-n="4"]').click();
-    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
-    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="2"]').click();
-    await page.locator('.v2-draft [data-wave-rate] [data-axis="intensity"] [data-n="5"]').click();
-    await page.locator('.v2-draft [data-wave-rate-note]').click();
-    await page.locator('.v2-draft .v3-wave-rate-text').fill('Swarm from the left');
-    const wr = await page.evaluate(() => ({ list: window.__v3.log().waveRatings, steps: window.__v3.game().steps, phase: window.__v3.game().phase }));
-    check(wr.list?.length === 1 && wr.list[0].wave === 1 && JSON.stringify(wr.list[0].rating) === '{"fun":4,"intensity":5}' && wr.list[0].note === 'Swarm from the left' && wr.steps === steps && wr.phase === 'draft', `the wave's rating lands in the log at once, the game untouched (${JSON.stringify(wr)})`);
-  }
+  check((await page.locator('.v2-draft [data-wave-rate]').count()) === 0, 'the draft itself has no rating row');
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);
@@ -1035,6 +1042,9 @@ try {
     await lp.click('[data-start]');
     await lp.waitForSelector('.playing');
     await lp.evaluate(() => { const g = window.__v3.game(); g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
+    // (The wave's rating screen first: skipped.)
+    await lp.waitForSelector('.v2-card, [data-rate-skip]', { timeout: 15000 });
+    if (await lp.$('[data-rate-skip]')) await lp.click('[data-rate-skip]');
     await lp.waitForSelector('.v2-card', { timeout: 15000 });
     const offer = await lp.evaluate(() => [...document.querySelectorAll('.v2-card')].map((c) => ({ id: c.dataset.upgrade, debut: c.dataset.debut ?? null, tag: c.querySelector('.v3-card-debut')?.textContent ?? null })));
     const debut = offer.filter((o) => o.debut);
@@ -1141,7 +1151,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 33 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 34 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1325,7 +1335,7 @@ try {
     await lp.waitForSelector('.playing');
     await lp.waitForTimeout(400);
     const hud11 = await lp.evaluate(() => ({ hud: document.querySelector('.v2-hud')?.textContent, event: window.__v3.game().event?.id, run: window.__v3.game().event?.run }));
-    check(/BOSS\s*1\/3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS 1/3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
+    check(/BOSS\s*Round 1 of 3/.test(hud11.hud ?? '') && hud11.event === 'rush' && hud11.run === 1, `round 11: the counter reads BOSS Round 1 of 3 on the Afterburner Rush (${JSON.stringify(hud11)})`);
     // Log v30 (the player: "have it say 'boss round', then 'live reset',
     // then what it is ... then 'round one', so each text is like a new card
     // pop up"): the intro is a sequence of cards through the calm, each

@@ -61,7 +61,7 @@ import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
 import { endingOutcome, lastWave } from '../sim/events';
-import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, lastEventWave, type EventId, type EventOutcome, type IntroCard } from '../data/events';
+import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
   addLabEntry,
   roundTitle,
@@ -676,7 +676,7 @@ export class App {
   private savedLine(save: RunSave<RunUI>): HTMLElement {
     const line = el('p', 'v3-saved-line');
     const where = save.kind === 'lab' ? 'Test Lab' : save.kind === 'free' ? 'Free Play' : MAPS[save.log.map]?.name ?? '';
-    line.append(el('b', '', save.title), el('span', '', [where !== save.title ? where : '', `wave ${save.wave}`, `score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
+    line.append(el('b', '', save.title), el('span', '', [where !== save.title ? where : '', waveName(save.wave), `score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
     return line;
   }
 
@@ -694,11 +694,11 @@ export class App {
     pic.append(img);
     const text = el('span', 'v3-continue-text');
     const kind = save.kind === 'lab' ? 'Test Lab' : save.kind === 'free' ? 'Free Play' : '';
-    text.append(el('span', 'v3-eyebrow', kind ? `Continue · ${kind}` : 'Continue'), el('strong', '', save.title), el('small', '', [`Wave ${save.wave}`, `Score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
+    text.append(el('span', 'v3-eyebrow', kind ? `Continue · ${kind}` : 'Continue'), el('strong', '', save.title), el('small', '', [waveCount(save.wave), `Score ${save.score.toLocaleString()}`, timeAgo(save.savedAt)].filter(Boolean).join(' · ')));
     const go = el('span', 'v3-continue-go');
     go.innerHTML = chromeSvg('play', 16);
     b.append(pic, text, go);
-    b.setAttribute('aria-label', `Continue ${save.title}, wave ${save.wave}, saved ${timeAgo(save.savedAt)}`);
+    b.setAttribute('aria-label', `Continue ${save.title}, ${waveName(save.wave)}, saved ${timeAgo(save.savedAt)}`);
     return b;
   }
 
@@ -729,7 +729,9 @@ export class App {
     const track = el('div', 'v3-restore-track');
     const bar = el('i');
     track.append(bar);
-    const count = el('span', 'v3-restore-count', `Wave ${save.log.firstWave} of ${save.wave}`);
+    // The wave the replay is on, as the HUD says it (the bar shows how far
+    // to the saved one).
+    const count = el('span', 'v3-restore-count', waveCount(save.log.firstWave));
     const cancel = button('Cancel', 'v2-btn v3-restore-cancel', () => {
       this.restoring = null;
       this.showMenu();
@@ -754,7 +756,7 @@ export class App {
       return;
     }
     r.bar.style.width = `${(r.rest.progress * 100).toFixed(1)}%`;
-    r.count.textContent = `Wave ${Math.min(r.rest.game.wave, r.save.wave)} of ${r.save.wave}`;
+    r.count.textContent = this.waveText(r.rest.game);
     // Long enough to read, however fast the replay.
     if (!done || performance.now() - r.since < RESTORE_MIN_MS) {
       requestAnimationFrame(() => this.runRestore());
@@ -1156,7 +1158,7 @@ export class App {
     if (script || lab) row.append(...buttons);
     const head = run && lab && g ? labPauseHead(run.card, this.labStats(g), lab.waves, labWaves(lab), { plays: lab.setup.plays, wave: g.wave }) : el('h2', '', 'Paused');
     // Just continued from a save: say so, and where it stands.
-    const back = this.restored && g ? [el('p', 'v3-restored', `Run restored · wave ${g.wave} · score ${g.score.toLocaleString()}`)] : [];
+    const back = this.restored && g ? [el('p', 'v3-restored', `Run restored · ${this.waveText(g)} · score ${g.score.toLocaleString()}`)] : [];
     this.showOverlay('v2-pause-panel', [head, ...back, ...(script || lab ? [row, ...(script ? [script] : [])] : buttons)]);
     if (lab) this.overlay.querySelector('.v2-pause-panel')?.classList.add('v3-lab-pause');
   }
@@ -2188,6 +2190,23 @@ export class App {
     return scrapFor(scrapTally(g.history, RULES.wavesToClear, lastWave(g)), g.cleared, false);
   }
 
+  /** The counter's two lines for the game in play (data/events.ts
+   *  waveCountParts): ["WAVE", "3 of 10"], ["BOSS", "Round 1 of 3"]. */
+  private waveParts(g: Game): [string, string] {
+    const boss = g.event && !g.event.bonus && g.event.runs > 1 ? { run: g.event.run, runs: g.event.runs } : null;
+    // A Test Lab event card's single run counts as itself ("WAVE 11").
+    const lone = !!g.event && !g.event.bonus && !boss;
+    const [head, count] = waveCountParts(g.wave, { boss, bonus: !!g.event?.bonus, endless: g.endless || lone });
+    return [head, head === 'BONUS' ? 'WAVE' : count];
+  }
+
+  /** The same in words: "Wave 3 of 10", "Boss · Round 1 of 3". */
+  private waveText(g: Game): string {
+    const boss = g.event && !g.event.bonus && g.event.runs > 1 ? { run: g.event.run, runs: g.event.runs } : null;
+    const lone = !!g.event && !g.event.bonus && !boss;
+    return waveCount(g.wave, { boss, bonus: !!g.event?.bonus, endless: g.endless || lone });
+  }
+
   private renderHud(g: Game): void {
     if (this.commandBtns.length) this.renderCommands(g);
     const sunk = shipsSunk(g);
@@ -2196,11 +2215,12 @@ export class App {
     ).join('');
     // A bonus wave is not one of the map's: the counter says so. A run of
     // the map's ending is a boss round (round 11): "BOSS 1/3".
-    const boss = g.event && !g.event.bonus && g.event.runs > 1 ? g.event : null;
-    const waveLabel = g.event?.bonus ? 'BONUS' : g.endless ? `${g.wave}` : boss ? `${boss.run}/${boss.runs}` : `${g.wave}/${lastWave(g)}`;
+    // The 2026-11-20 playtest: "Wave 3 of 10" on every map, and a boss
+    // round as one ("Round 1 of 3"), never "11/13".
+    const [waveHead, waveLabel] = this.waveParts(g);
     const scrap = this.earnsScrap() ? this.runScrap(g).total : null;
     const html =
-      `<span><b>${boss ? 'BOSS' : 'WAVE'}</b>${waveLabel}</span>` +
+      `<span class="v3-hud-wave" data-wave-count="${waveHead} ${waveLabel}"><b>${waveHead}</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
       // Scrap so far (the Armory overhaul): a read-out like the score,
       // nothing to tap. Only a run that banks it shows it.
@@ -2255,6 +2275,12 @@ export class App {
     };
     const head = el('div', 'v2-draft-head');
     head.append(el('span', 'v2-draft-eyebrow', `Wave ${wave} cleared`), el('h2', '', `Rate wave ${wave}`), el('p', 'v2-sub v3-rate-sub', 'Optional: tap what fits, it is saved as you go.'));
+    // A test's full map run: Done here too, as on its draft.
+    if (this.labRun && g.lab) {
+      const done = labDoneButton(() => this.showLabVerdict('done'), g.lab.waves, labWaves(g.lab));
+      done.classList.add('v3-draft-done');
+      head.append(done);
+    }
     const skip = button('Skip', 'v2-btn v3-rate-skip', go);
     skip.dataset.rateSkip = '1';
     const next = button('Next', 'v2-btn primary v3-rate-next', go);
@@ -2296,7 +2322,7 @@ export class App {
       const last = g.history[g.history.length - 1];
       const wave = last?.wave ?? g.wave;
       this.alerts.clear();
-      if (kind === 'won') this.setStamp('won', 'MAP CLEARED', `Wave ${wave} survived`);
+      if (kind === 'won') this.setStamp('won', 'MAP CLEARED', wave > RULES.wavesToClear ? 'Every wave and boss round survived' : `All ${wave} waves survived`);
       else this.setStamp('won', `WAVE ${wave} CLEARED`, `+${(200 * wave).toLocaleString()} bonus`);
       requestAnimationFrame(() => this.stamp.classList.add('show'));
     }
@@ -3025,7 +3051,7 @@ export class App {
     const back = () => this.showLabVerdict(ended, selected);
     this.showOverlay('v3-note', [
       el('h2', '', m ? `📝 ${stopWhen(m)}` : '📝 Note on this run'),
-      el('p', 'v2-sub', m ? m.text : `${this.labRun?.card.name ?? 'Test'} · wave ${g.wave}`),
+      el('p', 'v2-sub', m ? m.text : `${this.labRun?.card.name ?? 'Test'} · ${this.waveText(g)}`),
       form.el,
       this.dialogButtons('Save note', () => {
         if (form.empty()) return;
@@ -4271,7 +4297,7 @@ export class App {
       ? `${g.map.name} cleared!`
       : g.endless
         ? `Endless run over: wave ${g.wave}`
-        : `Convoy lost on wave ${g.wave}`;
+        : `Convoy lost on ${waveName(g.wave)}`;
     const sub = free ? `Free play · ${won ? 'cleared' : reason}` : won ? (next ? `${MAPS[next].name} unlocked.` : 'Every map cleared.') : reason;
     const row = el('div', 'v2-btn-row');
     row.append(...buttons);
@@ -4403,7 +4429,7 @@ export class App {
     const form = noteForm();
     this.showOverlay('v3-note', [
       el('h2', '', m ? `📝 ${stopWhen(m)}` : '📝 Note on this run'),
-      el('p', 'v2-sub', m ? m.text : `${view.won ? 'Cleared' : `Lost on wave ${view.g.wave}`} · ${view.g.lost} ships sunk`),
+      el('p', 'v2-sub', m ? m.text : `${view.won ? 'Cleared' : `Lost on ${waveName(view.g.wave)}`} · ${view.g.lost} ships sunk`),
       form.el,
       this.dialogButtons('Save note', () => {
         if (form.empty()) return;

@@ -8,7 +8,7 @@
 //       stopped, how long it was up and whether it broke; ships lost a run.
 //       --hits plays other hit counts (999,999,999: a shield that never
 //       breaks, as before log v34).
-//   npx vite-node tools/v3/playtest-fixes/measure.ts -- --what=foes [--seeds=12] [--maps=...]
+//   npx vite-node tools/v3/playtest-fixes/measure.ts -- --what=foes [--kit=self|plain] [--seeds=12] [--maps=...]
 //       the bot drafting for itself: attack helicopters (seconds from coming
 //       in to their first volley, volleys fired, share shot down), torpedo
 //       subs (torpedoes fired a sub), scavengers (share shot down, seconds
@@ -29,6 +29,8 @@ const maps = (opt('maps') ?? 'island,behemoth').split(',') as MapId[];
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const hitsOpt = opt('hits');
+/** --what=foes: the bot drafting for itself (self) or the plain gun. */
+const kit = opt('kit') ?? 'self';
 if (hitsOpt) (AB.shield as unknown as { hits: number[] }).hits = hitsOpt.split(',').map(Number);
 
 for (const map of maps) {
@@ -70,10 +72,11 @@ for (const map of maps) {
     const subs: { fired: number }[] = [];
     const scav: { killed: boolean; alive: number }[] = [];
     const lost: number[] = [];
+    const lost10: number[] = [];
     let subHit = 0;
     for (let k = 0; k < seeds; k++) {
       const seen = new Map<number, { th: Threat; born: number; first: number }>();
-      const run = playCombo({ map, seed: 900 + k, armory: PLAYER_ARMORY }, (g: Game) => {
+      const run = playCombo({ map, seed: 900 + k, armory: PLAYER_ARMORY, ...(kit === 'plain' ? { loadout: [] } : {}) }, (g: Game) => {
         for (const th of g.threats) {
           if (th.kind !== 'attackHeli' && th.kind !== 'torpedoSub' && th.kind !== 'scavenger') continue;
           if (!seen.has(th.id)) seen.set(th.id, { th, born: g.t, first: -1 });
@@ -92,9 +95,10 @@ for (const map of maps) {
         }
       });
       lost.push(run.lost.reduce((a, b) => a + b, 0));
+      lost10.push(run.lost.slice(0, 10).reduce((a, b) => a + b, 0));
     }
     const fin = (xs: number[]) => xs.filter((x) => Number.isFinite(x));
-    console.log(`${map} (${seeds} runs, the bot drafting for itself; ships lost a run, every wave played: ${r2(mean(lost))})`);
+    console.log(`${map} (${seeds} runs, ${kit === 'plain' ? 'the plain gun' : 'the bot drafting for itself'}; ships lost a run, every wave played: ${r2(mean(lost))}, waves 1-10 ${r2(mean(lost10))})`);
     console.log(`  attack helicopters: ${heli.length}; first volley ${r2(mean(fin(heli.map((h) => h.firstAfter))))} s after coming in (${heli.filter((h) => !Number.isFinite(h.firstAfter)).length} never fired); volleys ${r2(mean(heli.map((h) => h.volleys)))} each; shot down ${r2(mean(heli.map((h) => (h.killed ? 1 : 0))))}`);
     console.log(`  torpedo subs: ${subs.length}; torpedoes ${r2(mean(subs.map((s) => s.fired)))} a sub; steps with a sub hurt ${subHit}`);
     console.log(`  scavengers: ${scav.length}; shot down ${r2(mean(scav.map((s) => (s.killed ? 1 : 0))))}; alive ${r2(mean(scav.map((s) => s.alive)))} s`);

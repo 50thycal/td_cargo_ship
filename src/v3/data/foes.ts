@@ -154,7 +154,7 @@ export const FOE = {
   // doesn't need to go to a specific spot"; log v34): it fires whenever a
   // ship is within `range` px and it is `edge` px inside the screen, on the
   // way in too; its first volley `first` s after it may (a beat to see it).
-  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25, range: 560, edge: 30, first: 0.6 },
+  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25, range: 560, edge: 30, first: 2 },
   // Round 7 ("the torpedo sub will fire three to five, and then sometimes
   // fast ones"): every sub fires a spread of `spread` torpedoes (three to
   // five) on headings at least `fan` rad apart: the first `aimed` at a
@@ -182,7 +182,7 @@ export const FOE = {
   // the rest don't go. A sub surfaces where it has open water to the lanes.
   // Tuned with the Test Lab bots (80 seeds of the card, three bots; the
   // round doc has the table).
-  torpedoSub: { warn: 1.5, up: 3.5, fireAt: 1.2, run: 300, hitRadius: 24, spread: [3, 5], aim: 1.8, stagger: 0.8, after: 1.4, fan: 0.55, fastChance: 0.25, fastSpeed: 2.2 },
+  torpedoSub: { warn: 1.5, up: 3.5, fireAt: 1.2, run: 300, hitRadius: 24, spread: [2, 2], aim: 1.8, stagger: 0.8, after: 1.4, fan: 0.55, fastChance: 0.25, fastSpeed: 2.2 },
   armored: { plate: 4, turnAt: 0.45, turn: 1.6, swing: 1.75, front: 70 },
   /** Round 8, a full rework (the player: "when this drone is present it
    *  will deny the player the ability to pick up the weapons or boosts if
