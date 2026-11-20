@@ -116,8 +116,10 @@ export interface Beat {
   aim?: BeatAim;
   /** A Rocket Truck down a pop-up road (`from: { road }`, log v42,
    *  Saltgate Canal's first truck): the salvos it fires (absent: a truck's
-   *  own, FOE.rocketTruck.salvos). */
+   *  own, FOE.rocketTruck.salvos), and its speed driving in, × a truck's
+   *  own (absent: its own). */
   salvos?: number;
+  drive?: number;
 }
 
 /** An enemy pair placed by an encounter (v3): one set of the pair (data/
@@ -3743,7 +3745,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'lock' },
-      { at: 0.2, kind: 'rocketTruck', count: 1, from: road(0), aim: 'lock', salvos: 2 },
+      { at: 0.2, kind: 'rocketTruck', count: 1, from: road(0), aim: 'lock', salvos: 2, drive: 1.8 },
       { at: 0.35, plus: 4, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
     replaces: { drones: 7, ballistic: 2 },
@@ -3778,23 +3780,22 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [4],
     role: 'combine',
     name: 'A cluster over the chamber',
-    callout: 'Clusters over the locks',
-    premise: 'A cluster missile lifts off over the west lock and splits above the ships waiting in it, then another over the east lock; swarms come off both shores.',
-    decision: 'The ships in a chamber sit side by side: one cluster that splits there finds several at once, and the second comes from the other end of the canal.',
-    counters: 'Each cluster as it climbs, before it splits; then the swarms.',
-    succeeds: 'The clusters are shot down before they split in most runs; a close call at a lock, no ship lost in most runs.',
+    callout: 'A cluster missile',
+    premise: 'A cluster missile lifts off over the west lock and splits above the ships waiting in it; swarms come off both shores, and the first truck drives down to a lock.',
+    decision: 'The ships in a chamber sit side by side: one cluster that splits there finds several at once.',
+    counters: 'The cluster as it climbs, before it splits; then the swarms.',
+    succeeds: 'The cluster is shot down before it splits in most runs; no ship lost in most runs.',
     notes: {
-      sites: 'The silo over the west lock (580, 240; a cluster), the east lock\'s silo (1220, 240; a cluster and a swarm), the west shore silo (220, 150; a swarm).',
-      target: 'Each cluster at the ship held at the lock nearest its silo, the swarms at any ship.',
-      usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells, its cluster and a swarm (the signature\'s first truck comes with the wave; log v42: the east lock\'s cluster added).',
+      sites: 'The silo over the west lock (580, 240; a cluster), the west shore silo (220, 150) and the east lock\'s silo (1220, 240; swarms).',
+      target: 'The cluster at the ship held at the west lock, the swarms at any ship.',
+      usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells and its cluster (the signature\'s first truck comes with the wave, log v42).',
     },
     beats: [
       { at: 0.35, kind: 'cluster', count: 1, from: base(1), aim: 'lock' },
-      { at: 0.55, kind: 'cluster', count: 1, from: base(3), aim: 'lock' },
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 5, ballistic: 5, extras: { cluster: 1 } },
+    replaces: { drones: 2, ballistic: 5, extras: { cluster: 1 } },
   },
   {
     id: 'saltgate-two-gates',
@@ -3815,7 +3816,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
-      { at: 0.3, kind: 'rocketTruck', count: 1, from: road(1), aim: 'lock', salvos: 3 },
+      { at: 0.3, kind: 'rocketTruck', count: 1, from: road(1), aim: 'lock', salvos: 3, drive: 1.8 },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
     ],
@@ -4096,7 +4097,7 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
 /** Saltgate Canal (log v42; the player's v38 play: waves 1-6 rated 1-2 for
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
-const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.04, 1.1, 0.88, 0.9, 0.9, 0.92, 0.96];
+const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {

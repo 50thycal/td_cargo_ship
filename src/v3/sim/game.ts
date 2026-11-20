@@ -416,9 +416,11 @@ export interface Launch {
   enc?: string;
   aim?: BeatAim;
   /** A Rocket Truck (log v42, Saltgate Canal): the pop-up road it takes
-   *  (its index; absent, one at random) and its salvos (absent, its own). */
+   *  (its index; absent, one at random), its salvos (absent, its own) and
+   *  its speed driving in (× its own). */
   road?: number;
   salvos?: number;
+  drive?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1442,7 +1444,7 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // Log v42 (Saltgate Canal): a Rocket Truck down a pop-up road; the
         // truck itself is its warning (it drives in, then raises its
         // launcher, a ring filling round it, before its first salvo).
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, road: b.from.road, enc: e.id, ...aim, ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, road: b.from.road, enc: e.id, ...aim, ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.drive !== undefined ? { drive: b.drive } : {}) });
         start = Math.min(start, at);
       } else if ('sub' in b.from) {
         // It shows its periscope and surfaces first, so its salvo starts at `at`.

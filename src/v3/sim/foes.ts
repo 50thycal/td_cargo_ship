@@ -363,7 +363,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       th.target = CARRIER_TARGET;
       if (l.enc) th.enc = l.enc;
       const n = l.salvos ?? FOE.rocketTruck.salvos;
-      th.foe = data({ path: [road.from, road.to], along: 0, n, ...(l.salvos !== undefined ? { full: n } : {}), ...(l.aim ? { aim: l.aim } : {}) });
+      th.foe = data({ path: [road.from, road.to], along: 0, n, ...(l.salvos !== undefined ? { full: n } : {}), ...(l.aim ? { aim: l.aim } : {}), ...(l.drive !== undefined ? { drive: l.drive } : {}) });
       th.heading = Math.atan2(road.to.y - road.from.y, road.to.x - road.from.x);
       return;
     }
