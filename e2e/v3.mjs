@@ -126,39 +126,71 @@ try {
   await page.evaluate((keep) => localStorage.setItem('straitwatch.v3.progress', keep), legacy);
   await page.reload({ waitUntil: 'networkidle' });
 
+  // The Armory overhaul: the round 7 save above (Armory version 2, Deep
+  // Magazine equipped in the Gun bay) keeps its levels, starts at 0 Scrap,
+  // and Deep Magazine moves to the Supply bay; the Gun bay takes its best
+  // gun card.
+  {
+    const m = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
+    check(m.armoryV === 3 && m.scrap === 0 && m.armory.magazine === 2 && m.armory.warhead === 1 && m.equipped.supply === 'magazine' && m.equipped.gun === 'warhead', `a round 7 save migrates: levels kept, 0 Scrap, Deep Magazine in Supply (${JSON.stringify({ v: m.armoryV, scrap: m.scrap, eq: m.equipped })})`);
+    // Some Scrap to spend.
+    await page.evaluate(() => {
+      const p = JSON.parse(localStorage.getItem('straitwatch.v3.progress'));
+      localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ ...p, scrap: 400 }));
+    });
+    await page.reload({ waitUntil: 'networkidle' });
+  }
+
   // ---- Menu and Armory ----
   await page.waitForSelector('[data-screen="menu"]');
   await page.screenshot({ path: `${SHOT_DIR}/01-menu.png` });
   check((await page.locator('.v3-armory-btn').getAttribute('data-cards')) === '4' && (await page.locator('.v3-armory-btn .v3-count').textContent()) === '4', 'menu shows the Armory cards found');
+  check((await page.locator('.v3-armory-btn.v3-can-level').count()) === 1, 'the menu\'s Armory key lights when a level can be bought');
   await page.click('.v3-armory-btn');
   await page.waitForSelector('[data-screen="armory"]');
-  // Round 7: every upgrade is a card; the ones not won yet are greyed out.
-  check((await page.locator('.v3-armory-card').count()) === 5, 'the Gun bay shows its five cards');
-  check(await page.locator('.v3-armory-card[data-armory="reload"]').isDisabled(), 'a card not won yet cannot be equipped');
+  check((await page.locator('.v3-scrap-count').getAttribute('data-scrap')) === '400', 'the Armory shows the Scrap banked');
+  // Every upgrade is a card; the ones not found yet are greyed out.
+  check((await page.locator('.v3-armory-card').count()) === 4, 'the Gun bay shows its four cards (Deep Magazine moved to Supply)');
+  check(await page.locator('.v3-armory-card[data-armory="reload"]').isDisabled(), 'a card not found yet cannot be picked');
   check((await page.locator('.v3-armory-card[data-armory="warhead"] .v2-card-text').textContent()).length > 10, 'a card says what it does');
+  // The equipped card's bar is open: level it with Scrap.
   await page.click('.v3-armory-card[data-armory="warhead"]');
-  await page.click('[data-bay="hull"]');
-  await page.click('.v3-armory-card[data-armory="pointdef"]');
+  const lvBtn = page.locator('[data-armory-bar="warhead"] [data-armory-level]');
+  check((await lvBtn.getAttribute('data-cost')) === '150' && !(await lvBtn.isDisabled()) && /150 scrap/.test(await lvBtn.textContent()), 'Level up shows its cost (150 Scrap for level 2)');
+  await lvBtn.click();
+  {
+    const p = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
+    check(p.armory.warhead === 2 && p.scrap === 250, `Level up spends the Scrap and adds a level (${p.armory.warhead}, ${p.scrap} left)`);
+  }
+  const lvBtn3 = page.locator('[data-armory-bar="warhead"] [data-armory-level]');
+  check((await lvBtn3.getAttribute('data-cost')) === '300' && (await lvBtn3.isDisabled()) && /need 50 more/.test(await lvBtn3.textContent()), 'the next level is greyed with what is missing (300, need 50 more)');
+  check(/Next:.*180% blast/.test(await page.locator('[data-armory-bar="warhead"]').textContent()), 'the bar says what the next level gives');
   await page.screenshot({ path: `${SHOT_DIR}/02-armory.png` });
+  await page.click('[data-bay="hull"]');
+  check((await page.locator('.v3-armory-card[data-armory="pointdef"] .v2-card-name').textContent()) === 'Deck Guns', 'the Armory\'s Point Defense reads Deck Guns');
+  await page.click('.v3-armory-card[data-armory="pointdef"]');
+  await page.click('[data-armory-bar="pointdef"] [data-armory-equip]');
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
-  check(saved.equipped.gun === 'warhead' && saved.equipped.hull === 'pointdef' && saved.armory.warhead === 1, `equipped one card from each bay (${JSON.stringify(saved.equipped)})`);
-  check(!('salvage' in saved) && !(await page.locator('[data-buy]').count()), 'nothing is bought: no salvage, no Upgrade buttons');
+  check(saved.equipped.gun === 'warhead' && saved.equipped.hull === 'pointdef' && saved.armory.warhead === 2, `equipped one card from each bay (${JSON.stringify(saved.equipped)})`);
+  check(!('salvage' in saved) && !(await page.locator('[data-buy]').count()), 'no salvage, no old Upgrade buttons');
   await page.click('[data-bay="supply"]');
-  check((await page.locator('.v3-armory-card:disabled').count()) === 3, 'the Supply bay: three cards, none won yet');
+  check((await page.locator('.v3-armory-card').count()) === 4 && (await page.locator('.v3-armory-card:disabled').count()) === 3 && !(await page.locator('.v3-armory-card[data-armory="magazine"]').isDisabled()), 'the Supply bay: four cards, Deep Magazine held');
   await page.click('[data-screen="armory"] [data-back]');
   await page.waitForSelector('[data-screen="menu"]');
 
   // ---- A run: the map's briefing asks which ONE upgrade each bay gives ----
   await page.click('[data-map="strait"]');
   await page.waitForSelector('[data-screen="loadout"]');
-  check((await page.locator('[data-bay="gun"] .v3-gun.on').getAttribute('data-gun')) === 'warhead' && (await page.locator('[data-bay="hull"] .v3-gun.on').getAttribute('data-gun')) === 'pointdef', 'the loadout picker has one upgrade from each open bay');
-  check(!(await page.locator('.v3-gun[data-gun="reload"]').count()) && !(await page.locator('.v3-bay-row[data-bay="supply"]').count()), 'only cards won can be picked');
+  check((await page.locator('[data-bay="gun"] .v3-gun.on').getAttribute('data-gun')) === 'warhead' && (await page.locator('[data-bay="hull"] .v3-gun.on').getAttribute('data-gun')) === 'pointdef' && (await page.locator('[data-bay="supply"] .v3-gun.on').getAttribute('data-gun')) === 'magazine', 'the loadout picker has one upgrade from each open bay');
+  check(!(await page.locator('.v3-gun[data-gun="reload"]').count()), 'only cards found can be picked');
   await page.screenshot({ path: `${SHOT_DIR}/02b-gun-picker.png` });
   await page.click('[data-start]');
   await page.waitForSelector('.playing');
   const blast = await page.evaluate(() => window.__v3.game().stats.blast);
-  check(Math.abs(blast - 22 * 1.4) < 1e-6, `the run's gun has the Armory's warhead (blast ${blast})`);
-  check((await page.evaluate(() => window.__v3.game().stats.pdGap)) > 0, 'the run has the Hull bay\'s Point Defense');
+  check(Math.abs(blast - 22 * 1.8) < 1e-6, `the run's gun has the Armory's warhead at level 2 (blast ${blast})`);
+  check((await page.evaluate(() => window.__v3.game().stats.pdGap)) > 0, 'the run has the Hull bay\'s Deck Guns');
+  check((await page.evaluate(() => window.__v3.game().stats.rack)) === 8, 'the run has the Supply bay\'s Deep Magazine (8 rounds)');
+  check((await page.locator('.v2-hud .v3-hud-scrap').getAttribute('data-scrap')) === '0', 'the HUD shows the run\'s Scrap (0 at the start)');
   // Speed: one button now, stepping 1× → 1.25× → 1.5× → 2×.
   for (let k = 0; k < 3; k++) await page.click('.v3-speed');
   check((await page.locator('.v3-speed b').textContent()) === '2×', 'speed button steps to 2×');
@@ -254,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 32 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 1 && logged.armory.pointdef === 1, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 32 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -291,6 +323,7 @@ try {
   await page.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
   const held = await page.evaluate(() => Object.keys(window.__v3.game().levels).length);
   check(held === 1, 'the picked weapon is held');
+  check((await page.locator('.v2-hud .v3-hud-scrap').getAttribute('data-scrap')) === '40', 'wave 1 cleared: the HUD reads 40 Scrap');
   check((await page.locator('.v3-weapon.held').count()) === 1, 'its loadout chip appears, not loaded');
   check((await page.locator('.v3-weapon').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'nothing in the loadout animates');
 
@@ -361,7 +394,8 @@ try {
 
   // ---- The end of a run wins Armory cards (round 7) ----
   // Wave 1 was cleared above; two more cleared waves make the run count.
-  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')).cards);
+  const beforeP = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
+  const before = beforeP.cards;
   await page.evaluate(() => {
     const g = window.__v3.game();
     const h = g.history[g.history.length - 1];
@@ -372,7 +406,14 @@ try {
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${SHOT_DIR}/12-cards-won.png` });
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.progress')));
-  check(after.cards === before + 1 && (await page.locator('.v3-won-cards .v3-armory-card').count()) === 1, `a lost run that cleared 3 waves wins one Armory card, shown as a card (${before} → ${after.cards})`);
+  check(after.cards === before + 1 && (await page.locator('.v3-won-cards .v3-armory-card').count()) === 1, `a lost run that cleared 3 waves finds one Armory card, shown as a card (${before} → ${after.cards})`);
+  {
+    // Scrap: 3 waves × 40, kept though the run was lost (+100 if the card
+    // found was one already held).
+    const dup = (await page.locator('.v3-won-cards .v2-card.dup').count()) * 100;
+    const shown = await page.locator('[data-screen="result"] .v3-scrap-stat').getAttribute('data-scrap');
+    check(after.scrap === beforeP.scrap + 120 + dup && shown === String(120 + dup) && /\+\d+ scrap/.test(await page.locator('.v3-scrap-ledger').textContent()), `a lost run banks its Scrap, shown at the end (${beforeP.scrap} → ${after.scrap}, shown +${shown})`);
+  }
   // The run's review shows wave 1's rating from the draft on its band.
   await page.click('[data-screen="result"] .v3-review-btn');
   await page.waitForSelector('[data-screen="review"]');
