@@ -27,16 +27,18 @@ import {
   encountersFor,
   playsAt,
   MAP_BOSS,
+  MAP_SIGNATURE,
+  signatureOf,
   versionDef,
   waveScale,
   type Encounter,
   type EncounterVersion,
 } from '../../src/v3/data/encounters';
-import { HEAVY_FOES, foesUpTo, type FoeId } from '../../src/v3/data/foes';
+import { HEAVY_FOES, foeCount, foesUpTo, type FoeId } from '../../src/v3/data/foes';
 import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { applyEncounters, createGame, step, type Game } from '../../src/v3/sim/game';
+import { applyEncounters, createGame, step, vipRoute, type Game } from '../../src/v3/sim/game';
 import { isFoe, onLand } from '../../src/v3/sim/foes';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
@@ -836,7 +838,7 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
     roundLengths(on.game.eventLog);
   }, 90_000);
 
-  it('The Behemoth Run\'s Wolf Pack: more periscopes and fast torpedoes each round, and missiles at the supertanker', () => {
+  it('The Behemoth Run\'s boss rounds (log v33): a strike on the supertanker, jets and heavies, that the Shield cannot stop; more each round', () => {
     const off = playMimic('behemoth', 201, opts);
     const old = playMimic('behemoth', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Not the same game step for step: turning the layer on plans the first
@@ -851,21 +853,115 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
       expect((e.sent.guided ?? 0) + (e.sent.heavy ?? 0), `run ${e.run}`).toBe(0);
     }
     expect(off.game.eventLog.map((e) => e.sent.torpedoSub)).toEqual([7, 7, 7]);
-    const on = playMimic('behemoth', 201, { ...opts, encounters: VER('v1') });
+    // Seed 204: the tryhard bot, starting at the boss with no weapon, sees
+    // all three rounds (it breaks the first and the third).
+    const on = playMimic('behemoth', 204, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.behemoth!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['wolf-pack', 1], ['wolf-pack', 2], ['wolf-pack', 3]]);
-    // The tryhard bot loses this seed in round 3 (the tanker counts three):
-    // a round the run is lost in stops short, so it is checked up to there.
+    // A round the run is lost in stops short, so it is checked up to there.
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
     expect(done.length).toBeGreaterThanOrEqual(2);
-    expect(done.map((e) => e.sent.torpedoSub)).toEqual(done.map((e) => rounds[e.run! - 1].packs!.reduce((a, n) => a + n, 0)));
+    expect(done.map((e) => e.sent.torpedoSub ?? 0)).toEqual(done.map((e) => rounds[e.run! - 1].packs!.reduce((a, n) => a + n, 0)));
+    expect(done.map((e) => e.sent.strafer ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'strafer')));
+    expect(done.map((e) => e.sent.heavy ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'heavy')));
     expect(done.map((e) => e.sent.guided ?? 0)).toEqual(done.map((e) => fired(rounds[e.run! - 1], 'guided')));
-    // The supertanker is what the added missiles go for.
-    for (const r of rounds) expect(r.fire!.some((f) => f.aim === 'vip')).toBe(true);
-    const weight = rounds.map((r) => 3 * r.packs!.reduce((a, n) => a + n, 0) + 2 * r.fast! + 3 * fired(r, 'guided') + 6 * fired(r, 'heavy'));
+    for (const r of rounds) {
+      // The supertanker is what it goes for: jets down its lane and a heavy
+      // at it every round.
+      expect(r.fire!.some((f) => f.kind === 'strafer' && f.aim === 'vip')).toBe(true);
+      expect(r.fire!.some((f) => f.kind === 'heavy' && f.aim === 'vip')).toBe(true);
+      // Round 9 (r9-ch2-split): led by what the Shield cannot stop. Jets
+      // outnumber everything it can (subs, heavies, guided missiles).
+      const subs = r.packs!.reduce((a, n) => a + n, 0);
+      expect(fired(r, 'strafer'), 'jets lead').toBeGreaterThan(subs + fired(r, 'heavy') + fired(r, 'guided'));
+      expect(subs, 'what is left of the Wolf Pack').toBeLessThanOrEqual(2);
+    }
+    // More each round (a heavy is worth four jets: half the tanker).
+    const weight = rounds.map((r) => 3 * r.packs!.reduce((a, n) => a + n, 0) + 2 * r.fast! + 3 * fired(r, 'guided') + 4 * fired(r, 'heavy') + fired(r, 'strafer'));
     for (let k = 1; k < weight.length; k++) expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
     roundLengths(done);
   }, 90_000);
+});
+
+describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
+  const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
+  it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
+    expect(MAP_SIGNATURE.island).toMatchObject({ from: 6, foe: 'attackHeli' });
+    for (let w = 2; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('island', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('island', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('island', seed, w);
+        if (w >= 6) {
+          expect(signatureOf('island', w, on.enc!.setup), `wave ${w}`).toBeDefined();
+          expect(kinds(on, 'attackHeli').length, `wave ${w} seed ${seed}`).toBe(foeCount(w));
+        } else {
+          // Waves 2-5: each its one new enemy, as before (rule m-enemy).
+          expect(signatureOf('island', w, on.enc!.setup), `wave ${w}`).toBeUndefined();
+        }
+        // Lab only: the campaign and the shared wave (`only: []`) draw their own.
+        expect(signatureOf('island', w, shared.enc!.setup)).toBeUndefined();
+        expect(camp.enc).toBeFalsy();
+        // Launch for launch: the helicopters stand in for the drawn enemies,
+        // each taking what that one would have (rule w-budget).
+        const foes = (g: Game) => g.queue.filter((l) => l.at < 1e8 && isFoe(l.kind)).length + g.raiderQueue.length;
+        if (w >= 6) expect(kinds(on, 'attackHeli').length).toBeLessThanOrEqual(foes(on));
+      }
+    // Never before rev 4, nor past the tenth wave.
+    expect(signatureOf('island', 7, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('island', 11, { rev: 4 })).toBeUndefined();
+  });
+
+  it('the Behemoth Run: from wave 4 the wave\'s jets strafe the supertanker\'s lane and its heavies go for the tanker', () => {
+    expect(MAP_SIGNATURE.behemoth).toMatchObject({ from: 4, jets: 'vip', heavies: 'vip' });
+    let jets = 0;
+    let heavies = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('behemoth', seed, w);
+        applyEncounters(on, VER('v1'));
+        const camp = createGame('behemoth', seed, w);
+        for (const l of kinds(on, 'strafer')) {
+          // An authored jet keeps its own aim; the wave's own aim at the tanker.
+          if (!l.enc) expect(l.aim, `wave ${w}`).toBe(w >= 4 ? 'vip' : undefined);
+          if (l.aim === 'vip') jets++;
+        }
+        for (const l of kinds(on, 'heavy')) {
+          expect(l.aim, `wave ${w}`).toBe('vip');
+          heavies++;
+        }
+        for (const l of [...kinds(camp, 'strafer'), ...kinds(camp, 'heavy')]) expect(l.aim).toBeUndefined();
+      }
+    expect(jets).toBeGreaterThan(0);
+    expect(heavies).toBeGreaterThan(0);
+    // A jet aimed at the tanker flies down the middle of its lane.
+    const g = createGame('behemoth', 1, 4);
+    const lane = g.map.channels.find((c) => c.vip)!;
+    expect(vipRoute(g)!.y).toBeCloseTo(lane.y!, 0);
+    expect(vipRoute(createGame('strait', 1, 4))).toBeNull();
+  });
+
+  it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
+    const g = createGame('behemoth', 5, 4);
+    applyEncounters(g, VER('v1'));
+    // Sail until the tanker is well along its lane (a jet strafes only once
+    // it is in from the edge), then send one jet down its lane.
+    for (let i = 0; i < 60 * 30 && !g.ships.some((s) => s.vip); i++) step(g, 1 / 60);
+    const tanker = g.ships.find((s) => s.vip)!;
+    expect(tanker).toBeDefined();
+    for (let i = 0; i < 60 * 40 && tanker.x < 400; i++) step(g, 1 / 60);
+    expect(tanker.x).toBeGreaterThanOrEqual(400);
+    expect(g.phase).toBe('wave');
+    g.queue = [{ at: g.waveT + PLANE.warn, kind: 'strafer', base: -1, side: 1, aim: 'vip' }];
+    // The Shield weapon up (chapter 2's boost): it blocks missiles, drones
+    // and boats, never a jet's guns.
+    g.boost = { id: 'shield', level: 1, t: 99, n: 0, bank: 0, crateT: 0, age: 0 };
+    const hp = tanker.hp;
+    for (let i = 0; i < 60 * 12 && tanker.hp === hp; i++) step(g, 1 / 60);
+    expect(tanker.hp).toBeLessThan(hp);
+  });
 });
 
 describe('the same thing every time', () => {

@@ -710,18 +710,23 @@ describe('Focus', () => {
 });
 
 describe('Overdrive (was a power-up)', () => {
-  it('rounds cost nothing; level 2 lasts 18 s (Test Lab round 8: it used to refill a rack that was already full)', () => {
+  it('rounds cost nothing; level 1 lasts 18 s, level 2 21 s (round 9: level 1 was 15 s; Test Lab round 8: level 2 used to refill a rack that was already full)', () => {
     const g = quietGame();
     pickUp(g, 'overdrive', 1);
     g.ammo = 2;
     for (let k = 0; k < 5; k++) shoot(g, addThreat(g, { x: 300 + k * 200, y: 300 }), 0.1);
     expect(g.ammo).toBeGreaterThanOrEqual(2);
-    expect(g.boost!.t).toBeLessThanOrEqual(WEAPON.time);
+    expect(g.boost!.t).toBeLessThanOrEqual(WEAPON.time * AB.overdrive.time[0]);
+    expect(g.boost!.t).toBeGreaterThan(WEAPON.time);
+    expect(WEAPON.time * AB.overdrive.time[0]).toBeCloseTo(18, 6);
     const h = quietGame();
     pickUp(h, 'overdrive', 2);
     expect(h.boost!.t).toBeCloseTo(WEAPON.time * AB.overdrive.time[1], 6);
-    expect(WEAPON.time * AB.overdrive.time[1]).toBe(18);
-    run(h, WEAPON.time + 1);
+    expect(WEAPON.time * AB.overdrive.time[1]).toBeCloseTo(21, 6);
+    // The curve still rises: each level lasts at least as long as the one before.
+    expect(AB.overdrive.time[1]).toBeGreaterThan(AB.overdrive.time[0]);
+    expect(AB.overdrive.time[2]).toBeGreaterThanOrEqual(AB.overdrive.time[1]);
+    run(h, WEAPON.time * AB.overdrive.time[0] + 1);
     expect(h.boost?.id).toBe('overdrive');
     // No refill: an empty rack reloads at the usual pace.
     h.ammo = 0;
