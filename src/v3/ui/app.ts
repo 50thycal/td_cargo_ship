@@ -2297,11 +2297,16 @@ export class App {
   private openDraft(g: Game): void {
     this.showDraft(g);
     this.audio.ui('draft.open');
+    this.armDraft();
+    if (this.bot && this.control === 'bot') this.botDraft(g);
+  }
+
+  /** A hand just dealt (the draft, or Quartermaster's re-roll) takes taps
+   *  once armed (style.css: no pointer events before). */
+  private armDraft(): void {
     this.draftShownAt = performance.now();
-    // Cards take taps once armed (style.css: no pointer events before).
     const panel = this.overlay.querySelector<HTMLElement>('.v2-draft');
     setTimeout(() => panel && (panel.dataset.armed = '1'), DRAFT_ARM_MS);
-    if (this.bot && this.control === 'bot') this.botDraft(g);
   }
 
   /** Hold the field for a moment before the next screen. Watching the bot
@@ -3930,6 +3935,7 @@ export class App {
       setTimeout(() => {
         if (!live() || !this.rec?.reroll()) return;
         this.showDraft(g);
+        this.armDraft();
         this.botDraft(g);
       }, dealt + 700 / Math.sqrt(this.speed));
       return;
@@ -4233,8 +4239,8 @@ export class App {
       const reroll = button('', 'v2-btn v3-reroll', () => {
         if (this.picking || g.phase !== 'draft' || !this.rec?.reroll()) return;
         this.audio.ui('card.swap');
-        this.draftShownAt = performance.now();
         this.showDraft(g);
+        this.armDraft();
       });
       reroll.innerHTML = `${chromeSvg('refresh', 14)}<b>Re-roll</b><span>${left ? `${left} left` : 'none left'}</span>`;
       reroll.dataset.reroll = String(left);
