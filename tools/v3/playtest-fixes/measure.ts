@@ -74,12 +74,30 @@ for (const map of maps) {
     const lost: number[] = [];
     const lost10: number[] = [];
     let subHit = 0;
+    const sunk: Record<string, number> = {};
+    const sunk10: Record<string, number> = {};
+    const rockets = new Set<number>();
+    let rockets10 = 0;
+    let rocketsBoss = 0;
+    let helisBoss = 0;
     for (let k = 0; k < seeds; k++) {
       const seen = new Map<number, { th: Threat; born: number; first: number }>();
+      let last: Game | null = null;
+      let at10: Record<string, number> | null = null;
       const run = playCombo({ map, seed: 900 + k, armory: PLAYER_ARMORY, ...(kit === 'plain' ? { loadout: [] } : {}) }, (g: Game) => {
+        last = g;
+        if (!at10 && g.wave >= 11) at10 = { ...g.sunkBy };
         for (const th of g.threats) {
+          if (th.kind === 'heliRocket' && !rockets.has(th.id)) {
+            rockets.add(th.id);
+            if (g.wave >= 11) rocketsBoss += 1 / seeds;
+            else rockets10 += 1 / seeds;
+          }
           if (th.kind !== 'attackHeli' && th.kind !== 'torpedoSub' && th.kind !== 'scavenger') continue;
-          if (!seen.has(th.id)) seen.set(th.id, { th, born: g.t, first: -1 });
+          if (!seen.has(th.id)) {
+            seen.set(th.id, { th, born: g.t, first: -1 });
+            if (th.kind === 'attackHeli' && g.wave >= 11) helisBoss += 1 / seeds;
+          }
           const s = seen.get(th.id)!;
           if (th.kind === 'attackHeli' && s.first < 0 && (th.foe?.n ?? 0) > 0) s.first = g.t;
           if (th.kind === 'torpedoSub' && th.hp < (th.maxHp ?? THREATS.torpedoSub.hp)) subHit += 1;
@@ -96,11 +114,15 @@ for (const map of maps) {
       });
       lost.push(run.lost.reduce((a, b) => a + b, 0));
       lost10.push(run.lost.slice(0, 10).reduce((a, b) => a + b, 0));
+      for (const [kind, n] of Object.entries((last as Game | null)?.sunkBy ?? {})) if (n) sunk[kind] = (sunk[kind] ?? 0) + n / seeds;
+      for (const [kind, n] of Object.entries((at10 ?? (last as Game | null)?.sunkBy ?? {}) as Record<string, number>)) if (n) sunk10[kind] = (sunk10[kind] ?? 0) + n / seeds;
     }
     const fin = (xs: number[]) => xs.filter((x) => Number.isFinite(x));
     console.log(`${map} (${seeds} runs, ${kit === 'plain' ? 'the plain gun' : 'the bot drafting for itself'}; ships lost a run, every wave played: ${r2(mean(lost))}, waves 1-10 ${r2(mean(lost10))})`);
-    console.log(`  attack helicopters: ${heli.length}; first volley ${r2(mean(fin(heli.map((h) => h.firstAfter))))} s after coming in (${heli.filter((h) => !Number.isFinite(h.firstAfter)).length} never fired); volleys ${r2(mean(heli.map((h) => h.volleys)))} each; shot down ${r2(mean(heli.map((h) => (h.killed ? 1 : 0))))}`);
+    console.log(`  attack helicopters: ${heli.length}; first volley ${r2(mean(fin(heli.map((h) => h.firstAfter))))} s after coming in (${heli.filter((h) => !Number.isFinite(h.firstAfter)).length} never fired); volleys ${r2(mean(heli.map((h) => h.volleys)))} each; shot down ${r2(mean(heli.map((h) => (h.killed ? 1 : 0))))}; missiles a run: waves 1-10 ${r2(rockets10)}, boss rounds ${r2(rocketsBoss)} (from ${r2(helisBoss)} helicopters)`);
     console.log(`  torpedo subs: ${subs.length}; torpedoes ${r2(mean(subs.map((s) => s.fired)))} a sub; steps with a sub hurt ${subHit}`);
+    console.log(`  sunk by, waves 1-10 (a run): ${Object.entries(sunk10).sort((a, b) => b[1] - a[1]).map(([kind, n]) => `${kind} ${r2(n)}`).join(', ')}`);
+    console.log(`  sunk by (a run): ${Object.entries(sunk).sort((a, b) => b[1] - a[1]).map(([kind, n]) => `${kind} ${r2(n)}`).join(', ')}`);
     console.log(`  scavengers: ${scav.length}; shot down ${r2(mean(scav.map((s) => (s.killed ? 1 : 0))))}; alive ${r2(mean(scav.map((s) => s.alive)))} s`);
   }
 }

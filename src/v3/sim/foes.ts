@@ -1371,8 +1371,8 @@ export function paintTarget(g: Game, th: Threat): void {
 
 /** The Attack Helicopter: flies to a spot beside the lane (marked as it
  *  comes), hovers there, moves on after two volleys, leaves after six. It
- *  fires a missile pair every `gap` s whenever a ship is within `range` of
- *  it and it is on screen, on the way in and on the move too (the
+ *  fires a missile pair every `gap` s whenever it is on screen, on the way
+ *  in and on the move too (the
  *  2026-11-20 playtest: "it doesn't need to go to a specific spot it should
  *  just start hitting targets"; log v34). A Gunship Wall's helicopters
  *  still wait for the wall to open fire, each in its turn. */
@@ -1413,7 +1413,9 @@ function updateHeli(g: Game, th: Threat, f: FoeData, dt: number): void {
     }
   }
   const onScreen = th.x > H.edge && th.x < VIEW.width - H.edge && th.y > H.edge && th.y < VIEW.height - H.edge;
-  const inRange = f.state !== 3 && onScreen && !!near && nd <= H.range;
+  // In range: anywhere on the screen (its missiles find their own ship, or
+  // the carrier with none left).
+  const inRange = f.state !== 3 && onScreen;
   const face = inRange && near ? Math.atan2(near.y - th.y, near.x - th.x) : sp > 40 ? Math.atan2(f.vy, f.vx) : near ? Math.atan2(near.y - th.y, near.x - th.x) : th.heading;
   th.heading += clamp(angleDiff(face, th.heading), -3 * dt, 3 * dt);
   // Firing: on its own clock, whatever it is doing.
@@ -2082,8 +2084,15 @@ export function foeEta(g: Game, th: Threat): number | null {
     }
     case 'attackHeli':
       if (!f) return null;
-      // Log v34: it fires on its own clock wherever it is.
-      return f.state === 3 || f.n >= (f.volleys ?? FOE.attackHeli.volleys) ? 30 : Math.max(0.2, FOE.attackHeli.gap - (f.fireT ?? FOE.attackHeli.gap - FOE.attackHeli.first));
+    {
+      // Log v34: it fires on its own clock wherever it is on screen; a
+      // Gunship Wall's not before the wall opens fire.
+      const H = FOE.attackHeli;
+      if (f.state === 3 || f.n >= (f.volleys ?? H.volleys)) return 30;
+      const open = f.hold === undefined ? 0 : f.hold + (f.wait ?? 0) - g.waveT;
+      const on = th.x > H.edge && th.x < VIEW.width - H.edge && th.y > H.edge && th.y < VIEW.height - H.edge;
+      return Math.max(0.2, open, on ? H.gap - (f.fireT ?? H.gap - H.first) : 3);
+    }
     case 'torpedoSub':
       // One by one (round 8): until its next torpedo, while it has any left.
       if (f && f.stagger !== undefined && f.spread) return f.n < f.spread ? Math.max(0.1, (f.fireAt ?? FOE.torpedoSub.fireAt) + f.n * f.stagger - f.t) : 30;

@@ -151,10 +151,12 @@ export const FOE = {
   // back, about 7 ×).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
   // The 2026-11-20 playtest ("it should just be able to start attacking it
-  // doesn't need to go to a specific spot"; log v34): it fires whenever a
-  // ship is within `range` px and it is `edge` px inside the screen, on the
-  // way in too; its first volley `first` s after it may (a beat to see it).
-  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25, range: 560, edge: 30, first: 2 },
+  // doesn't need to go to a specific spot"; log v34): it fires whenever it
+  // is `edge` px inside the screen, on the way in too; its first volley
+  // `first` s after it may (a beat to see it; with the hover gone, 1.2 s
+  // keeps its missiles a wave about where they were: tools/v3/
+  // playtest-fixes/measure.ts --what=foes).
+  attackHeli: { accel: 260, settle: 0.8, gap: 3.2, pair: 2, perSpot: 2, volleys: 6, off: 90, pairGap: 0.25, edge: 30, first: 1.6 },
   // Round 7 ("the torpedo sub will fire three to five, and then sometimes
   // fast ones"): every sub fires a spread of `spread` torpedoes (three to
   // five) on headings at least `fan` rad apart: the first `aimed` at a

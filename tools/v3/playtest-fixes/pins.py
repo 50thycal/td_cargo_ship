@@ -5,9 +5,9 @@ import sys
 
 old, new = sys.argv[1], sys.argv[2]
 FILES = {
-    'tests/v3/enemiesRound8.test.ts': [r'expect\(log\.v\)\.toBe\(OLD\)'],
-    'tests/v3/events.test.ts': [r'expect\(log\.v\)\.toBe\(OLD\)'],
-    'tests/v3/eventsRound7.test.ts': [r'expect\(log\.v\)\.toBe\(OLD\)'],
+    'tests/v3/enemiesRound8.test.ts': [r'expect\(log\.v\)\.toBe\(OLD(?=\))'],
+    'tests/v3/events.test.ts': [r'expect\(log\.v\)\.toBe\(OLD(?=\))'],
+    'tests/v3/eventsRound7.test.ts': [r'expect\(log\.v\)\.toBe\(OLD(?=\))'],
     'e2e/v3-convoy.mjs': [r'done\.v === OLD'],
     'e2e/v3-map-lab.mjs': [r'done\.log\.v === OLD', r'version OLD'],
     'e2e/v3.mjs': [r'logged\.v === OLD', r'saved\.v === OLD'],
