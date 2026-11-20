@@ -8,6 +8,7 @@ import {
   DEFAULT_SPEED,
   DEV_SPEED_STEPS,
   FLOW_STEPS,
+  RULES,
   SPEED_STEPS,
   TAP_RADIUS_PX,
   WATCH_SPEED_STEPS,
@@ -32,8 +33,8 @@ import {
   type AbilityId,
   type CardId,
 } from '../data/abilities';
-import { ARMORY, ARMORY_MAX, BAY_ORDER, BAYS, CARD_DROPS, armoryLevel, bayItems, type ArmoryId, type ArmoryLevels, type BayId } from '../data/armory';
-import { equipArmory, isUnlocked, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
+import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, SCRAP, armoryLevel, bayItems, levelCost, scrapFor, scrapTally, type ArmoryId, type ArmoryLevels, type BayId, type CardFind, type ScrapEarned } from '../data/armory';
+import { equipArmory, isUnlocked, levelUp, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
   applyFreePlay,
   createGame,
@@ -363,6 +364,12 @@ export class App {
   private draftWave = -1;
   /** The Armory bay on show. */
   private armoryBay: BayId = 'gun';
+  /** The Armory card picked to show its level-up (null: the bay's equipped
+   *  card, or its first one held). */
+  private armoryPick: ArmoryId | null = null;
+  /** Runs whose Scrap is banked already (a cleared map played on into
+   *  endless is recorded again when it ends; its waves pay once). */
+  private banked = new WeakSet<Game>();
   /** Free Play: the setup on the menu, and the one the current run uses
    *  (null: a real run). */
   private freeSetup: FreeSetup = loadFreeSetup();
@@ -2169,6 +2176,18 @@ export class App {
     this.alerts.place({ x0, y0, x1, y1 });
   }
 
+  /** Does this run bank Scrap (and Armory cards)? Not Free Play, the Test
+   *  Lab, a replay or a developer's run. */
+  private earnsScrap(): boolean {
+    return !this.dev && !this.free && !this.labRun && !this.playback;
+  }
+
+  /** The Scrap a run has earned so far from its waves, boss rounds and the
+   *  clear (the first-clear bonus and duplicate cards come at the end). */
+  private runScrap(g: Game): ScrapEarned {
+    return scrapFor(scrapTally(g.history, RULES.wavesToClear, lastWave(g)), g.cleared, false);
+  }
+
   private renderHud(g: Game): void {
     if (this.commandBtns.length) this.renderCommands(g);
     const sunk = shipsSunk(g);
@@ -2179,9 +2198,13 @@ export class App {
     // the map's ending is a boss round (round 11): "BOSS 1/3".
     const boss = g.event && !g.event.bonus && g.event.runs > 1 ? g.event : null;
     const waveLabel = g.event?.bonus ? 'BONUS' : g.endless ? `${g.wave}` : boss ? `${boss.run}/${boss.runs}` : `${g.wave}/${lastWave(g)}`;
+    const scrap = this.earnsScrap() ? this.runScrap(g).total : null;
     const html =
       `<span><b>${boss ? 'BOSS' : 'WAVE'}</b>${waveLabel}</span>` +
       `<span><b>SCORE</b>${g.score.toLocaleString()}</span>` +
+      // Scrap so far (the Armory overhaul): a read-out like the score,
+      // nothing to tap. Only a run that banks it shows it.
+      (scrap !== null ? `<span class="v3-hud-scrap" data-scrap="${scrap}"><b>SCRAP</b>${scrap.toLocaleString()}</span>` : '') +
       `<span class="v2-hud-lost"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
@@ -2504,6 +2527,9 @@ export class App {
     armory.append(count);
     armory.setAttribute('aria-label', `Armory, ${p.cards} card${p.cards === 1 ? '' : 's'} found`);
     armory.dataset.cards = String(p.cards);
+    // Scrap banked for a level: the count lights amber.
+    armory.dataset.scrap = String(p.scrap);
+    armory.classList.toggle('v3-can-level', this.canLevel());
     const freePlay = button('', 'v3-top-btn v3-free-btn', () => this.showFreePlay());
     freePlay.innerHTML = `${chromeSvg('play', 16)}<span>Free Play</span>`;
     freePlay.dataset.freePlay = '1';
@@ -2545,12 +2571,14 @@ export class App {
     this.showOverlay('v2-menu', [bar, title, ...(this.dev ? [this.devPanel()] : []), maps]);
   }
 
-  /** The Armory (round 7): three bays, Gun, Hull and Supply, each a row of
-   *  cards. Cards are won at the end of a run, never bought (playtest: "they
-   *  don't get to pick which ones"); a card won again adds a level. A run
-   *  takes ONE card from each bay: tap one you hold to equip it. Menus
-   *  round: each fact once (the bay is the tab, not a label on every card;
-   *  a card not found is greyed with a lock, not told three times). */
+  /** The Armory: three bays, Gun, Hull and Supply, each a row of cards
+   *  (round 7). Cards are FOUND at the end of a run, at random (playtest:
+   *  "they don't get to pick which ones"); the Armory overhaul made their
+   *  levels bought with Scrap, by the player's choice (Survivor.io's gear).
+   *  Tap a card you hold: its bar below the row levels it (the cost on the
+   *  button, greyed with what is missing) and equips it, ONE card a bay.
+   *  Menus round: each fact once (the bay is the tab, not a label on every
+   *  card; a card not found is greyed with a lock, not told three times). */
   private showArmory(back: () => void = () => this.showMenu()): void {
     const p = this.progress;
     const bay = this.armoryBay;
@@ -2564,6 +2592,7 @@ export class App {
         if (b === this.armoryBay) return;
         this.audio.ui('armory.tab');
         this.armoryBay = b;
+        this.armoryPick = null;
         again();
       });
       tab.dataset.bay = b;
@@ -2576,36 +2605,93 @@ export class App {
       tab.append(top, el('span', '', eq ? `${ARMORY[eq].name} ${armoryLevel(p.armory, eq)}` : held ? 'Nothing equipped' : 'No cards yet'));
       tabs.append(tab);
     }
+    // The card whose bar is open: the one tapped, else the bay's equipped
+    // card, else its first one held.
+    const heldHere = bayItems(bay).filter((id) => armoryLevel(p.armory, id) > 0);
+    const pick = this.armoryPick && heldHere.includes(this.armoryPick) ? this.armoryPick : (p.equipped[bay] ?? heldHere[0] ?? null);
     const row = el('div', `v3-armory-cards n${bayItems(bay).length}`);
     row.append(
       ...bayItems(bay).map((id) => {
         const lv = armoryLevel(p.armory, id);
         const on = p.equipped[bay] === id;
         const card = this.armoryCard(id, lv, on ? 'EQUIPPED' : '', () => {
-          if (lv && equipArmory(p, on ? null : id, bay)) {
-            this.audio.ui(on ? 'ui.back' : 'armory.equip');
-            again();
-          }
+          if (!lv || id === pick) return;
+          this.audio.ui('ui.tap');
+          this.armoryPick = id;
+          again();
         }, false);
         card.classList.toggle('chosen', on);
+        card.classList.toggle('picked', id === pick);
         card.classList.toggle('locked', !lv);
         card.disabled = !lv;
-        card.setAttribute('aria-pressed', String(on));
+        card.setAttribute('aria-pressed', String(id === pick));
         return card;
       }),
     );
-    const count = el('span', 'v3-head-count');
-    count.innerHTML = `<b>${p.cards}</b> card${p.cards === 1 ? '' : 's'} found`;
-    // One line of help: how cards come while there are none, how they are
-    // used once there are some.
-    const hint = p.cards
-      ? 'Tap a card to equip it, one per bay. Tap it again to take it off.'
-      : `Clear ${CARD_DROPS.minWaves} waves in a run to win a card. A card won again gains a level.`;
-    this.showOverlay('v3-armory', [this.screenHead('Armory', back, count), tabs, row, el('p', 'v3-hint', hint)]);
+    const count = el('span', 'v3-head-count v3-scrap-count');
+    count.dataset.scrap = String(p.scrap);
+    count.innerHTML = `<b>${p.scrap.toLocaleString()}</b> scrap<i>·</i><b class="v3-cards-n">${p.cards}</b> card${p.cards === 1 ? '' : 's'} found`;
+    const bar = pick ? this.armoryBar(pick, again) : el('p', 'v3-hint', `Clear ${CARD_DROPS.minWaves} waves in a run to find a card. A card found again pays ${SCRAP.duplicate} scrap; spend scrap here to level the cards you hold.`);
+    this.showOverlay('v3-armory', [this.screenHead('Armory', back, count), tabs, row, bar]);
+  }
+
+  /** The bar under the Armory's cards for the card picked: its level now
+   *  and next, Equip (or take it off), and Level up with its Scrap cost
+   *  (greyed, with what is missing, when the bank is short or it is maxed). */
+  private armoryBar(id: ArmoryId, again: () => void): HTMLElement {
+    const p = this.progress;
+    const def = ARMORY[id];
+    const lv = armoryLevel(p.armory, id);
+    const on = p.equipped[def.bay] === id;
+    const cost = levelCost(id, lv);
+    const bar = el('div', 'v3-armory-bar');
+    bar.dataset.armoryBar = id;
+    bar.style.setProperty('--card-color', BAYS[def.bay].color);
+    const what = el('div', 'v3-armory-bar-what');
+    what.append(el('strong', '', `${def.name} · LV ${lv}`), el('span', '', cost === null ? `${def.show(lv)} · max level` : `Next: ${def.show(lv + 1)}`));
+    const equip = button(on ? 'Take off' : 'Equip', `v2-btn${on ? '' : ' primary'}`, () => {
+      if (equipArmory(p, on ? null : id, def.bay)) {
+        this.audio.ui(on ? 'ui.back' : 'armory.equip');
+        again();
+      }
+    });
+    equip.dataset.armoryEquip = id;
+    const short = cost === null ? 0 : Math.max(0, cost - p.scrap);
+    const level = button('', 'v2-btn v3-level-btn', () => {
+      if (!levelUp(p, id)) return;
+      this.audio.ui(armoryLevel(p.armory, id) >= def.max ? 'card.max' : 'card.won');
+      haptic('success');
+      again();
+    });
+    level.dataset.armoryLevel = id;
+    if (cost === null) {
+      level.innerHTML = '<b>Max level</b>';
+      level.disabled = true;
+    } else {
+      level.innerHTML = `<b>Level up · LV ${lv + 1}</b><span>${cost.toLocaleString()} scrap${short ? ` · need ${short.toLocaleString()} more` : ''}</span>`;
+      level.disabled = short > 0;
+      level.classList.toggle('ready', !short);
+    }
+    level.dataset.cost = cost === null ? '' : String(cost);
+    level.setAttribute('aria-label', cost === null ? `${def.name} is at its top level` : `Level ${def.name} up to ${lv + 1} for ${cost} scrap${short ? `; ${short} more needed` : ''}`);
+    const btns = el('div', 'v3-armory-bar-btns');
+    btns.append(equip, level);
+    bar.append(what, btns);
+    return bar;
+  }
+
+  /** Can any card held take a level with the Scrap banked? */
+  private canLevel(): boolean {
+    const p = this.progress;
+    return ARMORY_ORDER.some((id) => {
+      const c = levelCost(id, armoryLevel(p.armory, id));
+      return c !== null && c <= p.scrap;
+    });
   }
 
   /** One Armory card, drawn like a weapon card: a badge, the art, its
-   *  name, its level pips, what it does and the number now and next.
+   *  name, its level pips, what it does and the number now and next (with
+   *  the Scrap the next level costs).
    *  `bayTag`: name its bay (on the result screen; in the Armory the tab
    *  already does). */
   private armoryCard(id: ArmoryId, lv: number, badge: string, onTap?: () => void, bayTag = true): HTMLButtonElement {
@@ -2627,7 +2713,12 @@ export class App {
       for (let k = 1; k <= def.max; k++) pips.append(el('i', k <= lv ? 'had' : ''));
       pips.append(el('span', '', lv >= def.max ? 'MAX' : `LV ${lv}/${def.max}`));
       stat.append(el('b', '', def.show(lv)));
-      if (lv < def.max) stat.append(el('span', 'v3-card-next', `Next: ${def.show(lv + 1)}`));
+      const cost = levelCost(id, lv);
+      if (cost !== null) {
+        const next = el('span', 'v3-card-next', `Next: ${def.show(lv + 1)}`);
+        if (!bayTag) next.append(el('em', `v3-card-cost${cost <= this.progress.scrap ? ' ok' : ''}`, `${cost.toLocaleString()} scrap`));
+        stat.append(next);
+      }
       card.append(top, art, el('strong', 'v2-card-name', def.name), pips, el('span', 'v2-card-text', def.blurb), stat);
     } else {
       // Not found yet: what it does, and what the first card would give.
@@ -2637,38 +2728,51 @@ export class App {
     return card;
   }
 
-  /** The result screen's Armory drop: the cards won, each one level (NEW
-   *  for a card not held before), or why there were none. */
-  private wonCards(cards: ArmoryId[], firstClear: boolean): HTMLElement {
+  /** The result screen's Armory drop: the cards found (NEW for a card not
+   *  held before; one held already pays Scrap) and the run's Scrap, line by
+   *  line; or why there were no cards. */
+  private wonCards(cards: CardFind[], firstClear: boolean, scrap: ScrapEarned): HTMLElement {
     const box = el('div', 'v3-won');
+    const p = this.progress;
+    const lines: [string, number][] = [
+      ['waves', scrap.waves],
+      ['boss rounds', scrap.boss],
+      ['map cleared', scrap.clear],
+      ['first clear', scrap.firstClear],
+      ['repeat cards', scrap.duplicates],
+    ];
+    const ledger = el('p', 'v3-scrap-ledger');
+    ledger.dataset.scrap = String(scrap.total);
+    ledger.innerHTML =
+      `<b>+${scrap.total.toLocaleString()} scrap</b>` +
+      lines
+        .filter(([, v]) => v > 0)
+        .map(([k, v]) => `<span>${k} ${v.toLocaleString()}</span>`)
+        .join('') +
+      `<span class="v3-scrap-bank">banked ${p.scrap.toLocaleString()}</span>`;
     if (!cards.length) {
-      box.append(el('p', 'v2-sub', `No Armory card this time: clear ${CARD_DROPS.minWaves} waves to win one.`));
+      box.append(ledger, el('p', 'v2-sub', `No Armory card this time: clear ${CARD_DROPS.minWaves} waves to find one.`));
       return box;
     }
-    const p = this.progress;
-    // Several of one card: each shows the level it brought.
-    const seen: Partial<Record<ArmoryId, number>> = {};
-    const total: Partial<Record<ArmoryId, number>> = {};
-    for (const id of cards) total[id] = (total[id] ?? 0) + 1;
     const row = el('div', 'v3-won-cards');
     row.append(
-      ...cards.map((id, i) => {
-        seen[id] = (seen[id] ?? 0) + 1;
-        const lv = armoryLevel(p.armory, id) - (total[id]! - seen[id]!);
-        const card = this.armoryCard(id, lv, lv === 1 ? 'NEW' : lv >= ARMORY[id].max ? 'MAX' : `LV ${lv}`);
+      ...cards.map((c, i) => {
+        const lv = armoryLevel(p.armory, c.id);
+        const card = this.armoryCard(c.id, c.dup ? lv : 1, c.dup ? `+${SCRAP.duplicate} SCRAP` : 'NEW');
+        card.classList.toggle('dup', c.dup);
         card.tabIndex = -1;
         card.style.setProperty('--deal', `${i * 260}ms`);
         // Each card's sound lands as it is dealt in (style.css: the deal
         // starts at --deal).
         setTimeout(() => {
           if (!card.isConnected) return;
-          this.audio.ui(lv === 1 ? 'card.new' : 'card.won');
+          this.audio.ui(c.dup ? 'card.won' : 'card.new');
           if (i === 0) haptic('success');
         }, i * 260);
         return card;
       }),
     );
-    box.append(el('span', 'v2-draft-eyebrow', `Armory card${cards.length > 1 ? 's' : ''} won${firstClear ? ' · first clear bonus' : ''}`), row);
+    box.append(el('span', 'v2-draft-eyebrow', `Armory card${cards.length > 1 ? 's' : ''} found${firstClear ? ' · first clear bonus' : ''}`), row, ledger);
     return box;
   }
 
@@ -4080,7 +4184,12 @@ export class App {
     // Dev and Free Play runs never touch the real records, unlocks or cards.
     const free = this.free;
     const wavesCleared = g.history.filter((h) => h.outcome === 'cleared').length;
-    const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared });
+    // Scrap: the map's waves and boss rounds cleared, won or lost; a cleared
+    // map that went on into endless banked them at its win.
+    const tally = scrapTally(g.history, RULES.wavesToClear, lastWave(g));
+    const paid = this.banked.has(g);
+    const res = this.dev || free ? null : recordResult(this.progress, g.map.id, { score: g.score, wave: g.wave, cleared: g.cleared, wavesCleared, ...tally, paid });
+    if (res) this.banked.add(g);
     if (res) {
       submitBest(g.map.id, g.score);
       for (const a of earned(this.progress, g.endless ? g.wave : 0)) unlock(a);
@@ -4105,9 +4214,12 @@ export class App {
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
       `<span><b>${g.lost}</b>ships sunk</span>` +
-      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>`;
-    // The Armory cards this run won, drawn at random, shown as cards.
-    const won_ = res ? this.wonCards(res.cards, res.firstClear) : null;
+      `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>` +
+      // The run's Scrap (the Armory overhaul), banked win or lose.
+      (res ? `<span class="v3-scrap-stat" data-scrap="${res.scrap.total}"><b>+${res.scrap.total.toLocaleString()}</b>scrap</span>` : '');
+    // The Armory cards this run found, at random, shown as cards, and the
+    // Scrap line by line.
+    const won_ = res ? this.wonCards(res.cards, res.firstClear, res.scrap) : null;
     const buttons: HTMLElement[] = [];
     if (free) {
       buttons.push(button('Play it again', 'v2-btn primary', () => this.play(g.map.id, free)));
@@ -4121,7 +4233,7 @@ export class App {
       if (this.dev && rec) buttons.push(button(`Retry wave ${g.wave}`, 'v2-btn primary v2-dev-retry', () => this.retryWave(rec)));
       buttons.push(button(this.bot ? 'Watch a new run' : 'Try again', `v2-btn${this.dev ? '' : ' primary'}`, () => this.prepare(g.map.id, false)));
     }
-    if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.length ? ' v3-can-buy' : ''}`, () => this.showArmory()));
+    if (res) buttons.push(button('⚓ Armory', `v2-btn${res.cards.some((c) => !c.dup) || this.canLevel() ? ' v3-can-buy' : ''}`, () => this.showArmory()));
     if (this.notesOn && log) {
       const rated = !!log.rating;
       buttons.push(button(rated ? '📝 Review ✓' : '📝 Review', `v2-btn v3-review-btn${rated ? '' : ' fresh'}`, () => this.showReview()));
@@ -4549,7 +4661,7 @@ function weaponHint(seconds: number): [string, string] {
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
   ballistic: 'Ballistics did the most damage: Spread formation helps, Point Defense fires from every ship; in the Armory, Fast Motors or Armor Plating.',
-  guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Point Defense in the Armory picks off the ones near the carrier.',
+  guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Deck Guns in the Armory pick off the ones near the carrier.',
   supersonic: 'Supersonics did the most damage: tap on the lock line; Point Defense lets the ship it is after fire back.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',

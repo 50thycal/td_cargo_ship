@@ -14,7 +14,7 @@
 // bay into the next; --gun-only takes the gun bay's alone.
 
 import { ABILITY_ORDER, type AbilityId } from '../../src/v3/data/abilities';
-import { ARMORY, ARMORY_MAX, BAY_ORDER, bayItems, cardsFor, drawCards, type ArmoryId, type ArmoryLevels } from '../../src/v3/data/armory';
+import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, bayItems, cardsFor, findCards, scrapFor, spendScrap, type ArmoryId, type ArmoryLevels } from '../../src/v3/data/armory';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { runBot, SKILLS, type BotRun } from '../../src/v3/sim/bot';
 import { makeRng } from '../../src/sim/rng';
@@ -86,6 +86,7 @@ for (const skill of skillNames) {
   let seconds = 0;
   let runs = 0;
   let cards = 0;
+  let bank = 0;
   let seed = 5000;
   const cleared: string[] = [];
   const loadout = (): ArmoryLevels => {
@@ -105,7 +106,12 @@ for (const skill of skillNames) {
       const r = play(map, seed++, skill, loadout());
       runs++;
       seconds += realSeconds(r);
-      cards += drawCards(owned, cardsFor({ wavesCleared: r.wavesCleared, cleared: r.won }, r.won && first), (k) => rng.int(k)).length;
+      // The Armory overhaul: cards are finds, levels are bought with Scrap
+      // (spent on the loadout's cards first, then the rest).
+      const found = findCards(owned, cardsFor({ wavesCleared: r.wavesCleared, cleared: r.won }, r.won && first), (k) => rng.int(k));
+      cards += found.length;
+      bank += scrapFor({ waves: Math.min(r.wavesCleared, 10), boss: Math.max(0, r.wavesCleared - 10) }, r.won, r.won && first, found.filter((f) => f.dup).length).total;
+      bank = spendScrap(owned, spendScrap(owned, bank, Object.keys(loadout()) as ArmoryId[]), ARMORY_ORDER);
       if (r.won) {
         first = false;
         cleared.push(`${map} in ${runs}`);

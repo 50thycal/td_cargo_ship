@@ -1,0 +1,139 @@
+{
+ "you/kit": {
+  "maps": [
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 24,
+    "lost": 15.4,
+    "saved": 0,
+    "se": 0,
+    "won": 17,
+    "perMap": {
+     "marrow": 0
+    },
+    "lostPerMap": {
+     "marrow": 15.38
+    }
+   },
+   "plating5": {
+    "seeds": 24,
+    "lost": 6.3,
+    "saved": 9.1,
+    "se": 1.1,
+    "won": 79,
+    "perMap": {
+     "marrow": 9.1
+    },
+    "lostPerMap": {
+     "marrow": 6.25
+    }
+   },
+   "pointdef5": {
+    "seeds": 24,
+    "lost": 11.6,
+    "saved": 3.8,
+    "se": 1,
+    "won": 21,
+    "perMap": {
+     "marrow": 3.8
+    },
+    "lostPerMap": {
+     "marrow": 11.63
+    }
+   },
+   "fuse5": {
+    "seeds": 24,
+    "lost": 9.3,
+    "saved": 6.1,
+    "se": 1.4,
+    "won": 50,
+    "perMap": {
+     "marrow": 6.1
+    },
+    "lostPerMap": {
+     "marrow": 9.29
+    }
+   },
+   "reload5": {
+    "seeds": 24,
+    "lost": 12.6,
+    "saved": 2.8,
+    "se": 1.8,
+    "won": 21,
+    "perMap": {
+     "marrow": 2.8
+    },
+    "lostPerMap": {
+     "marrow": 12.58
+    }
+   },
+   "longload5": {
+    "seeds": 24,
+    "lost": 11.9,
+    "saved": 3.5,
+    "se": 1.4,
+    "won": 17,
+    "perMap": {
+     "marrow": 3.5
+    },
+    "lostPerMap": {
+     "marrow": 11.88
+    }
+   },
+   "stockpile5": {
+    "seeds": 24,
+    "lost": 12.5,
+    "saved": 2.8,
+    "se": 1.6,
+    "won": 13,
+    "perMap": {
+     "marrow": 2.8
+    },
+    "lostPerMap": {
+     "marrow": 12.54
+    }
+   },
+   "magazine5": {
+    "seeds": 24,
+    "lost": 13,
+    "saved": 2.3,
+    "se": 1.3,
+    "won": 8,
+    "perMap": {
+     "marrow": 2.3
+    },
+    "lostPerMap": {
+     "marrow": 13.04
+    }
+   },
+   "player": {
+    "seeds": 24,
+    "lost": 4,
+    "saved": 11.3,
+    "se": 1.4,
+    "won": 92,
+    "perMap": {
+     "marrow": 11.3
+    },
+    "lostPerMap": {
+     "marrow": 4.04
+    }
+   },
+   "top": {
+    "seeds": 24,
+    "lost": 1.8,
+    "saved": 13.6,
+    "se": 1.5,
+    "won": 100,
+    "perMap": {
+     "marrow": 13.6
+    },
+    "lostPerMap": {
+     "marrow": 1.75
+    }
+   }
+  }
+ }
+}

@@ -205,12 +205,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      Island's waves 3-5 are the Torpedo Sub's, Armored Drone's and
  *      Scavenger Drone's debut waves, drones only around each (lab;
  *      `replaces.extras` may stand in for a jet or a bomber). A v31 Marrow
- *      log, or a v31 Island card log, no longer replays to the same game. */
-export const LOG_VERSION = 32;
+ *      log, or a v31 Island card log, no longer replays to the same game.
+ *  33: the Armory overhaul (docs/design/v3-armory-overhaul.md): Quick
+ *      Reload reloads up to 40% faster (was 30%), Stockpile drops power-ups
+ *      up to 3.25× and makes them last 2.5× (was 1.75× and 1.5×), Long
+ *      Loads refills the rack on every weapon or boost pickup, and Deep
+ *      Magazine adds a round at every level (11 at level 5, was 10). A v32
+ *      log with any of those four in its `armory` no longer replays to the
+ *      same game; one without them does, but only its own version replays
+ *      here. */
+export const LOG_VERSION = 33;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [32];
+export const LOG_REPLAYS: readonly number[] = [33];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

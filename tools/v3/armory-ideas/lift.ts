@@ -11,6 +11,10 @@
 //   npx vite-node tools/v3/armory-ideas/lift.ts -- --seeds=12 --part=0/4 > out.jsonl
 //
 // Prints one JSON line a run: {cfg, map, seed, lost}.
+//
+// This measured the numbers BEFORE the overhaul (LOG_VERSION 31): its `set`
+// values are absolute, so on the overhaul build (32), where the lift is the
+// game's own, re-check with check.ts instead (check-results.json).
 
 import { ABILITY_ORDER, type AbilityId } from '../../../src/v3/data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../../../src/v3/data/armory';

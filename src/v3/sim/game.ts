@@ -6856,6 +6856,9 @@ function collect(g: Game, p: Pickup): void {
     const id = p.weapon!;
     const level = g.levels[id] ?? 0;
     if (level <= 0) return;
+    // Long Loads (the Armory overhaul): every weapon or boost pickup also
+    // puts rounds back in the rack, the whole rack at level 5.
+    if (g.stats.refill > 0) g.ammo = Math.min(g.stats.rack, g.ammo + g.stats.refill);
     // A boost runs beside whatever is loaded (phase 3).
     if (isBoost(id)) {
       startBoost(g, id, level, p.x, p.y);

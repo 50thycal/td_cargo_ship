@@ -14,6 +14,15 @@
 // a random drop" (Survivor.io's gear). A card you hold already stacks: one
 // more level. Salvage (round 1's currency) is gone.
 //
+// The Armory overhaul (2026-11-20, docs/design/v3-armory-overhaul.md, the
+// player's marks on round ar1): cards are still FOUND at random at the end
+// of a run, but a card found again pays Scrap instead of a level, and levels
+// 2-5 are BOUGHT with Scrap, earned in every run, by the player's choice
+// (Survivor.io's gear and gold). The weak three are lifted as measured
+// (Quick Reload, Stockpile, Long Loads), Deep Magazine moves to the Supply
+// bay with a round at every level, and the Armory's Point Defense is shown
+// as "Deck Guns" (its id stays `pointdef`, so saves and logs keep it).
+//
 // `armoryStats()` turns armory levels into the numbers the sim reads; with
 // no levels it is exactly V2's base gun and the base drop rules.
 
@@ -47,7 +56,7 @@ export interface BayDef {
 export const BAYS: Record<BayId, BayDef> = {
   gun: { id: 'gun', name: 'Gun', blurb: 'The main gun', color: '#38bdf8' },
   hull: { id: 'hull', name: 'Hull', blurb: 'The carrier and the convoy', color: '#4ade80' },
-  supply: { id: 'supply', name: 'Supply', blurb: 'Weapon drops and power-ups', color: '#fbbf24' },
+  supply: { id: 'supply', name: 'Supply', blurb: 'Rounds, weapon drops and power-ups', color: '#fbbf24' },
 };
 
 export const BAY_ORDER: BayId[] = ['gun', 'hull', 'supply'];
@@ -68,15 +77,20 @@ export interface ArmoryDef {
 export const ARMORY_MAX = 5;
 
 /** Per-level effects (index = level). Round 6's audit found an 11-round rack
- *  reloading 55% faster let mashing win, so the gun stops short of that:
- *  −30% reload and a 10-round rack at the top. */
-const RELOAD = [1, 0.94, 0.88, 0.82, 0.76, 0.7];
+ *  reloading 55% faster let mashing win, so the gun stops short of that.
+ *  The overhaul's lift (measured: 4.5 → 6.7 ships saved at level 5): 8%
+ *  faster a level, −40% at the top (it was 6%, −30%). */
+const RELOAD = [1, 0.92, 0.84, 0.76, 0.68, 0.6];
 // V3 round 1: a run takes one gun upgrade, so each must matter on its own.
 // At +20% a level Wide Warhead changed nothing (43% clears with or without
 // it, average bot); a blast needs about 3× before it reaches past the target.
 const WARHEAD = [1, 1.4, 1.8, 2.2, 2.6, 3];
 const MOTOR = [1, 1.2, 1.4, 1.6, 1.8, 2];
-const MAGAZINE = [0, 1, 2, 2, 3, 4];
+/** Deep Magazine: rounds added to the rack. Level 3 used to add nothing
+ *  (8 → 8); now every level is a round (7, 8, 9, 10, 11), as the overhaul
+ *  suggested. In the Supply bay it can ride with Quick Reload 5: 11 rounds
+ *  at −40% is still short of round 6's mash line (11 rounds at −55%). */
+const MAGAZINE = [0, 1, 2, 3, 4, 5];
 const CONTACT = [0, 5, 10, 14, 17, 20];
 // The Hull and Supply numbers were tuned on the average bot, each upgrade
 // alone (round 7). Carrier hull alone changed nothing (runs are lost to
@@ -92,8 +106,15 @@ const PD_GAP = [0, 3.5, 3, 2.6, 2.3, 2];
 const PD_RANGE = [0, 280, 300, 320, 340, 360];
 /** Damage Control: seconds between patches (a point on every hurt hull). */
 const REPAIR = [0, 10, 8.5, 7, 5.5, 4];
-/** Long Loads: seconds a weapon pickup loads the gun for. */
+/** Long Loads: seconds a weapon pickup loads the gun for. Longer loads alone
+ *  saved nothing (a new weapon drops before the old one runs out), so the
+ *  overhaul gives it a second job: every weapon or boost pickup also puts
+ *  rounds back in the rack (measured at level 5: 3.3 → 5.2 ships saved).
+ *  RACK_REFILL's last entry is the whole rack, whatever its size (WHOLE_RACK:
+ *  more rounds than any rack holds; a finite number, so stats stay JSON). */
+export const WHOLE_RACK = 99;
 const LOAD_TIME = [0, 4, 8, 12, 16, 20];
+export const RACK_REFILL = [0, 2, 3, 4, 5, WHOLE_RACK];
 /** Supply Lines: weapon drop chance (× the base share) and the pity clock. */
 const DROP_SHARE = [1, 1.08, 1.16, 1.24, 1.32, 1.4];
 const DROP_PITY = [WEAPON.pity, 26, 24, 22, 21, 20];
@@ -101,8 +122,11 @@ const DROP_PITY = [WEAPON.pity, 26, 24, 22, 21, 20];
  *  first try, Head Start (draft a weapon before wave 1, up to MAX), changed
  *  nothing: by the late waves that decide a run every held weapon is maxed
  *  anyway (57% clears at its top level, the same as without it). */
-const POWER_SHARE = [1, 1.15, 1.3, 1.45, 1.6, 1.75];
-const POWER_TIME = [1, 1.1, 1.2, 1.3, 1.4, 1.5];
+/** The overhaul's lift: +45% drops and +30% time a level (3.25× and 2.5×
+ *  at the top; measured 3.1 → 5.8 ships saved). Power-ups are rare, so it
+ *  takes a big multiplier to matter. */
+const POWER_SHARE = [1, 1.45, 1.9, 2.35, 2.8, 3.25];
+const POWER_TIME = [1, 1.3, 1.6, 1.9, 2.2, 2.5];
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
@@ -111,7 +135,7 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     id: 'reload',
     bay: 'gun',
     name: 'Quick Reload',
-    blurb: 'Each round loads 6% faster',
+    blurb: 'Each round loads 8% faster',
     max: ARMORY_MAX,
     show: (l) => `${(INTERCEPTOR.reload * RELOAD[l]).toFixed(2)} s a round`,
   },
@@ -133,9 +157,9 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
   },
   magazine: {
     id: 'magazine',
-    bay: 'gun',
+    bay: 'supply',
     name: 'Deep Magazine',
-    blurb: 'More rounds in the rack',
+    blurb: 'One more round in the rack a level',
     max: ARMORY_MAX,
     show: (l) => `${INTERCEPTOR.rack + MAGAZINE[l]} rounds`,
   },
@@ -160,7 +184,9 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
   pointdef: {
     id: 'pointdef',
     bay: 'hull',
-    name: 'Point Defense',
+    // Shown as Deck Guns (overhaul): "Point Defense" is also a weapon you
+    // draft in a run. The id stays `pointdef` (saves, logs, bot presets).
+    name: 'Deck Guns',
     blurb: 'The carrier shoots the nearest threat on its own',
     max: ARMORY_MAX,
     // Reach in metres (a bare "reach 280" meant nothing to a player).
@@ -178,9 +204,9 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     id: 'longload',
     bay: 'supply',
     name: 'Long Loads',
-    blurb: 'A weapon pickup stays in the gun 4 s longer a level',
+    blurb: 'Weapons stay loaded longer, and every pickup refills the rack',
     max: ARMORY_MAX,
-    show: (l) => `${WEAPON.time + LOAD_TIME[l]} s a weapon`,
+    show: (l) => `${WEAPON.time + LOAD_TIME[l]} s a weapon` + (l ? `, refills ${RACK_REFILL[l] >= WHOLE_RACK ? 'the whole rack' : `${RACK_REFILL[l]} rounds`}` : ''),
   },
   drops: {
     id: 'drops',
@@ -200,7 +226,8 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
   },
 };
 
-export const ARMORY_ORDER: ArmoryId[] = ['reload', 'warhead', 'motor', 'magazine', 'fuse', 'plating', 'pointdef', 'repair', 'longload', 'drops', 'stockpile'];
+/** In bay order: Gun (4), Hull (3), Supply (4). */
+export const ARMORY_ORDER: ArmoryId[] = ['reload', 'warhead', 'motor', 'fuse', 'plating', 'pointdef', 'repair', 'magazine', 'longload', 'drops', 'stockpile'];
 
 /** The upgrades in one bay, in order. */
 export function bayItems(bay: BayId): ArmoryId[] {
@@ -234,6 +261,9 @@ export interface ArmoryStats {
   repairEvery: number;
   /** Seconds a weapon pickup loads the gun for. */
   weaponTime: number;
+  /** Long Loads: rounds a weapon or boost pickup puts back in the rack
+   *  (0: none; WHOLE_RACK: all of it). */
+  refill: number;
   /** Weapon drop chance, × a kill's power-up chance, and the pity clock. */
   dropShare: number;
   dropPity: number;
@@ -263,6 +293,7 @@ export function armoryStats(a: ArmoryLevels = {}): ArmoryStats {
     pdRange: PD_RANGE[lv('pointdef')],
     repairEvery: REPAIR[lv('repair')],
     weaponTime: WEAPON.time + LOAD_TIME[lv('longload')],
+    refill: RACK_REFILL[lv('longload')],
     dropShare: WEAPON.share * DROP_SHARE[lv('drops')],
     dropPity: DROP_PITY[lv('drops')],
     powerShare: POWER_SHARE[lv('stockpile')],
@@ -270,8 +301,8 @@ export function armoryStats(a: ArmoryLevels = {}): ArmoryStats {
   };
 }
 
-/** Armory cards a finished run wins: one for any run that cleared enough
- *  waves to count (a run quit at once wins nothing), one more for clearing
+/** Armory cards a finished run finds: one for any run that cleared enough
+ *  waves to count (a run quit at once finds nothing), one more for clearing
  *  the map, one more the first time it is cleared. */
 export const CARD_DROPS = {
   minWaves: 3,
@@ -285,18 +316,101 @@ export function cardsFor(run: { wavesCleared: number; cleared: boolean }, firstC
   return CARD_DROPS.run + (run.cleared ? CARD_DROPS.clear : 0) + (run.cleared && firstClear ? CARD_DROPS.firstClear : 0);
 }
 
-/** Draw `n` Armory cards at random from the upgrades not yet at their last
- *  level (a card drawn counts towards the next draw), and add them to
- *  `levels`. Returns the cards in the order won; fewer when everything is
- *  maxed. `pick(k)` returns an integer in [0, k). */
-export function drawCards(levels: ArmoryLevels, n: number, pick: (k: number) => number): ArmoryId[] {
-  const won: ArmoryId[] = [];
+/** A card found at the end of a run: new (it joins at level 1), or one
+ *  already held (it pays SCRAP.duplicate instead of a level). */
+export interface CardFind {
+  id: ArmoryId;
+  dup: boolean;
+}
+
+/** Find `n` Armory cards at random from every upgrade (the overhaul: a card
+ *  is a FIND, not a level). A new one joins `levels` at level 1; one already
+ *  held (or found earlier in the same draw) is a duplicate. `pick(k)`
+ *  returns an integer in [0, k). */
+export function findCards(levels: ArmoryLevels, n: number, pick: (k: number) => number): CardFind[] {
+  const found: CardFind[] = [];
   for (let i = 0; i < n; i++) {
-    const open = ARMORY_ORDER.filter((id) => armoryLevel(levels, id) < ARMORY[id].max);
-    if (!open.length) break;
-    const id = open[pick(open.length)];
-    levels[id] = armoryLevel(levels, id) + 1;
-    won.push(id);
+    const id = ARMORY_ORDER[pick(ARMORY_ORDER.length)];
+    const dup = armoryLevel(levels, id) > 0;
+    if (!dup) levels[id] = 1;
+    found.push({ id, dup });
   }
-  return won;
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// Scrap (the overhaul's currency). Earned in every run, won or lost; spent in
+// the Armory on the next level of a card you hold.
+
+export const SCRAP = {
+  /** A wave cleared, waves 1 to RULES.wavesToClear (10). */
+  wave: 40,
+  /** A boss round survived (the map's ending, waves 11-13). */
+  boss: 50,
+  /** Clearing the map. */
+  clear: 150,
+  /** The first clear of a map, on top. */
+  firstClear: 250,
+  /** A card found that you already hold. */
+  duplicate: 100,
+} as const;
+
+/** Scrap to take a card from level `l` to `l + 1` (index = the level now;
+ *  level 1 comes with the find). 1750 takes a card from 1 to 5. */
+export const LEVEL_COST: readonly number[] = [0, 150, 300, 500, 800];
+
+/** The Scrap for the next level of a card at level `lv`, or null when there
+ *  is none to buy (not held, or maxed). */
+export function levelCost(id: ArmoryId, lv: number): number | null {
+  return lv >= 1 && lv < ARMORY[id].max ? (LEVEL_COST[lv] ?? null) : null;
+}
+
+/** What a run's waves pay for: the cleared waves of the map (1 to `waves`,
+ *  the map's waves before its ending) and its boss rounds (after `waves`, up
+ *  to `last`). Endless waves past the last count for nothing. */
+export function scrapTally(history: readonly { wave: number; outcome: string }[], waves: number, last: number): { waves: number; boss: number } {
+  let w = 0;
+  let b = 0;
+  for (const h of history) {
+    if (h.outcome !== 'cleared') continue;
+    if (h.wave >= 1 && h.wave <= waves) w++;
+    else if (h.wave > waves && h.wave <= last) b++;
+  }
+  return { waves: w, boss: b };
+}
+
+/** The Scrap a run earns, line by line. */
+export interface ScrapEarned {
+  waves: number;
+  boss: number;
+  clear: number;
+  firstClear: number;
+  duplicates: number;
+  total: number;
+}
+
+export function scrapFor(t: { waves: number; boss: number }, cleared: boolean, firstClear: boolean, duplicates = 0): ScrapEarned {
+  const e = {
+    waves: t.waves * SCRAP.wave,
+    boss: t.boss * SCRAP.boss,
+    clear: cleared ? SCRAP.clear : 0,
+    firstClear: cleared && firstClear ? SCRAP.firstClear : 0,
+    duplicates: duplicates * SCRAP.duplicate,
+  };
+  return { ...e, total: e.waves + e.boss + e.clear + e.firstClear + e.duplicates };
+}
+
+/** Spend `bank` Scrap on levels, a card at a time in `order` (each one as
+ *  far as the bank goes before the next). Returns what is left. For the
+ *  tools that model a career; in the game the player chooses. */
+export function spendScrap(levels: ArmoryLevels, bank: number, order: readonly ArmoryId[]): number {
+  for (const id of order) {
+    for (;;) {
+      const c = levelCost(id, armoryLevel(levels, id));
+      if (c === null || bank < c) break;
+      bank -= c;
+      levels[id] = armoryLevel(levels, id) + 1;
+    }
+  }
+  return bank;
 }
