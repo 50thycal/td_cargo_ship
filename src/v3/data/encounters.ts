@@ -2824,7 +2824,7 @@ const ISLAND_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, plus: 1, kind: 'ballistic', count: 1, from: base(1), aim: 'near' },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 7, ballistic: 5, extras: { supersonic: 1 } },
+    replaces: { drones: 7, ballistic: 5 },
   },
   {
     id: 'island-strafe',
@@ -3086,7 +3086,8 @@ const BEHEMOTH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 } },
-      { at: 0.4, plus: 1.5, kind: 'guided', count: 2, gap: 0.9, from: base(1), aim: 'vip' },
+      { at: 0.4, plus: 1.5, kind: 'heavy', count: 1, from: base(1), aim: 'vip' },
+      { at: 0.4, plus: 2.5, kind: 'guided', count: 1, from: base(1), aim: 'vip' },
       { at: 0.4, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
@@ -3358,6 +3359,43 @@ export function waveFire(map: MapId, wave: number, rev: number = ENCOUNTER_REV):
   return f && rev >= 3 && wave >= f.from && wave <= f.to ? f.more : 0;
 }
 
+/** A map's signature threat (log v33, the player's round 9,
+ *  r9-map-signature: docs/design/v3-combo-diversity.md). Waves 1-10 threw
+ *  much the same on every map (drones and shells 60-80% of what shows), so
+ *  the same first pick won everywhere. A chapter 2 map now brings its boss
+ *  round's own kind early, in the wave planner (so each wave's launches stay
+ *  the shared wave's, rule w-budget): from wave `from`, `foeShare` of the
+ *  wave's new enemies (data/foes.ts foeCount, rounded up) are `foe`; the
+ *  wave's own strike jets fly at `jets` and its heavy cruise missiles go for
+ *  `heavies` ('vip': the supertanker's lane, the tanker). Lab only, under
+ *  the encounter layer (rev 4), as every encounter; a campaign run and a
+ *  shared wave (`only: []`) play the planner as it was. */
+export interface MapSignature {
+  from: number;
+  foe?: FoeId;
+  foeShare?: number;
+  jets?: BeatAim;
+  heavies?: BeatAim;
+}
+
+export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
+  // The Island: attack helicopters off the island, the Gunship Wall's own,
+  // from wave 6 (waves 2-5 are the debut waves, each its one new enemy).
+  island: { from: 6, foe: 'attackHeli', foeShare: 1 },
+  // The Behemoth Run: a strike on the supertanker, its boss rounds' own
+  // (MAP_BOSS): the wave's jets strafe the deep lane and its heavies go for
+  // the tanker, from wave 4 (the first jet).
+  behemoth: { from: 4, jets: 'vip', heavies: 'vip' },
+};
+
+/** A map's signature for a wave under a run's encounter setup (none before
+ *  rev 4, past wave 10, or on the shared wave: `only: []`). */
+export function signatureOf(map: MapId, wave: number, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): MapSignature | undefined {
+  if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return undefined;
+  const sig = (MAP_SIGNATURE as Partial<Record<MapId, MapSignature>>)[map];
+  return sig && wave >= sig.from ? sig : undefined;
+}
+
 /** A map's boss rounds under the encounter layer (rev 4, map rebuild phase
  *  4: rule w-boss, "harder each round, about a ship a round for a good
  *  player"). The map's own event plays as it is, plus, in each run (1 to
@@ -3417,7 +3455,9 @@ export interface BossRound {
 }
 
 export interface BossFire {
-  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic';
+  /** A strike jet (log v33) comes in from the edges in turn, not a base,
+   *  and with aim 'vip' flies down the supertanker's lane. */
+  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic' | 'strafer';
   at: number;
   count?: number;
   gap?: number;
@@ -3447,14 +3487,45 @@ export const ISLAND_BOSS_ROUNDS: BossRound[] = [
   { helis: 5, swarms: 2, size: 5, fire: [{ kind: 'ballistic', at: 3, count: 2, gap: 4, base: 1, aim: 'near' }, { kind: 'guided', at: 6, count: 1, base: 4, aim: 'near' }] },
 ];
 
-/** The Behemoth Run's Wolf Pack: periscopes in two waves (before: 4 then 3,
- *  two of the subs with a fast torpedo, every round), with heavy cruise
- *  missiles at the supertanker and, in round 3, guided missiles from the
- *  headland at the lead ship. */
+/** The Behemoth Run's boss rounds. Log v33 (the player's round 9,
+ *  r9-ch2-split: "change the Behemoth Run's boss to something Shield doesn't
+ *  stop"): a strike on the supertanker. Strike jets come in pairs, down the
+ *  deep lane at the tanker (`aim: 'vip'`) and over the convoy (the densest
+ *  band, as any jet), and the Shield never stops a jet's guns; heavy cruise
+ *  missiles go for the tanker (two hits sink it); one or two subs are left of
+ *  the Wolf Pack from round 2 (before log v33: 4 to 6 subs, 1 or 2 fast torpedoes
+ *  and guided missiles at the tanker, a stream the Shield answered). Before
+ *  the encounter layer: 4 then 3 subs, two of them with a fast torpedo,
+ *  every round. */
 export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
-  { packs: [2, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
-  { packs: [3, 2], fast: 1, fire: [{ kind: 'guided', at: 5, count: 1, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
-  { packs: [3, 3], fast: 2, fire: [{ kind: 'guided', at: 4, count: 2, gap: 3, base: 1, aim: 'vip' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }] },
+  {
+    packs: [],
+    fast: 0,
+    fire: [
+      { kind: 'heavy', at: 4, count: 1, base: 1, aim: 'vip' },
+      { kind: 'strafer', at: 5, count: 5, gap: 2.6, aim: 'vip' },
+      { kind: 'strafer', at: 6.3, count: 5, gap: 2.6 },
+    ],
+  },
+  {
+    packs: [1],
+    fast: 1,
+    fire: [
+      { kind: 'heavy', at: 4, count: 1, base: 1, aim: 'vip' },
+      { kind: 'strafer', at: 5, count: 6, gap: 2.2, aim: 'vip' },
+      { kind: 'strafer', at: 6.1, count: 6, gap: 2.2 },
+    ],
+  },
+  {
+    packs: [1, 1],
+    fast: 1,
+    fire: [
+      { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'vip' },
+      { kind: 'heavy', at: 16, count: 1, base: 2, aim: 'vip' },
+      { kind: 'strafer', at: 5, count: 6, gap: 2.2, aim: 'vip' },
+      { kind: 'strafer', at: 6.1, count: 6, gap: 2.2 },
+    ],
+  },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
