@@ -1,9 +1,10 @@
 # V3: fixes from the 2026-11-20 playtest
 
-Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh v32), and your four logs added to the bot fit. Built on round 9 (log v34), so the game is now **log v35**.
+Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh v32), and your four logs added to the bot fit. Built on round 9 (log v34) and the Needle of Bosk (log v35), so the game is now **log v36**.
 
 - **Before** = the base with round 9 merged (log v34).
-- **After** = this branch (log v35).
+- **After** = this branch: log v35 for the measuring, before the Needle merged; now log v36.
+- **The Needle:** checked again after it merged (below).
 - Bot numbers come from the "you" bot with your Armory, 12 seeds a row, unless the row says otherwise. A gap under about 1 ship a run is noise.
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
@@ -168,6 +169,19 @@ Most of the Island's rise comes from the sub (fix 7): wave 3 is its debut, 0.13 
 | normal, mean end wave | 9.1 | 8.9 |
 | boss rounds B1–B3, tough | 2.54 / 3.42 / 4.50 | 3.08 / 3.33 / 6.21 |
 
+## The Needle of Bosk, after it merged
+
+The Needle has armored-drone walls and a Shield Wall boss. It has no helicopters or subs, so only the Shield and the Scavenger apply.
+
+| | The Needle v35 (before) | v36 (after) |
+| --- | --- | --- |
+| Shield alone at MAX | **#1**, 5.25 | **#5**, 7.50 |
+| the bot drafting for itself, lost per run | 8.0 | 8.7 |
+| Scavengers shot down / seconds alive | 100% / 2.1 | 100% / 2.7 |
+
+- The Shield also drops to the pack on the Needle. #2 to #8 sit within 7.2–7.7, so it is a tie.
+- Files: `tools/v3/playtest-fixes/results/singles-needle-v3{5,6}.txt` and `foes-self-needle-v3{5,6}.txt`.
+
 ## Overall, the bot on chapter 2 (ships lost per run, every wave played)
 
 | | Before | After |
@@ -184,7 +198,7 @@ Most of the Island's rise comes from the sub (fix 7): wave 3 is its debut, 0.13 
 ## Your four runs against the bot's mirror
 
 - **Added to the bot fit:** your four logs, added to `tools/v3/bot-fit/player.json` with `fit.ts --logs`: Island v31; Marrow, Behemoth and Kesh v32.
-- **No exact replays:** none of them replays exactly on this build, or on round 9's, because only v35 replays here.
+- **No exact replays:** none of them replays exactly on this build, or on round 9's, because only v36 replays here.
 - **The mirrors:** `curve.ts` replays each one as a "mirror": the "you" bot plays your setup, Armory and picks on your seed, 16 times, on three builds. The table shows the v35 build. The v33 and v34 builds are in `tools/v3/bot-fit/results/playtest-2026-11-20-curve-v3{3,4,5}.txt`.
 
 Ships lost each wave, your run against the mirror's mean (v35):
@@ -212,10 +226,15 @@ Ships lost each wave, your run against the mirror's mean (v35):
 
 - `npx tsc --noEmit`: clean.
 - `npx vitest run --exclude '.claude/**'`: all pass. New in `tests/v3/playtestFixes.test.ts`: Shield hits, the helicopter, the sub, the Scavenger and the counter. Older tests now follow the new sub, helicopter, Scavenger and counter.
-- The map-lab baseline is rewritten at v35 and replays exactly.
+- The map-lab baseline is rewritten at v36 and replays exactly.
 - **e2e:**
   - `e2e/v3.mjs`, `v3-map-cards.mjs` and `v3-encounters.mjs` were run on `vite preview`.
-  - The earlier run of `e2e/v3.mjs` failed one check: "coves 667×375: a notice is outside the bottom-right corner". The new helicopter and sub tips were longer than the old ones, so both are now as short as before, and the run was repeated.
+  - Two earlier runs of `e2e/v3.mjs` failed one check each: "coves 667×375" and then "sowers 667×375", "a notice is outside the bottom-right corner". The base passes it. The base passes it.
+  - First fix: the longer helicopter, sub and Scavenger tips made the first-sight notices taller, so all three are now no longer than before.
+  - It still failed on The Coves: the new timing put the Strike Jet's and the Spotter's first-sight notices up together, and two 6-line notices rose above the bottom two thirds.
+  - Second fix: on the smallest phones (height 380 px or less), a notice's text is clamped to 4 lines.
+  - Now `e2e/v3.mjs` passes all 233 checks, and `v3-map-cards.mjs` and `v3-encounters.mjs` pass.
+  - The screenshots e2e overwrote in `docs/design/img` were restored.
 - **Tools:**
   - `tools/v3/playtest-fixes/measure.ts`: Shield hits per pickup, plus helicopter, sub and Scavenger numbers.
   - `tools/v3/playtest-fixes/shots.mjs`: the screenshots.

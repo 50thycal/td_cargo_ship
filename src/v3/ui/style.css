@@ -485,6 +485,15 @@ body {
   color: var(--muted);
 }
 
+/* The smallest phone (667×375): two first-sight hints at once must still
+   sit in the bottom two thirds (e2e/v3.mjs; the 2026-11-20 build's timing
+   put the Strike Jet's and the Spotter's together on The Coves). */
+@media (max-height: 380px) {
+  .v2-alert-sub {
+    -webkit-line-clamp: 4;
+  }
+}
+
 /* A title alone: the icon centred on its one line. */
 .v2-alert.one {
   align-items: center;
