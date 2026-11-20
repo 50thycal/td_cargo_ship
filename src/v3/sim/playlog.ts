@@ -276,12 +276,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      deals four cards; Boilers sails the convoy faster; Lifeboats counts
  *      a wave's first ship sunk as half a loss. A v39 log has none of them
  *      and plays the same game (the map-lab baseline replays unchanged),
- *      but a v40 log that uses one needs this build. */
-export const LOG_VERSION = 40;
-/** The log versions this build replays exactly (40, and 39: the new
- *  upgrades change nothing for a run that has none of them). Tools that
- *  replay logs (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [39, 40];
+ *      but a v40 log that uses one needs this build.
+ *  41: (taken: the chapter 2 notes batch, claude/v3-ch2-notes.)
+ *  42: Saltgate Canal's trucks (docs/design/v3-ch2-saltgate.md; lab, under
+ *      the encounter layer; the player's answer to the v38 card): the boss
+ *      is the Gatecrashers, columns of Rocket Trucks down to the banks by
+ *      the locks (MAP_BOSS.saltgate `trucks`, `name`, `truck`; a truck aimed
+ *      'lock' marks its ship and may fire a cluster), the signature is
+ *      Rocket Trucks at the locks (MAP_SIGNATURE.saltgate `foe`, `trucks`),
+ *      no Torpedo Sub on the map (MAP_FOE_SWAP), a truck down a road in an
+ *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
+ *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v40 Saltgate card log no
+ *      longer replays to the same game; the campaign plays as it did. */
+export const LOG_VERSION = 42;
+/** The log versions this build replays exactly. Tools that replay logs
+ *  (Map Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [42];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

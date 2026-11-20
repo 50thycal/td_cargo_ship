@@ -32,9 +32,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // The Archipelago (log v37): drone motherships, with the mini-drones they
   // launch.
   archipelago: ['mothership', 'minidrone'],
-  // Saltgate Canal (log v38): the strike on the locks: Torpedo Subs with the
-  // torpedoes they fire, and the cluster missiles with their bomblets.
-  saltgate: ['torpedoSub', 'torpedo', 'cluster', 'bomblet'],
+  // Saltgate Canal (log v42): the trucks come to the locks: Rocket Trucks,
+  // and the cluster missiles with their bomblets (log v38-v41: Torpedo Subs
+  // with their torpedoes in place of the trucks).
+  saltgate: ['rocketTruck', 'cluster', 'bomblet'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
