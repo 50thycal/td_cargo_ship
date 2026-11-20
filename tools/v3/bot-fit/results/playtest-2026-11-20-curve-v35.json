@@ -1,0 +1,923 @@
+{
+ "about": "The \"you\" bot on the player's setup (mirror: the player's seed, picks, Armory; seeds: the same setup on seeds 900..): ships lost and tension per wave. Made by tools/v3/bot-fit/curve.ts.",
+ "dice": 16,
+ "seeds": 0,
+ "runs": {
+  "v3-20261120000322-77396": {
+   "mirror": {
+    "id": "v3-20261120000322-77396",
+    "tower": null,
+    "map": "island",
+    "runs": 16,
+    "won": 0.56,
+    "lost1to5": 0.5,
+    "lost6to10": 3.88,
+    "lost1to10": 4.38,
+    "firstHot": 5,
+    "waves": [
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.15,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.42,
+      "peaks": 0.06,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.94,
+       "single": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.31,
+      "peak": 0.7,
+      "peaks": 0.31,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.69,
+       "single": 0.31
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.13,
+      "peak": 0.5,
+      "peaks": 0.13,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.88,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.31,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.13,
+      "peak": 0.79,
+      "peaks": 0.69,
+      "hot": 0.03,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.38,
+       "flat": 0.5,
+       "rising": 0.06,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.81,
+      "peak": 1.29,
+      "peaks": 2.06,
+      "hot": 0.07,
+      "shape": "sawtooth",
+      "shapes": {
+       "rising": 0.25,
+       "single": 0.13,
+       "sawtooth": 0.63
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.88,
+      "peak": 1.16,
+      "peaks": 1.31,
+      "hot": 0.06,
+      "shape": "single",
+      "shapes": {
+       "single": 0.31,
+       "rising": 0.13,
+       "flat": 0.19,
+       "sawtooth": 0.31,
+       "pinned": 0.06
+      }
+     },
+     {
+      "n": 15,
+      "lost": 0.6,
+      "peak": 1.07,
+      "peaks": 1.73,
+      "hot": 0.06,
+      "shape": "sawtooth",
+      "shapes": {
+       "rising": 0.2,
+       "sawtooth": 0.4,
+       "single": 0.2,
+       "flat": 0.2
+      }
+     },
+     {
+      "n": 13,
+      "lost": 1.85,
+      "peak": 1.27,
+      "peaks": 2.92,
+      "hot": 0.07,
+      "shape": "sawtooth",
+      "shapes": {
+       "single": 0.15,
+       "rising": 0.38,
+       "sawtooth": 0.46
+      }
+     },
+     {
+      "n": 11,
+      "lost": 1.09,
+      "peak": 1.52,
+      "peaks": 1,
+      "hot": 0.16,
+      "shape": "single",
+      "shapes": {
+       "single": 0.73,
+       "pinned": 0.09,
+       "sawtooth": 0.09,
+       "flat": 0.09
+      }
+     },
+     {
+      "n": 11,
+      "lost": 1.82,
+      "peak": 1.77,
+      "peaks": 1.18,
+      "hot": 0.34,
+      "shape": "pinned",
+      "shapes": {
+       "rising": 0.09,
+       "single": 0.36,
+       "pinned": 0.55
+      }
+     },
+     {
+      "n": 9,
+      "lost": 1.11,
+      "peak": 1.33,
+      "peaks": 1.44,
+      "hot": 0.23,
+      "shape": "single",
+      "shapes": {
+       "single": 0.33,
+       "pinned": 0.22,
+       "flat": 0.11,
+       "sawtooth": 0.22,
+       "rising": 0.11
+      }
+     }
+    ],
+    "sunkBy": [
+     {},
+     {
+      "drone": 0.06
+     },
+     {
+      "torpedoSub": 0.31
+     },
+     {
+      "drone": 0.13
+     },
+     {},
+     {
+      "drone": 0.06,
+      "ballistic": 0.06
+     },
+     {
+      "drone": 0.19,
+      "ballistic": 0.19,
+      "strafer": 0.13,
+      "attackHeli": 0.13,
+      "guided": 0.06,
+      "supersonic": 0.06,
+      "heavy": 0.06
+     },
+     {
+      "ballistic": 0.44,
+      "drone": 0.13,
+      "bomber": 0.13,
+      "heavy": 0.06,
+      "strafer": 0.06,
+      "attackHeli": 0.06
+     },
+     {
+      "drone": 0.19,
+      "attackHeli": 0.13,
+      "bomber": 0.13,
+      "ballistic": 0.06,
+      "strafer": 0.06
+     },
+     {
+      "ballistic": 0.69,
+      "guided": 0.25,
+      "drone": 0.13,
+      "attackHeli": 0.13,
+      "cluster": 0.13,
+      "supersonic": 0.06,
+      "strafer": 0.06,
+      "bomber": 0.06
+     },
+     {
+      "attackHeli": 0.31,
+      "drone": 0.31,
+      "guided": 0.13
+     },
+     {
+      "drone": 0.56,
+      "guided": 0.25,
+      "ballistic": 0.25,
+      "attackHeli": 0.19
+     },
+     {
+      "drone": 0.25,
+      "attackHeli": 0.25,
+      "guided": 0.13
+     }
+    ]
+   }
+  },
+  "v3-20261120035031-61174": {
+   "mirror": {
+    "id": "v3-20261120035031-61174",
+    "tower": 11,
+    "map": "marrow",
+    "runs": 16,
+    "won": 0.94,
+    "lost1to5": 0.38,
+    "lost6to10": 1.19,
+    "lost1to10": 1.56,
+    "firstHot": 3.75,
+    "waves": [
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.06,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.25,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.66,
+      "peaks": 0.25,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.75,
+       "single": 0.25
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 1.25,
+      "peaks": 1.06,
+      "hot": 0.05,
+      "shape": "single",
+      "shapes": {
+       "single": 0.94,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.31,
+      "peak": 0.72,
+      "peaks": 0.5,
+      "hot": 0.01,
+      "shape": "single",
+      "shapes": {
+       "single": 0.5,
+       "flat": 0.5
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.9,
+      "peaks": 0.75,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.31,
+       "single": 0.63,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.38,
+      "peak": 0.7,
+      "peaks": 0.31,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.69,
+       "single": 0.31
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.19,
+      "peak": 0.84,
+      "peaks": 0.63,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "single": 0.5,
+       "flat": 0.44,
+       "rising": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.44,
+      "peak": 0.66,
+      "peaks": 0.56,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "rising": 0.06,
+       "flat": 0.69,
+       "sawtooth": 0.13,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.13,
+      "peak": 0.66,
+      "peaks": 0.25,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.25,
+       "flat": 0.75
+      }
+     },
+     {
+      "n": 15,
+      "lost": 0,
+      "peak": 0.37,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 15,
+      "lost": 0,
+      "peak": 0.38,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 15,
+      "lost": 0.27,
+      "peak": 0.68,
+      "peaks": 0.4,
+      "hot": 0.07,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.6,
+       "single": 0.33,
+       "pinned": 0.07
+      }
+     }
+    ],
+    "sunkBy": [
+     {},
+     {},
+     {},
+     {
+      "ballistic": 0.06
+     },
+     {
+      "ballistic": 0.25,
+      "strafer": 0.06
+     },
+     {
+      "ballistic": 0.06
+     },
+     {
+      "supersonic": 0.25,
+      "hydra": 0.06,
+      "guided": 0.06
+     },
+     {
+      "ballistic": 0.13,
+      "strafer": 0.06
+     },
+     {
+      "supersonic": 0.13,
+      "strafer": 0.06,
+      "bomber": 0.06,
+      "heavy": 0.06,
+      "rocketTruck": 0.06,
+      "ballistic": 0.06
+     },
+     {
+      "strafer": 0.06,
+      "hydra": 0.06
+     },
+     {},
+     {},
+     {
+      "hydra": 0.13,
+      "drone": 0.06,
+      "guided": 0.06
+     }
+    ]
+   }
+  },
+  "v3-20261120040209-61175": {
+   "mirror": {
+    "id": "v3-20261120040209-61175",
+    "tower": null,
+    "map": "behemoth",
+    "runs": 16,
+    "won": 0,
+    "lost1to5": 1.81,
+    "lost6to10": 3.06,
+    "lost1to10": 4.88,
+    "firstHot": 5.25,
+    "waves": [
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.06,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.46,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.57,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.7,
+      "peaks": 0.38,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.69,
+       "single": 0.25,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 1.69,
+      "peak": 1,
+      "peaks": 0.69,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "single": 0.69,
+       "flat": 0.31
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.63,
+      "peaks": 0.31,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.19,
+       "flat": 0.75,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.19,
+      "peak": 0.73,
+      "peaks": 0.44,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.63,
+       "single": 0.31,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 15,
+      "lost": 0.67,
+      "peak": 1.03,
+      "peaks": 1.07,
+      "hot": 0.05,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.27,
+       "sawtooth": 0.13,
+       "rising": 0.13,
+       "single": 0.47
+      }
+     },
+     {
+      "n": 14,
+      "lost": 1.29,
+      "peak": 1.33,
+      "peaks": 1.36,
+      "hot": 0.07,
+      "shape": "rising",
+      "shapes": {
+       "flat": 0.29,
+       "single": 0.29,
+       "rising": 0.36,
+       "sawtooth": 0.07
+      }
+     },
+     {
+      "n": 11,
+      "lost": 1.64,
+      "peak": 1.07,
+      "peaks": 1.73,
+      "hot": 0.06,
+      "shape": "single",
+      "shapes": {
+       "single": 0.55,
+       "sawtooth": 0.36,
+       "rising": 0.09
+      }
+     },
+     {
+      "n": 6,
+      "lost": 4,
+      "peak": 0.45,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 3,
+      "lost": 3.67,
+      "peak": 0.48,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 1,
+      "lost": 1,
+      "peak": 0.83,
+      "peaks": 1,
+      "hot": 0.07,
+      "shape": "single",
+      "shapes": {
+       "single": 1
+      }
+     }
+    ],
+    "sunkBy": [
+     {},
+     {
+      "torpedoSub": 0.06
+     },
+     {},
+     {
+      "cluster": 0.06
+     },
+     {
+      "guided": 0.56,
+      "drone": 0.13
+     },
+     {},
+     {
+      "rocketTruck": 0.13,
+      "guided": 0.06
+     },
+     {
+      "ballistic": 0.25,
+      "drone": 0.13,
+      "hydra": 0.06,
+      "rocketTruck": 0.06
+     },
+     {
+      "torpedoSub": 0.25,
+      "ballistic": 0.25,
+      "cluster": 0.13,
+      "drone": 0.13,
+      "armored": 0.06,
+      "heavy": 0.06,
+      "bomber": 0.06,
+      "guided": 0.06
+     },
+     {
+      "guided": 0.44,
+      "ballistic": 0.13,
+      "torpedoSub": 0.13,
+      "drone": 0.06,
+      "heavy": 0.06,
+      "mothership": 0.06
+     },
+     {
+      "strafer": 1
+     },
+     {
+      "strafer": 0.31,
+      "torpedoSub": 0.13
+     },
+     {
+      "guided": 0.06
+     }
+    ]
+   }
+  },
+  "v3-20261120040945-61176": {
+   "mirror": {
+    "id": "v3-20261120040945-61176",
+    "tower": null,
+    "map": "kesh",
+    "runs": 16,
+    "won": 0.81,
+    "lost1to5": 0.06,
+    "lost6to10": 1.81,
+    "lost1to10": 1.88,
+    "firstHot": 3.5,
+    "waves": [
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.03,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.24,
+      "peaks": 0,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 1
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 0.9,
+      "peaks": 0.56,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "flat": 0.44,
+       "single": 0.56
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0,
+      "peak": 1.25,
+      "peaks": 0.81,
+      "hot": 0.03,
+      "shape": "single",
+      "shapes": {
+       "single": 0.81,
+       "flat": 0.19
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 1.11,
+      "peaks": 1.06,
+      "hot": 0.04,
+      "shape": "single",
+      "shapes": {
+       "single": 0.44,
+       "rising": 0.31,
+       "flat": 0.25
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.54,
+      "peaks": 0.13,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.88,
+       "single": 0.13
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.06,
+      "peak": 0.54,
+      "peaks": 0.06,
+      "hot": 0,
+      "shape": "flat",
+      "shapes": {
+       "flat": 0.94,
+       "single": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.31,
+      "peak": 0.75,
+      "peaks": 0.31,
+      "hot": 0.01,
+      "shape": "flat",
+      "shapes": {
+       "single": 0.31,
+       "flat": 0.69
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.25,
+      "peak": 0.92,
+      "peaks": 0.5,
+      "hot": 0.02,
+      "shape": "single",
+      "shapes": {
+       "single": 0.5,
+       "flat": 0.5
+      }
+     },
+     {
+      "n": 16,
+      "lost": 1.13,
+      "peak": 1.34,
+      "peaks": 1.19,
+      "hot": 0.05,
+      "shape": "single",
+      "shapes": {
+       "single": 0.63,
+       "rising": 0.25,
+       "flat": 0.13
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.94,
+      "peak": 1.58,
+      "peaks": 1.13,
+      "hot": 0.24,
+      "shape": "single",
+      "shapes": {
+       "single": 0.5,
+       "rising": 0.13,
+       "flat": 0.13,
+       "pinned": 0.19,
+       "sawtooth": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 0.69,
+      "peak": 1.55,
+      "peaks": 1.38,
+      "hot": 0.22,
+      "shape": "single",
+      "shapes": {
+       "rising": 0.25,
+       "single": 0.38,
+       "pinned": 0.19,
+       "sawtooth": 0.13,
+       "flat": 0.06
+      }
+     },
+     {
+      "n": 16,
+      "lost": 1.25,
+      "peak": 1.83,
+      "peaks": 1.13,
+      "hot": 0.29,
+      "shape": "pinned",
+      "shapes": {
+       "single": 0.31,
+       "pinned": 0.5,
+       "sawtooth": 0.13,
+       "flat": 0.06
+      }
+     }
+    ],
+    "sunkBy": [
+     {},
+     {},
+     {},
+     {},
+     {
+      "ballistic": 0.06
+     },
+     {
+      "ballistic": 0.06
+     },
+     {
+      "supersonic": 0.06
+     },
+     {
+      "ballistic": 0.19,
+      "strafer": 0.13
+     },
+     {
+      "guided": 0.13,
+      "supersonic": 0.06,
+      "strafer": 0.06
+     },
+     {
+      "guided": 0.56,
+      "ballistic": 0.38,
+      "rocketTruck": 0.06,
+      "drone": 0.06,
+      "hydra": 0.06
+     },
+     {
+      "drone": 0.69,
+      "ballistic": 0.25
+     },
+     {
+      "drone": 0.44,
+      "guided": 0.19,
+      "ballistic": 0.06
+     },
+     {
+      "drone": 0.75,
+      "guided": 0.38,
+      "ballistic": 0.13
+     }
+    ]
+   }
+  }
+ }
+}
