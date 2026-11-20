@@ -1,0 +1,17 @@
+The 2026-11-20 follow-up: the torpedo threat after the untouchable sub.
+tools/v3/playtest-fixes/measure.ts --what=foes --kit=self --seeds=24 (the "you" bot drafting for itself, the player's Armory, every wave played; "won" = under the normal loss limit)
+
+torpedo speed 75, subs as drawn (the branch before this follow-up)
+island:   lost a wave 0 0.13 0.71 0.08 0.17 0.5 0.96 0.96 0.96 2.17 / 0.75 1.5 1.54; waves 1-5 1.08; won 38%; torpedo sinks w1-10 0.63
+behemoth: lost a wave 0 0.29 0.04 0.29 0.21 0.71 0.46 0.83 0.83 1.13 / 0.5 1.29 2.04; waves 1-5 0.83; won 54%; torpedo sinks w1-10 1.5
+
+speed 55: island w3 0.33; behemoth w1-5 1.04, torpedo 1.08, won 46%
+speed 45: island w3 0.25; behemoth w1-5 0.88, torpedo 0.75, won 67%
+speed 55 + no sub before wave 6 on the Behemoth: behemoth w1-5 0.54, torpedo 1.13, won 42%
+speed 50 + the same: torpedo 1.04, won 46%
+speed 45 + the same: torpedo 0.71, won 42%
+
+chosen: speed 40 + no sub before wave 6 on the Behemoth Run
+island:   lost a wave 0 0.13 0.17 0.04 0.13 0.42 1.04 0.83 0.67 1.88 / 0.71 2.21 1.46; waves 1-5 0.46; won 38%; torpedo sinks w1-10 0.08
+behemoth: lost a wave 0 0.04 0.13 0.17 0.21 0.21 0.67 0.54 0.92 2.29 / 0.63 0.58 1.92; waves 1-5 0.54; won 50%; torpedo sinks w1-10 0.33
+subs a wave on the Behemoth Run (a run): 0 0 0 0 0 1 0 0.58 0.38 0.58 / 0 1 1 (was 0 1 0 0 0 1 0 0.83 0.17 0.67 / 0 1 1)

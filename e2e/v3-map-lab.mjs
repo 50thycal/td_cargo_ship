@@ -50,9 +50,9 @@ const check = (ok, msg) => {
 const labMenu = async (page) => {
   // A run just (re)started, or a sheet closing: wait for play, or for a
   // menu or a draft (between a full run's waves) that has Done on it.
-  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
-  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
-  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]');
 };
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 
@@ -149,7 +149,7 @@ try {
     const again = window.__v3.replayTelemetry(log);
     return { log, live, liveDigest: window.__v3.telemetryDigest(live), again, inLog: JSON.stringify(log).includes('"thr+"'), keys: Object.keys(log) };
   });
-  check(!!done.log && done.log.v === 35 && done.log.end === 'quit' && !done.inLog && !done.keys.includes('telemetry'), `the play log is as it was: version 35, no telemetry in it (${done.keys.join(',')})`);
+  check(!!done.log && done.log.v === 36 && done.log.end === 'quit' && !done.inLog && !done.keys.includes('telemetry'), `the play log is as it was: version 36, no telemetry in it (${done.keys.join(',')})`);
   check(done.again.steps === done.live.steps && done.again.digest === done.liveDigest, `replaying the log in the browser makes the sidecar the live run made (${done.again.events} events, digest ${done.again.digest} = ${done.liveDigest})`);
   check(done.again.problems.length === 0, `the telemetry adds up to the game: hulls, sinkings, deliveries, kills, launches, pickups, taps (${done.again.problems.join('; ') || 'no differences'})`);
   check(done.live.phases.at(-1).end === 'left' && done.live.header.runId === done.log.id, `the sidecar is keyed to its log (${done.live.header.runId}) and ends where the run was left`);

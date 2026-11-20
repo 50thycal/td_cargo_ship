@@ -362,7 +362,9 @@ describe('War Drum (Cadence MAX): on the beat it blows up platforms and vehicles
     const o = line(g);
     expect(beatClock(g, g.weapon!).off).toBeLessThan(AB.cadence.window[2]);
     tap(g, 800, 150, 30);
-    for (const k of ['truck', 'heli', 'sub', 'tender', 'siege', 'bomber'] as const) expect(alive(g, o[k]), k).toBe(false);
+    for (const k of ['truck', 'heli', 'tender', 'siege', 'bomber'] as const) expect(alive(g, o[k]), k).toBe(false);
+    // The Torpedo Sub is out of reach (log v35).
+    expect(alive(g, o.sub)).toBe(true);
     expect(o.rig.hp).toBe(40 - AB.cadence.damage);
     expect(alive(g, o.off)).toBe(true);
     expect(o.raider.state).toBe('reverse');

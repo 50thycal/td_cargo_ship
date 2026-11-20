@@ -73,9 +73,9 @@ const check = (ok, msg) => {
 const labMenu = async (page) => {
   // A run just (re)started, or a sheet closing: wait for play, or for a
   // menu or a draft (between a full run's waves) that has Done on it.
-  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
-  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
-  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]');
 };
 const PHONE = { viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
 const snap = (page) =>
@@ -233,7 +233,7 @@ try {
     const again = window.__v3.replayTelemetry(log);
     return { convoy: log.convoy, ks: log.commands.filter((c) => c[1] === 'k').map((c) => c[2]), v: log.v, same: again.digest === window.__v3.telemetryDigest(live), problems: again.problems, header: live.header.convoy, cmds: live.events.filter((e) => e.k === 'cmd').map((e) => `${e.what}:${e.ok}${e.why ? `:${e.why}` : ''}`) };
   });
-  check(done.convoy?.policy === 'tactical' && done.convoy?.rev === 3 && done.ks.join() === 'hold,hold,hold' && done.v === 35, `the log carries its policy (rules rev 3) and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
+  check(done.convoy?.policy === 'tactical' && done.convoy?.rev === 3 && done.ks.join() === 'hold,hold,hold' && done.v === 36, `the log carries its policy (rules rev 3) and every command given (${JSON.stringify(done.convoy)}; ${done.ks.join()})`);
   check(done.same && done.problems.length === 0 && done.header.policy === 'tactical' && done.cmds.join() === 'hold:1,release:1,hold:0:cooldown', `the log replays to the telemetry the live run made, commands and refusals included (${done.cmds.join()})`);
 
   // The Map Analytics screen lists them.

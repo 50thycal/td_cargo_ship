@@ -232,12 +232,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      (MAP_SIGNATURE.needle, its new `block`), the Shield Wall's rounds
  *      (MAP_BOSS.needle; a boss round's `fire` may send a cluster). A v34
  *      Needle card log no longer replays to the same game; the campaign
- *      plays as it did. */
-export const LOG_VERSION = 35;
+ *      plays as it did.
+ *  36: the player's 2026-11-20 playtest notes (docs/design/
+ *      v3-playtest-fixes.md): the Shield boost breaks after AB.shield.hits
+ *      hits stopped (every missile, drone, shell or boat it stops is one,
+ *      whatever its damage); the Attack Helicopter fires whenever it is on
+ *      screen, on the way to its spot too (HP 5, was 6); the Torpedo Sub
+ *      stays under water and can't be hit (nothing targets it, nor the
+ *      Nuke; only its torpedoes can be shot) and fires two (was three to
+ *      five; the Wolf Pack's one or two, was two or three); the Scavenger
+ *      Drone takes three hits (was one); torpedoes run at 40 (was 75), and
+ *      the Behemoth Run sends no Torpedo Sub before wave 6 (SUB_FROM). A
+ *      v35 log with any of those no longer replays to the same game. */
+export const LOG_VERSION = 36;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [35];
+export const LOG_REPLAYS: readonly number[] = [36];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

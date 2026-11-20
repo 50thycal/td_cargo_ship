@@ -1,0 +1,44 @@
+
+== island mirror, the player's seed (v3-20261120000322-77396, 16 runs): won 0.5, lost 1-5 0.19, 6-10 3.5, 1-10 3.69; first hot wave 5.69
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.06 0.00 0.06 0.06 0.25 1.06 0.60 0.73 1.15 0.33 1.58 1.83
+peak     0.15 0.42 0.41 0.42 0.44 0.84 1.26 1.15 1.02 1.32 0.98 1.44 1.76
+peaks    0.00 0.06 0.06 0.06 0.13 0.44 2.13 1.60 1.27 2.77 0.92 1.42 1.50
+hot      0.00 0.00 0.00 0.00 0.00 0.02 0.10 0.05 0.04 0.07 0.08 0.24 0.28
+shape       f    f    f    f    f    f    s    s    s   sr    1    p    p
+sunk by w1  | w2 drone 0.06 | w3  | w4 drone 0.06 | w5 drone 0.06 | w6 drone 0.19, ballistic 0.06 | w7 ballistic 0.38, heavy 0.31, guided 0.13 | w8 ballistic 0.31, strafer 0.13, guided 0.06 | w9 ballistic 0.38, strafer 0.13, supersonic 0.06 | w10 ballistic 0.56, drone 0.13, guided 0.13
+n          16   16   16   16   16   16   16   15   15   13   12   12   12
+(13 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== marrow mirror, the player's seed (v3-20261120035031-61174, 16 runs): won 0.94, lost 1-5 0.38, 6-10 1.19, 1-10 1.56; first hot wave 3.75; tower falls (median) w11
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.06 0.31 0.06 0.38 0.19 0.44 0.13 0.00 0.00 0.27
+peak     0.06 0.25 0.66 1.25 0.72 0.90 0.70 0.84 0.66 0.66 0.37 0.38 0.68
+peaks    0.00 0.00 0.25 1.06 0.50 0.75 0.31 0.63 0.56 0.25 0.00 0.00 0.40
+hot      0.00 0.00 0.01 0.05 0.01 0.03 0.01 0.02 0.01 0.00 0.00 0.00 0.07
+shape       f    f    f    1    1    1    f    1    f    f    f    f    f
+sunk by w1  | w2  | w3  | w4 ballistic 0.06 | w5 ballistic 0.25, strafer 0.06 | w6 ballistic 0.06 | w7 supersonic 0.25, hydra 0.06, guided 0.06 | w8 ballistic 0.13, strafer 0.06 | w9 supersonic 0.13, strafer 0.06, bomber 0.06 | w10 strafer 0.06, hydra 0.06
+n          16   16   16   16   16   16   16   16   16   16   15   15   15
+(36 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== behemoth mirror, the player's seed (v3-20261120040209-61175, 16 runs): won 0, lost 1-5 1.56, 6-10 4.33, 1-10 5.63; first hot wave 5.06
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.25 1.31 0.13 0.73 0.93 2.25 1.71 2.00 4.50  NaN
+peak     0.06 0.27 0.38 0.58 0.86 0.72 0.78 0.77 1.32 1.13 0.37 0.57  NaN
+peaks    0.00 0.06 0.06 0.13 0.75 0.53 0.67 0.57 1.17 1.43 0.00 0.00  NaN
+hot      0.00 0.00 0.00 0.00 0.04 0.02 0.02 0.04 0.09 0.06 0.00 0.00  NaN
+shape       f    f    f    f    1    f    f    f    1    1    f    f    f
+sunk by w1  | w2  | w3  | w4 guided 0.25 | w5 strafer 0.25, drone 0.19, ballistic 0.13 | w6 torpedoSub 0.13 | w7 heavy 0.25, cluster 0.13, guided 0.06 | w8 heavy 0.25, torpedoSub 0.19, ballistic 0.13 | w9 heavy 0.25, ballistic 0.19, drone 0.19 | w10 guided 0.38, drone 0.13, ballistic 0.06
+n          16   16   16   16   16   15   15   14   12    7    4    4    0
+(15 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)
+
+== kesh mirror, the player's seed (v3-20261120040945-61176, 16 runs): won 0.81, lost 1-5 0.06, 6-10 1.81, 1-10 1.88; first hot wave 3.5
+            1    2    3    4    5    6    7    8    9   10   B1   B2   B3
+lost     0.00 0.00 0.00 0.00 0.06 0.06 0.06 0.31 0.25 1.13 0.94 0.69 1.25
+peak     0.03 0.24 0.90 1.25 1.11 0.54 0.54 0.75 0.92 1.34 1.58 1.55 1.83
+peaks    0.00 0.00 0.56 0.81 1.06 0.13 0.06 0.31 0.50 1.19 1.13 1.38 1.13
+hot      0.00 0.00 0.03 0.03 0.04 0.00 0.00 0.01 0.02 0.05 0.24 0.22 0.29
+shape       f    f    1    1    1    f    f    f    1    1    1    1    p
+sunk by w1  | w2  | w3  | w4  | w5 ballistic 0.06 | w6 ballistic 0.06 | w7 supersonic 0.06 | w8 ballistic 0.19, strafer 0.13 | w9 guided 0.13, supersonic 0.06, strafer 0.06 | w10 guided 0.56, ballistic 0.38, rocketTruck 0.06
+n          16   16   16   16   16   16   16   16   16   16   16   16   16
+(41 s; shapes: f flat, 1 one peak, s sawtooth, sr sawtooth rising, p pinned)

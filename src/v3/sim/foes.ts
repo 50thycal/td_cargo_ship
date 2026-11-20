@@ -164,6 +164,9 @@ export interface FoeData {
   hold?: number;
   stay?: boolean;
   volleys?: number;
+  /** An Attack Helicopter: seconds since its last volley (log v34: it
+   *  fires on the move, whenever a ship is in range). */
+  fireT?: number;
   /** A Torpedo Sub: seconds after surfacing it fires, and dives; its
    *  spread (torpedoes) and which of them is fast (-1: none). A torpedo:
    *  `fast`, 1 when it is a fast one. */
@@ -1366,8 +1369,13 @@ export function paintTarget(g: Game, th: Threat): void {
   if (g.rng.foes.chance(FOE.spotter.share)) th.target = p.ship;
 }
 
-/** The Attack Helicopter: fly to a spot beside the lane (marked as it
- *  comes), settle, fire missile pairs, move on after two, leave after six. */
+/** The Attack Helicopter: flies to a spot beside the lane (marked as it
+ *  comes), hovers there, moves on after two volleys, leaves after six. It
+ *  fires a missile pair every `gap` s whenever it is on screen, on the way
+ *  in and on the move too (the
+ *  2026-11-20 playtest: "it doesn't need to go to a specific spot it should
+ *  just start hitting targets"; log v34). A Gunship Wall's helicopters
+ *  still wait for the wall to open fire, each in its turn. */
 function updateHeli(g: Game, th: Threat, f: FoeData, dt: number): void {
   const H = FOE.attackHeli;
   const max = th.speed;
@@ -1392,37 +1400,52 @@ function updateHeli(g: Game, th: Threat, f: FoeData, dt: number): void {
   th.x += f.vx * dt;
   th.y += f.vy * dt;
   const sp = Math.hypot(f.vx, f.vy);
-  // Nose: along its path while it flies, at the convoy while it hovers.
-  const ship = targetable(g)[0];
-  const face = sp > 40 ? Math.atan2(f.vy, f.vx) : ship ? Math.atan2(ship.y - th.y, ship.x - th.x) : th.heading;
+  // Nose: at the ship it is firing on while one is in range, else along
+  // its path while it flies.
+  const ships = targetable(g);
+  let near: Ship | null = null;
+  let nd = Infinity;
+  for (const s of ships) {
+    const e = dist(s.x, s.y, th.x, th.y);
+    if (e < nd) {
+      nd = e;
+      near = s;
+    }
+  }
+  const onScreen = th.x > H.edge && th.x < VIEW.width - H.edge && th.y > H.edge && th.y < VIEW.height - H.edge;
+  // In range: anywhere on the screen (its missiles find their own ship, or
+  // the carrier with none left).
+  const inRange = f.state !== 3 && onScreen;
+  const face = inRange && near ? Math.atan2(near.y - th.y, near.x - th.x) : sp > 40 ? Math.atan2(f.vy, f.vx) : near ? Math.atan2(near.y - th.y, near.x - th.x) : th.heading;
   th.heading += clamp(angleDiff(face, th.heading), -3 * dt, 3 * dt);
+  // Firing: on its own clock, whatever it is doing.
+  f.fireT = (f.fireT ?? H.gap - H.first) + dt;
+  const open = f.hold === undefined || g.waveT >= f.hold + (f.wait ?? 0);
+  const volleys = f.volleys ?? H.volleys;
+  if (inRange && open && f.n < volleys && f.fireT >= H.gap) {
+    f.fireT = 0;
+    f.n += 1;
+    f.link += 1;
+    for (let k = 0; k < H.pair; k++) heliRocket(g, th, k);
+  }
+  // Moving: to its spot, a hover, on to the next after `perSpot` volleys
+  // there (a Wall's stay put), off once its volleys are spent.
   if (f.state === 0 && d < 12 && sp < 30) {
     f.state = 1;
     f.t = 0;
-  } else if (f.state === 1 && f.t >= H.settle && (f.hold === undefined || g.waveT >= f.hold)) {
-    // A Gunship Wall's helicopters open fire together, each in its turn.
+  } else if (f.state === 1 && f.t >= H.settle) {
     f.state = 2;
-    // Its turn comes `wait` s after the wall opens fire (at once if late).
-    f.t = H.gap - (f.hold === undefined ? 0 : Math.max(0, f.hold + (f.wait ?? 0) - g.waveT));
+    f.t = 0;
     f.link = 0;
-  } else if (f.state === 2) {
-    if (f.t >= H.gap) {
-      f.t = 0;
-      f.n += 1;
-      f.link += 1;
-      for (let k = 0; k < H.pair; k++) heliRocket(g, th, k);
-    }
-    const volleys = f.volleys ?? H.volleys;
-    if (f.t >= H.gap * 0.6 && f.n > 0 && (f.stay ? f.n >= volleys : f.link >= H.perSpot)) {
-      if (f.n >= volleys) f.state = 3;
-      else {
-        const next = heliSpot(g, g.rng.foes, { x: f.px, y: f.py });
-        f.px = next.x;
-        f.py = next.y;
-        f.state = 0;
-      }
-      f.t = 0;
-    }
+  } else if (f.state !== 3 && f.n >= volleys && f.fireT >= H.gap * 0.6) {
+    f.state = 3;
+    f.t = 0;
+  } else if (f.state === 2 && !f.stay && f.link >= H.perSpot && f.fireT >= H.gap * 0.6) {
+    const next = heliSpot(g, g.rng.foes, { x: f.px, y: f.py });
+    f.px = next.x;
+    f.py = next.y;
+    f.state = 0;
+    f.t = 0;
   } else if (f.state === 3 && (th.x < -120 || th.x > VIEW.width + 120)) {
     th.dead = true;
   }
@@ -1985,9 +2008,10 @@ export function nukeFoes(g: Game): void {
       g.threats.push(m.gun);
     }
     if (m.kind === 'hatch' && m.spawn) addFx(g, 'boom', m.x, m.y, { life: 0.9, r: 34 });
-    if (m.kind === 'periscope') addFx(g, 'sink', m.x, m.y, { life: 1.6, r: 26 });
   }
-  g.foe.marks = [];
+  // A Torpedo Sub's periscope stays: the sub is under water, out of reach
+  // (log v34).
+  g.foe.marks = g.foe.marks.filter((m) => m.kind === 'periscope');
   g.foe.shots = [];
 }
 
@@ -2060,7 +2084,15 @@ export function foeEta(g: Game, th: Threat): number | null {
     }
     case 'attackHeli':
       if (!f) return null;
-      return f.state === 2 ? Math.max(0.2, FOE.attackHeli.gap - f.t) : f.state === 3 ? 30 : 3;
+    {
+      // Log v34: it fires on its own clock wherever it is on screen; a
+      // Gunship Wall's not before the wall opens fire.
+      const H = FOE.attackHeli;
+      if (f.state === 3 || f.n >= (f.volleys ?? H.volleys)) return 30;
+      const open = f.hold === undefined ? 0 : f.hold + (f.wait ?? 0) - g.waveT;
+      const on = th.x > H.edge && th.x < VIEW.width - H.edge && th.y > H.edge && th.y < VIEW.height - H.edge;
+      return Math.max(0.2, open, on ? H.gap - (f.fireT ?? H.gap - H.first) : 3);
+    }
     case 'torpedoSub':
       // One by one (round 8): until its next torpedo, while it has any left.
       if (f && f.stagger !== undefined && f.spread) return f.n < f.spread ? Math.max(0.1, (f.fireAt ?? FOE.torpedoSub.fireAt) + f.n * f.stagger - f.t) : 30;

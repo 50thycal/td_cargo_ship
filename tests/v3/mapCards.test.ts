@@ -173,9 +173,9 @@ describe('a map card is the full production map', () => {
     expect(isEventWave(g)).toBe(true);
   });
 
-  it('the lab bar reads "full map · wave 3/13"; Bring one is not there (and does nothing on a map card)', () => {
+  it('the lab bar reads "full map · wave 3 of 10"; Bring one is not there (and does nothing on a map card)', () => {
     const card = labCard('map-strait')!;
-    expect(labCountText(card, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 2, 13, { plays: 'full', wave: 3 })).toBe('full map · wave 3/13');
+    expect(labCountText(card, { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, 2, 13, { plays: 'full', wave: 3 })).toBe('full map · wave 3 of 10');
     for (const c of LAB_CARDS.filter((o) => o.kind === 'map')) expect(labActions(c), c.id).toEqual(['note', 'setup', 'done']);
     expect(labActions(labCard('hydra')!)).toContain('bring');
     expect(labActions(labCard('ev-rush')!)).toContain('bring');
@@ -347,7 +347,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     const old: PlayLog = { ...slice, id: 'old', lab: { card: 'map-kesh', length: 'full', mix: 'normal', rev: 1, round: 9 }, convoy: undefined, encounters: undefined };
     const docs = labResultDocs([full, slice, { ...old, labResult: { ...old.labResult!, round: 9, plays: undefined } }]).results;
     expect(docs['map-strait']).toMatchObject({ plays: 'full', setup: `Full map from wave 1 · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1 · production setup` });
-    expect(docs['map-strait'].evidence).toMatch(/^Full map: \d+ of 13 waves cleared/);
+    expect(docs['map-strait'].evidence).toMatch(/^Full map: \d+ of 10 waves (and \d+ of 3 boss rounds )?cleared/);
     expect(docs['map-gauntlet']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1` });
     expect(docs['map-gauntlet'].evidence).toMatch(/^Quick slice · /);
     expect(docs['map-kesh']).toMatchObject({ plays: 'slice', setup: `Quick slice from wave ${LAB_START_WAVE}, full length · C · Current controls · shared waves` });
@@ -360,7 +360,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
   it('evidence for a full run counts the map and its ending', () => {
     const card: LabCard = labCard('map-strait')!;
     const s = { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [], clean: 2, held: 1, broken: 0 };
-    expect(evidenceLines(card, s, 13, 'full')).toEqual(['Full map: 13 of 13 waves cleared (the map cleared)', 'Boss rounds: Clean 2 · Held 1 · Broken 0']);
+    expect(evidenceLines(card, s, 13, 'full')).toEqual(['Full map: 10 of 10 waves and 3 of 3 boss rounds cleared (the map cleared)', 'Boss rounds: Clean 2 · Held 1 · Broken 0']);
   });
 
   it('a lab setup without `plays` (every log before round 10) plays as it always did', () => {

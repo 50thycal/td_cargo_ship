@@ -322,8 +322,9 @@ export function labWaves(lab: { setup: LabSetup; event?: EventId }): number {
 export function labCountText(card: LabCard, s: LabStats, waves: number, length: number, at?: { plays?: LabPlays; wave?: number }): string {
   if (at?.plays === 'full') {
     const wave = Math.min(at.wave ?? waves + 1, length);
-    if (length >= EVENT_WAVE && wave >= EVENT_WAVE) return `full map · boss round ${wave - EVENT_WAVE + 1}/${length - EVENT_WAVE + 1}`;
-    return `full map · wave ${wave}/${length}`;
+    // The 2026-11-20 playtest: "wave 3 of 10" on every map, never "of 13".
+    if (length >= EVENT_WAVE && wave >= EVENT_WAVE) return `full map · boss round ${wave - EVENT_WAVE + 1} of ${length - EVENT_WAVE + 1}`;
+    return `full map · wave ${wave} of ${Math.min(length, EVENT_WAVE - 1)}`;
   }
   const parts = card.event
     ? [`clean ${s.clean ?? 0}`, `held ${s.held ?? 0}`, `broken ${s.broken ?? 0}`]
@@ -344,7 +345,10 @@ export function evidenceLines(card: LabCard, s: LabStats, waves: number, plays?:
   const out: string[] = [];
   if (card.kind === 'map' && plays === 'full') {
     const total = campaignWaves(card.map);
-    out.push(`Full map: ${waves} of ${total} waves cleared${waves >= total ? ' (the map cleared)' : ''}`);
+    // Ten waves, then the boss rounds (the 2026-11-20 playtest: never "of 13").
+    const ten = Math.min(total, EVENT_WAVE - 1);
+    const cleared = waves > ten ? `${ten} of ${ten} waves and ${waves - ten} of ${total - ten} boss rounds` : `${waves} of ${ten} waves`;
+    out.push(`Full map: ${cleared} cleared${waves >= total ? ' (the map cleared)' : ''}`);
     const runs = (s.clean ?? 0) + (s.held ?? 0) + (s.broken ?? 0);
     if (runs) out.push(`Boss rounds: Clean ${s.clean ?? 0} · Held ${s.held ?? 0} · Broken ${s.broken ?? 0}`);
     return out;

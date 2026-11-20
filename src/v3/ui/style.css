@@ -485,6 +485,15 @@ body {
   color: var(--muted);
 }
 
+/* The smallest phone (667×375): two first-sight hints at once must still
+   sit in the bottom two thirds (e2e/v3.mjs; the 2026-11-20 build's timing
+   put the Strike Jet's and the Spotter's together on The Coves). */
+@media (max-height: 380px) {
+  .v2-alert-sub {
+    -webkit-line-clamp: 4;
+  }
+}
+
 /* A title alone: the icon centred on its one line. */
 .v2-alert.one {
   align-items: center;
@@ -1462,22 +1471,40 @@ body {
   overflow: hidden;
 }
 
+/* A weapon new in this chapter: a band across the card's top edge, above
+   everything on it (the 2026-11-20 playtest: "the label should be on top of
+   the card and not overlapped on the middle of card"). The card makes room
+   for it. */
 .v3-card-debut {
   position: absolute;
-  left: 50%;
-  bottom: 5px;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 1;
-  padding: 2px 7px;
-  border-radius: 999px;
+  height: 16px;
+  padding: 0 14px;
+  line-height: 16px;
+  text-align: center;
   background: color-mix(in srgb, var(--card-color, var(--accent)) 85%, #000);
   color: #071119;
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-transform: uppercase;
   pointer-events: none;
+}
+
+.v2-card[data-debut] {
+  padding-top: 25px;
+}
+
+@media (max-height: 430px) {
+  .v2-card[data-debut] {
+    padding-top: 22px;
+  }
 }
 
 .v2-card-art::before,
@@ -6818,6 +6845,98 @@ a.v3-lab-page {
   .v3-wave-rate-note {
     width: 28px;
     height: 28px;
+  }
+}
+
+/* The rating's own screen, between the wave's end and the draft (the
+   2026-11-20 playtest): one axis a row, bigger buttons, Skip and Next. */
+.v3-rate {
+  max-width: 560px;
+  gap: 10px;
+  align-items: center;
+}
+
+.v3-rate .v3-rate-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.v3-rate .v3-wave-rate {
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-style: solid;
+}
+
+.v3-rate .v3-wave-rate-h {
+  display: none;
+}
+
+.v3-rate .v3-wave-rate-axes {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.v3-rate .v3-wave-rate-axis {
+  gap: 6px;
+}
+
+.v3-rate .v3-wave-rate-axis > i {
+  width: 74px;
+  font-size: 12px;
+  text-align: right;
+}
+
+.v3-rate .v3-wave-rate-n,
+.v3-rate .v3-wave-rate-note {
+  width: 40px;
+  height: 36px;
+  font-size: 15px;
+}
+
+.v3-rate .v3-wave-rate-note {
+  align-self: center;
+  width: auto;
+  padding: 0 14px;
+}
+
+.v3-rate .v3-wave-rate-note::after {
+  content: ' Add a note';
+  font-size: 13px;
+}
+
+.v3-rate .v3-wave-rate-text {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.v3-rate-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.v3-rate-actions .v2-btn {
+  min-width: 120px;
+}
+
+@media (max-height: 430px) {
+  .v3-rate {
+    gap: 6px;
+  }
+  .v3-rate .v3-wave-rate {
+    gap: 5px;
+    padding: 6px 12px;
+  }
+  .v3-rate .v3-wave-rate-axes {
+    gap: 4px;
+  }
+  .v3-rate .v3-wave-rate-n {
+    height: 32px;
+  }
+  .v3-rate .v3-wave-rate-note {
+    height: 30px;
   }
 }
 

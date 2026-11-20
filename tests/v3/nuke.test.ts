@@ -63,12 +63,13 @@ describe('the Nuke', () => {
     for (const th of [gun, truck, heli, lure]) expect(th.dead, th.kind).toBe(true);
     expect(g.kills.siege).toBe(1);
     expect(g.kills.rocketTruck).toBe(1);
-    expect(g.foe.marks).toHaveLength(0);
+    // A Torpedo Sub's periscope stays: the sub is out of reach (log v35).
+    expect(g.foe.marks.filter((m) => m.kind !== 'periscope')).toHaveLength(0);
     expect(g.foe.shots).toHaveLength(0);
     expect(g.raiders.every((r) => r.state === 'reverse' && r.units.length === 0)).toBe(true);
     // Nothing comes back up afterwards.
     run(g, FOE.siege.down + FOE.torpedoSub.warn + 1);
-    expect(g.threats.filter((t) => t.kind === 'siege' || t.kind === 'torpedoSub' || t.kind === 'diveBomber')).toHaveLength(0);
+    expect(g.threats.filter((t) => t.kind === 'siege' || t.kind === 'diveBomber')).toHaveLength(0);
     expect(g.raiders).toHaveLength(0);
   });
 });

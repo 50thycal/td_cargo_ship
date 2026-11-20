@@ -85,6 +85,11 @@ async function playUntil(page, until, maxSeconds = 400) {
     if (await until(st)) return st;
     if (st.phase === 'lost' || st.phase === 'won') return st;
     if (st.phase === 'draft') {
+      // The wave's rating screen comes first (the 2026-11-20 playtest).
+      if (st.screen === 'rate') {
+        await page.locator('[data-rate-skip]').click();
+        continue;
+      }
       const card = page.locator('.v2-draft[data-armed] .v2-card:not([disabled])').first();
       if (await card.count()) {
         await card.click();

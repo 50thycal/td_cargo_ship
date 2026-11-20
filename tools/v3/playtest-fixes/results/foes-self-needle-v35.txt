@@ -1,0 +1,6 @@
+needle (12 runs, the bot drafting for itself; ships lost a run, every wave played: 8, waves 1-10 3.42)
+  attack helicopters: 0; first volley NaN s after coming in (0 never fired); volleys NaN each; shot down NaN; missiles a run: waves 1-10 0, boss rounds 0 (from 0 helicopters)
+  torpedo subs: 0; torpedoes NaN a sub; steps with a sub hurt 0
+  sunk by, waves 1-10 (a run): drone 1.33, heavy 0.58, guided 0.5, armored 0.33, strafer 0.33, ballistic 0.17, cluster 0.17
+  sunk by (a run): armored 4.25, drone 1.33, ballistic 0.67, heavy 0.58, guided 0.5, cluster 0.33, strafer 0.33
+  scavengers: 12; shot down 1; alive 2.08 s
