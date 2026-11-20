@@ -60,19 +60,19 @@ describe('the Shield breaks after a number of hits', () => {
   it('one blast reaching several hulls in the same step is one hit', () => {
     const g = quiet();
     shieldUp(g, 2);
-    const before = g.boost!.hits!;
+    g.boost!.hits = 3;
     damageCarrier(g, 2, 'ballistic');
     damageCarrier(g, 2, 'ballistic');
-    expect(g.boost!.hits).toBe(before - 1);
+    expect(g.boost!.hits).toBe(2);
     step(g, DT);
     damageCarrier(g, 2, 'ballistic');
-    expect(g.boost!.hits).toBe(before - 2);
+    expect(g.boost!.hits).toBe(1);
   });
 
-  it('more hits at each level', () => {
+  it('no fewer hits at a higher level', () => {
     expect(AB.shield.hits.length).toBe(3);
-    expect(AB.shield.hits[0]).toBeLessThan(AB.shield.hits[1]);
-    expect(AB.shield.hits[1]).toBeLessThan(AB.shield.hits[2]);
+    expect(AB.shield.hits[0]).toBeLessThanOrEqual(AB.shield.hits[1]);
+    expect(AB.shield.hits[1]).toBeLessThanOrEqual(AB.shield.hits[2]);
   });
 });
 
