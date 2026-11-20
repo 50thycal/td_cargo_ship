@@ -302,24 +302,22 @@ describe('Bomber Wing: aircraft and subs, seen before it hits', () => {
     }
   });
 
-  it('bombs a torpedo sub that is up, and a periscope (the sub never comes up)', () => {
+  it('never goes for a torpedo sub or its periscope: the sub is out of reach (log v35)', () => {
     const g = quietGame();
     const sub = spawnThreat(g, 'torpedoSub', 1100, 400, 'sub');
     g.quietUntil = g.map.bases.map(() => 1e9);
     load(g, 'bomberWing', 1);
     g.passiveT = 0.01;
     run(g, 0.05);
-    expect(g.sorties.some((s) => s.kind === 'sub' && s.ref === sub.id)).toBe(true);
-    run(g, 4, () => sub.dead);
-    expect(sub.dead).toBe(true);
+    expect(g.sorties.some((s) => s.ref === sub.id)).toBe(false);
     const h = quietGame(2);
     h.foe.marks.push({ id: h.nextId++, kind: 'periscope', x: 500, y: 450, t: 0, dur: 99 });
     h.quietUntil = h.map.bases.map(() => 1e9);
     load(h, 'bomberWing', 1);
     h.passiveT = 0.01;
-    run(h, 4, () => !h.foe.marks.length);
-    expect(h.foe.marks).toHaveLength(0);
-    expect(h.events.some((e) => e.kind === 'bigKill' && e.label === 'SUB DESTROYED')).toBe(true);
+    run(h, 4);
+    expect(h.foe.marks).toHaveLength(1);
+    expect(h.events.some((e) => e.kind === 'bigKill' && e.label === 'SUB DESTROYED')).toBe(false);
   });
 
   it('every bomb lands with its bomber over the target, on screen at least AB.bomberWing.seen s first', () => {

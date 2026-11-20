@@ -102,8 +102,8 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
       for (let n = 0; n < 6; n++) {
         const shots = salvo(g);
         counts.add(shots.length);
-        expect(shots.length).toBeGreaterThanOrEqual(3);
-        expect(shots.length).toBeLessThanOrEqual(5);
+        expect(shots.length).toBeGreaterThanOrEqual(FOE.torpedoSub.spread[0]);
+        expect(shots.length).toBeLessThanOrEqual(FOE.torpedoSub.spread[1]);
         for (let k = 1; k < shots.length; k++) expect(shots[k].t - shots[k - 1].t).toBeCloseTo(FOE.torpedoSub.stagger, 1);
         const ids = shots.map((s) => s.th.target);
         for (const id of ids) expect(g.ships.some((s) => s.id === id) || id >= 0).toBe(true);
@@ -121,10 +121,10 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
         if (g.ships.length >= 3) expect(distinct.size).toBeGreaterThanOrEqual(2);
       }
     }
-    expect([...counts].sort()).toEqual([3, 4, 5]);
+    expect([...counts].sort()).toEqual(Array.from({ length: FOE.torpedoSub.spread[1] - FOE.torpedoSub.spread[0] + 1 }, (_, k) => FOE.torpedoSub.spread[0] + k));
   });
 
-  it('it fires its first 3 s after it comes up; killed part way, the rest don\'t go', () => {
+  it('it fires its first 3 s after it comes up; it can\'t be killed part way (log v35), so the rest go', () => {
     const g = quiet();
     launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
     run(g, FOE.torpedoSub.warn + 0.05);
@@ -134,8 +134,9 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
     run(g, sub.foe!.fireAt! + 0.1);
     expect(live(g, 'torpedo')).toHaveLength(1);
     damageThreat(g, sub, 99);
+    expect(sub.dead).toBe(false);
     run(g, 3);
-    expect(g.threats.filter((t) => t.kind === 'torpedo').length).toBeLessThanOrEqual(1);
+    expect(g.threats.filter((t) => t.kind === 'torpedo').length).toBe(FOE.torpedoSub.spread[0]);
   });
 
   it('no torpedo ever runs onto land, on any map (subs as in the waves, the Wolf Pack and Run the Canal)', () => {
@@ -160,8 +161,10 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
         launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
         expect(check(g, 8), map).toBe(0);
       }
-      // And they do fire (subs come up where there is water to the lanes).
-      expect(fired.size, map).toBeGreaterThanOrEqual(6);
+      // And they do fire (subs come up where there is water to the lanes):
+      // at least one a sub (log v36: two a sub, slower, so a ship far along
+      // its lane is out of a wet line more often).
+      expect(fired.size, map).toBeGreaterThanOrEqual(4);
     }
     for (const id of ['wolf-pack', 'run-the-canal'] as EventId[]) {
       for (const seed of [1, 2, 3]) {
@@ -464,7 +467,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish('quit');
-    expect(log.v).toBe(35);
+    expect(log.v).toBe(36);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);
     expect(again.steps).toBe(g.steps);

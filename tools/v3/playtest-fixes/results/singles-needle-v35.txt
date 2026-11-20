@@ -1,0 +1,24 @@
+v 35 seeds 12
+needle
+   1 Shield               lostAll  5.25 won 0.67 lost10 1.25
+   2 Drone Screen         lostAll  6.00 won 0.75 lost10 2.92
+   3 Railgun              lostAll  6.92 won 0.67 lost10 2.92
+   4 Seeker Pod           lostAll  7.00 won 0.75 lost10 3.00
+   5 Boomerang            lostAll  7.33 won 0.58 lost10 2.92
+   6 Frigate Escort       lostAll  7.42 won 0.58 lost10 2.75
+   7 Thermobaric Shell    lostAll  7.75 won 0.58 lost10 4.33
+   8 Overdrive            lostAll  7.75 won 0.75 lost10 3.75
+   9 Gunship Pair         lostAll  7.92 won 0.67 lost10 2.92
+  10 Gravity Well         lostAll  8.08 won 0.50 lost10 2.67
+  11 Scattergun           lostAll  8.17 won 0.67 lost10 2.83
+  12 Flak Cannon          lostAll  8.33 won 0.58 lost10 3.33
+  13 Air Strike           lostAll  8.42 won 0.58 lost10 2.50
+  14 Point Defense        lostAll  8.50 won 0.50 lost10 3.25
+  15 Tesla Arc            lostAll  8.50 won 0.50 lost10 3.50
+  16 Shrapnel Shell       lostAll  9.33 won 0.42 lost10 2.92
+  17 Supply Run           lostAll  9.92 won 0.17 lost10 5.58
+  18 Full Steam           lostAll 11.75 won 0.25 lost10 4.83
+  19 Charge Lance         lostAll 12.83 won 0.25 lost10 7.58
+  20 Laser Cutter         lostAll 24.75 won 0.00 lost10 20.50
+   Plain gun 10.5 0.333
+   Bot drafts for itself 8 0.583

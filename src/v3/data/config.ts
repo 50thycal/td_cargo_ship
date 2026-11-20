@@ -175,12 +175,17 @@ export const THREATS: Record<
   hydra: { speed: 100, hp: 2, damage: 2, dropChance: 0.3, label: 'Hydra missile' },
   dart: { speed: 255, hp: 1, damage: 1, dropChance: 0.03, label: 'Hydra dart' },
   rocketTruck: { speed: 75, hp: 4, damage: 0, dropChance: 0.7, label: 'Rocket truck' },
-  attackHeli: { speed: 160, hp: 6, damage: 0, dropChance: 0.8, label: 'Attack helicopter' },
+  attackHeli: { speed: 160, hp: 5, damage: 0, dropChance: 0.8, label: 'Attack helicopter' },
   heliRocket: { speed: 200, hp: 1, damage: 1, dropChance: 0.05, label: 'Helicopter missile' },
   torpedoSub: { speed: 0, hp: 3, damage: 0, dropChance: 0.5, label: 'Torpedo sub' },
-  torpedo: { speed: 75, hp: 1, damage: 3, dropChance: 0.1, label: 'Torpedo' },
+  // The 2026-11-20 follow-up (log v36): the sub can't be hit, so its
+  // torpedoes run at 40 (was 75) for time to shoot them; a fast one is
+  // FOE.torpedoSub.fastSpeed × that.
+  torpedo: { speed: 40, hp: 1, damage: 3, dropChance: 0.1, label: 'Torpedo' },
   armored: { speed: 60, hp: 2, damage: 2, dropChance: 0.4, label: 'Armored drone' },
-  scavenger: { speed: 170, hp: 1, damage: 0, dropChance: 0.3, label: 'Scavenger drone' },
+  // The 2026-11-20 playtest ("the weapon drop stealing drone should have
+  // more health"; log v34): three hits (was one).
+  scavenger: { speed: 170, hp: 3, damage: 0, dropChance: 0.3, label: 'Scavenger drone' },
   // Test Lab round 1: "a little faster" (270, as the Strike jet, → 315).
   stealthJet: { speed: 315, hp: 3, damage: 1, dropChance: 0.6, label: 'Stealth strafer' },
   stealthBomber: { speed: 150, hp: 6, damage: 0, dropChance: 0.8, label: 'Stealth bomber' },

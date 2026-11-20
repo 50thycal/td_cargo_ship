@@ -351,7 +351,7 @@ export const EV = {
    *  five, fanned wider, FOE.torpedoSub); a Wolf Pack sub keeps its two or
    *  three, each at a ship of its own, its `fan` and its `aim`. A fast
    *  torpedo is as fast as any sub's (FOE.torpedoSub.fastSpeed). */
-  'wolf-pack': { packs: [4, 3], gap: 11, stagger: 1.1, spread: [2, 3], fan: 0.42, fast: 2, fastSpeed: FOE.torpedoSub.fastSpeed, aim: 0.6 },
+  'wolf-pack': { packs: [4, 3], gap: 11, stagger: 1.1, spread: [1, 2], fan: 0.42, fast: 2, fastSpeed: FOE.torpedoSub.fastSpeed, aim: 0.6 },
   /** `drones` armored drones in a block `cols` wide, `dx` by `dy` px apart;
    *  the block banks together at each of `banks` (share of the way in).
    *  Round 6 ("they all come from the same launcher"): each row of the block
@@ -487,6 +487,33 @@ export const EV = {
  *  boss round's title) and every id stays as it was. */
 export function bossRound(run: number, runs: number): string {
   return `Boss round ${run} of ${runs}`;
+}
+
+/** Where a run is, as every counter says it (the 2026-11-20 playtest: "it
+ *  should say wave one of ten for all maps not n of thirteen"): "Wave 3 of
+ *  10" for the map's ten waves, "Boss · Round 1 of 3" for a run of its
+ *  ending (`boss`, or read off the wave number past the ten), "Bonus wave",
+ *  and "Wave 14" in endless. `short` is the HUD's two-line form:
+ *  [label, count], ["WAVE", "3 of 10"] or ["BOSS", "Round 1 of 3"]. */
+export function waveCount(wave: number, o: { boss?: { run: number; runs: number } | null; bonus?: boolean; endless?: boolean } = {}): string {
+  const [label, count] = waveCountParts(wave, o);
+  return label === 'BOSS' ? `Boss · ${count}` : label === 'BONUS' ? 'Bonus wave' : `Wave ${count}`;
+}
+
+export function waveCountParts(wave: number, o: { boss?: { run: number; runs: number } | null; bonus?: boolean; endless?: boolean } = {}): [string, string] {
+  if (o.bonus) return ['BONUS', ''];
+  if (o.boss) return ['BOSS', `Round ${o.boss.run} of ${o.boss.runs}`];
+  if (o.endless) return ['WAVE', `${wave}`];
+  if (wave <= RULES.wavesToClear) return ['WAVE', `${wave} of ${RULES.wavesToClear}`];
+  const runs = endingRuns();
+  if (wave < EVENT_WAVE + runs) return ['BOSS', `Round ${wave - EVENT_WAVE + 1} of ${runs}`];
+  return ['WAVE', `${wave}`];
+}
+
+/** The same in a sentence: "wave 3" or "boss round 1". */
+export function waveName(wave: number): string {
+  if (wave >= EVENT_WAVE && wave < EVENT_WAVE + endingRuns()) return `boss round ${wave - EVENT_WAVE + 1}`;
+  return `wave ${wave}`;
 }
 
 /** One card of the boss intro: shown from `at` s into the wave until the

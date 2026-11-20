@@ -37,6 +37,7 @@ import type { MapId } from '../../../src/v3/data/maps';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
 import { tensionNow, tensionStats, type Shape } from '../../../src/v3/sim/funMetrics';
+import type { Game } from '../../../src/v3/sim/game';
 
 /** Waves 1-10 and the three boss rounds (11-13); 14 = won. */
 export const WAVES = 13;
@@ -109,7 +110,9 @@ export function normalOf(lost: readonly number[], limit = RULES.shipLossLimit): 
   return { won: true, endWave: 14, lost: out };
 }
 
-export function playCombo(job: ComboJob): ComboRun {
+/** `onStep` (a tool's own reading, never the sweep's): called after every
+ *  step of the run with the game. */
+export function playCombo(job: ComboJob, onStep?: (g: Game) => void): ComboRun {
   const card = labCard(mapCardId(job.map, VERSION_DEFAULT));
   if (!card) throw new Error(`no Test Lab card for ${job.map}`);
   const setup = defaultSetup(card, parseLabProgress(null));
@@ -153,6 +156,7 @@ export function playCombo(job: ComboJob): ComboRun {
       continue;
     }
     run.advance(1);
+    if (onStep) onStep(g);
     if (job.tension && g.phase === 'wave' && g.steps % STEPS_S === 0 && g.wave >= 1 && g.wave <= WAVES) series[g.wave - 1].push(tensionNow(g));
   }
   const lost = new Array<number>(WAVES).fill(0);

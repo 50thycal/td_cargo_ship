@@ -155,7 +155,8 @@ describe('Wolf Pack: spreads, and one or two fast torpedoes', () => {
         for (let a = 0; a < spread.length; a++)
           for (let b = a + 1; b < spread.length; b++) {
             const d = Math.abs(Math.atan2(Math.sin(spread[a].heading - spread[b].heading), Math.cos(spread[a].heading - spread[b].heading)));
-            expect(d).toBeGreaterThan(0.15);
+            // (0.1 rad since log v36: slower torpedoes lead their ships less.)
+            expect(d).toBeGreaterThan(0.1);
           }
       }
       const fast = [...torps.values()].filter((t) => t.foe!.fast);

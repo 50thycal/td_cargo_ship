@@ -2,7 +2,7 @@
 // a map card is the full production map. Expects `vite preview` (or dev) at
 // BASE_URL. On a landscape phone (874 x 402), by touch:
 // - the hub's map cards say what they play and how they open;
-// - The Strait's card, tapped from the hub, starts at wave 1 of 13 with
+// - The Strait's card, tapped from the hub, starts at wave 1 of 10 with
 //   no convoy command on the rail (round 11), nothing of the test over the
 //   field (pause-menu round: its name, count and commands are on the pause
 //   menu) and no Bring one, and an encounter is called out by wave 2-4;
@@ -93,9 +93,9 @@ const shot = (page, name) => page.screenshot({ path: `${DOC_DIR}/${name}.jpg`, t
 const labMenu = async (page) => {
   // A run just (re)started, or a sheet closing: wait for play, or for a
   // menu or a draft (between a full run's waves) that has Done on it.
-  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
-  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
-  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]');
 };
 
 /** The run in play, as the tests read it; the test's name, count and
@@ -163,9 +163,21 @@ const savedRun = (page, card) =>
     return { v: log.v, end: log.end, verdict: log.labResult?.verdict, score: log.labResult?.score ?? null, variant: log.labResult?.variant, labVariant: log.lab?.variant, entryScore: entry.score ?? null };
   }, card);
 
-/** Rate the wave just played on the draft's "Rate wave N" row. */
+/** Rate the wave just played on its "Rate wave N" screen (before the
+ *  draft since the 2026-11-20 playtest). */
 const rateWave = async (page, axes) => {
-  for (const [axis, n] of Object.entries(axes)) await page.tap(`.v2-draft [data-wave-rate] [data-axis="${axis}"] [data-n="${n}"]`);
+  for (const [axis, n] of Object.entries(axes)) await page.tap(`[data-screen="rate"] [data-wave-rate] [data-axis="${axis}"] [data-n="${n}"]`);
+};
+
+/** From a wave's end to its draft: the rating screen (`axes` to rate on
+ *  it, then Next; else Skip), if it comes. */
+const pastRate = async (page, axes) => {
+  await page.waitForSelector('[data-screen="draft"], [data-screen="rate"]', { timeout: 20000 });
+  if (await page.$('[data-screen="rate"]')) {
+    if (axes) await rateWave(page, axes);
+    await page.tap(axes ? '[data-rate-next]' : '[data-rate-skip]');
+  }
+  await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
 };
 
 /** Clear wave 1 and jump the run to `wave` (its draft says the wave before;
@@ -173,8 +185,7 @@ const rateWave = async (page, axes) => {
  *  `rate1`: rate wave 1 on its draft first. */
 const jumpTo = async (page, wave, rate1) => {
   await page.evaluate(() => { const g = window.__v3.game(); const [limit, hp] = [g.tempo.lossLimit, g.carrierHp]; g.tempo.lossLimit = 999; g.carrierHp = 1e6; window.__v3.advance(300); g.carrierHp = hp; g.tempo.lossLimit = limit; });
-  await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
-  if (rate1) await rateWave(page, rate1);
+  await pastRate(page, rate1);
   await page.evaluate((w) => { window.__v3.game().wave = w - 1; }, wave);
   await page.locator('.v2-card:not([disabled])').first().click();
   await page.waitForFunction((w) => window.__v3.game()?.phase === 'wave' && window.__v3.game().wave === w, wave, { timeout: 8000 });
@@ -224,7 +235,7 @@ try {
   check(s0.map === 'strait' && s0.wave === 1 && s0.full && s0.plays === 'full' && !s0.endless && !s0.freePlay, `The Strait's card from the hub starts the full map at wave 1 (${JSON.stringify({ wave: s0.wave, plays: s0.plays, endless: s0.endless, freePlay: s0.freePlay })})`);
   check(s0.policy === 'tactical' && s0.cmds.length === 0 && s0.enc === 4, `its production setup: the map's own convoy with no command (round 11: Rush and Disperse are gone), authored encounters on (${s0.cmds.join()}; enc ${s0.enc})`);
   check(s0.script && s0.fits && s0.small === 0, `the pause menu shows the encounter script with the test's commands, fits the phone and every button is 44 px or more (${JSON.stringify({ script: s0.script, fits: s0.fits, small: s0.small })})`);
-  check(!s0.bar && !s0.bring && s0.acts.join() === 'note,setup,done' && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1/13' && /WAVE\s*1\/13/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `no bar over the field; the pause menu reads "${s0.head} · ${s0.count}" with Note, Setup and Done and no Bring one; the HUD says WAVE 1/13 and TEST LAB`);
+  check(!s0.bar && !s0.bring && s0.acts.join() === 'note,setup,done' && s0.head === 'THE STRAIT' && s0.count === 'full map · wave 1 of 10' && /WAVE\s*1 of 10/.test(s0.hud ?? '') && /TEST LAB/.test(s0.hud ?? ''), `no bar over the field; the pause menu reads "${s0.head} · ${s0.count}" with Note, Setup and Done and no Bring one; the HUD says WAVE 1 of 10 and TEST LAB`);
   check(s0.log.firstWave === 1 && !s0.log.freePlay && s0.log.lab?.plays === 'full' && s0.log.lab?.config?.convoy === 'tactical' && s0.log.lab?.config?.encounters === 4 && s0.log.lab?.config?.production === true && s0.log.convoy === 'tactical' && s0.log.encounters === 4 && !('length' in s0.log.lab), `the log says it is a full production run, and its setup (${JSON.stringify(s0.log.lab)})`);
   await page.waitForTimeout(1500);
   await shot(page, 'strait-wave1-commands');
@@ -240,7 +251,7 @@ try {
     if (called && !calledOn) calledOn = w;
     if (called && w > 1) break;
     await page.evaluate(() => window.__v3.advance(200));
-    await page.waitForSelector('[data-screen="draft"]', { timeout: 20000 });
+    await pastRate(page);
     await page.waitForTimeout(400);
     if (w === 1) {
       // The campaign's draft after every wave, and Done still in reach on it
@@ -263,7 +274,7 @@ try {
     }
   }
   const s1 = await runState(page);
-  check(!!called && calledOn >= 1 && calledOn <= 4 && s1.wave >= 2 && s1.count === `full map · wave ${s1.wave}/13`, `an encounter is called out on wave ${calledOn} ("${called}"); on wave ${s1.wave} the pause menu reads "${s1.count}"`);
+  check(!!called && calledOn >= 1 && calledOn <= 4 && s1.wave >= 2 && s1.count === `full map · wave ${s1.wave} of 10`, `an encounter is called out on wave ${calledOn} ("${called}"); on wave ${s1.wave} the pause menu reads "${s1.count}"`);
 
   // ---- The setup sheet (from the pause menu): Production setup, Reset,
   // Quick slice ----
@@ -305,7 +316,7 @@ try {
   await page.tap('[data-lab-done]');
   await page.waitForSelector('[data-screen="lab-verdict"]');
   const ev = await page.evaluate(() => document.querySelector('.v3-lab-evidence')?.textContent ?? '');
-  check(/Full map: 0 of 13 waves cleared/.test(ev), `the verdict sheet counts the full map ("${ev.slice(0, 80)}")`);
+  check(/Full map: 0 of 10 waves cleared/.test(ev), `the verdict sheet counts the full map ("${ev.slice(0, 80)}")`);
   const sc0 = await scoreSheet(page);
   check(sc0.rows.join() === 'fun,difficulty,intensity,again,best,weakest' && !sc0.moment && sc0.waves.join() === '1' && sc0.strip && sc0.above && sc0.small.length === 0 && !sc0.wide, `the scorecard (revision 4) sits above the verdict: Fun, Difficulty, Intensity, Play again and the wave strips (Best, Weakest), no Best moment, no Pacing, Variety, Readability or Map feel, no boss row on wave 1, every chip 40 px or more (${JSON.stringify(sc0)})`);
   check(/^Rate & review this run/.test(sc0.title) && /The Strait/.test(sc0.title) && sc0.order === 'title,score,run,lab,acts' && sc0.timeline && sc0.wavesInRun, `one screen, the normal game's review with a Test Lab section: "${sc0.title}", ${sc0.order}; the run's timeline, legend and moment, with Best and Weakest under it`);
@@ -323,7 +334,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 35 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 36 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -369,15 +380,19 @@ try {
   for (let i = 0; i < 40 && !(await page.$('[data-screen="lab-verdict"]')); i++) {
     await page.evaluate(() => window.__v3.advance(300));
     await page.waitForTimeout(300);
-    if (await page.$('[data-screen="draft"]')) {
-      const w = await page.evaluate(() => Number(document.querySelector('.v2-draft [data-wave-rate]')?.dataset.waveRate ?? 0));
+    if (await page.$('[data-screen="rate"]')) {
+      const w = await page.evaluate(() => Number(document.querySelector('[data-screen="rate"] [data-wave-rate]')?.dataset.waveRate ?? 0));
       if (draftRates[w]) await rateWave(page, draftRates[w]);
       if (w === 9 && !draftShot) {
-        // The draft with its rating row, for the player (phone size).
+        // The wave's rating screen, for the player (phone size).
         await page.waitForTimeout(500);
         await page.screenshot({ path: `${RR_DIR}/draft-rate-wave.png` });
         draftShot = true;
       }
+      await page.tap('[data-rate-next]');
+      await page.waitForSelector('[data-screen="draft"]', { timeout: 8000 });
+    }
+    if (await page.$('[data-screen="draft"]')) {
       await page.locator('.v2-card:not([disabled])').first().click();
       await page.waitForFunction(() => window.__v3.game()?.phase !== 'draft', null, { timeout: 8000 });
     }
@@ -449,7 +464,7 @@ try {
   await page.waitForSelector('.playing.lab-on');
   await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
   const s5 = await runState(page);
-  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 4 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
+  check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 4 && s5.count === 'full map · wave 1 of 10', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
   // Chapter 1: the bare link to the Kesh Hook and Lee of Marrow opens the
   // full map with their encounters (rev 4) and no command; chapter 2's
   // Island, Behemoth Run, Needle of Bosk and Archipelago the same.
@@ -458,7 +473,7 @@ try {
     await page.waitForSelector('.playing.lab-on');
     await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
     const sk = await runState(page);
-    check(sk.map === map && sk.wave === 1 && sk.plays === 'full' && sk.policy === 'tactical' && sk.cmds.length === 0 && sk.enc === 4 && sk.count === 'full map · wave 1/13' && sk.log.encounters === 4 && sk.log.lab?.config?.production === true, `the bare link v3.html?lab=map-${map} opens the full map with its encounters and no command (${JSON.stringify({ wave: sk.wave, policy: sk.policy, cmds: sk.cmds, enc: sk.enc, count: sk.count })})`);
+    check(sk.map === map && sk.wave === 1 && sk.plays === 'full' && sk.policy === 'tactical' && sk.cmds.length === 0 && sk.enc === 4 && sk.count === 'full map · wave 1 of 10' && sk.log.encounters === 4 && sk.log.lab?.config?.production === true, `the bare link v3.html?lab=map-${map} opens the full map with its encounters and no command (${JSON.stringify({ wave: sk.wave, policy: sk.policy, cmds: sk.cmds, enc: sk.enc, count: sk.count })})`);
   }
   // Round 11: Hold is on Sowers' Reach, where mines drift across the lane.
   await page.goto(`${BASE_URL}/v3.html?lab=map-sowers&seed=7`, { waitUntil: 'networkidle' });

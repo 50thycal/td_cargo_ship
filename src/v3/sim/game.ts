@@ -69,7 +69,7 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
+import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
@@ -132,7 +132,20 @@ export function isMunitionKind(k: ThreatKind): boolean {
  *  first SUPERSONIC.rail (0.4 s) of its lock only; then it lifts off and is
  *  a target, its lock line still showing. */
 export function released(th: Threat): boolean {
-  return !th.dead && !(th.kind === 'supersonic' && th.age < SUPERSONIC.rail);
+  return !th.dead && !racked(th) && !untouchable(th);
+}
+
+/** A supersonic still on its launcher's rail (round 13): no target yet. */
+function racked(th: Threat): boolean {
+  return th.kind === 'supersonic' && th.age < SUPERSONIC.rail;
+}
+
+/** The Torpedo Sub stays under water, its periscope up (the 2026-11-20
+ *  playtest: "should not be able to be attacked only their torpedoes can";
+ *  log v34): no shot, blast or helper touches it, nor the Nuke. It dives
+ *  away on its own once it has fired. */
+export function untouchable(th: Threat): boolean {
+  return th.kind === 'torpedoSub';
 }
 
 /** A supersonic's share of its full speed at `age` (log v27): none on the
@@ -927,6 +940,11 @@ export interface Boost {
   crateT: number;
   /** Seconds it has run. */
   age: number;
+  /** Shield: the hits it can still stop (AB.shield.hits) before it breaks,
+   *  and the step and kind of the last one (a blast that reaches several
+   *  hulls at once is one hit). */
+  hits?: number;
+  hitAt?: string;
 }
 
 /** An allied structure in play: its hit points, seconds it stays knocked
@@ -1191,6 +1209,8 @@ function startWave(g: Game): void {
   };
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
+    // A Torpedo Sub drawn before its map lets it in stays a drone swarm.
+    if (id === 'torpedoSub' && k >= signed && g.wave < (SUB_FROM[g.map.id] ?? 0)) continue;
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     // The Needle of Bosk (log v35, MAP_SIGNATURE `block`): a small wall of
@@ -4247,13 +4267,10 @@ function callSorties(g: Game, n: number, quiet: number): void {
   const air: readonly ThreatKind[] = AB.bomberWing.air;
   for (const th of g.threats) {
     if (!released(th) || !onScreen(th.x, th.y)) continue;
-    const kind = air.includes(th.kind) ? 'air' : th.kind === 'torpedoSub' ? 'sub' : null;
+    // (A Torpedo Sub is never a target: log v34.)
+    const kind = air.includes(th.kind) ? 'air' : null;
     if (!kind || taken(kind, th.id)) continue;
     picks.push({ kind, ref: th.id, x: th.x, y: th.y, score: 110 + th.hp, from: sortieRun(th.x, th.vx).dir });
-  }
-  for (const m of g.foe.marks) {
-    if (m.kind !== 'periscope' || !onScreen(m.x, m.y) || taken('sub', -m.id)) continue;
-    picks.push({ kind: 'sub', ref: -m.id, x: m.x, y: m.y, score: 108 });
   }
   for (const r of g.raiders) {
     if (!bombableRaider(r) || !onScreen(r.x, r.y) || taken('truck', r.id)) continue;
@@ -4475,6 +4492,8 @@ function startBoost(g: Game, id: AbilityId, level: number, x: number, y: number)
   }
   endBoost(g, false);
   g.boost = { id, level, t: id === 'shield' ? t * AB.shield.time[k] : t, n: 0, bank: 0, crateT: AB.supplyRun.crate, age: 0 };
+  // The Shield breaks after AB.shield.hits[k] hits (log v34).
+  if (id === 'shield') g.boost.hits = AB.shield.hits[k];
   switch (id) {
     case 'focus':
       g.boost.bank = AB.focus.bank[k];
@@ -4667,10 +4686,27 @@ function shielded(g: Game, by: ThreatKind): boolean {
   return boostLevel(g, 'shield') > 0 && !isJet(by);
 }
 
-/** The Shield boost blocked a hit: from level 2 it puts a round back. */
-function blockRefund(g: Game): void {
+/** The Shield blocked a hit: from level 2 the boost puts a round back. The
+ *  boost (not the power-up) breaks after AB.shield.hits hits (the
+ *  2026-11-20 playtest: "the shield should break after x amount of hits not
+ *  damage but actual hits", log v34): every missile, drone, shell or boat it
+ *  stops is one hit, whatever its damage; one blast that reaches several
+ *  hulls in the same step is one hit. */
+function blockRefund(g: Game, by: ThreatKind): void {
+  if (g.shieldT > 0) return;
   const lv = boostLevel(g, 'shield');
-  if (lv > 0) g.ammo = Math.min(g.stats.rack, g.ammo + AB.shield.refund[lv - 1]);
+  if (lv <= 0) return;
+  const b = g.boost!;
+  const key = `${g.steps}:${by}`;
+  if (b.hitAt === key) return;
+  b.hitAt = key;
+  g.ammo = Math.min(g.stats.rack, g.ammo + AB.shield.refund[lv - 1]);
+  b.hits = (b.hits ?? AB.shield.hits[lv - 1]) - 1;
+  if (b.hits > 0) return;
+  const c = g.map.carrier;
+  addFx(g, 'burst', c.x, c.y, { life: 0.5, r: 90 });
+  addFx(g, 'text', c.x, c.y - 40, { life: 1.2, text: 'SHIELD BROKEN' });
+  endBoost(g, true);
 }
 
 /** Reflect (Shield MAX): a blocked missile bounces back the way it came and
@@ -5176,7 +5212,7 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
     if (g.tel) g.tel.shipBlocked(g, s, amount, by, direct, 'shield', imp);
     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
     cue(g, 'shield.block', s.x, s.y);
-    blockRefund(g);
+    blockRefund(g, by);
     return;
   }
   if (glances(g, s.x, s.y, 30)) {
@@ -5217,7 +5253,7 @@ export function damageCarrier(g: Game, amount: number, by: ThreatKind, imp?: Tel
     if (g.tel) g.tel.carrierHit(g, amount, g.carrierHp, by, imp, 'shield');
     addFx(g, 'block', g.map.carrier.x, g.map.carrier.y, { life: 0.4, r: 60 });
     cue(g, 'shield.block', g.map.carrier.x, g.map.carrier.y);
-    blockRefund(g);
+    blockRefund(g, by);
     return;
   }
   if (glances(g, g.map.carrier.x, g.map.carrier.y, 60)) {
@@ -5975,7 +6011,7 @@ function predict(th: Threat, ahead: number): Point {
 }
 
 export function damageThreat(g: Game, th: Threat, amount: number, drops = true, by: HurtSrc = 'other', weapon?: AbilityId): void {
-  if (th.dead) return;
+  if (th.dead || untouchable(th)) return;
   // Still on its launcher (round 13): only the Nuke touches it.
   if (!released(th) && by !== 'nuke') return;
   // The Citadel can't be hurt while any shield generator stands.
@@ -6440,7 +6476,7 @@ function knockOut(g: Game, r: Raider): void {
  *  with it: it never flies. Not a kill of its own (the launcher's was). */
 function scrubRacked(g: Game, on: (th: Threat) => boolean): void {
   for (const m of g.threats) {
-    if (m.dead || released(m) || !on(m)) continue;
+    if (m.dead || !racked(m) || !on(m)) continue;
     m.dead = true;
     addFx(g, 'boom', m.x, m.y, { life: 0.5, r: 20 });
   }

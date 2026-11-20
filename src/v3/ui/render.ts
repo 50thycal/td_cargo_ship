@@ -1408,22 +1408,89 @@ function drawGunship(ctx: CanvasRenderingContext2D, g: Game, h: { id: number; le
   ctx.fill();
 }
 
-/** Shield pickup: a bubble over every ship and the carrier, flickering out. */
+/** Shield pickup: a bubble over every ship and the carrier, flickering out.
+ *  The Shield boost breaks after a number of hits (the 2026-11-20 playtest):
+ *  its bubbles crack as hits land, and a row of pips over the carrier shows
+ *  the hits it has left. */
 function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
-  const left = g.boost?.id === 'shield' ? g.boost.t : g.shieldT;
+  const boost = g.boost?.id === 'shield' && g.shieldT <= 0 ? g.boost : null;
+  const left = boost ? boost.t : g.shieldT;
   const ending = left < 1.2 && Math.floor(g.t * 10) % 2 === 0;
   if (ending) return;
-  ctx.strokeStyle = 'rgba(226,232,240,0.85)';
-  ctx.fillStyle = 'rgba(186,230,253,0.16)';
+  const max = boost ? AB.shield.hits[Math.min(ABILITY_MAX, boost.level) - 1] : 0;
+  const hits = boost ? Math.max(0, boost.hits ?? max) : 0;
+  // 0 whole, 1 about to break.
+  const worn = boost && max ? 1 - hits / max : 0;
+  const last = boost && hits === 1;
+  ctx.strokeStyle = last ? 'rgba(254,202,202,0.9)' : 'rgba(226,232,240,0.85)';
+  ctx.fillStyle = `rgba(186,230,253,${(0.16 * (1 - worn * 0.5)).toFixed(3)})`;
   ctx.lineWidth = 2;
-  const bubble = (x: number, y: number, rx: number, ry: number) => {
+  const bubble = (x: number, y: number, rx: number, ry: number, seed: number) => {
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    if (worn > 0) shieldCracks(ctx, x, y, rx, ry, worn, seed);
   };
-  for (const s of g.ships) bubble(s.x, s.y, 46, 22);
-  bubble(g.map.carrier.x, g.map.carrier.y, CARRIER.halfLength + 22, CARRIER.halfBeam + 20);
+  for (const s of g.ships) bubble(s.x, s.y, 46, 22, s.id);
+  const c = g.map.carrier;
+  const crx = CARRIER.halfLength + 22;
+  const cry = CARRIER.halfBeam + 20;
+  bubble(c.x, c.y, crx, cry, 7);
+  if (boost && max) shieldPips(ctx, c.x, c.y - cry - 30, hits, max);
+}
+
+/** Cracks across a shield bubble: more of them, and longer, the more hits
+ *  it has taken (`worn` 0–1). The same cracks each frame (`seed`). */
+function shieldCracks(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, worn: number, seed: number): void {
+  const n = Math.ceil(worn * 5);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  for (let k = 0; k < n; k++) {
+    // A fixed angle round the rim for each crack, from the seed.
+    const a = ((seed * 2.39 + k * 2.1) % (Math.PI * 2)) - Math.PI;
+    let px = x + Math.cos(a) * rx;
+    let py = y + Math.sin(a) * ry;
+    const len = 0.35 + 0.45 * worn;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    for (let j = 1; j <= 3; j++) {
+      const t = (len * j) / 3;
+      const jag = (j % 2 ? 1 : -1) * 0.25;
+      px = x + Math.cos(a + jag * t) * rx * (1 - t);
+      py = y + Math.sin(a + jag * t) * ry * (1 - t);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** The Shield's hits left, over the carrier: a pip for each hit it can
+ *  still take, a hollow one for each it has taken. */
+function shieldPips(ctx: CanvasRenderingContext2D, x: number, y: number, hits: number, max: number): void {
+  const gap = 20;
+  const x0 = x - ((max - 1) * gap) / 2;
+  ctx.save();
+  ctx.fillStyle = 'rgba(7,17,25,0.7)';
+  ctx.beginPath();
+  ctx.roundRect(x0 - 14, y - 11, (max - 1) * gap + 28, 22, 11);
+  ctx.fill();
+  for (let k = 0; k < max; k++) {
+    const on = k < hits;
+    ctx.beginPath();
+    ctx.arc(x0 + k * gap, y, 6.5, 0, Math.PI * 2);
+    if (on) {
+      ctx.fillStyle = hits === 1 ? '#fca5a5' : '#7dd3fc';
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = 'rgba(226,232,240,0.45)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /** Time Warp tint, and a countdown chip for every timed pickup running. */

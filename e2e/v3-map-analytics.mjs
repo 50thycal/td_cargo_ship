@@ -51,9 +51,9 @@ const check = (ok, msg) => {
 const labMenu = async (page) => {
   // A run just (re)started, or a sheet closing: wait for play, or for a
   // menu or a draft (between a full run's waves) that has Done on it.
-  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
-  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
-  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done]');
+  await page.waitForFunction(() => !!document.querySelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]') || (window.__v3.game()?.phase === 'wave' && !document.querySelector('.v2-overlay.open')), null, { timeout: 15000 });
+  if (!(await page.$('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]'))) await page.evaluate(() => document.querySelector('.v2-pause').click());
+  await page.waitForSelector('.v2-pause-panel [data-lab-done], .v2-draft [data-lab-done], .v3-rate [data-lab-done]');
 };
 const state = (page) => page.evaluate(() => window.__v3.mapLab().state());
 const idle = (page, runs) => page.waitForFunction((n) => { const s = window.__v3.mapLab()?.state(); return s && s.runs.length >= n && !s.busy; }, runs, { timeout: 180000 });

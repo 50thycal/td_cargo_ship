@@ -1,0 +1,47 @@
+v 34 seeds 12
+island
+   1 Railgun              lostAll  6.00 won 0.75 lost10 2.67
+   2 Boomerang            lostAll  7.25 won 0.58 lost10 4.58
+   3 Shield               lostAll  7.25 won 0.75 lost10 4.00
+   4 Flak Cannon          lostAll  7.42 won 0.67 lost10 3.75
+   5 Air Strike           lostAll  7.58 won 0.58 lost10 3.75
+   6 Gunship Pair         lostAll  7.92 won 0.58 lost10 5.08
+   7 Seeker Pod           lostAll  8.25 won 0.58 lost10 4.58
+   8 Shrapnel Shell       lostAll  8.50 won 0.67 lost10 4.75
+   9 Overdrive            lostAll  8.58 won 0.25 lost10 5.75
+  10 Drone Screen         lostAll  8.67 won 0.42 lost10 5.17
+  11 Tesla Arc            lostAll  8.92 won 0.50 lost10 6.08
+  12 Scattergun           lostAll  9.00 won 0.58 lost10 5.42
+  13 Point Defense        lostAll  9.17 won 0.50 lost10 5.83
+  14 Frigate Escort       lostAll  9.33 won 0.42 lost10 4.92
+  15 Gravity Well         lostAll  9.42 won 0.58 lost10 4.92
+  16 Thermobaric Shell    lostAll  9.58 won 0.25 lost10 6.42
+  17 Full Steam           lostAll 10.42 won 0.25 lost10 5.33
+  18 Supply Run           lostAll 10.42 won 0.33 lost10 7.33
+  19 Charge Lance         lostAll 14.50 won 0.00 lost10 9.50
+  20 Laser Cutter         lostAll 37.50 won 0.00 lost10 29.75
+   Plain gun 15.333 0.083
+   Bot drafts for itself 11.167 0.333
+behemoth
+   1 Frigate Escort       lostAll  6.42 won 0.58 lost10 2.67
+   2 Railgun              lostAll  6.75 won 0.67 lost10 2.75
+   3 Shield               lostAll  7.08 won 0.67 lost10 3.58
+   4 Gravity Well         lostAll  7.67 won 0.42 lost10 5.00
+   5 Gunship Pair         lostAll  7.67 won 0.75 lost10 3.92
+   6 Thermobaric Shell    lostAll  7.92 won 0.58 lost10 4.25
+   7 Air Strike           lostAll  8.67 won 0.42 lost10 5.92
+   8 Boomerang            lostAll  8.75 won 0.42 lost10 4.92
+   9 Flak Cannon          lostAll  9.08 won 0.33 lost10 6.00
+  10 Overdrive            lostAll  9.08 won 0.42 lost10 5.58
+  11 Scattergun           lostAll  9.25 won 0.50 lost10 5.75
+  12 Drone Screen         lostAll  9.67 won 0.33 lost10 5.67
+  13 Point Defense        lostAll  9.75 won 0.33 lost10 3.83
+  14 Shrapnel Shell       lostAll  9.92 won 0.25 lost10 6.83
+  15 Seeker Pod           lostAll 10.83 won 0.17 lost10 6.58
+  16 Tesla Arc            lostAll 11.42 won 0.42 lost10 6.50
+  17 Full Steam           lostAll 12.58 won 0.25 lost10 7.83
+  18 Charge Lance         lostAll 15.25 won 0.00 lost10 9.75
+  19 Supply Run           lostAll 17.33 won 0.08 lost10 11.42
+  20 Laser Cutter         lostAll 50.42 won 0.00 lost10 41.58
+   Plain gun 18.917 0
+   Bot drafts for itself 10.25 0.5
