@@ -69,7 +69,7 @@ import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
-import { FOE, FOES, HEAVY_FOES, type FoeSetting } from '../data/foes';
+import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
@@ -1196,6 +1196,8 @@ function startWave(g: Game): void {
   const signed = sig?.foe ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
+    // A Torpedo Sub drawn before its map lets it in stays a drone swarm.
+    if (id === 'torpedoSub' && k >= signed && g.wave < (SUB_FROM[g.map.id] ?? 0)) continue;
     replace('drone', 1);
     if (HEAVY_FOES.includes(id)) replace(units.some((u) => u.kind === 'guided') ? 'guided' : 'ballistic', 1);
     // The Needle of Bosk (log v35, MAP_SIGNATURE `block`): a small wall of

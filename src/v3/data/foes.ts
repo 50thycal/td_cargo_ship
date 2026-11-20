@@ -65,6 +65,12 @@ export const RED_FOES: FoeId[] = ['rocketTruck', 'diveBomber', 'siege'];
  *  the Test Lab playtest (2026-11-08): Loitering Drones, Crossing Wing,
  *  Flak Picket, Supply Barge. Removed from the game in round 11 (the
  *  player: "remove the decoy drones ... entirely"): Decoy Drones. */
+/** The 2026-11-20 playtest follow-up (log v36): the Torpedo Sub can't be
+ *  hit now, so on The Behemoth Run it waits for wave `from`: one the
+ *  planner draws earlier stays the drone swarm it would have replaced (the
+ *  wave sends what it did, rule w-budget). Campaign and lab alike. */
+export const SUB_FROM: Partial<Record<string, number>> = { behemoth: 6 };
+
 export const FOES_BUILT: FoeId[] = [
   'sprinter', 'hydra', 'rocketTruck',
   'attackHeli', 'torpedoSub', 'armored', 'scavenger',

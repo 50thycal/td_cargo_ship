@@ -241,8 +241,9 @@ import type { EncounterSetup } from '../data/encounters';
  *      stays under water and can't be hit (nothing targets it, nor the
  *      Nuke; only its torpedoes can be shot) and fires two (was three to
  *      five; the Wolf Pack's one or two, was two or three); the Scavenger
- *      Drone takes three hits (was one). A v35 log with any of those no
- *      longer replays to the same game. */
+ *      Drone takes three hits (was one); torpedoes run at 40 (was 75), and
+ *      the Behemoth Run sends no Torpedo Sub before wave 6 (SUB_FROM). A
+ *      v35 log with any of those no longer replays to the same game. */
 export const LOG_VERSION = 36;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)

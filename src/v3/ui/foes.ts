@@ -655,6 +655,22 @@ function drawTorpedo(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.save();
   ctx.translate(th.x, th.y);
   ctx.rotate(th.heading);
+  // The 2026-11-20 follow-up: the torpedo is the only thing to shoot now
+  // (the sub is out of reach), so it reads at a glance: a white bow wave
+  // spreading off its nose and a pulsing ring round it.
+  ctx.strokeStyle = fast ? 'rgba(255,214,140,0.85)' : 'rgba(240,250,255,0.85)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-30, -11);
+  ctx.lineTo(14, 0);
+  ctx.lineTo(-30, 11);
+  ctx.stroke();
+  const pulse = 0.5 + 0.5 * Math.sin(g.t * 6);
+  ctx.strokeStyle = `rgba(255,96,80,${(0.45 + 0.4 * pulse).toFixed(3)})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 20 + 3 * pulse, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.fillStyle = '#0f172a';
   ctx.strokeStyle = 'rgba(255,255,255,0.7)';
   ctx.lineWidth = 1.5;
