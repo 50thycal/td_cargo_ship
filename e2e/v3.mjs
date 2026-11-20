@@ -663,7 +663,7 @@ try {
     await cp.click('[data-lab-bring]');
     check(await cp.evaluate(() => !document.querySelector('.v2-overlay.open') && document.querySelector('.v2-pause').textContent === 'II'), 'Bring one on the pause menu closes it: the game goes on');
     const all = await titlesFor(2500);
-    check(all.some((t) => t.startsWith('NEW:') || t.startsWith('NEW · ')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
+    check(all.some((t) => t.startsWith('NEW:') || t.startsWith('New on ')), `at Call-outs: All, a first sight gets its card (${all.join(' | ')})`);
     // Off, from Settings: kept across a reload, and no hint, wave or test card.
     await cp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
     await cp.locator('.v2-settings-btn').tap();
@@ -1057,7 +1057,7 @@ try {
     await lp.waitForSelector('.v2-card', { timeout: 15000 });
     const offer = await lp.evaluate(() => [...document.querySelectorAll('.v2-card')].map((c) => ({ id: c.dataset.upgrade, debut: c.dataset.debut ?? null, tag: c.querySelector('.v3-card-debut')?.textContent ?? null })));
     const debut = offer.filter((o) => o.debut);
-    check(debut.length >= 1 && debut.every((o) => ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'].includes(o.id) && /DARK WATER/i.test(o.tag)), `the first draft in Dark Water deals one of its new weapons, marked on the card (${JSON.stringify(offer)})`);
+    check(debut.length >= 1 && debut.every((o) => ['grapnel', 'bomberWing', 'orbital', 'dualWield', 'focus'].includes(o.id) && /^New on Dark Water$/.test(o.tag)), `the first draft in Dark Water deals one of its new weapons, marked on the card (${JSON.stringify(offer)})`);
     await lp.close();
   }
 

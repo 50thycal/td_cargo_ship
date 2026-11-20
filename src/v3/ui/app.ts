@@ -55,7 +55,7 @@ import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, replay, replay
 import { Restorer, printDiff, runPrint, samePrint } from '../sim/resume';
 import { canContinue, canSaveRuns, clearRun, loadRun, makeRunSave, saveRun, timeAgo, type RunSave } from '../platform/runSave';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
-import { FOES, FOES_BUILT, RED_FOES, foeDebutTag, foesInChapter, type FoeSetting } from '../data/foes';
+import { FOES, FOES_BUILT, RED_FOES, foeDebutTag, newOnTag, foesInChapter, type FoeSetting } from '../data/foes';
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
@@ -4177,7 +4177,7 @@ export class App {
       // across the card's top edge (the 2026-11-20 playtest: "on top of the
       // card and not overlapped on the middle of card").
       const chapter = chapterOf(g.map.id);
-      const debut = id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id) ? el('span', 'v3-card-debut', `NEW · ${CHAPTERS[chapter - 1].name}`) : null;
+      const debut = id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id) ? el('span', 'v3-card-debut', newOnTag(chapter)) : null;
       if (debut) card.dataset.debut = String(chapter);
       // The Test Lab (round 8: "I didn't see the grapple upgrade"): the
       // weapon under test is the first card, and says so.

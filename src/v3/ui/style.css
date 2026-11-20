@@ -1482,18 +1482,18 @@ body {
   right: 0;
   z-index: 1;
   height: 16px;
-  padding: 0 14px;
+  padding: 0 6px;
   line-height: 16px;
   text-align: center;
   background: color-mix(in srgb, var(--card-color, var(--accent)) 85%, #000);
   color: #071119;
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-transform: uppercase;
+  /* Round 12: "New on The Narrows", as written (no capitals). */
   pointer-events: none;
 }
 

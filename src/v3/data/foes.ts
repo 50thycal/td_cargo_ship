@@ -96,12 +96,19 @@ export const FOE_OF_KIND: Partial<Record<ThreatKind, FoeId>> = Object.fromEntrie
 
 /** Rule m-debut-tag (docs/design/v3-map-wave-rules.md): a new enemy from
  *  chapter 2 on is announced with its chapter, as the chapter's new weapon
- *  cards are ("NEW · The Narrows"). Chapter 1's (the game's first enemies)
+ *  cards are ("New on The Narrows"). Chapter 1's (the game's first enemies)
  *  and anything that is not a new enemy: none. */
 export function foeDebutTag(kind: ThreatKind): string | null {
   const id = FOE_OF_KIND[kind];
   if (!id || FOES[id].chapter < 2) return null;
-  return `NEW · ${CHAPTERS[FOES[id].chapter - 1].name}`;
+  return newOnTag(FOES[id].chapter);
+}
+
+/** The tag a chapter's new weapons and enemies carry. Round 12 (the
+ *  player: "NEW · The Narrows" should read "New on The Narrows"): "New on
+ *  The Narrows", "New on Dark Water". */
+export function newOnTag(chapter: number): string {
+  return `New on ${CHAPTERS[chapter - 1].name}`;
 }
 
 /** The foes that debut in a chapter. */

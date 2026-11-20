@@ -1039,11 +1039,11 @@ describe('Test Lab round 4 notes (2026-11-09): the Dive Bomber, the Incendiary M
 
 describe('m-debut-tag: a new enemy says which chapter brought it', () => {
   it('from chapter 2 on, a new enemy\'s first banner carries its chapter, as the chapter\'s new weapon cards do; chapter 1\'s and the old threats carry none', () => {
-    expect(foeDebutTag('attackHeli')).toBe('NEW · The Narrows');
-    expect(foeDebutTag('torpedoSub')).toBe('NEW · The Narrows');
-    expect(foeDebutTag('stealthJet')).toBe('NEW · Dark Water');
-    expect(foeDebutTag('cloud')).toBe('NEW · Open War');
-    for (const id of FOE_ORDER.filter((f) => FOES[f].chapter >= 2)) expect(foeDebutTag(FOES[id].kind), id).toMatch(/^NEW · /);
+    expect(foeDebutTag('attackHeli')).toBe('New on The Narrows');
+    expect(foeDebutTag('torpedoSub')).toBe('New on The Narrows');
+    expect(foeDebutTag('stealthJet')).toBe('New on Dark Water');
+    expect(foeDebutTag('cloud')).toBe('New on Open War');
+    for (const id of FOE_ORDER.filter((f) => FOES[f].chapter >= 2)) expect(foeDebutTag(FOES[id].kind), id).toMatch(/^New on /);
     expect(foeDebutTag('hydra')).toBeNull();
     expect(foeDebutTag('drone')).toBeNull();
     expect(foeDebutTag('heavy')).toBeNull();
