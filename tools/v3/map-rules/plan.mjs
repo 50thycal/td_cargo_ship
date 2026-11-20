@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-19',
-  headline: 'Overnight: your playtest notes, round 9, The Needle of Bosk and The Archipelago are all merged; Saltgate Canal (the last chapter 2 map) is being built. Next for you: play chapter 2 from Test Lab → Ready to test, and four quick questions.',
+  updated: '2026-11-20',
+  headline: 'Overnight: your playtest notes, round 9 and all three new chapter 2 maps (The Needle of Bosk, The Archipelago, Saltgate Canal) are built. Chapter 2 is five of five. Next for you: play chapter 2 from Test Lab → Ready to test, and two quick questions (Air Strike, Saltgate).',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -81,7 +81,7 @@ export const STATUS = {
     { id: 'ch1', name: 'Chapter 1: Kesh and Marrow', state: 'now', detail: 'Rebuilt (#169), played twice by you, changed after each (#174 v29, #178 v30). Your v29 replays were flat for 6–9 waves, then a cliff. v30 moves a little fire from waves 9–10 into waves 2–7 (within 15% a wave). Bot on your setup, ships lost in waves 6–10: Kesh .04, 1.00, .50, .43, .74 → .21, .21, .08, .25, .88; Marrow .08, .50, .61, .83, 1.43 → .25, .25, .42, .67, .78. Kesh’s wave 3 tension 0.41 → 0.94. Boss intro: BOSS ROUND → Convoy restored (6 ships can still be lost) → the boss’s name → Round 1 of 3, with a card for rounds 2 and 3. The verdict sheet starts blank; earlier verdicts show as history. Still flagged by the checks (moved, not worse): a cliff on Marrow’s wave 7 in tough runs, and a stretch with no safe breather on both maps.' },
     { id: 'rate', name: 'Your rating screen in the Test Lab', state: 'done', detail: 'Merged (#173). The Test Lab end screen is the normal game’s “Rate & review this run”: Fun, Difficulty, the new Intensity, Boss rounds, Compared with the last map, Play again; then the run’s timeline with Watch it and notes, where you pick the best and weakest wave; then the Test Lab verdict. Best moment is gone. At each weapon pick an optional “Rate wave N” row (difficulty, fun, intensity 1–5 and a note) saves as you tap; your fun ratings then suggest the best and weakest wave. The three boss rounds play back to back, so only waves 1–10 get the row.' },
     { id: 'combos', name: 'Bot test of every weapon combination', state: 'done', detail: 'Done (#176): about 11,000 bot runs, re-run in full on play log v29 (docs/design/v3-combo-sweep.md). No kit makes a map trivial: the one lead (Shrapnel + Scattergun + Flak on Marrow, perfect on 4 seeds) lost 5.6 ships a run on 16. The first good weapon does most of the work (plain gun 18.6 ships lost over 13 waves, one good weapon 8.4–9.4, the best three 7.6). Best sets: Air Strike + Point Defense + Supply Run, Air Strike + Flak + Point Defense, Point Defense + Railgun + Supply Run. Supply Run is the best partner. Your Overdrive + Scattergun + Supply Run kit is still weak for the bot (11.7 lost, 28% won) though you won twice with it: the bot plays boosts and pickups badly, so it gets checked on one of your logs before any change. Armory: Armor Plating (13 ships saved) and Damage Control (9) matter most, Stockpile and Quick Reload least; the Armory matters about twice as much as the loadout. On v29 Marrow is now the easiest map for the bot (83% won drafting for itself) and Kesh the hardest (8%): your replay decides whether either moves. Seven proposals are in the doc; nothing is retuned without you.' },
-    { id: 'ch2', name: 'Chapter 2: The Narrows', state: 'now', detail: 'Four of five rebuilt: The Island, The Behemoth Run, The Needle of Bosk (#193), The Archipelago (#197); Saltgate Canal is being built. The Island and The Behemoth Run are rebuilt (#180, play log v31), with map cards (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md), one encounter a wave and rising boss rounds (the Island: Gunship Wall; the Behemoth: Wolf Pack). As they were, both maps were flat for six waves and then a cliff; waves 6–10 now send most of their shells as drones. Bot with your Armory: the Island won 92% → 50%, ships lost in waves 1–5 0.25 → 0.88, boss rounds 1.3 / 1.7 / 1.6; the Behemoth won 58% → 42%, waves 1–5 0.29 → 0.71, boss rounds 0.5 / 2.2 / 2.5. Counter kits, all draftable in chapter 2: the Island, Gravity Well + Drone Screen + Gunship Pair (matches the bot’s own picks); the Behemoth, Shield + Frigate Escort + Air Strike (8.9 lost against 12.3). New enemies show “NEW · The Narrows” on their first banner. Still flagged: on the Island the south lane’s way in takes 28% of the damage (line 25%), left as it is. Next: the Needle of Bosk, the Archipelago and Saltgate Canal, after your play.' },
+    { id: 'ch2', name: 'Chapter 2: The Narrows', state: 'now', detail: 'All five rebuilt: The Island, The Behemoth Run, The Needle of Bosk (#193), The Archipelago (#197), Saltgate Canal (#199). Waiting on your play. The Island and The Behemoth Run are rebuilt (#180, play log v31), with map cards (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md), one encounter a wave and rising boss rounds (the Island: Gunship Wall; the Behemoth: Wolf Pack). As they were, both maps were flat for six waves and then a cliff; waves 6–10 now send most of their shells as drones. Bot with your Armory: the Island won 92% → 50%, ships lost in waves 1–5 0.25 → 0.88, boss rounds 1.3 / 1.7 / 1.6; the Behemoth won 58% → 42%, waves 1–5 0.29 → 0.71, boss rounds 0.5 / 2.2 / 2.5. Counter kits, all draftable in chapter 2: the Island, Gravity Well + Drone Screen + Gunship Pair (matches the bot’s own picks); the Behemoth, Shield + Frigate Escort + Air Strike (8.9 lost against 12.3). New enemies show “NEW · The Narrows” on their first banner. Still flagged: on the Island the south lane’s way in takes 28% of the damage (line 25%), left as it is. Next: the Needle of Bosk, the Archipelago and Saltgate Canal, after your play.' },
     { id: 'ch3', name: 'Chapters 3–4', state: 'later', detail: 'A chapter at a time, the same way.' },
   ],
   prs: [
@@ -127,9 +127,13 @@ export const STATUS = {
     { n: 195, title: 'Your playtest notes (log v36): Shield breaks after hits, helicopters, the sub under water, rating screen, “Wave N of 10”', state: 'merged' },
     { n: 196, title: 'Hub update', state: 'merged' },
     { n: 197, title: 'Chapter 2: The Archipelago rebuilt (log v37)', state: 'merged' },
+    { n: 198, title: 'Hub update', state: 'merged' },
+    { n: 199, title: 'Chapter 2: Saltgate Canal rebuilt (log v38)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Your answers read: Shield goes softer (breaks after 2 / 3 / 4 hits); the wave rating stays everywhere notes are on; Kesh and Marrow stay as they are, and the end-of-run scorecard gets an Effort rating (how hard you tried, 1–5) so a casual run isn’t read as the map being hard. Both are being built.' },
+    { date: '2026-11-20', what: 'Merged #199 (log v38): Saltgate Canal rebuilt, the last chapter 2 map. The problem: two locks hold each ship still in a chamber right under an enemy silo, so fire comes from close range at ships that can’t move. A new aim, “at the lock”, is used by nine of ten waves. Signature from wave 4: a strike on the locks (torpedo subs at the canal ends plus cluster missiles aimed into the chambers, 23% of waves 4–10). Boss: Run the Canal (three subs, then a gunship, then an armored block). Bot with your Armory: won 42% → 58%, waves 1–5 lose 0.50, boss rounds 0.85 / 1.50 / 1.56, the wave-cliff check now passes. Best single weapon here is Point Defense (not Air Strike) and the #1 kit is Saltgate’s own; one top-5 kit is shared with the Island. Chapter 2 is five of five.' },
     { date: '2026-11-20', what: 'Merged #197 (log v37): The Archipelago rebuilt. The problem: a chain of enemy islets lines the lane, and fire comes from the islets, the gaps, the far shore and behind; the west end, where ships come in, is the danger stretch. Signature: drone motherships with Scavenger escorts from wave 4. Boss: the Supply Raid from every side (one weapon in each round’s first cargo run). Bot with your Armory: won 46–55% (bottom of the band), waves 1–5 lose 0.5–0.65, boss rounds about 0.9 / 0.9 / 1.3 on normal runs. Every chapter 2 map now has its own best kit (no top-5 kit shared between any two). Started: Saltgate Canal, the last chapter 2 map.' },
     { date: '2026-11-20', what: 'Merged #195 (log v36), your playtest notes: the NEW tag is a band across the top of draft cards; Shield breaks after 1 / 2 / 3 hits with pips and cracks (alone it falls from the top 3 to mid-pack on chapter 2); helicopters fire whenever on screen (first volley 3 s after arriving, 5 HP); the wave rating has its own screen between the wave and the draft; “Wave N of 10” and “Boss · Round N of 3” everywhere; the Scavenger takes 3 hits; the torpedo sub can’t be hit and shows as a shadow with a periscope, so to keep it fair its torpedoes are slower (40 px/s) and clearer, it fires 2, and the Behemoth Run has no sub before wave 6 (bot torpedo sinks there 1.5 → 0.33 a run). Your four runs are in the bot fit: on The Island and The Behemoth Run the bot matches you; on Kesh and Marrow it wins far more than you did (question in Needs you).' },
     { date: '2026-11-20', what: 'Overnight, merged #192 (round 9, log v34): Overdrive lasts 18 s at level 1 (21 s at level 2 and MAX); The Island sends attack helicopters from wave 6 and The Behemoth Run sends jets down the tanker’s lane, as each map’s signature; the Behemoth’s boss is now a jet strike on the supertanker (Shield doesn’t stop jets). The two maps no longer share a best kit (their top-5 kits have nothing in common). Merged #193 (log v35): The Needle of Bosk, the first chapter 2 map inside the 50–70% band for the bot with your Armory (53–58%), boss rising 0.5 / 1.6 / 2.1, a different best kit and best single weapon from the other two maps. Still building: your playtest notes (Shield breaks after hits, helicopters fire sooner, the torpedo sub under water, the wave rating screen, “Wave N of 10”, the NEW tag, a tougher Scavenger), and the next map, The Archipelago.' },
@@ -169,36 +173,22 @@ export const NEEDS = [
   {
     id: 'r11-airstrike',
     kind: 'question',
-    title: 'Air Strike is now the best single weapon on three of the four chapter 2 maps',
-    text: 'Once Shield started breaking after hits, Air Strike became the best weapon alone on The Island, The Behemoth Run and The Archipelago (The Needle’s is the Gunship Pair). The best three-weapon kits are still different on every map, so the maps do ask different questions; it is only the first pick that is the same.',
+    title: 'Air Strike is now the best single weapon on three of the five chapter 2 maps',
+    text: 'Once Shield started breaking after hits, Air Strike became the best weapon alone on The Island, The Behemoth Run and The Archipelago (The Needle’s is the Gunship Pair, Saltgate’s is Point Defense, though Air Strike is in four of Saltgate’s five best kits). The best three-weapon kits are still different on every map, so the maps do ask different questions; it is only the first pick that is the same.',
     options: ['A small Air Strike trim across chapter 2, then re-check (recommended)', 'Leave it: a strong first pick is fine if the kits differ', 'Decide after I play chapter 2'],
   },
   {
-    id: 'r11-shield-hits',
-    kind: 'question',
-    title: 'Shield now breaks after 1 / 2 / 3 hits (level 1 / 2 / MAX). Right?',
-    text: 'As you asked, every missile, drone or shell it stops counts as one hit, whatever its damage; it still times out at 15 s (18 s at MAX). Alone it drops from the top 3 weapons on the chapter 2 maps to mid-pack (#5–11 of 20). With 2 / 3 / 4 hits it went back toward the top.',
-    options: ['Keep 1 / 2 / 3 (recommended)', 'Softer: 2 / 3 / 4', 'Decide after I play it'],
-  },
-  {
-    id: 'r11-rating-where',
-    kind: 'question',
-    title: 'The wave rating screen: where should it show?',
-    text: 'It now shows between a wave and the weapon draft, waves 1–10, everywhere playtest notes are on (Test Lab map cards, and the campaign and Free Play when notes are on), with Skip and Next.',
-    options: ['Everywhere notes are on (recommended)', 'Test Lab map cards only'],
-  },
-  {
-    id: 'r11-bot-gap',
-    kind: 'question',
-    title: 'The bot finds Kesh and Marrow much easier than you do. Which way do we lean?',
-    text: 'On your seeds and picks the bot won Marrow 94% and Kesh 81%, where you lost Marrow on wave 8 and Kesh in boss round 3 (5 ships). On The Island and The Behemoth Run the bot and you agree. Either your chapter 1 runs were rougher than usual, or the bot plays those two maps better than a person can.',
-    options: ['Trust my runs: ease Kesh’s boss round 3 and Marrow’s waves 7–8 a little (recommended)', 'Trust the bot: leave them, I’ll replay', 'Teach the bot first (find what it does that I don’t)'],
-  },
-  {
-    id: 'r11-play-ch2',
+    id: 'r12-play-ch2',
     kind: 'item',
-    title: 'Play chapter 2: The Island, The Behemoth Run, and the new Needle of Bosk and Archipelago',
-    text: 'Test Lab → Ready to test. The Island now brings attack helicopters from wave 6 (its signature). The Behemoth Run’s boss is now a jet strike on the supertanker, and its wave 5 is eased. The Needle of Bosk is new: the convoy queues single file at a narrow mouth between two headlands, armored-drone walls come from wave 4, and the boss is the Shield Wall. Also new in this build (your playtest notes): Shield breaks after 1 / 2 / 3 hits, helicopters fire as soon as they’re on screen, the torpedo sub stays under water (shoot its torpedoes), the Scavenger takes 3 hits, “Wave N of 10”, the wave rating on its own screen, and the NEW tag across the top of draft cards. The Archipelago is new too: a chain of enemy islets lines the lane and fires from the islets, the gaps, the far shore and behind; drone motherships with Scavenger escorts come from wave 4, and the boss is a Supply Raid from every side. Look for: does each map ask its own question? Does the Needle’s queue feel like the place to defend? Does the Archipelago feel like fire from every direction? Is the Behemoth fair now? Approve when played (with a note), or Change.',
+    title: 'Play chapter 2: all five maps (The Island, The Behemoth Run, The Needle of Bosk, The Archipelago, Saltgate Canal)',
+    text: 'Test Lab → Ready to test. The Island now brings attack helicopters from wave 6 (its signature). The Behemoth Run’s boss is a jet strike on the supertanker, and its wave 5 is eased. The Needle of Bosk: the convoy queues single file at a narrow mouth, armored-drone walls come from wave 4, and the boss is the Shield Wall. The Archipelago: a chain of enemy islets fires from the islets, the gaps, the far shore and behind; drone motherships with Scavenger escorts from wave 4; the boss is a Supply Raid from every side. Saltgate Canal: ships sit still in two locks under enemy silos; from wave 3 a missile drops off the silo into the west chamber, from wave 4 periscopes rise at the canal ends (shoot the slow torpedoes, not the sub) and cluster missiles split over a full chamber; the boss, Run the Canal, is three subs, then a gunship, then an armored block. Also new (your playtest notes): Shield breaks after 1 / 2 / 3 hits, helicopters fire as soon as they’re on screen, the torpedo sub stays under water, the Scavenger takes 3 hits, “Wave N of 10”, the wave rating on its own screen, and the NEW tag across the top of draft cards. Look for: does each map ask its own question? Do Saltgate’s locks feel like the problem, and is there time to answer the silo’s missile? Approve when played (with a note), or Change.',
+  },
+  {
+    id: 'r12-saltgate',
+    kind: 'question',
+    title: 'Saltgate Canal: keep it as built?',
+    text: 'Built choices: the signature is torpedo subs plus cluster missiles aimed at the locks (subs alone were only about 10% of hits, and as every new enemy they sank ships in one hit); the convoy runs at the campaign’s slower flow, because at the faster flow the boss was much harder for the bot; boss rounds read 0.85 / 1.50 / 1.56 for the bot (under the 1.5 / 2 / 2.5 aim in rounds 1 and 3) while it wins 55–58%. With the latest Armory instead of yours, the bot wins only 25% and wave 8 is a cliff.',
+    options: ['Keep it as built and judge from my play (recommended)', 'Raise the boss to the 1.5 / 2 / 2.5 aim (fewer wins)', 'Subs only for the signature'],
   },
 
 ];
@@ -206,6 +196,33 @@ export const NEEDS = [
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r11-shield-hits',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Softer: 2 / 3 / 4 hits (level 1 / 2 / MAX). Being built.',
+    at: '2026-11-20',
+    title: 'Shield breaks after how many hits?',
+    text: '',
+  },
+  {
+    id: 'r11-rating-where',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Everywhere playtest notes are on (as built).',
+    at: '2026-11-20',
+    title: 'The wave rating screen: where should it show?',
+    text: '',
+  },
+  {
+    id: 'r11-bot-gap',
+    kind: 'question',
+    verdict: 'Answered',
+    note: '“Could have been me just not trying that hard. In the end game’s score card add a rating for how hard I tried, so we know if it was a fluke or if it truly is hard.” Kesh and Marrow left as they are; an effort rating is being added to the scorecard.',
+    at: '2026-11-20',
+    title: 'The bot finds Kesh and Marrow much easier than you do',
+    text: '',
+  },
   {
     id: 'r8-replay-ch1',
     kind: 'item',
