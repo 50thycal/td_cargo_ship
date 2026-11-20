@@ -3752,7 +3752,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at a lock in most runs; a good player loses under half a ship.',
     notes: {
       sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; drones), the west shore silo (220, 150; drones).',
-      target: 'The missile at the ship held at the west lock, under its silo; the east swarm at any ship, the west swarm at the ships coming in.',
+      target: 'The missile at the ship held at the west lock, under its silo; the swarms at any ship.',
       usesMap: 'The silo over a lock fires point-blank at ships that cannot move, in place of the wave\'s shells and guided missile.',
     },
     beats: [
@@ -3775,7 +3775,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'The cluster is shot down before it splits in most runs; no ship lost in most runs.',
     notes: {
       sites: 'The silo over the west lock (580, 240; a cluster), the west shore silo (220, 150) and the east lock\'s silo (1220, 240; swarms).',
-      target: 'The cluster at the ship held at the west lock, the east swarm at any ship, the west swarm at the ships coming in.',
+      target: 'The cluster at the ship held at the west lock, the swarms at any ship.',
       usesMap: 'A chamber packs its ships together, so a cluster over it reaches several; in place of the wave\'s shells and its cluster (the first torpedo sub comes with the wave).',
     },
     beats: [
@@ -3798,7 +3798,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'One lock is saved first and the other takes a hit or a close call in most runs.',
     notes: {
       sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; a swarm), the west shore silo (220, 150; two swarms).',
-      target: 'The missile at the ship held at the west lock, the east swarm and one west swarm at any ship, the other west swarm at the ships coming in.',
+      target: 'The missile at the ship held at the west lock, the swarms at any ship.',
       usesMap: 'Both ends of the canal at once (rule g-split), in place of the wave\'s shells, guided missiles, its heavy and its cluster.',
     },
     beats: [
@@ -3822,7 +3822,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at a lock in most runs; the losses are at the locks, not on the lake.',
     notes: {
       sites: 'A submarine in the east sea (1480, 610; shells), the west shore silo (220, 150; two swarms), the east lock\'s silo (1220, 240; a swarm).',
-      target: 'The shells at the ship held at the lock nearest the sub (the east lock), the swarms at any ship.',
+      target: 'The three shells at the ship held at the lock nearest the sub (the east lock), the swarms at any ship.',
       usesMap: 'The open sea beyond the east gate, behind the convoy, at the lock, in place of the wave\'s shells, guided missiles and its heavy.',
     },
     beats: [
@@ -3840,14 +3840,14 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Down the canal',
     callout: 'A jet down the canal',
-    premise: 'A strafer runs in from the west down the canal while the ships wait in the locks, a cluster lifts off over the west lock, and the east lock\'s silo sends swarms.',
-    decision: 'A jet along a line of ships that cannot get out of its way, while the silos fire at the chambers.',
-    counters: 'The jet as it comes in, the cluster before it splits, the swarms last.',
+    premise: 'A strafer runs in from the west down the canal while the ships wait in the locks, and swarms come off the east lock\'s silo and the west shore.',
+    decision: 'A jet along a line of ships that cannot get out of its way, while swarms come from both ends.',
+    counters: 'The jet as it comes in, the swarms after.',
     succeeds: 'The jet is shot down or passes with a hit or two; a close call at a lock.',
     notes: {
-      sites: 'A strafer from the west edge, the silo over the west lock (a cluster), the east lock\'s silo and the west shore silo (swarms).',
-      target: 'The jet along the canal, the cluster at the ship held at the west lock, the east swarms at any ship, the west swarm at the ships coming in.',
-      usesMap: 'The canal is one straight line of held ships: a jet down it finds them all, in place of the wave\'s shells, a cluster and one jet.',
+      sites: 'A strafer from the west edge, the east lock\'s silo (two swarms) and the west shore silo (a swarm).',
+      target: 'The jet along the canal, the swarms at any ship.',
+      usesMap: 'The canal is one straight line of held ships: a jet down it finds them all, in place of the wave\'s shells, a cluster and one jet (its cluster was the step to a cliff).',
     },
     beats: [
       { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
@@ -3870,7 +3870,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'Most clusters are shot down before they split; the wave hurts but does not end the run.',
     notes: {
       sites: 'The silo over the west lock (580, 240) and the east lock\'s silo (1220, 240; a cluster each, then a swarm from the east one), the west shore silo (three swarms).',
-      target: 'Each cluster at the ship held at the lock nearest its silo; one west swarm at the ships coming in, one at the ship halfway along, the rest at any ship.',
+      target: 'Each cluster at the ship held at the lock nearest its silo; one swarm at the ship halfway along, the rest at any ship.',
       usesMap: 'Both chambers, a canal apart (rule g-split), in place of the wave\'s shells, both its clusters, its heavy and one of its jets.',
     },
     beats: [
@@ -3896,7 +3896,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call at a lock in most runs; the wave hurts but does not end the run.',
     notes: {
       sites: 'The silo over the west lock (580, 240; guided), a submarine in the west sea (200, 610; shells), the east lock\'s silo (three swarms) and the west shore silo (a swarm).',
-      target: 'The missile at the ship held at the west lock, the shells at the ships coming in, the last swarm at the ship halfway along, the others at any ship.',
+      target: 'The missile at the ship held at the west lock, the three shells at the ships coming in (the west sea, the map\'s safe stretch, gets its one wave here), the last swarm at the ship halfway along, the others at any ship.',
       usesMap: 'The lock and the sea before it, short warning and behind, in place of the wave\'s shells, guided missiles, a cluster and a heavy.',
     },
     beats: [
@@ -3916,12 +3916,12 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'Through both locks',
     callout: 'Every lock at once',
-    premise: 'Once the wave\'s own fire is spent, a cluster over each lock and a last swarm off the east lock\'s silo; swarms off both shores all wave.',
+    premise: 'Once the wave\'s own fire is spent, a cluster over each lock, a few seconds apart; swarms off both shores all wave.',
     decision: 'Both locks at once at the end, and the ships cannot move: the fullest chamber first.',
     counters: 'The clusters before they split, the swarms between.',
     succeeds: 'A close call at both locks in most runs; the climax is the hardest wave.',
     notes: {
-      sites: 'The silo over the west lock (a cluster) and the east lock\'s silo (a cluster, a swarm) after the wave\'s own fire; the west shore and east lock\'s silos (swarms) all wave.',
+      sites: 'The silo over the west lock and the east lock\'s silo (a cluster each, 4 s apart) after the wave\'s own fire; the west shore and east lock\'s silos (five swarms) all wave.',
       target: 'Each cluster at the ship held at the lock nearest its silo, two swarms at the ship halfway along, the others at any ship.',
       usesMap: 'Both locks at the top of the climb, in place of the wave\'s shells, most guided missiles, a heavy, the clusters, a supersonic and a jet; the climax may reach the lake.',
     },
