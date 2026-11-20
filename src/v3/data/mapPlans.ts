@@ -213,6 +213,18 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch2-saltgate.md
+  saltgate: {
+    problem: 'Two locks stop the convoy: every ship waits still in a chamber while it fills, right under the silos over the locks, so the enemy fires at ships that cannot move, with banks close on both sides and little warning.',
+    counters: ['shrapnel', 'aegis', 'thermo'],
+    offCounter: ['seeker', 'railgun', 'frigate'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east down the canal; each lock takes what its chamber holds, shuts and fills, so the ships sail in short bursts and wait, bunched and still, at each gate.',
+    stretches: { danger: 'late', safe: 'middle' },
+    boss: {
+      plan: 'Run the Canal, rising: Torpedo Subs as the round opens (2, 3, 3; the event sends 2), a gunship over the far bank by a lock (1, 1, then 2; 4 then 5 hits), a block of armored drones (4, 6, 6; the event sends 4) and drone swarms (2 of 5, 2 of 6, 3 of 6; the event sends 1 of 5), with clusters and guided missiles off the silos over the locks at the ships held in them (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {
