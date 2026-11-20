@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-20',
-  headline: 'Overnight: all of chapter 2 is rebuilt (five of five), Shield takes 2 / 3 / 4 hits, the run review asks your Effort, and the four new Armory upgrades are in. Next for you: play chapter 2 from Test Lab → Ready to test, and five quick questions.',
+  headline: 'Your chapter 2 play is in: all five Keep. Building now: your notes (log v41) and Saltgate’s truck-assault boss (log v42). Three new questions below: the flat early waves, the Lifeboats rework and Quartermaster’s levels.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -135,6 +135,7 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Your chapter 2 runs read (all five Keep, difficulty right, effort 3–4; you lost in the boss rounds). Building now: your notes as one fix round (log v41): a shorter boss label (“Boss 1/3”), cluster missiles fly long enough to be shot before they split, the sub spawn audit (no subs over land, clear torpedo lines), the Behemoth shield bubble sized to the tanker, helicopters spaced apart, the note field kept visible while typing, “New on The Narrows”, the Drone Screen dev text gone, and Retry wave / Skip to boss in the Test Lab. Also building: Saltgate’s new boss, a mass truck assault on the ships bunched at the locks, and no subs on Saltgate (log v42). Left as they are: Air Strike and Boilers. Three new questions: the flat early waves, the Lifeboats rework, Quartermaster’s levels.' },
     { date: '2026-11-20', what: 'Merged #202 (log v40): the four new Armory upgrades you picked. Boilers (Hull): the convoy sails 4% faster a level, level 5 doubles Full Steam. Lifeboats (Hull): the first ship sunk in a wave counts as half a loss (2 / 4 / 6 / 8 waves a run, every wave at level 5); the SUNK pips fill by halves. Quartermaster (Supply): a Re-roll button on the weapon draft, 1 / 2 / 3 / 4 / 4 re-rolls a run, and level 5 deals 4 cards. Salvage Crews (Supply): +10% Scrap a level (528 → 792 Scrap a run at level 5). Measured alone at level 5 (ships saved a run; the others sit at 5–8): Boilers 1.5–2.5, Quartermaster about 2.5 for the bot, Lifeboats saves no ships but takes 3.5 off the loss tally and lifts wins 45–52% → 62% on your build. Three questions in Needs you.' },
     { date: '2026-11-20', what: 'Merged #201 (log v39): Shield now breaks after 2 / 3 / 4 hits (your pick). Alone it ranks #11 of 20 on the Island, the Behemoth and Saltgate (was #12–17), #17 on the Archipelago; the Needle reads #15 but that is within 12-seed noise. The end-of-run review now has an Effort row (1 = casual, 5 = all-out), in the Test Lab scorecard and the campaign / Free Play review; the bot fit flags runs at effort 2 or below and weighs them less. Please rate Effort on your chapter 2 runs.' },
     { date: '2026-11-20', what: 'Your answers read: Shield goes softer (breaks after 2 / 3 / 4 hits); the wave rating stays everywhere notes are on; Kesh and Marrow stay as they are, and the end-of-run scorecard gets an Effort rating (how hard you tried, 1–5) so a casual run isn’t read as the map being hard. Both are being built.' },
@@ -175,53 +176,87 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
-  {
-    id: 'r11-airstrike',
-    kind: 'question',
-    title: 'Air Strike is now the best single weapon on three of the five chapter 2 maps',
-    text: 'Once Shield started breaking after hits, Air Strike became the best weapon alone on The Island, The Behemoth Run and The Archipelago (The Needle’s is the Gunship Pair, Saltgate’s is Point Defense, though Air Strike is in four of Saltgate’s five best kits). The best three-weapon kits are still different on every map, so the maps do ask different questions; it is only the first pick that is the same.',
-    options: ['A small Air Strike trim across chapter 2, then re-check (recommended)', 'Leave it: a strong first pick is fine if the kits differ', 'Decide after I play chapter 2'],
-  },
-  {
-    id: 'r12-play-ch2',
-    kind: 'item',
-    title: 'Play chapter 2: all five maps (The Island, The Behemoth Run, The Needle of Bosk, The Archipelago, Saltgate Canal)',
-    text: 'Test Lab → Ready to test. The Island now brings attack helicopters from wave 6 (its signature). The Behemoth Run’s boss is a jet strike on the supertanker, and its wave 5 is eased. The Needle of Bosk: the convoy queues single file at a narrow mouth, armored-drone walls come from wave 4, and the boss is the Shield Wall. The Archipelago: a chain of enemy islets fires from the islets, the gaps, the far shore and behind; drone motherships with Scavenger escorts from wave 4; the boss is a Supply Raid from every side. Saltgate Canal: ships sit still in two locks under enemy silos; from wave 3 a missile drops off the silo into the west chamber, from wave 4 periscopes rise at the canal ends (shoot the slow torpedoes, not the sub) and cluster missiles split over a full chamber; the boss, Run the Canal, is three subs, then a gunship, then an armored block. Also new (your playtest notes and answers): rate Effort at the end of each run (how hard you tried), Shield breaks after 2 / 3 / 4 hits, helicopters fire as soon as they’re on screen, the torpedo sub stays under water, the Scavenger takes 3 hits, “Wave N of 10”, the wave rating on its own screen, and the NEW tag across the top of draft cards. Look for: does each map ask its own question? Do Saltgate’s locks feel like the problem, and is there time to answer the silo’s missile? Approve when played (with a note), or Change.',
-  },
-  {
-    id: 'r12-saltgate',
-    kind: 'question',
-    title: 'Saltgate Canal: keep it as built?',
-    text: 'Built choices: the signature is torpedo subs plus cluster missiles aimed at the locks (subs alone were only about 10% of hits, and as every new enemy they sank ships in one hit); the convoy runs at the campaign’s slower flow, because at the faster flow the boss was much harder for the bot; boss rounds read 0.85 / 1.50 / 1.56 for the bot (under the 1.5 / 2 / 2.5 aim in rounds 1 and 3) while it wins 55–58%. With the latest Armory instead of yours, the bot wins only 25% and wave 8 is a cliff.',
-    options: ['Keep it as built and judge from my play (recommended)', 'Raise the boss to the 1.5 / 2 / 2.5 aim (fewer wins)', 'Subs only for the signature'],
-  },
 
   {
-    id: 'r12-boilers',
+    id: 'r13-early-waves',
     kind: 'question',
-    title: 'Boilers is weak: give it a second job, or accept it?',
-    text: 'A faster convoy barely helps, because attacks are aimed at the ships wherever they are: at level 5 Boilers saves 1.5–2.5 ships a run alone (the other upgrades save 5–8), and even 50% faster only reaches about 3–5. Long Loads had the same problem and got a second job (it refills your rack on pickups).',
-    options: ['Give it a second job: ships under way take 10% less damage at level 5 (recommended)', 'Keep it as is: a weak card is fine if it feels good', 'Drop Boilers'],
+    title: 'Waves 1–6 feel flat on every map. Add action?',
+    text: 'On all five chapter 2 runs you rated waves 1–6 fun 1–2 and intensity 1, and wave 1 was the weakest every time; the climb from wave 7 to the boss scored 3–5. The rules keep early losses low (0.4–0.8 ships in waves 1–5), which is what the bots get, so this is about how much happens, not how hard it is.',
+    options: ['More action, same losses: more and weaker targets in waves 1–6, easy kills, an early pickup (recommended)', 'Shorter start: fewer quiet waves (e.g. 8 waves before the boss)', 'Leave it: a calm start is fine'],
   },
   {
-    id: 'r12-lifeboats',
+    id: 'r13-lifeboats',
     kind: 'question',
-    title: 'Lifeboats changes the loss rule. Keep it as built?',
-    text: 'The first ship sunk in a wave counts half a loss (every wave at level 5). It saves no ships but takes about 3.5 off the loss tally and lifts the bot’s wins on your build from 45–52% to 62%, the biggest win-rate effect of the four. The maps’ difficulty targets count whole losses, so with Lifeboats at level 5 every map plays easier than tuned.',
-    options: ['Keep it, but cap it lower: half a loss in at most 4 waves a run at level 5 (recommended)', 'Keep it as built', 'Drop Lifeboats'],
+    title: 'Lifeboats rework: which one?',
+    text: 'Your idea: an extra life, maybe from the draft, or health restored to the ships or the carrier. Each option gives every level something new.',
+    options: ['Lifeboat card in the draft: pick it between waves for one extra life; levels make it show up more often and let you take it more times (recommended)', 'Reserve ships: one extra life at levels 1–2, two at 3–4, three at 5', 'Repair crews: between waves damaged ships and the carrier get health back, more each level', 'Mix: repair between waves at levels 1–4, plus one extra life at level 5'],
   },
   {
-    id: 'r12-quartermaster',
+    id: 'r13-quartermaster',
     kind: 'question',
-    title: 'Quartermaster re-rolls: 1 / 2 / 3 / 4 / 4 a run (the plan said 1 → 3). OK?',
-    text: 'With 1 → 3 a level added nothing, like Deep Magazine’s old empty level. Beyond two re-rolls the bot gains nothing measurable, so 4 costs no balance. Level 5 also deals 4 cards instead of 3. For the bot it saves about 2.5 ships a run; a person drafting for each map may get more. Try the Re-roll button (top left of the draft) when you play.',
-    options: ['OK as built (recommended)', 'Back to 1 → 3', 'Decide after I play it'],
+    title: 'Quartermaster: something new at every level. This path?',
+    text: 'Your ideas: re-rolls, a free bomb, an automatic weapon level-up.',
+    options: ['L1 one re-roll · L2 two re-rolls · L3 a free bomb at the start of the boss · L4 three re-rolls · L5 four cards in the draft and one free weapon level-up a run (recommended)', 'Re-rolls only, one more each level (1 to 5)', 'L1–L4 re-rolls 1–4, L5 a free weapon level-up instead of the 4th card'],
   },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r11-airstrike',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "Leave it: a strong first pick is fine while the kits differ.",
+    at: '2026-11-20',
+    title: "Air Strike: trim it?",
+    text: '',
+  },
+  {
+    id: 'r12-boilers',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "Keep it as is.",
+    at: '2026-11-20',
+    title: "Boilers is weak: give it a second job?",
+    text: '',
+  },
+  {
+    id: 'r12-saltgate',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "“Switch the signature… make the boss the trucks: a ton of trucks drive in and shoot missiles while the ships are clustered together.” Subs move off Saltgate to the more open maps. Being built.",
+    at: '2026-11-20',
+    title: "Saltgate Canal: keep it as built?",
+    text: '',
+  },
+  {
+    id: 'r12-lifeboats',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "A rework: an extra life, maybe as a draft pick, or health restored to the ships or carrier. Options are in Needs you.",
+    at: '2026-11-20',
+    title: "Lifeboats changes the loss rule. Keep it?",
+    text: '',
+  },
+  {
+    id: 'r12-quartermaster',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "Every level should give something new: re-rolls, a free bomb, or an automatic weapon level-up. Options are in Needs you.",
+    at: '2026-11-20',
+    title: "Quartermaster re-rolls 1 / 2 / 3 / 4 / 4?",
+    text: '',
+  },
+  {
+    id: 'r12-play-ch2',
+    kind: 'item',
+    verdict: 'approve',
+    note: "All five played (v40), all Keep, difficulty “right”, effort 3–4: Saltgate fun 5 (lost in boss round 2), the Island fun 5 (boss round 2), the Behemoth 4 (boss round 1), the Needle 4 (reached the boss), the Archipelago 4 (lost wave 7, “bad setup”). Your notes (boss label wraps, clusters split off the launcher, subs over land, Behemoth shield bubble small, helicopters overlap, the note field hidden while typing, NEW label wording, Drone Screen dev text, Test Lab retry / skip to boss) are being fixed.",
+    at: '2026-11-20',
+    title: "Play chapter 2: all five maps",
+    text: '',
+  },
   {
     id: 'r11-shield-hits',
     kind: 'question',
