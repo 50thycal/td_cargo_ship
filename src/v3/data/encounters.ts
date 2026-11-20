@@ -4094,7 +4094,7 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
 /** Saltgate Canal (log v42; the player's v38 play: waves 1-6 rated 1-2 for
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
-const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.1, 1.1, 0.92, 0.9, 0.9, 0.9, 0.9];
+const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.1, 1.1, 0.92, 0.9, 0.9, 0.88, 0.92];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4480,7 +4480,7 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
     trucks: [
       { at: 0, lock: 0, bank: 'north', count: 4, gap: 1, salvos: 2 },
-      { at: 3, lock: 0, bank: 'south', count: 3, gap: 1, salvos: 2 },
+      { at: 3, lock: 0, bank: 'south', count: 4, gap: 1, salvos: 2 },
     ],
     swarms: 1,
     size: 5,
