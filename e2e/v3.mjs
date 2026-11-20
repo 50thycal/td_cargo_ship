@@ -1090,7 +1090,7 @@ try {
     await qp.click('[data-start]');
     await qp.waitForSelector('.playing');
     const st = await qp.evaluate(() => { const g = window.__v3.game(); return { rerolls: g.rerolls, cards: g.stats.draftCards, boats: g.stats.lifeboats }; });
-    check(st.rerolls === 3 && st.cards === 4 && st.boats > 6, `the run has Quartermaster 5 (3 re-rolls, 4 cards) and Lifeboats 5 (${JSON.stringify(st)})`);
+    check(st.rerolls === 4 && st.cards === 4 && st.boats > 6, `the run has Quartermaster 5 (4 re-rolls, 4 cards) and Lifeboats 5 (${JSON.stringify(st)})`);
     // Lifeboats: a ship that counted half fills half a pip (set by hand: the
     // sim's own half loss is in the unit tests).
     await qp.evaluate(() => { const g = window.__v3.game(); g.lost = 1; g.lossCredit = 0.5; });
@@ -1104,13 +1104,13 @@ try {
     const hand = () => qp.evaluate(() => [...document.querySelectorAll('.v2-card-row .v2-card')].map((c) => c.dataset.upgrade).filter((id) => id !== 'resupply'));
     const before = await hand();
     const btn = qp.locator('.v2-draft [data-reroll]');
-    check(before.length === 4 && (await btn.getAttribute('data-reroll')) === '3' && /3 left/.test(await btn.textContent()), `the draft deals four cards and offers a Re-roll with 3 left (${before.join()})`);
+    check(before.length === 4 && (await btn.getAttribute('data-reroll')) === '4' && /4 left/.test(await btn.textContent()), `the draft deals four cards and offers a Re-roll with 4 left (${before.join()})`);
     await qp.screenshot({ path: `${SHOT_DIR}/10b-draft-reroll.png` });
     await btn.tap();
     await qp.waitForTimeout(700);
     const after = await hand();
     const log = await qp.evaluate(() => { const l = window.__v3.log(); return { x: l.commands.filter((c) => c[1] === 'x').length, v: l.v, left: window.__v3.game().rerolls }; });
-    check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 2 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '2', `a re-roll deals a new hand, logged, 2 left (${after.join()}; ${JSON.stringify(log)})`);
+    check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 3 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '3', `a re-roll deals a new hand, logged, 3 left (${after.join()}; ${JSON.stringify(log)})`);
     await qp.locator('.v2-card:not([disabled])').first().tap();
     await qp.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
     const rep = await qp.evaluate(() => { const l = window.__v3.log(); const g = window.__v3.game(); const r = window.__v3.replay(l); return { live: g.steps, rep: r.steps, wave: r.wave === g.wave }; });

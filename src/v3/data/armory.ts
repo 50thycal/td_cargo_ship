@@ -152,9 +152,12 @@ const LIFEBOATS = [0, 2, 4, 6, 8, LIFEBOATS_ALL];
 /** Lifeboats: the share of a loss a ship saved by a boat still counts. */
 export const LIFEBOAT_LOSS = 0.5;
 /** Quartermaster: re-rolls of the weapon draft a run, and the cards a draft
- *  deals. Five levels over three re-rolls and the fourth card leave one
- *  step without a new number: level 3 (2 re-rolls, as level 2). */
-const REROLLS = [0, 1, 2, 2, 3, 3];
+ *  deals. The overhaul's brainstorm said 1 to 3 re-rolls and four cards at
+ *  level 5; that leaves a level with nothing new (as Deep Magazine's level 3
+ *  was), so the re-rolls go one a level to 4, and level 5 deals the fourth
+ *  card. Measured: past two re-rolls a run more change nothing (the bot
+ *  spends 1.7 a run; 3, 6 or 10 on hand save the same, new-upgrades.md). */
+const REROLLS = [0, 1, 2, 3, 4, 4];
 const DRAFT_CARDS = [3, 3, 3, 3, 3, 4];
 /** Salvage Crews: Scrap a run earns, × (1 + this). An economy card only. */
 const SALVAGE = [0, 0.1, 0.2, 0.3, 0.4, 0.5];

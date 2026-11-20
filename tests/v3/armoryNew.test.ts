@@ -40,8 +40,9 @@ describe('the four new upgrades: in the Armory like the others', () => {
       expect(ARMORY[id].max).toBe(ARMORY_MAX);
       expect([1, 2, 3, 4].map((l) => levelCost(id, l))).toEqual([1, 2, 3, 4].map((l) => levelCost('plating', l)));
       expect(levelCost(id, 5)).toBeNull();
-      // Every level reads as something (none of them says the same as no card).
-      for (let l = 1; l <= ARMORY_MAX; l++) expect(ARMORY[id].show(l)).not.toBe(ARMORY[id].show(0));
+      // Every level brings something new (no level repeats the one before,
+      // as Deep Magazine's level 3 once did).
+      for (let l = 1; l <= ARMORY_MAX; l++) expect(ARMORY[id].show(l), `${id} ${l}`).not.toBe(ARMORY[id].show(l - 1));
     }
   });
 
@@ -55,7 +56,7 @@ describe('the four new upgrades: in the Armory like the others', () => {
     expect(at('boilers', 'convoySpeed')).toEqual([1, 1.04, 1.08, 1.12, 1.16, 1.2]);
     expect(at('boilers', 'steamTime')).toEqual([1, 1, 1, 1, 1, 2]);
     expect(at('lifeboats', 'lifeboats')).toEqual([0, 2, 4, 6, 8, LIFEBOATS_ALL]);
-    expect(at('quartermaster', 'rerolls')).toEqual([0, 1, 2, 2, 3, 3]);
+    expect(at('quartermaster', 'rerolls')).toEqual([0, 1, 2, 3, 4, 4]);
     expect(at('quartermaster', 'draftCards')).toEqual([3, 3, 3, 3, 3, 4]);
     expect(at('salvage', 'salvage')).toEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5]);
   });
@@ -177,8 +178,8 @@ describe('Quartermaster', () => {
   });
 
   it('a re-roll deals again from the draft dice: the same on the same seed, a new hand, the count goes down', () => {
-    const a = toDraft({ quartermaster: 3 }).game;
-    const b = toDraft({ quartermaster: 3 }).game;
+    const a = toDraft({ quartermaster: 2 }).game;
+    const b = toDraft({ quartermaster: 2 }).game;
     expect(a.rerolls).toBe(2);
     const old = [...a.offer];
     expect(rerollDraft(a)).toBe(true);
