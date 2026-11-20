@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-19',
-  headline: 'Overnight: round 9 merged (Overdrive buff, chapter 2 signatures, the Behemoth’s jet strike) and The Needle of Bosk rebuilt. Still building: your playtest notes and The Archipelago. Next for you: play chapter 2 from Test Lab → Ready to test.',
+  headline: 'Overnight: your playtest notes are all in (Shield breaks after hits, helicopters, the sub under water, the rating screen, “Wave N of 10”), round 9 and The Needle of Bosk are merged, and The Archipelago is being built. Next for you: play chapter 2 from Test Lab → Ready to test, and three quick questions.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -123,9 +123,12 @@ export const STATUS = {
     { n: 191, title: 'Hub: your playtest read', state: 'merged' },
     { n: 192, title: 'Round 9 (log v34): Overdrive buff, chapter 2 signature threats, the Behemoth’s jet strike', state: 'merged' },
     { n: 193, title: 'Chapter 2: The Needle of Bosk rebuilt (log v35)', state: 'merged' },
+    { n: 194, title: 'Hub update', state: 'merged' },
+    { n: 195, title: 'Your playtest notes (log v36): Shield breaks after hits, helicopters, the sub under water, rating screen, “Wave N of 10”', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Merged #195 (log v36), your playtest notes: the NEW tag is a band across the top of draft cards; Shield breaks after 1 / 2 / 3 hits with pips and cracks (alone it falls from the top 3 to mid-pack on chapter 2); helicopters fire whenever on screen (first volley 3 s after arriving, 5 HP); the wave rating has its own screen between the wave and the draft; “Wave N of 10” and “Boss · Round N of 3” everywhere; the Scavenger takes 3 hits; the torpedo sub can’t be hit and shows as a shadow with a periscope, so to keep it fair its torpedoes are slower (40 px/s) and clearer, it fires 2, and the Behemoth Run has no sub before wave 6 (bot torpedo sinks there 1.5 → 0.33 a run). Your four runs are in the bot fit: on The Island and The Behemoth Run the bot matches you; on Kesh and Marrow it wins far more than you did (question in Needs you).' },
     { date: '2026-11-20', what: 'Overnight, merged #192 (round 9, log v34): Overdrive lasts 18 s at level 1 (21 s at level 2 and MAX); The Island sends attack helicopters from wave 6 and The Behemoth Run sends jets down the tanker’s lane, as each map’s signature; the Behemoth’s boss is now a jet strike on the supertanker (Shield doesn’t stop jets). The two maps no longer share a best kit (their top-5 kits have nothing in common). Merged #193 (log v35): The Needle of Bosk, the first chapter 2 map inside the 50–70% band for the bot with your Armory (53–58%), boss rising 0.5 / 1.6 / 2.1, a different best kit and best single weapon from the other two maps. Still building: your playtest notes (Shield breaks after hits, helicopters fire sooner, the torpedo sub under water, the wave rating screen, “Wave N of 10”, the NEW tag, a tougher Scavenger), and the next map, The Archipelago.' },
     { date: '2026-11-20', what: 'Your playtest read (four runs, all Keep, fun 4–5, difficulty “right” on all three you rated). Kesh: the climb works (nothing lost before wave 8, “much better”), the boss broke you in round 3 (5 ships): that is the spike to watch. Marrow: lost on wave 8 with losses spread over waves 4–8, no single cliff. The Island: your best run yet (fun 5, intensity 5, boss 5), losses rising steadily from wave 9. The Behemoth Run: lost on wave 6; 3 of your 5 early losses were one drone strike on the tanker (it counts 3), so its early waves hit harder for you than for the bot (0.7 a run in waves 1–5): the round 9 changes ease its wave 5 and turn its boss into a jet strike on the tanker, and its strength gets tuned again from your next run. Your notes are all being built overnight: the NEW tag on top of draft cards; Shield breaks after a number of hits; helicopters fire as soon as they have a target; the wave rating gets its own screen between waves; “Wave N of 10” on every map with boss rounds shown as boss rounds; the weapon-stealing Scavenger drone gets more health; the torpedo sub can’t be shot, only its torpedoes, and shows as a shadow with a periscope. Also merged: #190, the Armory overhaul (Scrap, the lift, Deck Guns). Started: the next map, The Needle of Bosk.' },
     { date: '2026-11-20', what: 'Merged #188 (play log v32): Marrow’s radar tower takes 3 hits instead of 2 (it falls around wave 8 for the bot, was 7; waves 7–10 send 10% more fire so Marrow stays where it was), each Narrows enemy debuts on its own drones-only wave on The Island with its “NEW · The Narrows” banner on the map card, and the Test Lab pause screen no longer shows an encounter’s counters. The Island reads a little hard for the bot (about 40% won against 50–70%): your play decides. Your round 9 answers are being built, to merge after your playtest: Overdrive level 1 lasts 18 s, The Island and The Behemoth Run each get a signature threat, and the Behemoth’s boss becomes heavy missiles at the supertanker. The four new Armory cards (Lifeboats, Salvage Crews, Boilers, Quartermaster) come after Scrap.' },
@@ -161,10 +164,31 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
+    id: 'r11-shield-hits',
+    kind: 'question',
+    title: 'Shield now breaks after 1 / 2 / 3 hits (level 1 / 2 / MAX). Right?',
+    text: 'As you asked, every missile, drone or shell it stops counts as one hit, whatever its damage; it still times out at 15 s (18 s at MAX). Alone it drops from the top 3 weapons on the chapter 2 maps to mid-pack (#5–11 of 20). With 2 / 3 / 4 hits it went back toward the top.',
+    options: ['Keep 1 / 2 / 3 (recommended)', 'Softer: 2 / 3 / 4', 'Decide after I play it'],
+  },
+  {
+    id: 'r11-rating-where',
+    kind: 'question',
+    title: 'The wave rating screen: where should it show?',
+    text: 'It now shows between a wave and the weapon draft, waves 1–10, everywhere playtest notes are on (Test Lab map cards, and the campaign and Free Play when notes are on), with Skip and Next.',
+    options: ['Everywhere notes are on (recommended)', 'Test Lab map cards only'],
+  },
+  {
+    id: 'r11-bot-gap',
+    kind: 'question',
+    title: 'The bot finds Kesh and Marrow much easier than you do. Which way do we lean?',
+    text: 'On your seeds and picks the bot won Marrow 94% and Kesh 81%, where you lost Marrow on wave 8 and Kesh in boss round 3 (5 ships). On The Island and The Behemoth Run the bot and you agree. Either your chapter 1 runs were rougher than usual, or the bot plays those two maps better than a person can.',
+    options: ['Trust my runs: ease Kesh’s boss round 3 and Marrow’s waves 7–8 a little (recommended)', 'Trust the bot: leave them, I’ll replay', 'Teach the bot first (find what it does that I don’t)'],
+  },
+  {
     id: 'r11-play-ch2',
     kind: 'item',
     title: 'Play chapter 2: The Island, The Behemoth Run and the new Needle of Bosk',
-    text: 'Test Lab → Ready to test. The Island now brings attack helicopters from wave 6 (its signature). The Behemoth Run’s boss is now a jet strike on the supertanker, and its wave 5 is eased. The Needle of Bosk is new: the convoy queues single file at a narrow mouth between two headlands, armored-drone walls come from wave 4, and the boss is the Shield Wall. Look for: does each map ask its own question? Does the Needle’s queue feel like the place to defend? Is the Behemoth fair now? Approve when played (with a note), or Change.',
+    text: 'Test Lab → Ready to test. The Island now brings attack helicopters from wave 6 (its signature). The Behemoth Run’s boss is now a jet strike on the supertanker, and its wave 5 is eased. The Needle of Bosk is new: the convoy queues single file at a narrow mouth between two headlands, armored-drone walls come from wave 4, and the boss is the Shield Wall. Also new in this build (your playtest notes): Shield breaks after 1 / 2 / 3 hits, helicopters fire as soon as they’re on screen, the torpedo sub stays under water (shoot its torpedoes), the Scavenger takes 3 hits, “Wave N of 10”, the wave rating on its own screen, and the NEW tag across the top of draft cards. Look for: does each map ask its own question? Does the Needle’s queue feel like the place to defend? Is the Behemoth fair now? Approve when played (with a note), or Change.',
   },
 
 ];
