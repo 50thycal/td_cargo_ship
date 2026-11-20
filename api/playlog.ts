@@ -16,11 +16,23 @@ const MAX_BYTES = 1024 * 1024;
 const ID_RE = /^[0-9A-Za-z-]{1,64}$/;
 const READ_HOST_RE = /^(td-cargo-ship-[a-z0-9]{9}-50cals-projects\.vercel\.app|localhost(:\d+)?)$/;
 
-const json = (body: unknown, status = 200): Response =>
+const json = (body: unknown, status = 200, extra: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...extra },
   });
+
+/** Writes may come from the game served at another address (playlogStore's
+ *  REMOTE_LOG_URL); reads stay on the protected deployment URLs only. */
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-allow-headers': 'content-type',
+};
+
+export function OPTIONS(): Response {
+  return new Response(null, { status: 204, headers: CORS });
+}
 
 /** Just enough shape to keep junk out; the game's PlayLog is the real schema. */
 function validLog(x: unknown): x is { id: string; map: string; seed: number; commands: unknown[] } {
@@ -38,14 +50,14 @@ function validLog(x: unknown): x is { id: string; map: string; seed: number; com
 
 export async function POST(request: Request): Promise<Response> {
   const text = await request.text();
-  if (text.length > MAX_BYTES) return json({ error: 'too large' }, 413);
+  if (text.length > MAX_BYTES) return json({ error: 'too large' }, 413, CORS);
   let log: unknown;
   try {
     log = JSON.parse(text);
   } catch {
-    return json({ error: 'not json' }, 400);
+    return json({ error: 'not json' }, 400, CORS);
   }
-  if (!validLog(log)) return json({ error: 'not a playtest log' }, 400);
+  if (!validLog(log)) return json({ error: 'not a playtest log' }, 400, CORS);
   try {
     await put(`${PREFIX}${log.id}.json`, text, {
       access: 'private',
@@ -56,9 +68,9 @@ export async function POST(request: Request): Promise<Response> {
   } catch (e) {
     // Most often: no Blob store connected yet. The client keeps the log.
     console.error('playlog store failed:', e instanceof Error ? e.message : e);
-    return json({ error: 'storage unavailable' }, 503);
+    return json({ error: 'storage unavailable' }, 503, CORS);
   }
-  return json({ ok: true, id: log.id });
+  return json({ ok: true, id: log.id }, 200, CORS);
 }
 
 async function readLog(pathname: string): Promise<unknown> {
