@@ -164,7 +164,8 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'The map\'s own convoy, no commands: pairs west to east in the main lane, and once a wave the supertanker on its own, slower, in the deep lane under the north shore.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'The Wolf Pack by the deep lane: periscopes in two waves, each sub firing a spread of torpedoes (3 + 3, 4 + 3, then 4 + 4 subs; 1, 2, then 3 of them with a fast torpedo), with heavy cruise missiles at the supertanker (1, 2, then 2) and, in round 3, guided missiles from the headland at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
+      // Log v33 (round 9, r9-ch2-split): something the Shield doesn't stop.
+      plan: 'A strike on the supertanker (log v33): strike jets in pairs down the deep lane at the tanker and over the convoy (10, 12, then 12), which the Shield never stops, a heavy cruise missile at the tanker each round (2 in round 3), and what is left of the Wolf Pack: no sub, then 1, then 2 (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
     },
   },

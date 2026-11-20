@@ -3074,18 +3074,18 @@ const BEHEMOTH_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [7],
     role: 'escalate',
     name: 'Strafing the deep lane',
-    callout: 'A jet, and missiles at the tanker',
-    premise: 'A strafer runs in from the east as two guided missiles from the middle silo go for the tanker, with swarms from the west and east silos.',
-    decision: 'The jet sweeps the lanes; the missiles go for the tanker; the swarm for the convoy.',
-    counters: 'The jet as it comes in, the missiles while they cross, the swarms last.',
+    callout: 'A jet and a heavy at the tanker',
+    premise: 'A strafer runs in from the east down the tanker\'s lane as a heavy cruise missile and a guided missile from the middle silo go for it, with swarms from the west and east silos.',
+    decision: 'The jet and the heavy both go for the tanker, the swarms for the convoy: the boss rounds\' strike, in small.',
+    counters: 'The jet as it comes in, then the heavy (it needs many hits) and the missile while they cross, the swarms last.',
     succeeds: 'The tanker comes home in most runs; a close call on the convoy.',
     notes: {
-      sites: 'A strafer from the east edge; the north shore\'s middle silo (guided); its west and east silos (swarms).',
-      target: 'The jet any ship on its line, the missiles at the supertanker, the swarms at any ship.',
-      usesMap: 'Both lanes in one wave: the jet crosses them, the shore\'s missiles go for the tanker.',
+      sites: 'A strafer from the east edge; the north shore\'s middle silo (a heavy and a guided missile); its west and east silos (swarms).',
+      target: 'The jet down the supertanker\'s lane, the heavy and the missile at the supertanker, the swarms at any ship.',
+      usesMap: 'The map\'s signature (log v33): a strike on the tanker, a jet down the deep lane and a heavy from the shore, as the boss rounds send.',
     },
     beats: [
-      { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 }, aim: 'vip' },
       { at: 0.4, plus: 1.5, kind: 'heavy', count: 1, from: base(1), aim: 'vip' },
       { at: 0.4, plus: 2.5, kind: 'guided', count: 1, from: base(1), aim: 'vip' },
       { at: 0.4, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
@@ -3310,8 +3310,8 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   kesh: { v1: { name: 'Original', idea: 'One encounter a wave, built on the apex of the hook.', callouts: false, scale: KESH_CLIMB } },
   marrow: { v1: { name: 'Original', idea: 'One encounter a wave, built on the radar tower and the stretch it guards.', callouts: false, scale: MARROW_CLIMB } },
   // Chapter 2.
-  island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane.', callouts: false } },
-  behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it.', callouts: false } },
+  island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane; attack helicopters off the island from wave 6.', callouts: false } },
+  behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
