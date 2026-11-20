@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-20',
-  headline: 'Overnight: your playtest notes, round 9 and all three new chapter 2 maps (The Needle of Bosk, The Archipelago, Saltgate Canal) are built. Chapter 2 is five of five. Next for you: play chapter 2 from Test Lab → Ready to test, and two quick questions (Air Strike, Saltgate).',
+  headline: 'Overnight: all of chapter 2 is rebuilt (five of five), Shield takes 2 / 3 / 4 hits, the run review asks your Effort, and the four new Armory upgrades are in. Next for you: play chapter 2 from Test Lab → Ready to test, and five quick questions.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -131,9 +131,11 @@ export const STATUS = {
     { n: 199, title: 'Chapter 2: Saltgate Canal rebuilt (log v38)', state: 'merged' },
     { n: 200, title: 'Hub update', state: 'merged' },
     { n: 201, title: 'Shield 2 / 3 / 4 hits and the Effort rating (log v39)', state: 'merged' },
+    { n: 202, title: 'Armory: Boilers, Lifeboats, Quartermaster, Salvage Crews (log v40)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-20', what: 'Merged #202 (log v40): the four new Armory upgrades you picked. Boilers (Hull): the convoy sails 4% faster a level, level 5 doubles Full Steam. Lifeboats (Hull): the first ship sunk in a wave counts as half a loss (2 / 4 / 6 / 8 waves a run, every wave at level 5); the SUNK pips fill by halves. Quartermaster (Supply): a Re-roll button on the weapon draft, 1 / 2 / 3 / 4 / 4 re-rolls a run, and level 5 deals 4 cards. Salvage Crews (Supply): +10% Scrap a level (528 → 792 Scrap a run at level 5). Measured alone at level 5 (ships saved a run; the others sit at 5–8): Boilers 1.5–2.5, Quartermaster about 2.5 for the bot, Lifeboats saves no ships but takes 3.5 off the loss tally and lifts wins 45–52% → 62% on your build. Three questions in Needs you.' },
     { date: '2026-11-20', what: 'Merged #201 (log v39): Shield now breaks after 2 / 3 / 4 hits (your pick). Alone it ranks #11 of 20 on the Island, the Behemoth and Saltgate (was #12–17), #17 on the Archipelago; the Needle reads #15 but that is within 12-seed noise. The end-of-run review now has an Effort row (1 = casual, 5 = all-out), in the Test Lab scorecard and the campaign / Free Play review; the bot fit flags runs at effort 2 or below and weighs them less. Please rate Effort on your chapter 2 runs.' },
     { date: '2026-11-20', what: 'Your answers read: Shield goes softer (breaks after 2 / 3 / 4 hits); the wave rating stays everywhere notes are on; Kesh and Marrow stay as they are, and the end-of-run scorecard gets an Effort rating (how hard you tried, 1–5) so a casual run isn’t read as the map being hard. Both are being built.' },
     { date: '2026-11-20', what: 'Merged #199 (log v38): Saltgate Canal rebuilt, the last chapter 2 map. The problem: two locks hold each ship still in a chamber right under an enemy silo, so fire comes from close range at ships that can’t move. A new aim, “at the lock”, is used by nine of ten waves. Signature from wave 4: a strike on the locks (torpedo subs at the canal ends plus cluster missiles aimed into the chambers, 23% of waves 4–10). Boss: Run the Canal (three subs, then a gunship, then an armored block). Bot with your Armory: won 42% → 58%, waves 1–5 lose 0.50, boss rounds 0.85 / 1.50 / 1.56, the wave-cliff check now passes. Best single weapon here is Point Defense (not Air Strike) and the #1 kit is Saltgate’s own; one top-5 kit is shared with the Island. Chapter 2 is five of five.' },
@@ -194,6 +196,27 @@ export const NEEDS = [
     options: ['Keep it as built and judge from my play (recommended)', 'Raise the boss to the 1.5 / 2 / 2.5 aim (fewer wins)', 'Subs only for the signature'],
   },
 
+  {
+    id: 'r12-boilers',
+    kind: 'question',
+    title: 'Boilers is weak: give it a second job, or accept it?',
+    text: 'A faster convoy barely helps, because attacks are aimed at the ships wherever they are: at level 5 Boilers saves 1.5–2.5 ships a run alone (the other upgrades save 5–8), and even 50% faster only reaches about 3–5. Long Loads had the same problem and got a second job (it refills your rack on pickups).',
+    options: ['Give it a second job: ships under way take 10% less damage at level 5 (recommended)', 'Keep it as is: a weak card is fine if it feels good', 'Drop Boilers'],
+  },
+  {
+    id: 'r12-lifeboats',
+    kind: 'question',
+    title: 'Lifeboats changes the loss rule. Keep it as built?',
+    text: 'The first ship sunk in a wave counts half a loss (every wave at level 5). It saves no ships but takes about 3.5 off the loss tally and lifts the bot’s wins on your build from 45–52% to 62%, the biggest win-rate effect of the four. The maps’ difficulty targets count whole losses, so with Lifeboats at level 5 every map plays easier than tuned.',
+    options: ['Keep it, but cap it lower: half a loss in at most 4 waves a run at level 5 (recommended)', 'Keep it as built', 'Drop Lifeboats'],
+  },
+  {
+    id: 'r12-quartermaster',
+    kind: 'question',
+    title: 'Quartermaster re-rolls: 1 / 2 / 3 / 4 / 4 a run (the plan said 1 → 3). OK?',
+    text: 'With 1 → 3 a level added nothing, like Deep Magazine’s old empty level. Beyond two re-rolls the bot gains nothing measurable, so 4 costs no balance. Level 5 also deals 4 cards instead of 3. For the bot it saves about 2.5 ships a run; a person drafting for each map may get more. Try the Re-roll button (top left of the draft) when you play.',
+    options: ['OK as built (recommended)', 'Back to 1 → 3', 'Decide after I play it'],
+  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
