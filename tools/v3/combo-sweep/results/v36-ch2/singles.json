@@ -1,0 +1,1389 @@
+{
+ "stage": "singles",
+ "about": "Each weapon alone (levelled to MAX, then Resupply at every draft) and as the first pick (then the bot drafts for itself); the plain gun; the bot drafting for itself.",
+ "logVersion": 36,
+ "botRev": 3,
+ "date": "2026-11-20",
+ "seeds": [
+  900,
+  901,
+  902,
+  903,
+  904,
+  905,
+  906,
+  907,
+  908,
+  909,
+  910,
+  911
+ ],
+ "maps": [
+  "archipelago"
+ ],
+ "pool": [
+  "airstrike",
+  "shrapnel",
+  "frigate",
+  "thermo",
+  "scatter",
+  "boomerang",
+  "flak",
+  "seeker",
+  "aegis",
+  "well",
+  "railgun",
+  "tesla",
+  "lance",
+  "cutter",
+  "droneScreen",
+  "gunships",
+  "supplyRun",
+  "overdrive",
+  "shield",
+  "fullSteam"
+ ],
+ "seconds": 86,
+ "runs": 504,
+ "configs": [
+  {
+   "key": "plain",
+   "name": "Plain gun",
+   "kind": "plain",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9.833,
+     "flawless": 0,
+     "lost10": 7.167,
+     "boss": 8.278,
+     "lostAll": 32,
+     "bossNormal": 4.8,
+     "bossReached": 0.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 9.833,
+    "flawless": 0,
+    "lost10": 7.167,
+    "boss": 8.278,
+    "lostAll": 32,
+    "bossNormal": 4.8,
+    "bossReached": 0.417
+   },
+   "weapons": []
+  },
+  {
+   "key": "self",
+   "name": "Bot drafts for itself",
+   "kind": "self",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 5,
+     "boss": 1.917,
+     "lostAll": 10.75,
+     "bossNormal": 1.259,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.5,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 5,
+    "boss": 1.917,
+    "lostAll": 10.75,
+    "bossNormal": 1.259,
+    "bossReached": 2.25
+   }
+  },
+  {
+   "key": "airstrike",
+   "name": "Air Strike",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.167,
+     "lost10": 2.417,
+     "boss": 0,
+     "lostAll": 2.417,
+     "bossNormal": 0,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0.167,
+    "lost10": 2.417,
+    "boss": 0,
+    "lostAll": 2.417,
+    "bossNormal": 0,
+    "bossReached": 3
+   },
+   "weapons": [
+    "airstrike"
+   ]
+  },
+  {
+   "key": "shrapnel",
+   "name": "Shrapnel Shell",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 1.306,
+     "lostAll": 7.083,
+     "bossNormal": 1.242,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.75,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 3.167,
+    "boss": 1.306,
+    "lostAll": 7.083,
+    "bossNormal": 1.242,
+    "bossReached": 2.75
+   },
+   "weapons": [
+    "shrapnel"
+   ]
+  },
+  {
+   "key": "frigate",
+   "name": "Frigate Escort",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 2.917,
+     "boss": 1.083,
+     "lostAll": 6.167,
+     "bossNormal": 1,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.833,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 2.917,
+    "boss": 1.083,
+    "lostAll": 6.167,
+    "bossNormal": 1,
+    "bossReached": 2.75
+   },
+   "weapons": [
+    "frigate"
+   ]
+  },
+  {
+   "key": "thermo",
+   "name": "Thermobaric Shell",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 1.444,
+     "lostAll": 8.333,
+     "bossNormal": 1.345,
+     "bossReached": 2.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 1.444,
+    "lostAll": 8.333,
+    "bossNormal": 1.345,
+    "bossReached": 2.417
+   },
+   "weapons": [
+    "thermo"
+   ]
+  },
+  {
+   "key": "scatter",
+   "name": "Scattergun",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.75,
+     "flawless": 0,
+     "lost10": 2.167,
+     "boss": 1.194,
+     "lostAll": 5.75,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.75,
+    "endWave": 13.75,
+    "flawless": 0,
+    "lost10": 2.167,
+    "boss": 1.194,
+    "lostAll": 5.75,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "scatter"
+   ]
+  },
+  {
+   "key": "boomerang",
+   "name": "Boomerang",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.75,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 2.722,
+     "lostAll": 11.25,
+     "bossNormal": 1.833,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.25,
+    "endWave": 12.75,
+    "flawless": 0,
+    "lost10": 3.083,
+    "boss": 2.722,
+    "lostAll": 11.25,
+    "bossNormal": 1.833,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "boomerang"
+   ]
+  },
+  {
+   "key": "flak",
+   "name": "Flak Cannon",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 4,
+     "boss": 0.639,
+     "lostAll": 5.917,
+     "bossNormal": 0.517,
+     "bossReached": 2.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.75,
+    "endWave": 13.083,
+    "flawless": 0,
+    "lost10": 4,
+    "boss": 0.639,
+    "lostAll": 5.917,
+    "bossNormal": 0.517,
+    "bossReached": 2.417
+   },
+   "weapons": [
+    "flak"
+   ]
+  },
+  {
+   "key": "seeker",
+   "name": "Seeker Pod",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 11.75,
+     "flawless": 0,
+     "lost10": 4.583,
+     "boss": 4.028,
+     "lostAll": 16.667,
+     "bossNormal": 2.348,
+     "bossReached": 1.917
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 11.75,
+    "flawless": 0,
+    "lost10": 4.583,
+    "boss": 4.028,
+    "lostAll": 16.667,
+    "bossNormal": 2.348,
+    "bossReached": 1.917
+   },
+   "weapons": [
+    "seeker"
+   ]
+  },
+  {
+   "key": "aegis",
+   "name": "Point Defense",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.917,
+     "endWave": 13.417,
+     "flawless": 0,
+     "lost10": 3,
+     "boss": 0.806,
+     "lostAll": 5.417,
+     "bossNormal": 0.818,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.917,
+    "endWave": 13.417,
+    "flawless": 0,
+    "lost10": 3,
+    "boss": 0.806,
+    "lostAll": 5.417,
+    "bossNormal": 0.818,
+    "bossReached": 2.75
+   },
+   "weapons": [
+    "aegis"
+   ]
+  },
+  {
+   "key": "well",
+   "name": "Gravity Well",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.583,
+     "boss": 0.778,
+     "lostAll": 5.917,
+     "bossNormal": 0.786,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 3.583,
+    "boss": 0.778,
+    "lostAll": 5.917,
+    "bossNormal": 0.786,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "well"
+   ]
+  },
+  {
+   "key": "railgun",
+   "name": "Railgun",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.25,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 2.833,
+     "boss": 2.667,
+     "lostAll": 10.833,
+     "bossNormal": 1.931,
+     "bossReached": 2.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.25,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 2.833,
+    "boss": 2.667,
+    "lostAll": 10.833,
+    "bossNormal": 1.931,
+    "bossReached": 2.417
+   },
+   "weapons": [
+    "railgun"
+   ]
+  },
+  {
+   "key": "tesla",
+   "name": "Tesla Arc",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.583,
+     "endWave": 12.833,
+     "flawless": 0,
+     "lost10": 3.917,
+     "boss": 1.389,
+     "lostAll": 8.083,
+     "bossNormal": 1.259,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.583,
+    "endWave": 12.833,
+    "flawless": 0,
+    "lost10": 3.917,
+    "boss": 1.389,
+    "lostAll": 8.083,
+    "bossNormal": 1.259,
+    "bossReached": 2.25
+   },
+   "weapons": [
+    "tesla"
+   ]
+  },
+  {
+   "key": "lance",
+   "name": "Charge Lance",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 9.833,
+     "flawless": 0,
+     "lost10": 7.75,
+     "boss": 7.806,
+     "lostAll": 31.167,
+     "bossNormal": 4.286,
+     "bossReached": 0.583
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 9.833,
+    "flawless": 0,
+    "lost10": 7.75,
+    "boss": 7.806,
+    "lostAll": 31.167,
+    "bossNormal": 4.286,
+    "bossReached": 0.583
+   },
+   "weapons": [
+    "lance"
+   ]
+  },
+  {
+   "key": "cutter",
+   "name": "Laser Cutter",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.083,
+     "flawless": 0,
+     "lost10": 30,
+     "boss": 9.972,
+     "lostAll": 59.917,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 5.083,
+    "flawless": 0,
+    "lost10": 30,
+    "boss": 9.972,
+    "lostAll": 59.917,
+    "bossNormal": null,
+    "bossReached": 0
+   },
+   "weapons": [
+    "cutter"
+   ]
+  },
+  {
+   "key": "droneScreen",
+   "name": "Drone Screen",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 3.167,
+     "boss": 2.833,
+     "lostAll": 11.667,
+     "bossNormal": 2.097,
+     "bossReached": 2.583
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.083,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 3.167,
+    "boss": 2.833,
+    "lostAll": 11.667,
+    "bossNormal": 2.097,
+    "bossReached": 2.583
+   },
+   "weapons": [
+    "droneScreen"
+   ]
+  },
+  {
+   "key": "gunships",
+   "name": "Gunship Pair",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0,
+     "lost10": 3.083,
+     "boss": 1.167,
+     "lostAll": 6.583,
+     "bossNormal": 1.167,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0,
+    "lost10": 3.083,
+    "boss": 1.167,
+    "lostAll": 6.583,
+    "bossNormal": 1.167,
+    "bossReached": 3
+   },
+   "weapons": [
+    "gunships"
+   ]
+  },
+  {
+   "key": "supplyRun",
+   "name": "Supply Run",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 10,
+     "flawless": 0,
+     "lost10": 6,
+     "boss": 7.528,
+     "lostAll": 28.583,
+     "bossNormal": 4,
+     "bossReached": 0.5
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 10,
+    "flawless": 0,
+    "lost10": 6,
+    "boss": 7.528,
+    "lostAll": 28.583,
+    "bossNormal": 4,
+    "bossReached": 0.5
+   },
+   "weapons": [
+    "supplyRun"
+   ]
+  },
+  {
+   "key": "overdrive",
+   "name": "Overdrive",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 12,
+     "flawless": 0,
+     "lost10": 3.917,
+     "boss": 3.417,
+     "lostAll": 14.167,
+     "bossNormal": 2.4,
+     "bossReached": 2.083
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 12,
+    "flawless": 0,
+    "lost10": 3.917,
+    "boss": 3.417,
+    "lostAll": 14.167,
+    "bossNormal": 2.4,
+    "bossReached": 2.083
+   },
+   "weapons": [
+    "overdrive"
+   ]
+  },
+  {
+   "key": "shield",
+   "name": "Shield",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 1,
+     "endWave": 14,
+     "flawless": 0.167,
+     "lost10": 2.167,
+     "boss": 0.028,
+     "lostAll": 2.25,
+     "bossNormal": 0.028,
+     "bossReached": 3
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 1,
+    "endWave": 14,
+    "flawless": 0.167,
+    "lost10": 2.167,
+    "boss": 0.028,
+    "lostAll": 2.25,
+    "bossNormal": 0.028,
+    "bossReached": 3
+   },
+   "weapons": [
+    "shield"
+   ]
+  },
+  {
+   "key": "fullSteam",
+   "name": "Full Steam",
+   "kind": "single",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.333,
+     "endWave": 11.333,
+     "flawless": 0,
+     "lost10": 5.833,
+     "boss": 1.583,
+     "lostAll": 10.583,
+     "bossNormal": 1.167,
+     "bossReached": 1.5
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.333,
+    "endWave": 11.333,
+    "flawless": 0,
+    "lost10": 5.833,
+    "boss": 1.583,
+    "lostAll": 10.583,
+    "bossNormal": 1.167,
+    "bossReached": 1.5
+   },
+   "weapons": [
+    "fullSteam"
+   ]
+  },
+  {
+   "key": "airstrike>self",
+   "name": "Air Strike (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.75,
+     "endWave": 13.5,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.306,
+     "lostAll": 7.25,
+     "bossNormal": 0.818,
+     "bossReached": 2.75
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.75,
+    "endWave": 13.5,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.306,
+    "lostAll": 7.25,
+    "bossNormal": 0.818,
+    "bossReached": 2.75
+   },
+   "weapons": [
+    "airstrike"
+   ]
+  },
+  {
+   "key": "shrapnel>self",
+   "name": "Shrapnel Shell (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 3.25,
+     "boss": 2.222,
+     "lostAll": 9.917,
+     "bossNormal": 1.808,
+     "bossReached": 2.167
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.5,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 3.25,
+    "boss": 2.222,
+    "lostAll": 9.917,
+    "bossNormal": 1.808,
+    "bossReached": 2.167
+   },
+   "weapons": [
+    "shrapnel"
+   ]
+  },
+  {
+   "key": "frigate>self",
+   "name": "Frigate Escort (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 2.111,
+     "lostAll": 10.583,
+     "bossNormal": 1.333,
+     "bossReached": 2.25
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 4.25,
+    "boss": 2.111,
+    "lostAll": 10.583,
+    "bossNormal": 1.333,
+    "bossReached": 2.25
+   },
+   "weapons": [
+    "frigate"
+   ]
+  },
+  {
+   "key": "thermo>self",
+   "name": "Thermobaric Shell (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 5.333,
+     "boss": 2.278,
+     "lostAll": 12.167,
+     "bossNormal": 1.654,
+     "bossReached": 2.167
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.417,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 5.333,
+    "boss": 2.278,
+    "lostAll": 12.167,
+    "bossNormal": 1.654,
+    "bossReached": 2.167
+   },
+   "weapons": [
+    "thermo"
+   ]
+  },
+  {
+   "key": "scatter>self",
+   "name": "Scattergun (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 2.667,
+     "boss": 1.667,
+     "lostAll": 7.667,
+     "bossNormal": 1.433,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 13.083,
+    "flawless": 0,
+    "lost10": 2.667,
+    "boss": 1.667,
+    "lostAll": 7.667,
+    "bossNormal": 1.433,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "scatter"
+   ]
+  },
+  {
+   "key": "boomerang>self",
+   "name": "Boomerang (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.75,
+     "boss": 2.583,
+     "lostAll": 11.5,
+     "bossNormal": 2,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.167,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.75,
+    "boss": 2.583,
+    "lostAll": 11.5,
+    "bossNormal": 2,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "boomerang"
+   ]
+  },
+  {
+   "key": "flak>self",
+   "name": "Flak Cannon (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.417,
+     "boss": 0.806,
+     "lostAll": 6.833,
+     "bossNormal": 0.5,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 12.417,
+    "flawless": 0,
+    "lost10": 4.417,
+    "boss": 0.806,
+    "lostAll": 6.833,
+    "bossNormal": 0.5,
+    "bossReached": 2
+   },
+   "weapons": [
+    "flak"
+   ]
+  },
+  {
+   "key": "seeker>self",
+   "name": "Seeker Pod (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.083,
+     "endWave": 11.667,
+     "flawless": 0,
+     "lost10": 5.167,
+     "boss": 4.111,
+     "lostAll": 17.5,
+     "bossNormal": 2.304,
+     "bossReached": 1.917
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.083,
+    "endWave": 11.667,
+    "flawless": 0,
+    "lost10": 5.167,
+    "boss": 4.111,
+    "lostAll": 17.5,
+    "bossNormal": 2.304,
+    "bossReached": 1.917
+   },
+   "weapons": [
+    "seeker"
+   ]
+  },
+  {
+   "key": "aegis>self",
+   "name": "Point Defense (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.806,
+     "lostAll": 8.75,
+     "bossNormal": 1.345,
+     "bossReached": 2.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 13.083,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.806,
+    "lostAll": 8.75,
+    "bossNormal": 1.345,
+    "bossReached": 2.417
+   },
+   "weapons": [
+    "aegis"
+   ]
+  },
+  {
+   "key": "well>self",
+   "name": "Gravity Well (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5.083,
+     "boss": 1.056,
+     "lostAll": 8.25,
+     "bossNormal": 0.96,
+     "bossReached": 2.083
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.5,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 5.083,
+    "boss": 1.056,
+    "lostAll": 8.25,
+    "bossNormal": 0.96,
+    "bossReached": 2.083
+   },
+   "weapons": [
+    "well"
+   ]
+  },
+  {
+   "key": "railgun>self",
+   "name": "Railgun (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 13,
+     "flawless": 0,
+     "lost10": 3.583,
+     "boss": 2.472,
+     "lostAll": 11,
+     "bossNormal": 1.813,
+     "bossReached": 2.667
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.417,
+    "endWave": 13,
+    "flawless": 0,
+    "lost10": 3.583,
+    "boss": 2.472,
+    "lostAll": 11,
+    "bossNormal": 1.813,
+    "bossReached": 2.667
+   },
+   "weapons": [
+    "railgun"
+   ]
+  },
+  {
+   "key": "tesla>self",
+   "name": "Tesla Arc (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.917,
+     "flawless": 0,
+     "lost10": 3.333,
+     "boss": 1.472,
+     "lostAll": 7.75,
+     "bossNormal": 1.214,
+     "bossReached": 2.333
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 12.917,
+    "flawless": 0,
+    "lost10": 3.333,
+    "boss": 1.472,
+    "lostAll": 7.75,
+    "bossNormal": 1.214,
+    "bossReached": 2.333
+   },
+   "weapons": [
+    "tesla"
+   ]
+  },
+  {
+   "key": "lance>self",
+   "name": "Charge Lance (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 10.583,
+     "flawless": 0,
+     "lost10": 6.833,
+     "boss": 6.306,
+     "lostAll": 25.75,
+     "bossNormal": 3.6,
+     "bossReached": 0.833
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 10.583,
+    "flawless": 0,
+    "lost10": 6.833,
+    "boss": 6.306,
+    "lostAll": 25.75,
+    "bossNormal": 3.6,
+    "bossReached": 0.833
+   },
+   "weapons": [
+    "lance"
+   ]
+  },
+  {
+   "key": "cutter>self",
+   "name": "Laser Cutter (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0,
+     "endWave": 5.25,
+     "flawless": 0,
+     "lost10": 16.667,
+     "boss": 9.306,
+     "lostAll": 44.583,
+     "bossNormal": null,
+     "bossReached": 0
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0,
+    "endWave": 5.25,
+    "flawless": 0,
+    "lost10": 16.667,
+    "boss": 9.306,
+    "lostAll": 44.583,
+    "bossNormal": null,
+    "bossReached": 0
+   },
+   "weapons": [
+    "cutter"
+   ]
+  },
+  {
+   "key": "droneScreen>self",
+   "name": "Drone Screen (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 12.167,
+     "flawless": 0,
+     "lost10": 4.333,
+     "boss": 2.944,
+     "lostAll": 13.167,
+     "bossNormal": 2.292,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.167,
+    "endWave": 12.167,
+    "flawless": 0,
+    "lost10": 4.333,
+    "boss": 2.944,
+    "lostAll": 13.167,
+    "bossNormal": 2.292,
+    "bossReached": 2
+   },
+   "weapons": [
+    "droneScreen"
+   ]
+  },
+  {
+   "key": "gunships>self",
+   "name": "Gunship Pair (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.667,
+     "endWave": 12.667,
+     "flawless": 0,
+     "lost10": 4.75,
+     "boss": 1.639,
+     "lostAll": 9.667,
+     "bossNormal": 1.208,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.667,
+    "endWave": 12.667,
+    "flawless": 0,
+    "lost10": 4.75,
+    "boss": 1.639,
+    "lostAll": 9.667,
+    "bossNormal": 1.208,
+    "bossReached": 2
+   },
+   "weapons": [
+    "gunships"
+   ]
+  },
+  {
+   "key": "supplyRun>self",
+   "name": "Supply Run (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.5,
+     "endWave": 12.417,
+     "flawless": 0,
+     "lost10": 4.417,
+     "boss": 1.306,
+     "lostAll": 8.333,
+     "bossNormal": 1,
+     "bossReached": 2
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.5,
+    "endWave": 12.417,
+    "flawless": 0,
+    "lost10": 4.417,
+    "boss": 1.306,
+    "lostAll": 8.333,
+    "bossNormal": 1,
+    "bossReached": 2
+   },
+   "weapons": [
+    "supplyRun"
+   ]
+  },
+  {
+   "key": "overdrive>self",
+   "name": "Overdrive (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.167,
+     "endWave": 12.333,
+     "flawless": 0,
+     "lost10": 3.417,
+     "boss": 2.889,
+     "lostAll": 12.083,
+     "bossNormal": 1.962,
+     "bossReached": 2.167
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.167,
+    "endWave": 12.333,
+    "flawless": 0,
+    "lost10": 3.417,
+    "boss": 2.889,
+    "lostAll": 12.083,
+    "bossNormal": 1.962,
+    "bossReached": 2.167
+   },
+   "weapons": [
+    "overdrive"
+   ]
+  },
+  {
+   "key": "shield>self",
+   "name": "Shield (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.833,
+     "endWave": 13.083,
+     "flawless": 0,
+     "lost10": 3.417,
+     "boss": 0.028,
+     "lostAll": 3.5,
+     "bossNormal": 0.033,
+     "bossReached": 2.5
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.833,
+    "endWave": 13.083,
+    "flawless": 0,
+    "lost10": 3.417,
+    "boss": 0.028,
+    "lostAll": 3.5,
+    "bossNormal": 0.033,
+    "bossReached": 2.5
+   },
+   "weapons": [
+    "shield"
+   ]
+  },
+  {
+   "key": "fullSteam>self",
+   "name": "Full Steam (first, then own picks)",
+   "kind": "lead",
+   "perMap": {
+    "archipelago": {
+     "n": 12,
+     "won": 0.417,
+     "endWave": 12.583,
+     "flawless": 0,
+     "lost10": 4.25,
+     "boss": 1.917,
+     "lostAll": 10,
+     "bossNormal": 1.793,
+     "bossReached": 2.417
+    }
+   },
+   "all": {
+    "n": 12,
+    "won": 0.417,
+    "endWave": 12.583,
+    "flawless": 0,
+    "lost10": 4.25,
+    "boss": 1.917,
+    "lostAll": 10,
+    "bossNormal": 1.793,
+    "bossReached": 2.417
+   },
+   "weapons": [
+    "fullSteam"
+   ]
+  }
+ ]
+}
