@@ -169,6 +169,43 @@ Most of the Island's rise comes from the sub (fix 7): wave 3 is its debut, 0.13 
 | normal, mean end wave | 9.1 | 8.9 |
 | boss rounds B1–B3, tough | 2.54 / 3.42 / 4.50 | 3.08 / 3.33 / 6.21 |
 
+## Follow-up: the sub's torpedoes, brought back down
+
+After fix 7, The Behemoth Run became too punishing early:
+- Torpedo sinks in waves 1–10 went from 0.25 to 1.58 a run.
+- The plain gun went from 18.9 to 23.1 ships lost.
+- Your Behemoth run lost its first ship to a sub on wave 2.
+
+The sub stays out of reach, as you asked. Three changes bring its threat back, still at log v36:
+1. **Slower torpedoes:** they move at 40 px/s (was 75), so there is more time to shoot each one. A fast one is still 2.2× that.
+2. **A clearer torpedo:** each torpedo now has a white bow wave off its nose and a pulsing red ring.
+3. **No early subs on the Behemoth Run:** no Torpedo Sub before wave 6. One the planner draws earlier stays the drone swarm it would have replaced, so the wave sends the same amount. This applies in the campaign and the lab alike (`SUB_FROM` in `src/v3/data/foes.ts`).
+
+All numbers are with your Armory, the bot drafting for itself, 24 seeds. "Won" means under the normal loss limit. Torpedo sinks are for waves 1–10.
+
+| | Before this follow-up | After | Target |
+| --- | --- | --- | --- |
+| Behemoth, lost in waves 1–5 | 0.83 | **0.54** | 0.4–0.8 |
+| Behemoth, torpedo sinks | 1.50 | **0.33** | about 0.5 or less |
+| Behemoth, won | 54% | **50%** | 50–70% |
+| Island, lost on wave 3 (the sub's debut) | 0.71 | **0.17** | about 0.3 or less |
+| Island, torpedo sinks | 0.63 | 0.08 | |
+
+- The other speeds tried are in `tools/v3/playtest-fixes/results/torpedo-followup.txt`.
+  - At 45–55 px/s, torpedo sinks stayed at 0.7–1.1 on the Behemoth Run.
+  - At 45 px/s without the wave-6 rule, the Behemoth's waves 1–5 stayed at 0.88.
+- The Behemoth's win rate of 50% sits at the bottom of the target range. What holds it down is mostly wave 10's heavies and shells, not torpedoes.
+- With 24 seeds, a win rate moves by about ±10%.
+- **Wave budgets** still pass (±15%): the furthest wave is the Island's wave 5 at ×0.87 and the Behemoth's wave 7 at ×0.90.
+- **Bot reports** (24 seeds, no Armory):
+
+  | | Lost in waves 1–5 (normal) | Mean end wave |
+  | --- | --- | --- |
+  | Island | 0.83 | 8.3 |
+  | Behemoth | 0.79 | 9.0 |
+
+- The map-lab baseline is rewritten (still v36).
+
 ## The Needle of Bosk, after it merged
 
 The Needle has armored-drone walls and a Shield Wall boss. It has no helicopters or subs, so only the Shield and the Scavenger apply.

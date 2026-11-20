@@ -357,9 +357,11 @@ describe('chapter 2: The Narrows', () => {
     const s = g.ships[0];
     const hp = s.hp;
     run(g, 0.01);
-    torp.x = s.x - Math.cos(torp.heading) * 30;
-    torp.y = s.y - Math.sin(torp.heading) * 30;
-    run(g, 1, () => torp.dead);
+    // (Torpedoes run at 40 since log v36, slower than a ship sails: put it
+    // just inside its hit radius's reach.)
+    torp.x = s.x - Math.cos(torp.heading) * 15;
+    torp.y = s.y - Math.sin(torp.heading) * 15;
+    run(g, 3, () => torp.dead);
     expect(torp.dead).toBe(true);
     expect(s.hp < hp || g.sunkBy.torpedoSub > 0).toBe(true);
   });

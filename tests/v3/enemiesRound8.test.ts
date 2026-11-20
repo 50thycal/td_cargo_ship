@@ -161,8 +161,10 @@ describe('Torpedo Sub: "they should be targeted, and [fire] one by one, not all 
         launchFoe(g, { at: 0, kind: 'torpedoSub', base: -1 });
         expect(check(g, 8), map).toBe(0);
       }
-      // And they do fire (subs come up where there is water to the lanes).
-      expect(fired.size, map).toBeGreaterThanOrEqual(6);
+      // And they do fire (subs come up where there is water to the lanes):
+      // at least one a sub (log v36: two a sub, slower, so a ship far along
+      // its lane is out of a wet line more often).
+      expect(fired.size, map).toBeGreaterThanOrEqual(4);
     }
     for (const id of ['wolf-pack', 'run-the-canal'] as EventId[]) {
       for (const seed of [1, 2, 3]) {
