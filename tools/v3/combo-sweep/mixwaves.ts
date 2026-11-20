@@ -29,7 +29,7 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   behemoth: ['heavy', 'strafer'],
   // The Needle of Bosk (log v35): the Shield Wall's armored drones.
   needle: ['armored'],
-  // The Archipelago (log v36): drone motherships, with the mini-drones they
+  // The Archipelago (log v37): drone motherships, with the mini-drones they
   // launch.
   archipelago: ['mothership', 'minidrone'],
 };

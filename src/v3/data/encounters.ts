@@ -3904,13 +3904,13 @@ export interface MapSignature {
    *  it stands in for and never more than that swarm's drones (rule
    *  w-budget). */
   block?: number;
-  /** The Archipelago (log v36): the wave's new enemies stand in as one of
+  /** The Archipelago (log v37): the wave's new enemies stand in as one of
    *  the map's own threat kinds instead of a foe (its drone motherships,
    *  out of the bases that launch them), `foeShare` of them as with `foe`,
    *  each taking out of the wave what the enemy it stands in for would
    *  have (rule w-budget). */
   kind?: ThreatKind;
-  /** The Archipelago (log v36): each signature threat comes with one of
+  /** The Archipelago (log v37): each signature threat comes with one of
    *  these (a Scavenger Drone, the Supply Raid's own), its launch taken out
    *  of the wave's own drones one for one, so the wave sends no more (rule
    *  w-budget). */
@@ -3931,7 +3931,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // drones, the Shield Wall's own, in small walls from wave 4 (the first
   // wave after the Island's debut of them, so no debut wave is needed here).
   needle: { from: 4, foe: 'armored', foeShare: 1, block: 2 },
-  // The Archipelago (log v36, docs/design/v3-ch2-archipelago.md): drone
+  // The Archipelago (log v37, docs/design/v3-ch2-archipelago.md): drone
   // motherships off the west islets, the Supply Raid's (MAP_BOSS), from
   // wave 4: each crawls over the convoy towards the carrier and launches
   // mini-drones as it goes, so the drones come at the ships from wherever
@@ -4003,7 +4003,7 @@ export interface BossRound {
    *  armored drones, `cols` wide (the event's own: 12, 4 wide). */
   block?: number;
   cols?: number;
-  /** The Archipelago's Supply Raid (log v36): at most this many of each
+  /** The Archipelago's Supply Raid (log v37): at most this many of each
    *  cargo run's pickups are weapons, run by run (the event's own: one for
    *  each weapon held, taking turns with the supplies, in both runs). With a
    *  weapon back twice a round, a Shield or an Air Strike held at its best
@@ -4103,7 +4103,7 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
   { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 9, count: 2, gap: 4, base: 2, aim: 'near' }] },
 ];
 
-/** The Archipelago's Supply Raid (log v36, docs/design/v3-ch2-archipelago.md):
+/** The Archipelago's Supply Raid (log v37, docs/design/v3-ch2-archipelago.md):
  *  the event's cargo runs and scavengers as they are (8 then 6 pickups, 3 + 3
  *  scavengers from every side of the screen), its drone swarms off the
  *  islets (before: 5 of 6 every round), and the map's signature with them:
@@ -4112,9 +4112,9 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  the far shore and a cluster off the west islet at the ships coming in
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
-  { swarms: 6, size: 7, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 10, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 7, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 2, gap: 2, base: 0 }, { kind: 'ballistic', at: 3, count: 3, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 5, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 3, gap: 1.5, base: 0 }, { kind: 'ballistic', at: 3, count: 4, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 5, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 3, gap: 1.5, base: 0 }, { kind: 'ballistic', at: 3, count: 5, gap: 1.75, base: 3, aim: 'rear' }, { kind: 'cluster', at: 4, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 6, count: 1, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

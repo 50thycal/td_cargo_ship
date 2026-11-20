@@ -209,7 +209,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'The map\'s own convoy, no commands: pairs west to east down one lane under the chain of islets, coming in at the far west end, a long reach from the carrier, and delivering in the east beside it.',
     stretches: { danger: 'early', safe: 'late' },
     boss: {
-      plan: 'The Supply Raid from every side: the event\'s cargo runs and scavengers, one weapon in the round\'s first cargo run and supplies only in the second (the event gives one for each weapon held, in both); its drone swarms off the islets (6 of 7, 6 of 9, 6 of 10; the event sends 5 of 6 every round), and the signature with them: 2, 3, then 3 drone motherships off the west islet, with shells from the far shore and clusters off the west islet at the ships coming in, and a guided missile from the east islet at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
+      plan: 'The Supply Raid from every side: the event\'s cargo runs and scavengers, one weapon in the round\'s first cargo run and supplies only in the second (the event gives one for each weapon held, in both); its drone swarms off the islets (6 of 7, 6 of 9, 6 of 9; the event sends 5 of 6 every round), and the signature with them: 2, 3, then 3 drone motherships off the west islet early in the round, with 3, 4, then 5 shells from the far shore and clusters off the west islet at the ships coming in, and a guided missile from the east islet at the lead ship (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
     },
   },

@@ -866,7 +866,7 @@ describe('chapter 2\'s boss rounds (rev 4, MAP_BOSS): the Island and the Behemot
       expect((e.sent.guided ?? 0) + (e.sent.heavy ?? 0), `run ${e.run}`).toBe(0);
     }
     expect(off.game.eventLog.map((e) => e.sent.torpedoSub)).toEqual([7, 7, 7]);
-    // Seed 204: the tryhard bot, starting at the boss with no weapon, sees
+    // Seed 218: the tryhard bot, starting at the boss with no weapon, sees
     // all three rounds (it breaks the first and the third).
     const on = playMimic('behemoth', 204, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.behemoth!.rounds!;
@@ -935,12 +935,12 @@ describe('the Needle of Bosk\'s boss rounds (log v35, MAP_BOSS): the Shield Wall
   }, 90_000);
 });
 
-describe('the Archipelago\'s boss rounds (log v36, MAP_BOSS): the Supply Raid from every side rises; a rev 3 log and the campaign play it as it was', () => {
+describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid from every side rises; a rev 3 log and the campaign play it as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more and bigger swarms, drone motherships off the west islet, shells and clusters at the ships coming in, each round more', () => {
-    const off = playMimic('archipelago', 204, opts);
-    const old = playMimic('archipelago', 204, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    const off = playMimic('archipelago', 218, opts);
+    const old = playMimic('archipelago', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own 5 swarms of 6, its scavengers and
     // nothing else.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
@@ -950,9 +950,9 @@ describe('the Archipelago\'s boss rounds (log v36, MAP_BOSS): the Supply Raid fr
       ['supply-raid', 30, 6, 0, 0],
       ['supply-raid', 30, 6, 0, 0],
     ]);
-    // Seed 204: the tryhard bot, starting at the boss with no weapon, sees
+    // Seed 218: the tryhard bot, starting at the boss with no weapon, sees
     // all three rounds.
-    const on = playMimic('archipelago', 204, { ...opts, encounters: VER('v1') });
+    const on = playMimic('archipelago', 218, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.archipelago!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['supply-raid', 1], ['supply-raid', 2], ['supply-raid', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
@@ -1074,7 +1074,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(MAP_SIGNATURE.island!.block).toBeUndefined();
   });
 
-  it('the Archipelago (log v36): from wave 4 the wave\'s new enemies are drone motherships, out of the bases that launch them, each with a scavenger', () => {
+  it('the Archipelago (log v37): from wave 4 the wave\'s new enemies are drone motherships, out of the bases that launch them, each with a scavenger', () => {
     const sig = MAP_SIGNATURE.archipelago!;
     expect(sig).toMatchObject({ from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' });
     expect(sig.foe).toBeUndefined();

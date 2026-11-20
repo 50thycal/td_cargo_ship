@@ -1225,10 +1225,10 @@ function startWave(g: Game): void {
         size++;
       }
     }
-    // The Archipelago (log v36, MAP_SIGNATURE `escort`): a Scavenger Drone
+    // The Archipelago (log v37, MAP_SIGNATURE `escort`): a Scavenger Drone
     // with each mothership, its launch one drone out of the wave's own.
     if (k < signed && sig!.escort && takeDrone()) units.push({ kind: FOES[sig!.escort].kind, size: 1 });
-    // The Archipelago (log v36, MAP_SIGNATURE `kind`): one of the map's own
+    // The Archipelago (log v37, MAP_SIGNATURE `kind`): one of the map's own
     // threat kinds (a drone mothership) in place of the enemy.
     units.push({ kind: k < signed ? (sig!.kind ?? FOES[sig!.foe!].kind) : FOES[id].kind, size });
   }
