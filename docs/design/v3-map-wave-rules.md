@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-Overnight: round 9 merged (Overdrive buff, chapter 2 signatures, the Behemoth’s jet strike) and The Needle of Bosk rebuilt. Still building: your playtest notes and The Archipelago. Next for you: play chapter 2 from Test Lab → Ready to test.
+Overnight: your playtest notes are all in (Shield breaks after hits, helicopters, the sub under water, the rating screen, “Wave N of 10”), round 9 and The Needle of Bosk are merged, and The Archipelago is being built. Next for you: play chapter 2 from Test Lab → Ready to test, and three quick questions.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.
