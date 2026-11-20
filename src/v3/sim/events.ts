@@ -454,6 +454,27 @@ function wolfRound(g: Game, ev: EventRun) {
   return { ...E, packs: R?.packs ?? E.packs, fast: R?.fast ?? E.fast };
 }
 
+/** Run the Canal's numbers this run (Saltgate Canal's boss tuning over the
+ *  event's own: subs, helicopters and their hits, the block, the swarms;
+ *  the second helicopter `heliGap` s after the first). */
+function canalRound(g: Game, ev: EventRun) {
+  const E = EV['run-the-canal'];
+  const R = bossRound(g, ev);
+  return {
+    ...E,
+    subs: R?.subs ?? E.subs,
+    helis: R?.helis ?? E.helis,
+    hp: R?.heliHp ?? E.hp,
+    volleys: R?.volleys ?? E.volleys,
+    drones: R?.block ?? E.drones,
+    cols: R?.cols ?? E.cols,
+    swarms: R?.swarms ?? E.swarms,
+    size: R?.size ?? E.size,
+    heliGap: 6,
+    swarmGap: R?.swarms !== undefined && R.swarms > 1 ? 5 : 8,
+  };
+}
+
 /** A round's added launches (MAP_BOSS `fire`), one step each: step k is
  *  launch k of the list flattened. */
 function fireSteps(R: BossRound | undefined): EventStep[] {
@@ -635,12 +656,16 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     case 'run-the-canal': {
       // Round 8, cut down: the subs as the convoy comes in, then one
       // gunship over the bank, then a smaller armored block.
-      const E = EV['run-the-canal'];
+      // Encounters rev 4 (lab only; docs/design/v3-ch2-saltgate.md): Saltgate
+      // Canal's rounds rise, each its own subs, helicopters, block and
+      // swarms, and launches of their own at the locks (MAP_BOSS).
+      const E = canalRound(g, ev);
       return [
         ...steps(E.subs, (k) => k * E.stagger, 'sub'),
-        ...steps(E.helis, () => E.heliAt, 'heli'),
-        ...steps(1, () => E.blockAt, 'block'),
-        ...steps(E.swarms, (k) => 5 + k * 8, 'swarm'),
+        ...steps(E.helis, (k) => E.heliAt + k * E.heliGap, 'heli'),
+        ...steps(E.drones > 0 ? 1 : 0, () => E.blockAt, 'block'),
+        ...steps(E.swarms, (k) => 5 + k * E.swarmGap, 'swarm'),
+        ...fireSteps(bossRound(g, ev)),
       ];
     }
     case 'beacon-strike': {
@@ -1036,7 +1061,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'run-the-canal': {
-      const E = EV['run-the-canal'];
+      const E = canalRound(g, ev);
       if (s.op === 'sub') {
         // Round 8: a Torpedo Sub as any other now (its torpedoes one by one,
         // each at a ship, never across land), from open water that has a

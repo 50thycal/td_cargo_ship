@@ -24,7 +24,7 @@ const REF: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** Every map with authored encounters: the reference maps and (map
  *  rebuild, chapter 1: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md) Kesh
  *  and Marrow, which have the original (v1) only. */
-const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago'];
+const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 
 /** A map card's run as the app starts it from the hub (no setup given, no
  *  link): the plan labRunPlan makes. */
@@ -207,14 +207,16 @@ describe('a map card is the full production map', () => {
     expect(productionText('needle')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     // The Archipelago (docs/design/v3-ch2-archipelago.md): the same.
     expect(productionText('archipelago')).toBe("The map's own convoy (no commands) · encounters v1 Original");
-    expect(productionText('saltgate')).toMatch(/^Today's convoy controls/);
+    // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the same.
+    expect(productionText('saltgate')).toBe("The map's own convoy (no commands) · encounters v1 Original");
+    expect(productionText('battery')).toMatch(/^Today's convoy controls/);
   });
 });
 
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '' };
 
   it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold; the other 14: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {

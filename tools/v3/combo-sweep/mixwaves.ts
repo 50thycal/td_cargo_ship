@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -20,7 +20,7 @@ import { PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
-const maps = (opt('maps')?.split(',') ?? ['island', 'behemoth', 'needle', 'archipelago']) as MapId[];
+const maps = (opt('maps')?.split(',') ?? ['island', 'behemoth', 'needle', 'archipelago', 'saltgate']) as MapId[];
 const seeds = Number(opt('seeds') ?? 4);
 
 /** Each map's signature (round 9): the kinds that count as it. */
@@ -32,6 +32,9 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // The Archipelago (log v37): drone motherships, with the mini-drones they
   // launch.
   archipelago: ['mothership', 'minidrone'],
+  // Saltgate Canal (log v38): the strike on the locks: Torpedo Subs with the
+  // torpedoes they fire, and the cluster missiles with their bomblets.
+  saltgate: ['torpedoSub', 'torpedo', 'cluster', 'bomblet'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
