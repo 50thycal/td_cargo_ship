@@ -133,6 +133,11 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // command. The lane closes to one hull wide, so the pairs fall into single
   // file and queue at the mouth on their own: the shape is the problem.
   needle: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  // The Archipelago (docs/design/v3-ch2-archipelago.md): the same, no
+  // command. One lane under a chain of islets: the ships come in at the
+  // far west end, a long reach from the carrier, and sail east past every
+  // islet and every gap between them.
+  archipelago: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
   // left alone: only Hold is added.

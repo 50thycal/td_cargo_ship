@@ -3429,6 +3429,261 @@ const NEEDLE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** The Archipelago (docs/design/v3-ch2-archipelago.md): one lane under a
+ *  chain of three enemy islets, with the far shore behind them and open
+ *  water at the convoy's back. The bases, counted from 0 here (from 1 on
+ *  the pause screen): 0 the west islet (330, 330: drones, motherships,
+ *  clusters), 1 the middle islet (800, 315: drones, guided, heavies), 2 the
+ *  east islet (1270, 330: drones, guided, supersonic), 3 the north-west
+ *  shore (560, 75: shells, heavies, motherships), 4 the north-east shore
+ *  (1050, 75: shells, supersonic, clusters). Sub spots: 0 the west gap
+ *  (565, 335), 1 the east gap (1035, 335), 2 off the west end (120, 335), 3
+ *  off the east end (1500, 335), 4 by your own shore in the west (500,
+ *  742), 5 by your own shore in the east (1490, 742). The carrier sits at
+ *  (950, 730), so the west end, where the ships come in, is the long reach. */
+const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'archipelago-west-islet',
+    map: 'archipelago',
+    waves: [1],
+    role: 'teach',
+    name: 'Off the west islet',
+    callout: 'Drones off the islet',
+    premise: 'The west islet sends a few drones at the ships just coming in, at the far end of the strait from your carrier.',
+    decision: 'The first look at the long reach: the ships come in at the west end, and your shots take longest to get there.',
+    counters: 'Tap the drones early; they have a short way to go.',
+    succeeds: 'Nothing is sunk on wave 1; the drones are shot down over the west end.',
+    notes: {
+      sites: 'The silo on the west islet (330, 330).',
+      target: 'The ship least far along: the west end of the lane (the early third).',
+      usesMap: 'Shows the map\'s problem on wave 1: an islet close to the lane, at the end furthest from the carrier.',
+    },
+    beats: [{ at: 0.35, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'rear' }],
+    replaces: { drones: 3 },
+  },
+  {
+    id: 'archipelago-gap',
+    map: 'archipelago',
+    waves: [2],
+    role: 'teach',
+    name: 'Through the gap',
+    callout: 'A periscope between the islets',
+    premise: 'A periscope rises in the gap between the west and middle islets and lobs shells at the ships coming in; then the middle islet sends a swarm.',
+    decision: 'Fire from between the islets, not only from them: the gaps are launch points too.',
+    counters: 'The shells as they climb, then the swarm.',
+    succeeds: 'The shells are shot at in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'A submarine in the west gap (565, 335), then the middle islet\'s silo (800, 315).',
+      target: 'The shells at the ship least far along (the west end), the swarm at the ship nearest the middle islet.',
+      usesMap: 'The gaps between the islets: a sub surfaces where there is no silo, in place of the wave\'s two shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
+      { at: 0.3, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
+    ],
+    replaces: { drones: 4, ballistic: 2 },
+  },
+  {
+    id: 'archipelago-front-back',
+    map: 'archipelago',
+    waves: [3],
+    role: 'teach',
+    name: 'Islet and periscope',
+    callout: 'Drones ahead, shells behind',
+    premise: 'The west islet sends a swarm at the ships coming in, and a periscope rises behind them by your own shore.',
+    decision: 'The first stakes: the same ships, fired on from the islet in front and the water behind.',
+    counters: 'The swarm as it leaves the islet, then the shells.',
+    succeeds: 'A close call at the west end in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The west islet\'s silo (swarm), then a submarine by your own shore in the west (500, 742; shells).',
+      target: 'Both at the ship least far along: the west end.',
+      usesMap: 'Two directions at once at the long reach: the islets north of the lane and open water south of it, in place of the wave\'s shells.',
+    },
+    beats: [
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.4, plus: 2, kind: 'ballistic', count: 2, gap: 0.75, from: sub(4), aim: 'rear' },
+    ],
+    replaces: { drones: 1, ballistic: 4 },
+  },
+  {
+    id: 'archipelago-islet-chain',
+    map: 'archipelago',
+    waves: [4],
+    role: 'combine',
+    name: 'Islet by islet',
+    callout: 'Swarms down the chain',
+    premise: 'Each islet in turn, west to east, sends a swarm at the ship passing it, and a shell comes over from the far shore.',
+    decision: 'Three launch points one after another: each swarm has a short flight to the ship beside its islet.',
+    counters: 'Each swarm as it leaves its islet; the shell as it climbs.',
+    succeeds: 'The swarms are shot down in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'The west, middle and east islets\' silos in turn, then the north-west shore silo (560, 75; a shell).',
+      target: 'Each swarm at the ship nearest its islet, the shell at the ship least far along.',
+      usesMap: 'The chain itself: every islet is a silo close to the lane, in place of the wave\'s shells.',
+    },
+    beats: [
+      { at: 0.25, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.25, plus: 2.5, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'near' },
+      { at: 0.25, plus: 5, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'near' },
+      { at: 0.6, kind: 'ballistic', count: 1, from: base(3), aim: 'rear' },
+    ],
+    replaces: { drones: 2, ballistic: 6 },
+  },
+  {
+    id: 'archipelago-both-ends',
+    map: 'archipelago',
+    waves: [5],
+    role: 'combine',
+    name: 'Both ends',
+    callout: 'Both ends of the convoy',
+    premise: 'A periscope off the west end fires at the last ships, a guided missile from the east islet goes for the lead ship, and the islets send swarms.',
+    decision: 'The front and the back of the convoy at once, from either end of the strait.',
+    counters: 'The shells as they climb, the missile while it crosses, the swarms between.',
+    succeeds: 'The lead ship gets in and the salvo is shot at in most runs.',
+    notes: {
+      sites: 'A submarine off the west end (120, 335), the east islet\'s silo (1270, 330; guided), the middle and west islets (swarms).',
+      target: 'The shells and the west swarm at the ship least far along, the missile at the lead ship, the middle swarm at any ship.',
+      usesMap: 'The strait end to end: the long reach in the west, the short one in the east, in place of the wave\'s shells and guided missiles.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'rear' },
+      { at: 0.35, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+    ],
+    replaces: { drones: 0, ballistic: 6, guided: 2 },
+  },
+  {
+    id: 'archipelago-behind',
+    map: 'archipelago',
+    waves: [6],
+    role: 'combine',
+    name: 'Behind the convoy',
+    callout: 'Shells from behind',
+    premise: 'A periscope by your own shore fires at the ships coming in while the west islet sends a swarm at them, a guided missile comes off the middle islet, and the east islet sends drones.',
+    decision: 'North and south of the same ships: turn to the periscope behind, or to the swarm in front?',
+    counters: 'The shells as they climb, the swarm before it reaches the lane, the missile while it crosses.',
+    succeeds: 'A close call at the west end in most runs; the losses are in the west, not by the carrier.',
+    notes: {
+      sites: 'A submarine by your own shore in the west (500, 742), the west islet (swarm), the middle islet (guided), the east islet (swarm).',
+      target: 'The shells, the missile and the west swarm at the ship least far along or nearest its islet, the east swarm at any ship.',
+      usesMap: 'Behind and in front of the long reach at once, in place of the wave\'s shells and guided missiles.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(4), aim: 'rear' },
+      { at: 0.4, plus: 1.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.4, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 0, ballistic: 8, guided: 1 },
+  },
+  {
+    id: 'archipelago-strafe',
+    map: 'archipelago',
+    waves: [7],
+    role: 'escalate',
+    name: 'A jet from the west',
+    callout: 'A jet down the lane',
+    premise: 'A strafer runs in from the west down the lane, a shell comes over the islets from the far shore, and the islets send swarms.',
+    decision: 'A jet from the side the carrier is furthest from, while the islets keep firing.',
+    counters: 'The jet as it comes in, the shell as it climbs, the swarms last.',
+    succeeds: 'The jet is shot down or passes with a hit or two; a close call at the west end.',
+    notes: {
+      sites: 'A strafer from the west edge, the north-west shore silo (a shell), the west, east and middle islets (swarms).',
+      target: 'The jet along the lane, the shell at the ship least far along, the west swarm at the ship nearest the islet, the others at any ship.',
+      usesMap: 'A fourth direction, the west edge, down the long reach, in place of the wave\'s shells and one jet.',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.4, plus: 2, kind: 'ballistic', count: 1, from: base(3), aim: 'rear' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'near' },
+      { at: 0.65, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 1, ballistic: 8, extras: { strafer: 1 } },
+  },
+  {
+    id: 'archipelago-both-gaps',
+    map: 'archipelago',
+    waves: [8],
+    role: 'escalate',
+    name: 'Both gaps',
+    callout: 'Periscopes in the gaps',
+    premise: 'Periscopes rise in both gaps between the islets and fire at the ships passing, while the islets send swarms.',
+    decision: 'Two subs at once, each in a gap no silo covers: which salvo first?',
+    counters: 'The shells as they climb, a salvo at a time; the swarms between.',
+    succeeds: 'Most shells are shot down; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Submarines in the west gap (565, 335) and the east gap (1035, 335), the west, middle and east islets (swarms).',
+      target: 'The west gap\'s shells at the ship least far along, the east gap\'s at the ship nearest it, the swarms at any ship.',
+      usesMap: 'The gaps between the islets, both at once, in place of the wave\'s shells and a heavy.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(0), aim: 'rear' },
+      { at: 0.4, plus: 2, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'near' },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
+      { at: 0.65, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.85, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+    ],
+    replaces: { drones: 4, ballistic: 10, extras: { heavy: 1 } },
+  },
+  {
+    id: 'archipelago-cluster',
+    map: 'archipelago',
+    waves: [9],
+    role: 'escalate',
+    name: 'A cluster over the west',
+    callout: 'A cluster at the rear',
+    premise: 'A cluster missile off the west islet at the ships coming in, a swarm off the middle islet, and a periscope by your own shore in the east at the lead ship; swarms all wave.',
+    decision: 'The cluster splits over the ships furthest from you; the lead ship is under fire from behind at the same time.',
+    counters: 'The cluster as it climbs, before it splits; then the swarm and the shells.',
+    succeeds: 'A close call at the west end in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The west islet (a cluster, then a swarm), the middle islet (swarms), a submarine by your own shore in the east (1490, 742), the east islet (a swarm).',
+      target: 'The cluster at the ship least far along, the shells at the lead ship, the swarms at any ship.',
+      usesMap: 'Both ends and both sides, in place of the wave\'s shells, a cluster and a heavy.',
+    },
+    beats: [
+      { at: 0.45, kind: 'cluster', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.45, plus: 1.5, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.45, plus: 3.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(5), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+    ],
+    replaces: { drones: 6, ballistic: 10, extras: { cluster: 1, heavy: 1 } },
+  },
+  {
+    id: 'archipelago-run',
+    map: 'archipelago',
+    waves: [10],
+    role: 'climax',
+    name: 'Run the chain',
+    callout: 'Fire from every side',
+    premise: 'Once the wave\'s own fire is spent, a periscope behind the ships coming in, a cluster off the west islet, swarms from the islets and a missile from the east islet at the lead ship; swarms all wave.',
+    decision: 'Every direction at once: behind, the islets, the far end; the ships furthest from you first.',
+    counters: 'The shells and the cluster before they reach the west end, the swarms, the missile last.',
+    succeeds: 'A close call at the west end or on the lead ship in most runs; the climax is the hardest wave.',
+    notes: {
+      sites: 'A submarine by your own shore in the west (500, 742), the west islet (cluster), the middle and east islets (swarms, guided), the climax after the wave\'s own fire.',
+      target: 'The shells and the cluster at the ship least far along, the missile at the lead ship, the swarms at any ship.',
+      usesMap: 'The map\'s problem from every side, in place of the wave\'s shells, most guided missiles, a heavy, a cluster, a supersonic and a jet; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'ballistic', count: 2, gap: 0.75, from: sub(4), aim: 'rear' },
+      { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(0), aim: 'rear' },
+      { at: 1, plus: 3, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 1, plus: 4, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 12, guided: 4, extras: { heavy: 1, cluster: 1, supersonic: 1, strafer: 1 } },
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
@@ -3440,10 +3695,11 @@ export const ENCOUNTERS: Encounter[] = [
   ...KESH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...MARROW_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 2 (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md,
-  // v3-ch2-needle.md).
+  // v3-ch2-needle.md, v3-ch2-archipelago.md).
   ...ISLAND_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...BEHEMOTH_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...NEEDLE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  ...ARCHIPELAGO_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ];
 
 /** The rev an encounter came in. */
@@ -3483,10 +3739,11 @@ export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
  *  the Island and the Behemoth Run (rev 4: docs/design/v3-ch2-island.md,
  *  v3-ch2-behemoth.md). */
 export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap;
-/** Chapter 2: the Island, the Behemoth Run and the Needle of Bosk
- *  (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md, v3-ch2-needle.md). */
-export type ChapterTwoMap = 'island' | 'behemoth' | 'needle';
-export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle'];
+/** Chapter 2: the Island, the Behemoth Run, the Needle of Bosk and the
+ *  Archipelago (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md,
+ *  v3-ch2-needle.md, v3-ch2-archipelago.md). */
+export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago';
+export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -3577,6 +3834,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   island: { v1: { name: 'Original', idea: 'One encounter a wave, built on the island\'s point-blank silos and the north lane; attack helicopters off the island from wave 6.', callouts: false } },
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
   needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
+  archipelago: { v1: { name: 'Original', idea: 'One encounter a wave, built on the chain of islets: fire from the islets, through the gaps between them, from the far shore and from behind, at once; drone motherships off the west islets from wave 4.', callouts: false } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -3645,6 +3903,12 @@ export interface MapSignature {
    *  it stands in for and never more than that swarm's drones (rule
    *  w-budget). */
   block?: number;
+  /** The Archipelago (log v36): the wave's new enemies stand in as one of
+   *  the map's own threat kinds instead of a foe (its drone motherships,
+   *  out of the bases that launch them), `foeShare` of them as with `foe`,
+   *  each taking out of the wave what the enemy it stands in for would
+   *  have (rule w-budget). */
+  kind?: ThreatKind;
   jets?: BeatAim;
   heavies?: BeatAim;
 }
@@ -3661,6 +3925,12 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // drones, the Shield Wall's own, in small walls from wave 4 (the first
   // wave after the Island's debut of them, so no debut wave is needed here).
   needle: { from: 4, foe: 'armored', foeShare: 1, block: 2 },
+  // The Archipelago (log v36, docs/design/v3-ch2-archipelago.md): drone
+  // motherships off the west islets, the Supply Raid's (MAP_BOSS), from
+  // wave 4: each crawls over the convoy towards the carrier and launches
+  // mini-drones as it goes, so the drones come at the ships from wherever
+  // it is.
+  archipelago: { from: 4, kind: 'mothership', foeShare: 1 },
 };
 
 /** A map's signature for a wave under a run's encounter setup (none before
@@ -3736,7 +4006,7 @@ export interface BossRound {
 export interface BossFire {
   /** A strike jet (log v33) comes in from the edges in turn, not a base,
    *  and with aim 'vip' flies down the supertanker's lane. */
-  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic' | 'strafer' | 'cluster';
+  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic' | 'strafer' | 'cluster' | 'mothership';
   at: number;
   count?: number;
   gap?: number;
@@ -3819,6 +4089,20 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
   { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 9, count: 2, gap: 4, base: 2, aim: 'near' }] },
 ];
 
+/** The Archipelago's Supply Raid (log v36, docs/design/v3-ch2-archipelago.md):
+ *  the event's cargo runs and scavengers as they are (8 then 6 pickups, 3 + 3
+ *  scavengers from every side of the screen), its drone swarms off the
+ *  islets (before: 5 of 6 every round), and the map's signature with them:
+ *  drone motherships off the west islet and the north-west shore, crawling
+ *  over the convoy and launching mini-drones as they go, with shells from
+ *  the far shore and a cluster off the west islet at the ships coming in
+ *  (aim 'rear': the long reach). */
+export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
+  { swarms: 6, size: 6, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 5, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 8, count: 1, base: 0, aim: 'rear' }] },
+  { swarms: 7, size: 7, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 5, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 8, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 7, size: 8, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 3, base: 0 }, { kind: 'ballistic', at: 5, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 2, gap: 5, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -3856,6 +4140,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   island: { rounds: ISLAND_BOSS_ROUNDS },
   behemoth: { rounds: BEHEMOTH_BOSS_ROUNDS },
   needle: { rounds: NEEDLE_BOSS_ROUNDS },
+  archipelago: { rounds: ARCHIPELAGO_BOSS_ROUNDS },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or

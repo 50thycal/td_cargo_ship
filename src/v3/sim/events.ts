@@ -560,11 +560,16 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       // launches of their own (MAP_BOSS).
       return [...steps(1, () => 0, 'block'), ...fireSteps(bossRound(g, ev))];
     case 'supply-raid': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch2-archipelago.md): the
+      // Archipelago's rounds rise, swarms of their own and launches of their
+      // own (MAP_BOSS: drone motherships off the west islets).
       const E = EV['supply-raid'];
+      const R = bossRound(g, ev);
       return [
         ...steps(E.drops.length, (k) => E.dropAt[k], 'cargo'),
         ...E.scav.flatMap((n, run) => Array.from({ length: n }, (_, k): EventStep => ({ at: B + E.scavAt[run] + k * E.apart, op: 'scav', k: run * 100 + k }))),
-        ...steps(E.swarms, (k) => 3 + k * E.every, 'swarm'),
+        ...steps(R?.swarms ?? E.swarms, (k) => 3 + k * E.every, 'swarm'),
+        ...fireSteps(R),
       ];
     }
     case 'blackout': {
@@ -867,7 +872,7 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
         // from all side"), each leaving the way it came.
         // (Round 8: three a run, the second run's going on round the sides.)
         scavenger(g, ev, Math.floor(s.k / 100) * EV['supply-raid'].scav[0] + (s.k % 100));
-      } else swarm(g, ev, EV['supply-raid'].size);
+      } else swarm(g, ev, bossRound(g, ev)?.size ?? EV['supply-raid'].size);
       return;
     }
     case 'blackout': {

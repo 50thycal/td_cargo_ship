@@ -1175,7 +1175,7 @@ function startWave(g: Game): void {
   // are the shared wave's, rule w-budget).
   const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
   const drawn = labFoes(g, cut(foeCount(g.wave), len)) ?? planFoes(g, cut(foeCount(g.wave), len));
-  const signed = sig?.foe ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
+  const signed = sig?.foe || sig?.kind ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
     replace('drone', 1);
@@ -1199,7 +1199,9 @@ function startWave(g: Game): void {
         size++;
       }
     }
-    units.push({ kind: FOES[k < signed ? sig!.foe! : id].kind, size });
+    // The Archipelago (log v36, MAP_SIGNATURE `kind`): one of the map's own
+    // threat kinds (a drone mothership) in place of the enemy.
+    units.push({ kind: k < signed ? (sig!.kind ?? FOES[sig!.foe!].kind) : FOES[id].kind, size });
   }
   // The lab's authored encounters: what each will send comes out of the
   // wave as it now stands (after the aircraft and the new enemies took
