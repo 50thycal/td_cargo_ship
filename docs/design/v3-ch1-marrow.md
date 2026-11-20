@@ -352,15 +352,15 @@ The player's own setup (`tools/v3/bot-fit/curve.ts --ids=v3-20261119132436-3976 
 | --- | --- | --- | --- | --- | --- |
 | Mirror (the player's seed), v31 | 96% | 0.25 | 2.33 | .25 .25 .42 .67 .78 | w7 |
 | Mirror, 6 hit points only | 96% | 0.21 | 1.92 | .04 .25 .25 .79 .58 | w8 |
-| Mirror, v32 (fire from wave 6, tried) | 92% | 0.21 | 2.13 | .13 .29 .13 .63 .96 | w8 |
+| **Mirror, v32** | 96% | 0.21 | 2.13 | .04 .38 .21 .61 .96 | w8 |
 | Seeds 900–923, v31 | 67% | 0.46 | 3.13 | .54 .46 .78 .82 .75 | w7 |
 | Seeds, 6 hit points only | 96% | 0.29 | 2.25 | .46 .17 .42 .70 .57 | w8 |
-| Seeds, v32 (fire from wave 6, tried) | 83% | 0.29 | 2.33 | .63 .29 .26 .78 .48 | w8 |
+| **Seeds, v32** | 88% | 0.29 | 2.83 | .46 .33 .50 .75 .83 | w8 |
 
-48 seeds, the latest Armory (`quick.ts`): won 81% / 2.67 lost in waves 1–10 on v31, 90% / 2.13 with 6 hit points alone, 92% / 2.27 with the extra fire from wave 6. Without the Armory (`marrow.md`): won 4% (8%), 4.3 lost in waves 1–10, tower median w8 (w6).
+48 seeds, the latest Armory (`quick.ts`): won 81% / 2.67 lost in waves 1–10 on v31, 90% / 2.13 with 6 hit points alone, 92% / 2.27 with the extra fire from wave 6 (the version that broke the budget). Without the Armory (`marrow.md`): won 4% (8%), 4.3 lost in waves 1–10, tower median w8 (w6).
 
 ### What it does, and what it doesn't
 
 - **The tower lasts a wave longer, not to the end:** it now falls by wave 6 in 3 runs of 24 (7), and the median moves from wave 7 to wave 8. In most runs it still falls in waves 7–10, so the boss's tower missiles mostly go at the ship nearest the island. 6 is three hits; the next step that matters is 8 (four hits).
-- **The map is about as hard as it was** on the record report (83% won, 2.3 lost in waves 1–10). On the player's own setup it is easier than v31 (seeds: 67% → 83%; 6–10: 3.1 → 2.3), as the player's "a bit easy" note on waves 1–6 is untouched. The bot numbers move ±10% from run to run of 24–48 seeds.
+- **The map is about as hard as it was** on the record report (83% won, 2.3 lost in waves 1–10). On the player's own setup it is a little easier than v31 (seeds: won 67% → 88%, waves 6–10 lost 3.1 → 2.8; the player's seed 96% → 96%, 2.3 → 2.1); waves 1–6, which the player found "pretty easy", are untouched. The bot numbers move ±10% from run to run of 24–48 seeds.
 - **The early stretch** still takes 29% (rule: under 25%), a little more than before, as the middle under a standing tower takes less.
