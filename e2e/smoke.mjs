@@ -51,7 +51,8 @@ try {
   });
 
   console.log(`loading ${BASE_URL} ...`);
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  // The classic game is behind the legacy route (the front door is V3).
+  await page.goto(`${BASE_URL}/?legacy=1`, { waitUntil: 'networkidle' });
 
   // --- Menu ---------------------------------------------------------------
   await page.waitForSelector('[data-screen="menu"]', { timeout: 10_000 });

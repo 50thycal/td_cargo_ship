@@ -101,6 +101,8 @@ try {
   await phone.tap('[data-lab-verdict="keep"]');
   await phone.tap('[data-lab-list]');
   await phone.waitForSelector('[data-screen="lab"]');
+  // The UI overhaul: Map Analytics is in the hub's Tools drawer.
+  await phone.tap('[data-lab-tools-open]');
   await phone.tap('[data-maplab-open]');
   await phone.waitForSelector('[data-maplab]');
   await idle(phone, 1);

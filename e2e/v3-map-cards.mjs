@@ -194,7 +194,7 @@ try {
   // ---- The hub: the map cards say what they play ----
   await page.tap('[data-lab]');
   await page.waitForSelector('[data-screen="lab"]');
-  await page.tap('[data-section="map"] summary');
+  // The UI overhaul: the maps are a grid always in view (no summary to open).
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
@@ -433,6 +433,8 @@ try {
   await page.tap('[data-lab]');
   await page.waitForSelector('[data-screen="lab"]');
   const next = await page.evaluate(() => document.querySelector('[data-lab-next] small')?.textContent);
+  // The UI overhaul: Next up is in the hub's Tools drawer.
+  await page.tap('[data-lab-tools-open]');
   await page.tap('[data-lab-next]');
   await page.waitForSelector('.playing.lab-on');
   const s4 = await runState(page);

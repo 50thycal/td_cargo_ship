@@ -54,7 +54,8 @@ try {
     console.error('PAGE ERROR:', err.message);
     failed = true;
   });
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  // The classic game is behind the legacy route (the front door is V3).
+  await page.goto(`${BASE_URL}/?legacy=1`, { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-screen="menu"]');
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'networkidle' });
