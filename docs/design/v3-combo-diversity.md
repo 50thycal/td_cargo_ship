@@ -216,7 +216,7 @@ npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --seeds=4
 | The Island | **Air Strike + Thermobaric Shell + Point Defense** 6.6 | Air Strike + Point Defense + Gunship Pair 7.8 | Flak Cannon + Drone Screen + Gunship Pair 8.4 | Air Strike + Point Defense + Drone Screen 8.4 | Railgun + Tesla Arc + Overdrive 8.6 |
 | The Behemoth Run | **Air Strike + Drone Screen + Supply Run** 4.0 | Air Strike + Drone Screen + Full Steam 4.7 | Frigate Escort + Gravity Well + Shield 5.3 | Air Strike + Gravity Well + Drone Screen 5.6 | Thermobaric Shell + Flak Cannon + Full Steam 5.9 |
 | The Needle of Bosk | **Scattergun + Railgun + Supply Run** 5.3 | Shrapnel Shell + Gravity Well + Gunship Pair 6.2 | Shrapnel Shell + Railgun + Supply Run 6.9 | Shrapnel Shell + Flak Cannon + Gunship Pair 7.3 | Gravity Well + Railgun + Supply Run 7.3 |
-| The Archipelago | **Air Strike + Gunship Pair + Shield** 3.4 | Air Strike + Railgun + Gunship Pair 3.6 | Air Strike + Gravity Well + Supply Run 3.9 | Air Strike + Gunship Pair + Supply Run 4.0 | Air Strike + Frigate Escort + Gunship Pair 4.2 |
+| The Archipelago | **Air Strike + Shrapnel Shell + Gravity Well** 3.3 | Air Strike + Frigate Escort + Gunship Pair 3.6 | Air Strike + Shrapnel Shell + Overdrive 3.8 | Air Strike + Overdrive + Full Steam 3.8 | Air Strike + Frigate Escort + Seeker Pod 3.9 |
 
 | Measure | Result |
 | --- | --- |
@@ -224,12 +224,12 @@ npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --seeds=4
 | The same, one map against itself (two halves of its seeds) | 0.25 / 0.25 / 0.25 / 0.43 |
 | #1 kit | a different one on each map |
 | Best weapon alone | **Air Strike on the Island (tied), the Behemoth Run and the Archipelago**; the Gunship Pair on the Needle |
-| Rank correlation of the weapons alone, the Archipelago against the Island / Behemoth / Needle | 0.81 / 0.81 / 0.35 |
+| Rank correlation of the weapons alone, the Archipelago against the Island / Behemoth / Needle | 0.73 / 0.71 / 0.20 |
 
 ### Reading
 
 - **Every map's kits are its own** at version 37: no top-5 kit is shared between any two of the four maps.
-- **The best weapon alone is not:** with the Shield breaking after hits, the Air Strike is the best single on three maps of four. The Archipelago's lead is the clearest (3.3 ships, the next 4.7): it is one lane, and every threat ends on that row. The rule fails for the Archipelago's best single; it is a weapon question across the chapter (docs/design/v3-ch2-archipelago.md, "Questions for the player").
+- **The best weapon alone is not:** with the Shield breaking after hits, the Air Strike is the best single on three maps of four. The Archipelago's is the lowest loss (3.7 ships; Gravity Well 4.0 next): it is one lane, and every threat ends on that row. The rule fails for the Archipelago's best single; it is a weapon question across the chapter (docs/design/v3-ch2-archipelago.md, "Questions for the player").
 - **Before the fixes** (version 36, the Archipelago's singles only) the Shield (2.2) and the Air Strike (2.4) led the Archipelago level, the Shield clashing with the Needle's best single at the time.
 
 ```

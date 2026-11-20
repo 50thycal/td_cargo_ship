@@ -86,20 +86,20 @@ How they compare (the player's Armory, bot report, 24 seeds, the kit as the bot'
 
 | | Won | Lost in waves 1–10 (normal) | Boss r1 / r2 / r3 (reached) |
 | --- | --- | --- | --- |
-| Counter kit | **46%** | 3.7 | 1.15 / 0.36 / 1.27 |
-| Off-counter kit | 29% | 3.7 | 2.14 / 1.42 / 2.00 |
-| The bot's own draft (the record) | 50% | 4.3 | 1.07 / 0.33 / 1.33 |
+| Counter kit | **46%** | 4.4 | 0.92 / 0.42 / 1.42 |
+| Off-counter kit | 33% | 4.1 | 1.36 / 1.92 / 1.70 |
+| The bot's own draft (the record) | 46% | 4.3 | 0.86 / 0.69 / 1.54 |
 
-The counter kit wins clearly more often than the off-counter kit (46% against 29%) and loses fewer ships in the boss rounds; in waves 1–10 they lose the same. With the latest Armory: 38% against 29%.
+The counter kit wins more often than the off-counter kit (46% against 33%) and loses fewer ships in the boss rounds; in waves 1–10 it loses a little more (4.4 against 4.1). With the latest Armory: 46% against 33%. It is no better than the bot's own draft, which on this map lands on the Air Strike often anyway.
 
 ## Loadouts on this map (combo sweep singles)
 
 Each weapon alone, forced at every draft (12 seeds, the player's Armory, game version 37, with the playtest fixes; `npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle,archipelago --out=tools/v3/combo-sweep/results/v37-ch2`). Ships lost over all 13 waves:
 
-- **Strong:** **Air Strike 3.3** (won 92%), Gravity Well 4.7, Flak 5.8, Scattergun 6.0.
-- **Middling:** Point Defense 7.1, Gunship Pair 7.2, and the rest of the draft.
+- **Strong:** **Air Strike 3.7** (won 92%), Gravity Well 4.0, Flak 6.2.
+- **Middling:** Scattergun 6.9, Thermobaric 7.0, Frigate Escort 7.7, Shrapnel 7.9, and the rest of the draft.
 - **Weak:** the long-reach and one-at-a-time weapons (Seeker Pod, Drone Screen, Boomerang, Railgun), Supply Run alone, the Charge Lance (the bot charges it poorly) and the plain gun.
-- **The Supply Raid flatters a forced single.** Its cargo hands back the weapon held, at its best: before this build a forced Shield or Air Strike lost 0.00–0.03 ships a round in the boss. The rounds now carry one weapon each (in the first cargo run; the event gives one for each weapon held, in both runs); a forced Air Strike still loses only 0.36 a round. With no weapon at all every weapon ran out and every kit lost about five ships a round, so that was not an option.
+- **The Supply Raid flatters a forced single.** Its cargo hands back the weapon held, at its best: before this build a forced Shield or Air Strike lost 0.00–0.03 ships a round in the boss. The rounds now carry one weapon each (in the first cargo run; the event gives one for each weapon held, in both runs); a forced Air Strike still loses only 0.47 a round, a forced Gravity Well 0.06. With no weapon at all every weapon ran out and every kit lost about five ships a round, so that was not an option.
 - Before the playtest fixes (game version 36) the Shield was best alone here (2.2), level with Air Strike (2.4); a Shield that breaks after 3 hits fell out of the lead on every chapter 2 map.
 
 ## Diversity: are the Archipelago's best kits its own?
@@ -111,18 +111,18 @@ The player's rule for this rebuild: the Archipelago's best kits and its best wea
 | The Island | **Air Strike + Thermobaric Shell + Point Defense** 6.6 ±0.7 | Air Strike + Point Defense + Gunship Pair 7.8 | Flak Cannon + Drone Screen + Gunship Pair 8.4 | Air Strike + Point Defense + Drone Screen 8.4 | Railgun + Tesla Arc + Overdrive 8.6 |
 | The Behemoth Run | **Air Strike + Drone Screen + Supply Run** 4.0 ±0.5 | Air Strike + Drone Screen + Full Steam 4.7 | Frigate Escort + Gravity Well + Shield 5.3 | Air Strike + Gravity Well + Drone Screen 5.6 | Thermobaric Shell + Flak Cannon + Full Steam 5.9 |
 | The Needle of Bosk | **Scattergun + Railgun + Supply Run** 5.3 ±0.8 | Shrapnel Shell + Gravity Well + Gunship Pair 6.2 | Shrapnel Shell + Railgun + Supply Run 6.9 | Shrapnel Shell + Flak Cannon + Gunship Pair 7.3 | Gravity Well + Railgun + Supply Run 7.3 |
-| The Archipelago | **Air Strike + Gunship Pair + Shield** 3.4 ±0.5, won 94% | Air Strike + Railgun + Gunship Pair 3.6 | Air Strike + Gravity Well + Supply Run 3.9 | Air Strike + Gunship Pair + Supply Run 4.0 | Air Strike + Frigate Escort + Gunship Pair 4.2 |
+| The Archipelago | **Air Strike + Shrapnel Shell + Gravity Well** 3.3 ±0.6, won 94% | Air Strike + Frigate Escort + Gunship Pair 3.6 | Air Strike + Shrapnel Shell + Overdrive 3.8 | Air Strike + Overdrive + Full Steam 3.8 | Air Strike + Frigate Escort + Seeker Pod 3.9 |
 
 | Measure | Result |
 | --- | --- |
 | Jaccard of the top-5 kits, every pair of maps | **0** (no kit shared) |
 | The same, one map against itself (two halves of its seeds) | 0.25 / 0.25 / 0.25 / 0.43 (the Archipelago) |
 | #1 kit | a different one on each map |
-| Best weapon alone | **Air Strike on three maps of four** (the Island, tied with the Gunship Pair and Point Defense at 6.8; the Behemoth Run 6.8; the Archipelago 3.3); the Needle: the Gunship Pair |
-| Rank correlation of the weapons alone, the Archipelago against the Island / the Behemoth Run / the Needle | 0.81 / 0.81 / 0.35 |
+| Best weapon alone | **Air Strike on three maps of four** (the Island, tied with the Gunship Pair and Point Defense at 6.8; the Behemoth Run 6.8; the Archipelago 3.7, Gravity Well next at 4.0); the Needle: the Gunship Pair |
+| Rank correlation of the weapons alone, the Archipelago against the Island / the Behemoth Run / the Needle | 0.73 / 0.71 / 0.20 |
 
 - **The Archipelago's kits are its own:** no top-5 kit is another map's, and its #1 kit is its own.
-- **Its best weapon alone is not: Air Strike, as on the Island and the Behemoth Run.** This fails the player's rule. It is a chapter 2 weapon finding more than a map one: once the playtest fixes made the Shield break, the Air Strike became the best weapon alone on three of the four maps. It is strongest here (3.3 ships against 6.8 elsewhere) because the Archipelago is one lane: every threat, from whichever islet, gap or side, ends on the same row, and the Air Strike's jet takes the row. All five of the map's best kits hold it. See "Questions for the player".
+- **Its best weapon alone is not: Air Strike, as on the Island and the Behemoth Run.** This fails the player's rule. It is a chapter 2 weapon finding more than a map one: once the playtest fixes made the Shield break, the Air Strike became the best weapon alone on three of the four maps. It is strongest here (3.7 ships against 6.8 elsewhere) because the Archipelago is one lane: every threat, from whichever islet, gap or side, ends on the same row, and the Air Strike's jet takes the row. All five of the map's best kits hold it. See "Questions for the player".
 
 ## The debut
 
@@ -154,11 +154,11 @@ The Supply Raid is the map's own event: two cargo runs drop pickups over the lan
 | Round | Drone swarms | Motherships (west islet) | Shells (north-west shore) | Clusters (west islet) | Guided (east islet) | Weapons in the cargo |
 | --- | --- | --- | --- | --- | --- | --- |
 | before (every round) | 5 of 6 | 0 | 0 | 0 | 0 | one for each weapon held, both runs |
-| 1 | 6 of 7 | 2 (2, 6 s) | 3 (4, 7, 10 s) | 1 (7 s) | 1 (10 s) | 1 in the first run, none in the second |
-| 2 | 6 of 9 | 3 (2, 4.5, 7 s) | 4 (4–11.5 s) | 1 (6 s) | 1 (9 s) | the same |
-| 3 | 6 of 10 | 3 (2, 4.5, 7 s) | 5 (4–12 s) | 2 (6, 10 s) | 1 (8 s) | the same |
+| 1 | 6 of 7 | 2 (1, 3 s) | 3 (3, 5.5, 8 s) | 1 (5 s) | 1 (7 s) | 1 in the first run, none in the second |
+| 2 | 6 of 9 | 3 (1, 2.5, 4 s) | 4 (3–9 s) | 1 (5 s) | 1 (7 s) | the same |
+| 3 | 6 of 9 | 3 (1, 2.5, 4 s) | 5 (3–10 s) | 1 (4 s) | 1 (6 s) | the same |
 
-The shells and clusters go at the ship least far along (aim `rear`: the long reach), the missile at the lead ship, the motherships at the carrier over the convoy, launching mini-drones at the ships as they go. **The cargo carries one weapon a round, not one for each weapon held in both runs:** with the event's own cargo a weapon held at its best (a Shield, an Air Strike) came back twice a round and the round was over for it (the forced singles lost 0.00–0.03 ships a round). With no weapon at all, every weapon ran out and every kit lost about five ships a round, so one weapon, early, is kept. `MAP_PLANS.archipelago.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test). The intro cards are the shared ones (log v30), after the convoy is restored: "Boss round", "Convoy restored" (and the ships that can still be lost), "The boss: Supply Raid", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
+The shells and clusters go at the ship least far along (aim `rear`: the long reach), the missile at the lead ship, the motherships at the carrier over the convoy, launching mini-drones at the ships as they go. **The cargo carries one weapon a round, not one for each weapon held in both runs:** with the event's own cargo a weapon held at its best (a Shield, an Air Strike) came back twice a round and the round was over for it (the forced singles lost 0.00–0.03 ships a round). With no weapon at all, every weapon ran out and every kit lost about five ships a round, so one weapon, early, is kept. `MAP_PLANS.archipelago.boss.botTarget` is 2 (the brief: about 1.5 / 2 / 2.5 on the bot's scale). Each round lasts 15–30 s (test, seed 218: 26 s each). Everything a round adds is launched in its first 10 s: since the Scavenger takes three hits (the playtest fixes) the rounds ran longer, and motherships launched late kept them going (20 tryhard runs: 28 s on average, one round in nine over 30 s; the event alone 25 s, 3 in 60 over). The intro cards are the shared ones (log v30), after the convoy is restored: "Boss round", "Convoy restored" (and the ships that can still be lost), "The boss: Supply Raid", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3".
 
 ## Bot results, before and after (24 seeds, 900–923)
 
@@ -168,12 +168,12 @@ The shells and clusters go at the ship least far along (aim `rear`: the long rea
 
 | | Before | After |
 | --- | --- | --- |
-| Won (normal) | 83% | **50%** |
-| Mean end wave | 13.3 | 11.6 |
+| Won (normal) | 83% | **46%** |
+| Mean end wave | 13.3 | 11.7 |
 | Ships lost in waves 1–10 (normal) | 3.2 | 4.3 |
 | Ships lost in waves 1–5 (normal) | 0.08 | **0.46** |
-| Boss r1 / r2 / r3 (normal, reached) | 0.00 / 0.05 / 0.00 | **1.07 / 0.33 / 1.33** |
-| Boss r1 / r2 / r3 (tough) | 0.00 / 0.04 / 0.00 | 1.63 / 1.17 / 2.33 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.00 / 0.05 / 0.00 | **0.86 / 0.69 / 1.54** |
+| Boss r1 / r2 / r3 (tough) | 0.00 / 0.04 / 0.00 | 1.38 / 1.96 / 1.79 |
 | Tough curve 1–10 | 0 0 0 .08 0 0 .92 .33 .79 1.29 | 0 0 .21 0 .25 .58 .92 .96 1.42 .96 |
 | `w-cliff` | **FLAG** (w7 0 → 0.92, w9) | **FLAG**, marginal (w6 0.25 → 0.58; the biggest step w9 +0.46) |
 | `w-early` close calls from w3 | PASS | PASS (fewest w3 1.7, 83% of runs) |
@@ -182,27 +182,27 @@ The shells and clusters go at the ship least far along (aim `rear`: the long rea
 | `g-warning` | PASS: 8.6 → 4.0 s | PASS: 8.3 → 5.7 s |
 | `w-first` | PASS | PASS |
 
-The record report is 24 seeds; the tuning reads on 96 (900–995, `quick.ts`): won **52%** (46% and 58% on the two halves), ships lost in waves 1–10 3.9, in waves 1–5 **0.65**, boss rounds **0.6 / 0.7 / 1.6** (normal, reached), 1.8 / 1.6 / 2.7 (tough). The sim is chaotic: one more swarm in a wave moved later waves and the boss by up to ±0.4 of a ship on the same seeds, and the record's 24 seeds read round 2 lighter than round 1 where the 96 read them rising.
+The record report is 24 seeds; the tuning reads on 96 (900–995, `quick.ts`): won **54.5%** (46% and 63% on the two halves), ships lost in waves 1–10 3.9, in waves 1–5 **0.65**, boss rounds **0.85 / 0.94 / 1.32** (normal, reached), 1.85 / 2.25 / 2.04 (tough). The sim is chaotic: one more swarm in a wave moved later waves and the boss by up to ±0.4 of a ship on the same seeds, and the record's 24 seeds read round 2 lighter than round 1 where the 96 read them rising.
 
 ### The player's latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3)
 
 | | Before | After |
 | --- | --- | --- |
-| Won (normal) | 29% | **50%** |
+| Won (normal) | 29% | **46%** |
 | Ships lost in waves 1–10 / 1–5 (normal) | 4.6 / 0.13 | 4.3 / 0.75 |
-| Boss r1 / r2 / r3 (normal, reached) | 0.00 / 0.00 / 0.00 (7 runs) | **0.47 / 1.00 / 1.36** |
-| Boss r1 / r2 / r3 (tough) | 0.04 / 0.08 / 0.04 | 1.21 / 1.50 / 2.13 |
+| Boss r1 / r2 / r3 (normal, reached) | 0.00 / 0.00 / 0.00 (7 runs) | **0.47 / 1.13 / 1.71** |
+| Boss r1 / r2 / r3 (tough) | 0.04 / 0.08 / 0.04 | 0.92 / 2.13 / 2.42 |
 | Tough curve 1–10 | 0 .04 0 0 .08 .25 .75 1.58 3.04 3.67 | 0 0 .04 .21 .50 .13 .96 1.58 .96 1.25 |
 | Checks | `w-cliff` **FLAG** (w7, w8) | `w-cliff` **FLAG** (w6 0.13 → w7 0.96); the rest PASS |
-| Kits (won; lost 1–10) | | counter 38%, 4.2; off-counter 29%, 4.5 |
+| Kits (won; lost 1–10) | | counter 46%, 4.2; off-counter 33%, 4.5 |
 
 ### Baseline (no Armory)
 
 | | Before | After |
 | --- | --- | --- |
-| Won (normal) | 0% | 0% |
+| Won (normal) | 0% | 4% |
 | Ships lost in waves 1–10 / 1–5 (normal) | 5.6 / 0.79 | 6.0 / 1.83 |
-| Boss r1 / r2 / r3 (tough) | 0.00 / 0.13 / 0.08 | 1.42 / 3.42 / 3.54 |
+| Boss r1 / r2 / r3 (tough) | 0.00 / 0.13 / 0.08 | 1.17 / 1.58 / 3.00 |
 | Tough curve 1–10 | 0 0 .04 .38 .46 1.04 2.71 5.00 6.00 6.92 (22.5) | 0 0 .17 .63 1.08 1.79 2.08 4.13 4.83 3.92 (18.6) |
 | `w-cliff` | **FLAG** (w6, w7) | **FLAG** (w4, w8) |
 
@@ -212,7 +212,7 @@ As on the other maps, the baseline stands in for a player with no upgrades and i
 
 ### Chapter 2 difficulty (rule `m-difficulty`)
 
-With the player's Armory the bot wins 50% on the record (52% on 96 seeds; the latest Armory 50%): inside the 50–70% asked, at its low end. Waves 1–5 lose 0.46–0.65 (in the 0.4–0.8 band), waves 1–10 3.9–4.3, and the boss rounds read 0.6 / 0.7 / 1.6 on the bot (normal, 96 seeds), under the 1.5 / 2 / 2.5 asked, as on the other chapter 2 maps; on the tough runs, which play every round, 1.6–1.8 / 1.2–1.6 / 2.3–2.7.
+With the player's Armory the bot wins 46% on the record's 24 seeds and 54.5% on 96 (the latest Armory 46%): the 96-seed read is inside the 50–70% asked, at its low end; the record is under it. Waves 1–5 lose 0.46–0.65 (in the 0.4–0.8 band), waves 1–10 3.9–4.3, and the boss rounds read 0.85 / 0.94 / 1.32 on the bot (normal, 96 seeds), rising but under the 1.5 / 2 / 2.5 asked, as on the other chapter 2 maps; on the tough runs, which play every round, 1.4–1.85 / 2.0–2.25 / 1.8–2.0.
 
 ## Fun measures (provisional, `src/v3/sim/funMetrics.ts`)
 
@@ -225,10 +225,10 @@ From `archipelago-player.md`:
 
 - **Air Strike is the best weapon alone here, as on the Island and the Behemoth Run** (version 37). This fails the player's diversity rule for the best single (the kits pass). It became so when the playtest fixes made the Shield break; on version 36 the Shield and Air Strike were level here and the Shield was the Needle's best. A question for the player (below).
 - **The Supply Raid hinges on its cargo.** Held weapons run out, and the cargo is where they come back: with none, every kit lost about five ships a round; with the event's own (one for each weapon held, in both runs) a forced Shield or Air Strike lost none. One weapon a round, in the first run, is the middle way chosen; a forced kit at its best still breaks the boss (the best kits lose 0.02–0.5 ships a round there).
-- **The boss is under the asked 1.5 / 2 / 2.5 on normal runs** (0.6 / 0.7 / 1.6 on 96 seeds) and round 2 is not clearly above round 1; on the tough runs it reads 1.6–1.8 / 1.2–1.6 / 2.3–2.7. More would take the win rate under 50% (it reads 50–52% now).
+- **The boss is under the asked 1.5 / 2 / 2.5 on normal runs** (0.85 / 0.94 / 1.32 on 96 seeds; the record's 24 read 0.86 / 0.69 / 1.54), and on the tough runs round 3 is not above round 2 (1.85 / 2.25 / 2.04). More would take the win rate further under 50%.
 - **`w-cliff` flags on wave 6** in the record (0.25 → 0.58, the line at 0.5) and with the latest Armory (0.13 → 0.96 on wave 7). The 96-seed reads climbed without a doubling (tough 0.46 / 0.52 / 0.94 / 1.00 on waves 5–8); 24 seeds are noisy here.
 - **Scavengers escort the motherships:** with three hits each since the playtest fixes they take shots, and they lock pickups the bot would grab. The bot's waves 6–10 got about half a ship harder with them; a player who shoots them first may feel it less, or more.
-- **The win rate is at the bottom of the band** (50% on the record, 52% on 96 seeds).
+- **The win rate is at the bottom of the band:** 54.5% on 96 seeds, but 46% on the record's 24 (under the band). The Scavenger's three hits (the playtest fixes) made waves 6–10 and the boss harder; I eased them twice and stopped there.
 - **"Routes that split and rejoin" are not built.** The map keeps its one lane; changing its geometry would change the campaign map too.
 - **No player data** on chapter 2's later maps yet: the bot's bias here is unknown. On chapter 1 the bot read boss rounds 1.4–2.5× as hard as the player did.
 - **This branch carries the playtest fixes** (PR #195, not yet in the base when this was built; see "The play log").
@@ -241,7 +241,7 @@ From `archipelago-player.md`:
 
 - **Air Strike is the best weapon alone on the Archipelago, the Island and the Behemoth Run (after the Shield fix). What now?** Recommended: a chapter-wide look at the Air Strike (a weapon pass, not this map), then sweep chapter 2 again. Other options: give the Archipelago fire that does not end on the lane's row (a map change, harder to keep readable), or accept a shared best single where the kits differ.
 - **The Supply Raid's cargo: one weapon a round, in the first cargo run (built), or the event's own (one per weapon held, both runs)?** Recommended: one a round, as built; with the event's own, a weapon held at its best ends the boss.
-- **Boss rounds under the asked 1.5 / 2 / 2.5 on normal runs (0.6 / 0.7 / 1.6), to keep the bot's win rate at 50%: keep, or raise them and accept fewer wins?** Recommended: keep, and judge from your play (on chapter 1 the bot read boss rounds harder than you did).
+- **Boss rounds under the asked 1.5 / 2 / 2.5 on normal runs (0.85 / 0.94 / 1.32), to keep the bot's win rate near 50%: keep, or raise them and accept fewer wins?** Recommended: keep, and judge from your play (on chapter 1 the bot read boss rounds harder than you did).
 - **A second route that splits round the middle islet and rejoins: worth a map change later?** Recommended: not now; it changes the campaign map and the Island already has two lanes.
 
 ## Tests

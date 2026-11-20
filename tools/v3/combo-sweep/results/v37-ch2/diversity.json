@@ -1986,45 +1986,90 @@
   "archipelago": {
    "pairs": [
     {
-     "key": "airstrike+overdrive",
-     "lostAll": 2.333
-    },
-    {
      "key": "airstrike+droneScreen",
-     "lostAll": 2.833
-    },
-    {
-     "key": "airstrike+gunships",
-     "lostAll": 2.833
-    },
-    {
-     "key": "well+fullSteam",
-     "lostAll": 3
-    },
-    {
-     "key": "airstrike+flak",
-     "lostAll": 3.167
+     "lostAll": 2
     },
     {
      "key": "airstrike+well",
-     "lostAll": 3.167
+     "lostAll": 2.167
+    },
+    {
+     "key": "airstrike+overdrive",
+     "lostAll": 2.5
+    },
+    {
+     "key": "airstrike+flak",
+     "lostAll": 2.667
+    },
+    {
+     "key": "airstrike+frigate",
+     "lostAll": 3
+    },
+    {
+     "key": "airstrike+railgun",
+     "lostAll": 3
     }
    ],
    "screened": [
     {
+     "key": "airstrike+frigate+well",
+     "lostAll": 2.3333333333333335,
+     "won": 1
+    },
+    {
      "key": "airstrike+frigate+gunships",
+     "lostAll": 2.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+railgun+fullSteam",
+     "lostAll": 2.6666666666666665,
+     "won": 1
+    },
+    {
+     "key": "airstrike+overdrive+fullSteam",
+     "lostAll": 3,
+     "won": 1
+    },
+    {
+     "key": "airstrike+railgun+overdrive",
+     "lostAll": 3,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+overdrive",
+     "lostAll": 3.1666666666666665,
+     "won": 1
+    },
+    {
+     "key": "airstrike+railgun+gunships",
      "lostAll": 3.1666666666666665,
      "won": 0.8333333333333334
     },
     {
-     "key": "well+overdrive+fullSteam",
+     "key": "airstrike+flak+railgun",
      "lostAll": 3.3333333333333335,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+frigate+seeker",
+     "lostAll": 3.5,
      "won": 1
     },
     {
-     "key": "airstrike+well+supplyRun",
+     "key": "airstrike+shrapnel+well",
      "lostAll": 3.5,
-     "won": 1
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+boomerang",
+     "lostAll": 3.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+tesla+droneScreen",
+     "lostAll": 3.6666666666666665,
+     "won": 0.8333333333333334
     },
     {
      "key": "airstrike+frigate+overdrive",
@@ -2032,94 +2077,139 @@
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+gunships+supplyRun",
+     "key": "airstrike+scatter+droneScreen",
      "lostAll": 3.6666666666666665,
-     "won": 0.8333333333333334
+     "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+gunships+shield",
+     "key": "airstrike+droneScreen+shield",
      "lostAll": 3.6666666666666665,
-     "won": 0.8333333333333334
+     "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+railgun+gunships",
+     "key": "airstrike+frigate+droneScreen",
      "lostAll": 3.8333333333333335,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+droneScreen+supplyRun",
+     "key": "airstrike+flak+well",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+well+fullSteam",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+tesla",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+shield",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+railgun",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+railgun+tesla",
+     "lostAll": 3.8333333333333335,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+scatter",
+     "lostAll": 3.8333333333333335,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+railgun+droneScreen",
      "lostAll": 4,
      "won": 1
     },
     {
-     "key": "airstrike+scatter+overdrive",
+     "key": "airstrike+frigate+flak",
      "lostAll": 4,
-     "won": 0.8333333333333334
+     "won": 1
     },
     {
-     "key": "airstrike+railgun+overdrive",
-     "lostAll": 4,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+frigate+droneScreen",
-     "lostAll": 4,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+flak+supplyRun",
-     "lostAll": 4,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+seeker+well",
+     "key": "airstrike+droneScreen+overdrive",
      "lostAll": 4,
      "won": 0.8333333333333334
     },
     {
      "key": "airstrike+gunships+overdrive",
-     "lostAll": 4.166666666666667,
+     "lostAll": 4,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+well+fullSteam",
-     "lostAll": 4.166666666666667,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+scatter+droneScreen",
-     "lostAll": 4.166666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+aegis+well",
-     "lostAll": 4.166666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+droneScreen+overdrive",
-     "lostAll": 4.5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "well+droneScreen+fullSteam",
-     "lostAll": 4.5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+scatter+flak",
-     "lostAll": 4.5,
+     "key": "airstrike+frigate+fullSteam",
+     "lostAll": 4,
      "won": 0.6666666666666666
     },
     {
      "key": "airstrike+thermo+well",
+     "lostAll": 4.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+seeker+well",
+     "lostAll": 4.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+scatter+overdrive",
+     "lostAll": 4.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+thermo",
+     "lostAll": 4.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+frigate+aegis",
+     "lostAll": 4.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+scatter+railgun",
+     "lostAll": 4.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+railgun+shield",
+     "lostAll": 4.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+boomerang+flak",
+     "lostAll": 4.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+aegis+well",
+     "lostAll": 4.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+droneScreen+supplyRun",
+     "lostAll": 4.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "airstrike+thermo+droneScreen",
      "lostAll": 4.666666666666667,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+tesla+overdrive",
+     "key": "airstrike+railgun+supplyRun",
      "lostAll": 4.666666666666667,
-     "won": 0.6666666666666666
+     "won": 0.8333333333333334
     },
     {
      "key": "airstrike+droneScreen+fullSteam",
@@ -2127,104 +2217,104 @@
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+gunships+fullSteam",
+     "key": "airstrike+flak+aegis",
      "lostAll": 4.666666666666667,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+shrapnel+overdrive",
+     "key": "airstrike+well+gunships",
+     "lostAll": 4.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+frigate+lance",
      "lostAll": 4.833333333333333,
      "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+tesla+droneScreen",
-     "lostAll": 4.833333333333333,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+tesla+gunships",
-     "lostAll": 4.833333333333333,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "well+supplyRun+fullSteam",
-     "lostAll": 4.833333333333333,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+overdrive+fullSteam",
-     "lostAll": 5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+shrapnel+gunships",
-     "lostAll": 5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+flak+gunships",
-     "lostAll": 5.166666666666667,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+well+railgun",
-     "lostAll": 5.166666666666667,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "well+gunships+fullSteam",
-     "lostAll": 5.166666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+boomerang+well",
-     "lostAll": 5.166666666666667,
-     "won": 0.6666666666666666
     },
     {
      "key": "airstrike+scatter+well",
-     "lostAll": 5.333333333333333,
+     "lostAll": 4.833333333333333,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+well+gunships",
-     "lostAll": 5.333333333333333,
-     "won": 0.5
+     "key": "airstrike+flak+overdrive",
+     "lostAll": 4.833333333333333,
+     "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+well+tesla",
-     "lostAll": 5.333333333333333,
-     "won": 0.5
+     "key": "airstrike+flak+supplyRun",
+     "lostAll": 4.833333333333333,
+     "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+seeker+overdrive",
-     "lostAll": 5.5,
+     "key": "airstrike+well+railgun",
+     "lostAll": 5,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+well+droneScreen",
-     "lostAll": 5.5,
+     "key": "airstrike+boomerang+well",
+     "lostAll": 5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+scatter+flak",
+     "lostAll": 5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+tesla",
+     "lostAll": 5,
      "won": 0.6666666666666666
     },
     {
      "key": "airstrike+thermo+flak",
+     "lostAll": 5.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+boomerang+railgun",
+     "lostAll": 5.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+well+supplyRun",
+     "lostAll": 5.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+well+droneScreen",
+     "lostAll": 5.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+railgun",
+     "lostAll": 5.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+droneScreen",
+     "lostAll": 5.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+overdrive+shield",
+     "lostAll": 5.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+boomerang+overdrive",
      "lostAll": 5.5,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+railgun+droneScreen",
+     "key": "airstrike+seeker+overdrive",
      "lostAll": 5.666666666666667,
      "won": 0.8333333333333334
     },
     {
-     "key": "flak+well+fullSteam",
+     "key": "airstrike+droneScreen+gunships",
      "lostAll": 5.666666666666667,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+flak+well",
-     "lostAll": 5.666666666666667,
-     "won": 0.8333333333333334
+     "won": 0.6666666666666666
     },
     {
      "key": "airstrike+supplyRun+overdrive",
@@ -2232,370 +2322,260 @@
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+droneScreen+shield",
-     "lostAll": 5.666666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+overdrive+shield",
+     "key": "airstrike+shrapnel+flak",
      "lostAll": 5.666666666666667,
      "won": 0.5
     },
     {
-     "key": "airstrike+scatter+gunships",
-     "lostAll": 5.833333333333333,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+seeker+gunships",
+     "key": "airstrike+seeker+droneScreen",
      "lostAll": 6,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+flak+overdrive",
+     "key": "airstrike+railgun+lance",
      "lostAll": 6,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+droneScreen+gunships",
+     "key": "airstrike+well+tesla",
      "lostAll": 6,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+shrapnel+well",
-     "lostAll": 6,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+boomerang+overdrive",
-     "lostAll": 6.166666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+frigate+well",
-     "lostAll": 6.166666666666667,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+aegis+overdrive",
-     "lostAll": 6.166666666666667,
      "won": 0.5
-    },
-    {
-     "key": "airstrike+shrapnel+droneScreen",
-     "lostAll": 6.166666666666667,
-     "won": 0.5
-    },
-    {
-     "key": "airstrike+flak+aegis",
-     "lostAll": 6.166666666666667,
-     "won": 0.5
-    },
-    {
-     "key": "airstrike+thermo+gunships",
-     "lostAll": 6.333333333333333,
-     "won": 0.6666666666666666
     },
     {
      "key": "airstrike+well+shield",
+     "lostAll": 6,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+tesla+overdrive",
+     "lostAll": 6.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+seeker+railgun",
+     "lostAll": 6.166666666666667,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+boomerang+droneScreen",
      "lostAll": 6.333333333333333,
      "won": 0.3333333333333333
     },
     {
-     "key": "airstrike+thermo+droneScreen",
-     "lostAll": 6.5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+boomerang+gunships",
-     "lostAll": 6.5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "scatter+well+fullSteam",
-     "lostAll": 6.5,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "airstrike+seeker+droneScreen",
+     "key": "airstrike+thermo+railgun",
      "lostAll": 6.5,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+flak+droneScreen",
-     "lostAll": 6.5,
-     "won": 0.5
-    },
-    {
-     "key": "well+railgun+fullSteam",
-     "lostAll": 6.5,
-     "won": 0.5
-    },
-    {
-     "key": "frigate+well+fullSteam",
+     "key": "airstrike+frigate+supplyRun",
      "lostAll": 6.666666666666667,
      "won": 0.8333333333333334
     },
     {
-     "key": "airstrike+frigate+flak",
-     "lostAll": 6.833333333333333,
-     "won": 0.8333333333333334
-    },
-    {
-     "key": "well+tesla+fullSteam",
-     "lostAll": 6.833333333333333,
+     "key": "airstrike+flak+lance",
+     "lostAll": 6.666666666666667,
      "won": 0.6666666666666666
     },
     {
-     "key": "airstrike+flak+tesla",
-     "lostAll": 6.833333333333333,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "airstrike+well+overdrive",
-     "lostAll": 7,
+     "key": "airstrike+aegis+overdrive",
+     "lostAll": 6.666666666666667,
      "won": 0.5
     },
     {
-     "key": "airstrike+boomerang+droneScreen",
-     "lostAll": 7.166666666666667,
+     "key": "airstrike+flak+seeker",
+     "lostAll": 6.666666666666667,
      "won": 0.3333333333333333
     },
     {
-     "key": "airstrike+flak+railgun",
-     "lostAll": 7.333333333333333,
+     "key": "airstrike+frigate+railgun",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+shield",
+     "lostAll": 6.833333333333333,
      "won": 0.5
     },
     {
      "key": "airstrike+flak+fullSteam",
-     "lostAll": 7.333333333333333,
+     "lostAll": 6.833333333333333,
      "won": 0.3333333333333333
     },
     {
-     "key": "airstrike+flak+shield",
+     "key": "airstrike+flak+gunships",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+well+overdrive",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+shrapnel+frigate",
      "lostAll": 7.5,
      "won": 0.5
     },
     {
      "key": "airstrike+aegis+droneScreen",
-     "lostAll": 8,
+     "lostAll": 7.666666666666667,
      "won": 0.5
     },
     {
-     "key": "airstrike+shrapnel+flak",
-     "lostAll": 8.166666666666666,
+     "key": "airstrike+well+lance",
+     "lostAll": 8.333333333333334,
      "won": 0.3333333333333333
     },
     {
-     "key": "well+lance+fullSteam",
+     "key": "airstrike+flak+droneScreen",
      "lostAll": 8.5,
      "won": 0.5
     },
     {
-     "key": "airstrike+thermo+overdrive",
-     "lostAll": 8.666666666666666,
-     "won": 0.5
-    },
-    {
-     "key": "airstrike+boomerang+flak",
-     "lostAll": 8.666666666666666,
-     "won": 0.5
-    },
-    {
-     "key": "airstrike+flak+seeker",
-     "lostAll": 8.666666666666666,
-     "won": 0.3333333333333333
-    },
-    {
-     "key": "aegis+well+fullSteam",
-     "lostAll": 8.833333333333334,
-     "won": 0.6666666666666666
-    },
-    {
-     "key": "thermo+well+fullSteam",
-     "lostAll": 8.833333333333334,
-     "won": 0.3333333333333333
-    },
-    {
-     "key": "shrapnel+well+fullSteam",
-     "lostAll": 9.166666666666666,
-     "won": 0.5
-    },
-    {
-     "key": "airstrike+flak+lance",
-     "lostAll": 9.5,
-     "won": 0.5
-    },
-    {
-     "key": "boomerang+well+fullSteam",
-     "lostAll": 9.5,
-     "won": 0.3333333333333333
-    },
-    {
-     "key": "well+shield+fullSteam",
-     "lostAll": 9.666666666666666,
-     "won": 0.3333333333333333
-    },
-    {
-     "key": "airstrike+aegis+gunships",
-     "lostAll": 10.333333333333334,
-     "won": 0.3333333333333333
-    },
-    {
-     "key": "airstrike+well+lance",
-     "lostAll": 11,
-     "won": 0.3333333333333333
-    },
-    {
      "key": "airstrike+lance+droneScreen",
-     "lostAll": 12.166666666666666,
+     "lostAll": 9.166666666666666,
      "won": 0.16666666666666666
     },
     {
-     "key": "airstrike+lance+gunships",
-     "lostAll": 12.166666666666666,
-     "won": 0.16666666666666666
+     "key": "airstrike+thermo+overdrive",
+     "lostAll": 9.5,
+     "won": 0.3333333333333333
     },
     {
      "key": "airstrike+lance+overdrive",
-     "lostAll": 12.333333333333334,
+     "lostAll": 10.333333333333334,
      "won": 0.3333333333333333
-    },
-    {
-     "key": "seeker+well+fullSteam",
-     "lostAll": 19.666666666666668,
-     "won": 0
     }
    ],
    "best": [
     {
-     "key": "airstrike+gunships+shield",
-     "name": "Air Strike + Gunship Pair + Shield",
-     "lostAll": 3.375,
+     "key": "airstrike+shrapnel+well",
+     "name": "Air Strike + Shrapnel Shell + Gravity Well",
+     "lostAll": 3.25,
      "won": 0.9375,
-     "lost10": 3,
-     "boss": 0.12499999999999999,
-     "se": 0.5367363761661771,
+     "lost10": 3.0625,
+     "boss": 0.0625,
+     "se": 0.5694020986965187,
      "halves": [
-      3,
-      3.75
-     ]
-    },
-    {
-     "key": "airstrike+railgun+gunships",
-     "name": "Air Strike + Railgun + Gunship Pair",
-     "lostAll": 3.5625,
-     "won": 0.875,
-     "lost10": 2.875,
-     "boss": 0.22916666666666663,
-     "se": 0.4504229782937367,
-     "halves": [
-      4.375,
-      2.75
-     ]
-    },
-    {
-     "key": "airstrike+well+supplyRun",
-     "name": "Air Strike + Gravity Well + Supply Run",
-     "lostAll": 3.9375,
-     "won": 0.875,
-     "lost10": 3.875,
-     "boss": 0.020833333333333332,
-     "se": 0.5036487956651937,
-     "halves": [
-      4.375,
-      3.5
-     ]
-    },
-    {
-     "key": "airstrike+gunships+supplyRun",
-     "name": "Air Strike + Gunship Pair + Supply Run",
-     "lostAll": 4,
-     "won": 0.75,
-     "lost10": 3.5625,
-     "boss": 0.14583333333333331,
-     "se": 0.6434768838116876,
-     "halves": [
-      4,
-      4
+      3.5,
+      3
      ]
     },
     {
      "key": "airstrike+frigate+gunships",
      "name": "Air Strike + Frigate Escort + Gunship Pair",
-     "lostAll": 4.1875,
+     "lostAll": 3.5625,
      "won": 0.75,
      "lost10": 2.625,
-     "boss": 0.5208333333333333,
-     "se": 0.8348781254620341,
+     "boss": 0.31249999999999994,
+     "se": 0.8051045642492657,
      "halves": [
-      3.75,
+      2.75,
+      4.375
+     ]
+    },
+    {
+     "key": "airstrike+shrapnel+overdrive",
+     "name": "Air Strike + Shrapnel Shell + Overdrive",
+     "lostAll": 3.8125,
+     "won": 0.9375,
+     "lost10": 3.375,
+     "boss": 0.14583333333333331,
+     "se": 0.48588474392081915,
+     "halves": [
+      3.25,
+      4.375
+     ]
+    },
+    {
+     "key": "airstrike+overdrive+fullSteam",
+     "name": "Air Strike + Overdrive + Full Steam",
+     "lostAll": 3.8125,
+     "won": 0.8125,
+     "lost10": 3.1875,
+     "boss": 0.20833333333333334,
+     "se": 0.7406645559057082,
+     "halves": [
+      3.25,
+      4.375
+     ]
+    },
+    {
+     "key": "airstrike+frigate+seeker",
+     "name": "Air Strike + Frigate Escort + Seeker Pod",
+     "lostAll": 3.875,
+     "won": 0.875,
+     "lost10": 3.4375,
+     "boss": 0.14583333333333331,
+     "se": 0.4990224819584785,
+     "halves": [
+      3.625,
+      4.125
+     ]
+    },
+    {
+     "key": "airstrike+frigate+well",
+     "name": "Air Strike + Frigate Escort + Gravity Well",
+     "lostAll": 4.0625,
+     "won": 0.8125,
+     "lost10": 3.1875,
+     "boss": 0.2916666666666667,
+     "se": 0.7576111201500411,
+     "halves": [
+      2.375,
+      5.75
+     ]
+    },
+    {
+     "key": "airstrike+flak+railgun",
+     "name": "Air Strike + Flak Cannon + Railgun",
+     "lostAll": 4.0625,
+     "won": 0.8125,
+     "lost10": 3.4375,
+     "boss": 0.20833333333333334,
+     "se": 0.5337715891418351,
+     "halves": [
+      3.5,
       4.625
      ]
     },
     {
-     "key": "airstrike+frigate+overdrive",
-     "name": "Air Strike + Frigate Escort + Overdrive",
-     "lostAll": 4.1875,
+     "key": "airstrike+railgun+gunships",
+     "name": "Air Strike + Railgun + Gunship Pair",
+     "lostAll": 4.25,
+     "won": 0.8125,
+     "lost10": 2.875,
+     "boss": 0.4583333333333333,
+     "se": 0.899218410621135,
+     "halves": [
+      4.125,
+      4.375
+     ]
+    },
+    {
+     "key": "airstrike+railgun+fullSteam",
+     "name": "Air Strike + Railgun + Full Steam",
+     "lostAll": 5.625,
      "won": 0.75,
-     "lost10": 3.625,
-     "boss": 0.1875,
-     "se": 0.8533882377763359,
+     "lost10": 4.25,
+     "boss": 0.45833333333333337,
+     "se": 1.3136155973114814,
      "halves": [
-      3.75,
-      4.625
-     ]
-    },
-    {
-     "key": "well+overdrive+fullSteam",
-     "name": "Gravity Well + Overdrive + Full Steam",
-     "lostAll": 4.9375,
-     "won": 0.6875,
-     "lost10": 3.75,
-     "boss": 0.3958333333333333,
-     "se": 0.7524374454896566,
-     "halves": [
-      4,
-      5.875
-     ]
-    },
-    {
-     "key": "airstrike+droneScreen+supplyRun",
-     "name": "Air Strike + Drone Screen + Supply Run",
-     "lostAll": 4.9375,
-     "won": 0.6875,
-     "lost10": 3.8125,
-     "boss": 0.37500000000000006,
-     "se": 0.8123497457222474,
-     "halves": [
-      4.875,
-      5
-     ]
-    },
-    {
-     "key": "airstrike+scatter+overdrive",
-     "name": "Air Strike + Scattergun + Overdrive",
-     "lostAll": 5.0625,
-     "won": 0.5625,
-     "lost10": 4.75,
-     "boss": 0.10416666666666666,
-     "se": 0.6402437890171212,
-     "halves": [
-      4.5,
-      5.625
+      3.5,
+      7.75
      ]
     },
     {
      "key": "airstrike+railgun+overdrive",
      "name": "Air Strike + Railgun + Overdrive",
-     "lostAll": 6.0625,
-     "won": 0.6875,
+     "lostAll": 6.5,
+     "won": 0.625,
      "lost10": 3.9375,
-     "boss": 0.7083333333333331,
-     "se": 1.254581447884114,
+     "boss": 0.8541666666666666,
+     "se": 1.354967711792425,
      "halves": [
-      3.75,
-      8.375
+      3.25,
+      9.75
      ]
     }
    ]
@@ -2639,24 +2619,24 @@
     "island": 1,
     "behemoth": 0.77,
     "needle": 0.37,
-    "archipelago": 0.81
+    "archipelago": 0.73
    },
    "behemoth": {
     "island": 0.77,
     "behemoth": 1,
     "needle": 0.33,
-    "archipelago": 0.81
+    "archipelago": 0.71
    },
    "needle": {
     "island": 0.37,
     "behemoth": 0.33,
     "needle": 1,
-    "archipelago": 0.35
+    "archipelago": 0.2
    },
    "archipelago": {
-    "island": 0.81,
-    "behemoth": 0.81,
-    "needle": 0.35,
+    "island": 0.73,
+    "behemoth": 0.71,
+    "needle": 0.2,
     "archipelago": 1
    }
   },
@@ -2664,7 +2644,7 @@
    "island": "airstrike+thermo+aegis",
    "behemoth": "airstrike+droneScreen+supplyRun",
    "needle": "scatter+railgun+supplyRun",
-   "archipelago": "airstrike+gunships+shield"
+   "archipelago": "airstrike+shrapnel+well"
   },
   "firstKitShare": {
    "most": "airstrike+thermo+aegis",
@@ -2698,7 +2678,7 @@
    "gunships": {
     "island": 2,
     "needle": 2,
-    "archipelago": 4
+    "archipelago": 1
    },
    "flak": {
     "island": 1,
@@ -2711,26 +2691,26 @@
    },
    "railgun": {
     "island": 1,
-    "needle": 3,
-    "archipelago": 1
+    "needle": 3
    },
    "tesla": {
     "island": 1
    },
    "overdrive": {
-    "island": 1
+    "island": 1,
+    "archipelago": 2
    },
    "supplyRun": {
     "behemoth": 1,
-    "needle": 3,
-    "archipelago": 2
+    "needle": 3
    },
    "fullSteam": {
-    "behemoth": 2
+    "behemoth": 2,
+    "archipelago": 1
    },
    "frigate": {
     "behemoth": 1,
-    "archipelago": 1
+    "archipelago": 2
    },
    "well": {
     "behemoth": 2,
@@ -2738,14 +2718,17 @@
     "archipelago": 1
    },
    "shield": {
-    "behemoth": 1,
-    "archipelago": 1
+    "behemoth": 1
    },
    "scatter": {
     "needle": 1
    },
    "shrapnel": {
-    "needle": 3
+    "needle": 3,
+    "archipelago": 2
+   },
+   "seeker": {
+    "archipelago": 1
    }
   }
  }

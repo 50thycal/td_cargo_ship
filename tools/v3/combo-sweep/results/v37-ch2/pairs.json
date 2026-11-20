@@ -40,7 +40,7 @@
   "shield",
   "fullSteam"
  ],
- "seconds": 307,
+ "seconds": 274,
  "runs": 4104,
  "configs": [
   {
@@ -87,8 +87,8 @@
      "endWave": 8.667,
      "flawless": 0,
      "lost10": 13.167,
-     "boss": 9.444,
-     "lostAll": 41.5,
+     "boss": 9.833,
+     "lostAll": 42.667,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -99,8 +99,8 @@
     "endWave": 9.042,
     "flawless": 0,
     "lost10": 10.083,
-    "boss": 4.028,
-    "lostAll": 22.167,
+    "boss": 4.125,
+    "lostAll": 22.458,
     "bossNormal": 0.333,
     "bossReached": 0.125
    },
@@ -147,25 +147,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.5,
-     "endWave": 11.833,
+     "endWave": 12.167,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 2.5,
-     "lostAll": 12.333,
-     "bossNormal": 1.3,
-     "bossReached": 1.667
+     "boss": 3.056,
+     "lostAll": 14,
+     "bossNormal": 1,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 24,
     "won": 0.458,
-    "endWave": 12,
+    "endWave": 12.083,
     "flawless": 0,
     "lost10": 5.292,
-    "boss": 1.708,
-    "lostAll": 10.417,
-    "bossNormal": 1.376,
-    "bossReached": 1.875
+    "boss": 1.847,
+    "lostAll": 10.833,
+    "bossNormal": 1.301,
+    "bossReached": 1.958
    }
   },
   {
@@ -212,9 +212,9 @@
      "endWave": 13.5,
      "flawless": 0,
      "lost10": 2.167,
-     "boss": 0.722,
-     "lostAll": 4.333,
-     "bossNormal": 0.375,
+     "boss": 0.944,
+     "lostAll": 5,
+     "bossNormal": 0.5,
      "bossReached": 2.667
     }
    },
@@ -224,9 +224,9 @@
     "endWave": 12.792,
     "flawless": 0.083,
     "lost10": 3.167,
-    "boss": 1.042,
-    "lostAll": 6.292,
-    "bossNormal": 0.827,
+    "boss": 1.097,
+    "lostAll": 6.458,
+    "bossNormal": 0.858,
     "bossReached": 2.292
    },
    "weapons": [
@@ -273,25 +273,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
-     "flawless": 0,
+     "won": 0.333,
+     "endWave": 12.667,
+     "flawless": 0.167,
      "lost10": 2.333,
-     "boss": 1.444,
-     "lostAll": 6.667,
-     "bossNormal": 1.467,
+     "boss": 1.778,
+     "lostAll": 7.667,
+     "bossNormal": 1.533,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.583,
-    "flawless": 0,
+    "won": 0.417,
+    "endWave": 12.5,
+    "flawless": 0.042,
     "lost10": 3.708,
-    "boss": 1.375,
-    "lostAll": 7.833,
-    "bossNormal": 1.276,
+    "boss": 1.458,
+    "lostAll": 8.083,
+    "bossNormal": 1.293,
     "bossReached": 2.208
    },
    "weapons": [
@@ -338,26 +338,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.167,
-     "lostAll": 6.667,
-     "bossNormal": 1.2,
-     "bossReached": 2.5
+     "boss": 1.722,
+     "lostAll": 8.333,
+     "bossNormal": 1.214,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.708,
-    "endWave": 12.958,
+    "won": 0.667,
+    "endWave": 12.875,
     "flawless": 0,
     "lost10": 3.625,
-    "boss": 1.153,
-    "lostAll": 7.083,
-    "bossNormal": 1.147,
-    "bossReached": 2.292
+    "boss": 1.292,
+    "lostAll": 7.5,
+    "bossNormal": 1.15,
+    "bossReached": 2.25
    },
    "weapons": [
     "frigate"
@@ -403,26 +403,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.833,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.111,
-     "lostAll": 5.833,
-     "bossNormal": 1.111,
-     "bossReached": 3
+     "boss": 1.333,
+     "lostAll": 6.5,
+     "bossNormal": 1.235,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.583,
+    "won": 0.583,
+    "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.25,
-    "boss": 1.306,
-    "lostAll": 8.167,
-    "bossNormal": 1.232,
-    "bossReached": 2.125
+    "boss": 1.361,
+    "lostAll": 8.333,
+    "bossNormal": 1.263,
+    "bossReached": 2.083
    },
    "weapons": [
     "thermo"
@@ -468,25 +468,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 0.833,
-     "lostAll": 5.667,
-     "bossNormal": 0.6,
+     "boss": 1.5,
+     "lostAll": 7.667,
+     "bossNormal": 0.867,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.667,
+    "won": 0.583,
+    "endWave": 12.625,
     "flawless": 0,
     "lost10": 3.542,
-    "boss": 1.375,
-    "lostAll": 7.667,
-    "bossNormal": 1.07,
+    "boss": 1.542,
+    "lostAll": 8.167,
+    "bossNormal": 1.137,
     "bossReached": 2.25
    },
    "weapons": [
@@ -533,26 +533,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.5,
+     "won": 0.333,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 3,
-     "lostAll": 12.333,
-     "bossNormal": 2.357,
-     "bossReached": 2.333
+     "boss": 2.833,
+     "lostAll": 11.833,
+     "bossNormal": 2,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.292,
-    "endWave": 11.917,
+    "won": 0.333,
+    "endWave": 12.083,
     "flawless": 0,
     "lost10": 4.458,
-    "boss": 1.889,
-    "lostAll": 10.125,
-    "bossNormal": 1.562,
-    "bossReached": 1.875
+    "boss": 1.847,
+    "lostAll": 10,
+    "bossNormal": 1.472,
+    "bossReached": 2
    },
    "weapons": [
     "boomerang"
@@ -598,25 +598,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 0.889,
-     "lostAll": 6.167,
-     "bossNormal": 0.889,
+     "boss": 0.944,
+     "lostAll": 6.333,
+     "bossNormal": 0.944,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.583,
+    "won": 0.583,
+    "endWave": 12.542,
     "flawless": 0,
     "lost10": 4.375,
-    "boss": 1.083,
-    "lostAll": 7.625,
-    "bossNormal": 1.331,
+    "boss": 1.097,
+    "lostAll": 7.667,
+    "bossNormal": 1.345,
     "bossReached": 2.042
    },
    "weapons": [
@@ -667,8 +667,8 @@
      "endWave": 11.167,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 5.722,
-     "lostAll": 22,
+     "boss": 6.833,
+     "lostAll": 25.333,
      "bossNormal": 2.571,
      "bossReached": 1.167
     }
@@ -679,8 +679,8 @@
     "endWave": 11.375,
     "flawless": 0,
     "lost10": 5.292,
-    "boss": 2.472,
-    "lostAll": 12.708,
+    "boss": 2.75,
+    "lostAll": 13.542,
     "bossNormal": 1.393,
     "bossReached": 1.417
    },
@@ -729,25 +729,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.333,
-     "endWave": 12.167,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.444,
-     "lostAll": 8.5,
-     "bossNormal": 1.5,
-     "bossReached": 2
+     "boss": 2.111,
+     "lostAll": 10.5,
+     "bossNormal": 1.545,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.458,
-    "endWave": 13.042,
+    "endWave": 13,
     "flawless": 0,
     "lost10": 3,
-    "boss": 1.597,
-    "lostAll": 7.792,
-    "bossNormal": 1.467,
-    "bossReached": 2.625
+    "boss": 1.764,
+    "lostAll": 8.292,
+    "bossNormal": 1.478,
+    "bossReached": 2.583
    },
    "weapons": [
     "aegis"
@@ -797,9 +797,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 0.278,
-     "lostAll": 4.333,
-     "bossNormal": 0.278,
+     "boss": 0.056,
+     "lostAll": 3.667,
+     "bossNormal": 0.056,
      "bossReached": 3
     }
    },
@@ -809,9 +809,9 @@
     "endWave": 13.167,
     "flawless": 0,
     "lost10": 3.542,
-    "boss": 1.167,
-    "lostAll": 7.042,
-    "bossNormal": 1.015,
+    "boss": 1.111,
+    "lostAll": 6.875,
+    "bossNormal": 0.96,
     "bossReached": 2.625
    },
    "weapons": [
@@ -858,25 +858,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.667,
+     "won": 0.5,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 3,
-     "boss": 2.611,
-     "lostAll": 10.833,
-     "bossNormal": 1.933,
+     "boss": 1.611,
+     "lostAll": 7.833,
+     "bossNormal": 1.267,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.667,
+    "won": 0.583,
+    "endWave": 12.75,
     "flawless": 0,
     "lost10": 4.125,
-    "boss": 1.597,
-    "lostAll": 8.917,
-    "bossNormal": 1.406,
+    "boss": 1.347,
+    "lostAll": 8.167,
+    "bossNormal": 1.239,
     "bossReached": 2.25
    },
    "weapons": [
@@ -923,25 +923,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
+     "won": 0.5,
+     "endWave": 12.833,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.556,
-     "lostAll": 8,
-     "bossNormal": 1.6,
+     "boss": 2.111,
+     "lostAll": 9.667,
+     "bossNormal": 1.533,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 11.708,
+    "won": 0.333,
+    "endWave": 11.667,
     "flawless": 0,
     "lost10": 5.292,
-    "boss": 1.569,
-    "lostAll": 10,
-    "bossNormal": 1.546,
+    "boss": 1.708,
+    "lostAll": 10.417,
+    "bossNormal": 1.529,
     "bossReached": 1.75
    },
    "weapons": [
@@ -992,8 +992,8 @@
      "endWave": 9.333,
      "flawless": 0,
      "lost10": 9.167,
-     "boss": 9,
-     "lostAll": 36.167,
+     "boss": 8.889,
+     "lostAll": 35.833,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -1004,8 +1004,8 @@
     "endWave": 9.125,
     "flawless": 0,
     "lost10": 10.542,
-    "boss": 3.653,
-    "lostAll": 21.5,
+    "boss": 3.625,
+    "lostAll": 21.417,
     "bossNormal": 2.3,
     "bossReached": 0.292
    },
@@ -1057,8 +1057,8 @@
      "endWave": 5.5,
      "flawless": 0,
      "lost10": 34.833,
-     "boss": 10.222,
-     "lostAll": 65.5,
+     "boss": 10.333,
+     "lostAll": 65.833,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -1069,8 +1069,8 @@
     "endWave": 5.083,
     "flawless": 0,
     "lost10": 33.25,
-    "boss": 4.764,
-    "lostAll": 47.542,
+    "boss": 4.792,
+    "lostAll": 47.625,
     "bossNormal": null,
     "bossReached": 0
    },
@@ -1119,25 +1119,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.167,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 4,
-     "boss": 3.833,
-     "lostAll": 15.5,
-     "bossNormal": 2.667,
-     "bossReached": 1.5
+     "boss": 3.222,
+     "lostAll": 13.667,
+     "bossNormal": 2.4,
+     "bossReached": 1.667
     }
    },
    "all": {
     "n": 24,
     "won": 0.292,
-    "endWave": 12.125,
+    "endWave": 12.167,
     "flawless": 0,
     "lost10": 3.458,
-    "boss": 2.139,
-    "lostAll": 9.875,
-    "bossNormal": 1.828,
-    "bossReached": 1.917
+    "boss": 1.986,
+    "lostAll": 9.417,
+    "bossNormal": 1.762,
+    "bossReached": 1.958
    },
    "weapons": [
     "droneScreen"
@@ -1183,26 +1183,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12,
+     "won": 0.333,
+     "endWave": 11.667,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 1.056,
-     "lostAll": 7.833,
-     "bossNormal": 1.111,
-     "bossReached": 1.5
+     "boss": 1.667,
+     "lostAll": 9.667,
+     "bossNormal": 1.875,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.542,
+    "won": 0.583,
+    "endWave": 12.458,
     "flawless": 0.042,
     "lost10": 4.083,
-    "boss": 0.958,
-    "lostAll": 6.958,
-    "bossNormal": 0.919,
-    "bossReached": 2
+    "boss": 1.111,
+    "lostAll": 7.417,
+    "bossNormal": 1.11,
+    "bossReached": 1.958
    },
    "weapons": [
     "gunships"
@@ -1249,25 +1249,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10,
+     "endWave": 10.333,
      "flawless": 0,
      "lost10": 6.333,
-     "boss": 8.667,
-     "lostAll": 32.333,
-     "bossNormal": 6,
-     "bossReached": 0.5
+     "boss": 8.111,
+     "lostAll": 30.667,
+     "bossNormal": 3.6,
+     "bossReached": 0.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.167,
-    "endWave": 10,
+    "endWave": 10.083,
     "flawless": 0,
     "lost10": 7.5,
-    "boss": 3.278,
-    "lostAll": 17.333,
-    "bossNormal": 2.417,
-    "bossReached": 0.75
+    "boss": 3.139,
+    "lostAll": 16.917,
+    "bossNormal": 1.817,
+    "bossReached": 0.833
    },
    "weapons": [
     "supplyRun"
@@ -1314,25 +1314,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.167,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 3.5,
-     "lostAll": 14.667,
-     "bossNormal": 2.667,
-     "bossReached": 1.5
+     "boss": 3.556,
+     "lostAll": 14.833,
+     "bossNormal": 2.4,
+     "bossReached": 1.667
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 11.667,
+    "endWave": 11.708,
     "flawless": 0,
     "lost10": 4.625,
-    "boss": 2.083,
-    "lostAll": 10.875,
-    "bossNormal": 1.877,
-    "bossReached": 1.583
+    "boss": 2.097,
+    "lostAll": 10.917,
+    "bossNormal": 1.789,
+    "bossReached": 1.625
    },
    "weapons": [
     "overdrive"
@@ -1379,25 +1379,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10.833,
+     "endWave": 11,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 7.278,
-     "lostAll": 26,
-     "bossNormal": 3.429,
-     "bossReached": 1.167
+     "boss": 7.389,
+     "lostAll": 26.333,
+     "bossNormal": 3,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.292,
-    "endWave": 11.708,
+    "endWave": 11.75,
     "flawless": 0,
     "lost10": 5.042,
-    "boss": 2.847,
-    "lostAll": 13.583,
-    "bossNormal": 1.807,
-    "bossReached": 1.75
+    "boss": 2.875,
+    "lostAll": 13.667,
+    "bossNormal": 1.7,
+    "bossReached": 1.792
    },
    "weapons": [
     "shield"
@@ -1443,26 +1443,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 11.5,
+     "won": 0.333,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 5.167,
-     "boss": 3.389,
-     "lostAll": 15.333,
-     "bossNormal": 2.111,
-     "bossReached": 1.5
+     "boss": 2.944,
+     "lostAll": 14,
+     "bossNormal": 1.636,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.25,
-    "endWave": 11.333,
+    "won": 0.292,
+    "endWave": 11.458,
     "flawless": 0,
     "lost10": 5.5,
-    "boss": 2.083,
-    "lostAll": 11.75,
-    "bossNormal": 1.778,
-    "bossReached": 1.583
+    "boss": 1.972,
+    "lostAll": 11.417,
+    "bossNormal": 1.659,
+    "bossReached": 1.667
    },
    "weapons": [
     "fullSteam"
@@ -1512,9 +1512,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 0.333,
-     "lostAll": 3.833,
-     "bossNormal": 0.4,
+     "boss": 0.222,
+     "lostAll": 3.5,
+     "bossNormal": 0.267,
      "bossReached": 2.5
     }
    },
@@ -1524,9 +1524,9 @@
     "endWave": 12.625,
     "flawless": 0,
     "lost10": 4.167,
-    "boss": 1.083,
-    "lostAll": 7.417,
-    "bossNormal": 0.95,
+    "boss": 1.056,
+    "lostAll": 7.333,
+    "bossNormal": 0.917,
     "bossReached": 2.25
    },
    "weapons": [
@@ -1538,12 +1538,12 @@
      "island": -4.687,
      "behemoth": -4.954,
      "needle": -5.333,
-     "archipelago": -3.137
+     "archipelago": -2.602
     },
-    "mean": -4.528,
-    "predicted": 2.889,
-    "win": -0.211,
-    "winPredicted": 0.794
+    "mean": -4.394,
+    "predicted": 2.939,
+    "win": -0.197,
+    "winPredicted": 0.781
    }
   },
   {
@@ -1586,26 +1586,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.667,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0.167,
      "lost10": 2.5,
-     "boss": 0.722,
-     "lostAll": 4.667,
-     "bossNormal": 0.529,
-     "bossReached": 2.833
+     "boss": 0.167,
+     "lostAll": 3,
+     "bossNormal": 0.167,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 13.167,
+    "won": 0.667,
+    "endWave": 13.25,
     "flawless": 0.042,
     "lost10": 3.542,
-    "boss": 1.292,
-    "lostAll": 7.417,
-    "bossNormal": 1.077,
-    "bossReached": 2.583
+    "boss": 1.153,
+    "lostAll": 7,
+    "bossNormal": 0.986,
+    "bossReached": 2.625
    },
    "weapons": [
     "airstrike",
@@ -1616,12 +1616,12 @@
      "island": -8.547,
      "behemoth": -5.009,
      "needle": -1.606,
-     "archipelago": -3.971
+     "archipelago": -2.023
     },
-    "mean": -4.783,
-    "predicted": 2.633,
-    "win": -0.274,
-    "winPredicted": 0.899
+    "mean": -4.297,
+    "predicted": 2.703,
+    "win": -0.225,
+    "winPredicted": 0.892
    }
   },
   {
@@ -1668,9 +1668,9 @@
      "endWave": 11.667,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 0.111,
-     "lostAll": 5,
-     "bossNormal": 0.222,
+     "boss": 0,
+     "lostAll": 4.667,
+     "bossNormal": 0,
      "bossReached": 1.5
     }
    },
@@ -1680,9 +1680,9 @@
     "endWave": 12.458,
     "flawless": 0,
     "lost10": 4.792,
-    "boss": 0.958,
-    "lostAll": 7.667,
-    "bossNormal": 0.881,
+    "boss": 0.931,
+    "lostAll": 7.583,
+    "bossNormal": 0.825,
     "bossReached": 2.125
    },
    "weapons": [
@@ -1694,12 +1694,12 @@
      "island": -5.922,
      "behemoth": -4.417,
      "needle": -3.773,
-     "archipelago": -4.391
+     "archipelago": -3.905
     },
-    "mean": -4.626,
-    "predicted": 3.041,
-    "win": -0.253,
-    "winPredicted": 0.836
+    "mean": -4.504,
+    "predicted": 3.079,
+    "win": -0.246,
+    "winPredicted": 0.829
    }
   },
   {
@@ -1748,7 +1748,7 @@
      "lost10": 3.5,
      "boss": 0.333,
      "lostAll": 4.5,
-     "bossNormal": 0.333,
+     "bossNormal": 0.4,
      "bossReached": 2.5
     }
    },
@@ -1760,7 +1760,7 @@
     "lost10": 3,
     "boss": 1.25,
     "lostAll": 6.75,
-    "bossNormal": 1.183,
+    "bossNormal": 1.199,
     "bossReached": 2.708
    },
    "weapons": [
@@ -1772,12 +1772,12 @@
      "island": -4.967,
      "behemoth": -5.333,
      "needle": -0.33,
-     "archipelago": -3.908
+     "archipelago": -3.602
     },
-    "mean": -3.635,
-    "predicted": 3.115,
-    "win": -0.189,
-    "winPredicted": 0.856
+    "mean": -3.558,
+    "predicted": 3.192,
+    "win": -0.182,
+    "winPredicted": 0.849
    }
   },
   {
@@ -1824,9 +1824,9 @@
      "endWave": 13.833,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 0.722,
-     "lostAll": 4.833,
-     "bossNormal": 0.5,
+     "boss": 0.889,
+     "lostAll": 5.333,
+     "bossNormal": 0.667,
      "bossReached": 3
     }
    },
@@ -1836,9 +1836,9 @@
     "endWave": 13.083,
     "flawless": 0,
     "lost10": 3.667,
-    "boss": 0.806,
-    "lostAll": 6.083,
-    "bossNormal": 0.678,
+    "boss": 0.847,
+    "lostAll": 6.208,
+    "bossNormal": 0.719,
     "bossReached": 2.5
    },
    "weapons": [
@@ -1850,12 +1850,12 @@
      "island": -2.944,
      "behemoth": -3.287,
      "needle": -0.45,
-     "archipelago": -3.546
+     "archipelago": -3.947
     },
-    "mean": -2.557,
-    "predicted": 3.526,
-    "win": -0.01,
-    "winPredicted": 0.718
+    "mean": -2.657,
+    "predicted": 3.551,
+    "win": -0.017,
+    "winPredicted": 0.725
    }
   },
   {
@@ -1902,9 +1902,9 @@
      "endWave": 14,
      "flawless": 0.167,
      "lost10": 2.333,
-     "boss": 0.278,
-     "lostAll": 3.167,
-     "bossNormal": 0.278,
+     "boss": 0.111,
+     "lostAll": 2.667,
+     "bossNormal": 0.111,
      "bossReached": 3
     }
    },
@@ -1914,9 +1914,9 @@
     "endWave": 13.167,
     "flawless": 0.083,
     "lost10": 3.333,
-    "boss": 1.194,
-    "lostAll": 6.917,
-    "bossNormal": 1.015,
+    "boss": 1.153,
+    "lostAll": 6.792,
+    "bossNormal": 0.974,
     "bossReached": 2.5
    },
    "weapons": [
@@ -1928,12 +1928,12 @@
      "island": -6.66,
      "behemoth": -3.213,
      "needle": -4.032,
-     "archipelago": -2.523
+     "archipelago": -1.924
     },
-    "mean": -4.107,
-    "predicted": 2.81,
-    "win": -0.147,
-    "winPredicted": 0.856
+    "mean": -3.957,
+    "predicted": 2.834,
+    "win": -0.14,
+    "winPredicted": 0.849
    }
   },
   {
@@ -1980,9 +1980,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 0.278,
-     "lostAll": 4.667,
-     "bossNormal": 0.267,
+     "boss": 0.111,
+     "lostAll": 4.167,
+     "bossNormal": 0.133,
      "bossReached": 2.5
     }
    },
@@ -1992,9 +1992,9 @@
     "endWave": 11.958,
     "flawless": 0,
     "lost10": 4.833,
-    "boss": 1.236,
-    "lostAll": 8.542,
-    "bossNormal": 0.989,
+    "boss": 1.194,
+    "lostAll": 8.417,
+    "bossNormal": 0.956,
     "bossReached": 2
    },
    "weapons": [
@@ -2006,10 +2006,10 @@
      "island": -7.831,
      "behemoth": -4.796,
      "needle": -4.787,
-     "archipelago": -2.369
+     "archipelago": -1.198
     },
-    "mean": -4.946,
-    "predicted": 3.596,
+    "mean": -4.653,
+    "predicted": 3.763,
     "win": -0.357,
     "winPredicted": 0.774
    }
@@ -2058,9 +2058,9 @@
      "endWave": 13.833,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1,
-     "lostAll": 5.833,
-     "bossNormal": 0.667,
+     "boss": 0.778,
+     "lostAll": 5.167,
+     "bossNormal": 0.444,
      "bossReached": 3
     }
    },
@@ -2070,9 +2070,9 @@
     "endWave": 13.083,
     "flawless": 0,
     "lost10": 3.583,
-    "boss": 0.944,
-    "lostAll": 6.417,
-    "bossNormal": 0.771,
+    "boss": 0.889,
+    "lostAll": 6.25,
+    "bossNormal": 0.716,
     "bossReached": 2.458
    },
    "weapons": [
@@ -2084,10 +2084,10 @@
      "island": -2.782,
      "behemoth": -3.157,
      "needle": -3.865,
-     "archipelago": -4.946
+     "archipelago": -3.936
     },
-    "mean": -3.688,
-    "predicted": 2.729,
+    "mean": -3.435,
+    "predicted": 2.815,
     "win": -0.135,
     "winPredicted": 0.801
    }
@@ -2136,9 +2136,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 2.167,
-     "boss": 0.333,
-     "lostAll": 3.167,
-     "bossNormal": 0.333,
+     "boss": 0,
+     "lostAll": 2.167,
+     "bossNormal": 0,
      "bossReached": 3
     }
    },
@@ -2148,9 +2148,9 @@
     "endWave": 12.75,
     "flawless": 0,
     "lost10": 3.792,
-    "boss": 1.306,
-    "lostAll": 7.708,
-    "bossNormal": 1.068,
+    "boss": 1.222,
+    "lostAll": 7.458,
+    "bossNormal": 0.985,
     "bossReached": 2.208
    },
    "weapons": [
@@ -2162,10 +2162,10 @@
      "island": -7.669,
      "behemoth": -7.093,
      "needle": -2.089,
-     "archipelago": -2.714
+     "archipelago": -1.737
     },
-    "mean": -4.891,
-    "predicted": 2.817,
+    "mean": -4.647,
+    "predicted": 2.812,
     "win": -0.249,
     "winPredicted": 0.874
    }
@@ -2210,25 +2210,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 0.333,
-     "lostAll": 3.5,
-     "bossNormal": 0.333,
+     "boss": 0.167,
+     "lostAll": 3,
+     "bossNormal": 0.167,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 13.25,
+    "won": 0.625,
+    "endWave": 13.292,
     "flawless": 0,
     "lost10": 3.083,
-    "boss": 1.208,
-    "lostAll": 6.708,
-    "bossNormal": 1.029,
+    "boss": 1.167,
+    "lostAll": 6.583,
+    "bossNormal": 0.987,
     "bossReached": 2.708
    },
    "weapons": [
@@ -2240,12 +2240,12 @@
      "island": -3.903,
      "behemoth": -4.148,
      "needle": -4.394,
-     "archipelago": -2.369
+     "archipelago": -2.082
     },
-    "mean": -3.703,
-    "predicted": 3.005,
-    "win": -0.247,
-    "winPredicted": 0.831
+    "mean": -3.632,
+    "predicted": 2.952,
+    "win": -0.219,
+    "winPredicted": 0.844
    }
   },
   {
@@ -2292,9 +2292,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 0.444,
-     "lostAll": 4,
-     "bossNormal": 0.133,
+     "boss": 0.222,
+     "lostAll": 3.333,
+     "bossNormal": 0.267,
      "bossReached": 2.5
     }
    },
@@ -2304,9 +2304,9 @@
     "endWave": 11.833,
     "flawless": 0,
     "lost10": 5,
-    "boss": 1.222,
-    "lostAll": 8.667,
-    "bossNormal": 0.778,
+    "boss": 1.167,
+    "lostAll": 8.5,
+    "bossNormal": 0.811,
     "bossReached": 1.75
    },
    "weapons": [
@@ -2318,12 +2318,12 @@
      "island": -6.747,
      "behemoth": -7.204,
      "needle": -2.404,
-     "archipelago": -3.165
+     "archipelago": -2.201
     },
-    "mean": -4.88,
-    "predicted": 3.787,
-    "win": -0.238,
-    "winPredicted": 0.738
+    "mean": -4.639,
+    "predicted": 3.861,
+    "win": -0.231,
+    "winPredicted": 0.731
    }
   },
   {
@@ -2366,25 +2366,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 11.167,
+     "won": 0.5,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 5,
-     "boss": 0.944,
-     "lostAll": 7.833,
-     "bossNormal": 0.667,
+     "boss": 0.444,
+     "lostAll": 6.333,
+     "bossNormal": 0.556,
      "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.333,
-    "endWave": 11,
+    "won": 0.375,
+    "endWave": 11.042,
     "flawless": 0,
     "lost10": 5.875,
-    "boss": 1.111,
-    "lostAll": 9.208,
-    "bossNormal": 0.979,
+    "boss": 0.986,
+    "lostAll": 8.833,
+    "bossNormal": 0.951,
     "bossReached": 1.25
    },
    "weapons": [
@@ -2396,11 +2396,11 @@
      "island": -0.636,
      "behemoth": -6.806,
      "needle": -0.337,
-     "archipelago": -4.057
+     "archipelago": -2.134
     },
-    "mean": -2.959,
-    "predicted": 6.25,
-    "win": -0.311,
+    "mean": -2.478,
+    "predicted": 6.355,
+    "win": -0.269,
     "winPredicted": 0.644
    }
   },
@@ -2448,9 +2448,9 @@
      "endWave": 14,
      "flawless": 0.167,
      "lost10": 1.833,
-     "boss": 0.333,
-     "lostAll": 2.833,
-     "bossNormal": 0.333,
+     "boss": 0.056,
+     "lostAll": 2,
+     "bossNormal": 0.056,
      "bossReached": 3
     }
    },
@@ -2460,9 +2460,9 @@
     "endWave": 13.25,
     "flawless": 0.042,
     "lost10": 3.417,
-    "boss": 1.083,
-    "lostAll": 6.667,
-    "bossNormal": 1.004,
+    "boss": 1.014,
+    "lostAll": 6.458,
+    "bossNormal": 0.935,
     "bossReached": 2.625
    },
    "weapons": [
@@ -2474,10 +2474,10 @@
      "island": -7.615,
      "behemoth": -3.111,
      "needle": -2.287,
-     "archipelago": -1.215
+     "archipelago": -0.398
     },
-    "mean": -3.557,
-    "predicted": 3.11,
+    "mean": -3.353,
+    "predicted": 3.105,
     "win": -0.008,
     "winPredicted": 0.758
    }
@@ -2522,25 +2522,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
-     "flawless": 0,
+     "won": 0.833,
+     "endWave": 13.833,
+     "flawless": 0.167,
      "lost10": 2,
-     "boss": 0.278,
-     "lostAll": 2.833,
-     "bossNormal": 0.278,
+     "boss": 0.556,
+     "lostAll": 3.667,
+     "bossNormal": 0.556,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.75,
-    "endWave": 13.083,
-    "flawless": 0,
+    "won": 0.708,
+    "endWave": 13.042,
+    "flawless": 0.042,
     "lost10": 3.042,
-    "boss": 0.972,
-    "lostAll": 5.958,
-    "bossNormal": 0.808,
+    "boss": 1.042,
+    "lostAll": 6.167,
+    "bossNormal": 0.878,
     "bossReached": 2.375
    },
    "weapons": [
@@ -2552,12 +2552,12 @@
      "island": -5.547,
      "behemoth": -3.843,
      "needle": -2.837,
-     "archipelago": -2.015
+     "archipelago": -2.534
     },
-    "mean": -3.561,
-    "predicted": 2.398,
-    "win": -0.096,
-    "winPredicted": 0.846
+    "mean": -3.69,
+    "predicted": 2.477,
+    "win": -0.131,
+    "winPredicted": 0.839
    }
   },
   {
@@ -2600,25 +2600,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 3,
-     "boss": 0.056,
-     "lostAll": 3.167,
-     "bossNormal": 0.056,
+     "boss": 0.389,
+     "lostAll": 4.167,
+     "bossNormal": 0.333,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 13.125,
+    "won": 0.625,
+    "endWave": 13.083,
     "flawless": 0,
     "lost10": 3.375,
-    "boss": 1,
-    "lostAll": 6.375,
-    "bossNormal": 0.851,
+    "boss": 1.083,
+    "lostAll": 6.625,
+    "bossNormal": 0.921,
     "bossReached": 2.458
    },
    "weapons": [
@@ -2630,11 +2630,11 @@
      "island": -2.041,
      "behemoth": -3.63,
      "needle": -1.014,
-     "archipelago": 0.21
+     "archipelago": -0.573
     },
-    "mean": -1.619,
-    "predicted": 4.756,
-    "win": -0.054,
+    "mean": -1.814,
+    "predicted": 4.811,
+    "win": -0.096,
     "winPredicted": 0.721
    }
   },
@@ -2682,9 +2682,9 @@
      "endWave": 14,
      "flawless": 0.167,
      "lost10": 2.333,
-     "boss": 0,
-     "lostAll": 2.333,
-     "bossNormal": 0,
+     "boss": 0.056,
+     "lostAll": 2.5,
+     "bossNormal": 0.056,
      "bossReached": 3
     }
    },
@@ -2694,9 +2694,9 @@
     "endWave": 12.792,
     "flawless": 0.042,
     "lost10": 3.708,
-    "boss": 1.139,
-    "lostAll": 7.125,
-    "bossNormal": 0.931,
+    "boss": 1.153,
+    "lostAll": 7.167,
+    "bossNormal": 0.944,
     "bossReached": 2.375
    },
    "weapons": [
@@ -2708,10 +2708,10 @@
      "island": -5.016,
      "behemoth": -6.333,
      "needle": -2.56,
-     "archipelago": -0.802
+     "archipelago": -0.762
     },
-    "mean": -3.678,
-    "predicted": 3.447,
+    "mean": -3.668,
+    "predicted": 3.499,
     "win": -0.111,
     "winPredicted": 0.736
    }
@@ -2760,9 +2760,9 @@
      "endWave": 11.333,
      "flawless": 0,
      "lost10": 6.833,
-     "boss": 0.111,
-     "lostAll": 7.167,
-     "bossNormal": 0.222,
+     "boss": 0,
+     "lostAll": 6.833,
+     "bossNormal": 0,
      "bossReached": 1.5
     }
    },
@@ -2772,9 +2772,9 @@
     "endWave": 12.208,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.222,
-    "lostAll": 8.208,
-    "bossNormal": 1.145,
+    "boss": 1.194,
+    "lostAll": 8.125,
+    "bossNormal": 1.089,
     "bossReached": 2.042
    },
    "weapons": [
@@ -2786,10 +2786,10 @@
      "island": -4.27,
      "behemoth": -4.889,
      "needle": -4.365,
-     "archipelago": -4.452
+     "archipelago": -3.747
     },
-    "mean": -4.494,
-    "predicted": 3.714,
+    "mean": -4.318,
+    "predicted": 3.807,
     "win": -0.258,
     "winPredicted": 0.758
    }
@@ -2840,7 +2840,7 @@
      "lost10": 4.5,
      "boss": 0.111,
      "lostAll": 4.833,
-     "bossNormal": 0.067,
+     "bossNormal": 0.133,
      "bossReached": 2.5
     }
    },
@@ -2852,7 +2852,7 @@
     "lost10": 3.875,
     "boss": 1.083,
     "lostAll": 7.125,
-    "bossNormal": 0.95,
+    "bossNormal": 0.967,
     "bossReached": 2.375
    },
    "weapons": [
@@ -2864,12 +2864,12 @@
      "island": -3.665,
      "behemoth": -2.148,
      "needle": -3.72,
-     "archipelago": -3.232
+     "archipelago": -3.193
     },
-    "mean": -3.191,
-    "predicted": 3.934,
-    "win": -0.06,
-    "winPredicted": 0.685
+    "mean": -3.181,
+    "predicted": 3.944,
+    "win": -0.067,
+    "winPredicted": 0.692
    }
   },
   {
@@ -2912,25 +2912,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12.5,
+     "won": 0.5,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.944,
-     "lostAll": 9,
-     "bossNormal": 1.867,
+     "boss": 1.5,
+     "lostAll": 7.667,
+     "bossNormal": 1.533,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.5,
+    "won": 0.5,
+    "endWave": 12.542,
     "flawless": 0,
     "lost10": 4.167,
-    "boss": 1.653,
-    "lostAll": 9.125,
-    "bossNormal": 1.518,
+    "boss": 1.542,
+    "lostAll": 8.792,
+    "bossNormal": 1.434,
     "bossReached": 2.208
    },
    "weapons": [
@@ -2942,12 +2942,12 @@
      "island": -8.619,
      "behemoth": -3.517,
      "needle": -4,
-     "archipelago": -7.929
+     "archipelago": -6.169
     },
-    "mean": -6.016,
-    "predicted": 3.109,
-    "win": -0.376,
-    "winPredicted": 0.835
+    "mean": -5.576,
+    "predicted": 3.215,
+    "win": -0.293,
+    "winPredicted": 0.793
    }
   },
   {
@@ -2990,26 +2990,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.5,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1.778,
-     "lostAll": 8,
-     "bossNormal": 1.706,
-     "bossReached": 2.833
+     "boss": 1.222,
+     "lostAll": 6.333,
+     "bossNormal": 1.222,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.833,
+    "won": 0.667,
+    "endWave": 12.958,
     "flawless": 0,
     "lost10": 3.958,
-    "boss": 1.472,
-    "lostAll": 8.375,
-    "bossNormal": 1.337,
-    "bossReached": 2.292
+    "boss": 1.333,
+    "lostAll": 7.958,
+    "bossNormal": 1.216,
+    "bossReached": 2.333
    },
    "weapons": [
     "shrapnel",
@@ -3020,12 +3020,12 @@
      "island": -2.745,
      "behemoth": -5.653,
      "needle": -3,
-     "archipelago": -7.063
+     "archipelago": -5.165
     },
-    "mean": -4.615,
-    "predicted": 3.76,
-    "win": -0.189,
-    "winPredicted": 0.772
+    "mean": -4.141,
+    "predicted": 3.818,
+    "win": -0.078,
+    "winPredicted": 0.744
    }
   },
   {
@@ -3068,26 +3068,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 2,
-     "lostAll": 9.167,
-     "bossNormal": 1.706,
-     "bossReached": 2.833
+     "boss": 1.222,
+     "lostAll": 6.833,
+     "bossNormal": 1.111,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.208,
+    "won": 0.458,
+    "endWave": 12.292,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.667,
-    "lostAll": 9.083,
-    "bossNormal": 1.489,
-    "bossReached": 2.042
+    "boss": 1.472,
+    "lostAll": 8.5,
+    "bossNormal": 1.34,
+    "bossReached": 2.083
    },
    "weapons": [
     "shrapnel",
@@ -3098,12 +3098,12 @@
      "island": -4.7,
      "behemoth": -7.278,
      "needle": -2,
-     "archipelago": -8.256
+     "archipelago": -5.456
     },
-    "mean": -5.558,
-    "predicted": 3.525,
-    "win": -0.379,
-    "winPredicted": 0.796
+    "mean": -4.858,
+    "predicted": 3.642,
+    "win": -0.296,
+    "winPredicted": 0.754
    }
   },
   {
@@ -3146,25 +3146,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 1.889,
-     "lostAll": 8,
-     "bossNormal": 1.778,
+     "boss": 1.722,
+     "lostAll": 7.5,
+     "bossNormal": 1.722,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.292,
+    "won": 0.542,
+    "endWave": 12.375,
     "flawless": 0,
     "lost10": 4.292,
-    "boss": 1.389,
-    "lostAll": 8.458,
-    "bossNormal": 1.141,
+    "boss": 1.347,
+    "lostAll": 8.333,
+    "bossNormal": 1.127,
     "bossReached": 2.083
    },
    "weapons": [
@@ -3176,12 +3176,12 @@
      "island": -4.556,
      "behemoth": -5.165,
      "needle": -1.333,
-     "archipelago": -6.019
+     "archipelago": -5.374
     },
-    "mean": -4.268,
-    "predicted": 4.19,
-    "win": -0.182,
-    "winPredicted": 0.64
+    "mean": -4.107,
+    "predicted": 4.226,
+    "win": -0.057,
+    "winPredicted": 0.599
    }
   },
   {
@@ -3224,25 +3224,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.667,
+     "won": 0.667,
+     "endWave": 12.833,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 2.278,
-     "lostAll": 9.333,
-     "bossNormal": 1.857,
+     "boss": 1.944,
+     "lostAll": 8.333,
+     "bossNormal": 1.714,
      "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.208,
+    "won": 0.458,
+    "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.208,
-    "boss": 1.722,
-    "lostAll": 9.375,
-    "bossNormal": 1.492,
+    "boss": 1.639,
+    "lostAll": 9.125,
+    "bossNormal": 1.456,
     "bossReached": 1.958
    },
    "weapons": [
@@ -3254,12 +3254,12 @@
      "island": -6.006,
      "behemoth": -5.002,
      "needle": -4.333,
-     "archipelago": -8.343
+     "archipelago": -7.195
     },
-    "mean": -5.921,
-    "predicted": 3.454,
-    "win": -0.351,
-    "winPredicted": 0.768
+    "mean": -5.634,
+    "predicted": 3.491,
+    "win": -0.282,
+    "winPredicted": 0.74
    }
   },
   {
@@ -3302,26 +3302,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.333,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 3.056,
-     "lostAll": 13,
-     "bossNormal": 2.615,
-     "bossReached": 2.167
+     "boss": 1.444,
+     "lostAll": 8.167,
+     "bossNormal": 1.389,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.292,
+    "won": 0.583,
+    "endWave": 12.667,
     "flawless": 0,
     "lost10": 4.75,
-    "boss": 1.778,
-    "lostAll": 10.083,
-    "bossNormal": 1.523,
-    "bossReached": 2.042
+    "boss": 1.375,
+    "lostAll": 8.875,
+    "bossNormal": 1.217,
+    "bossReached": 2.25
    },
    "weapons": [
     "shrapnel",
@@ -3332,12 +3332,12 @@
      "island": -3.335,
      "behemoth": -5.21,
      "needle": -3.75,
-     "archipelago": -9.466
+     "archipelago": -3.615
     },
-    "mean": -5.44,
-    "predicted": 4.643,
-    "win": -0.244,
-    "winPredicted": 0.661
+    "mean": -3.977,
+    "predicted": 4.898,
+    "win": 0.006,
+    "winPredicted": 0.578
    }
   },
   {
@@ -3380,25 +3380,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
+     "won": 0.167,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.111,
-     "lostAll": 6.667,
-     "bossNormal": 1.2,
+     "boss": 2.222,
+     "lostAll": 10,
+     "bossNormal": 1.8,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.875,
+    "won": 0.417,
+    "endWave": 12.75,
     "flawless": 0,
     "lost10": 3.75,
-    "boss": 1.486,
-    "lostAll": 8.208,
-    "bossNormal": 1.363,
+    "boss": 1.764,
+    "lostAll": 9.042,
+    "bossNormal": 1.513,
     "bossReached": 2.375
    },
    "weapons": [
@@ -3410,12 +3410,12 @@
      "island": -4.051,
      "behemoth": -2.844,
      "needle": -7.333,
-     "archipelago": -5.301
+     "archipelago": -8.113
     },
-    "mean": -4.883,
-    "predicted": 3.326,
-    "win": -0.182,
-    "winPredicted": 0.724
+    "mean": -5.586,
+    "predicted": 3.456,
+    "win": -0.251,
+    "winPredicted": 0.668
    }
   },
   {
@@ -3458,26 +3458,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.5,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.722,
-     "lostAll": 7.667,
-     "bossNormal": 1.471,
-     "bossReached": 2.833
+     "boss": 1.389,
+     "lostAll": 6.667,
+     "bossNormal": 1.389,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.083,
+    "won": 0.5,
+    "endWave": 12.167,
     "flawless": 0,
     "lost10": 4.75,
-    "boss": 1.264,
-    "lostAll": 8.542,
-    "bossNormal": 1.064,
-    "bossReached": 1.833
+    "boss": 1.181,
+    "lostAll": 8.292,
+    "bossNormal": 1.037,
+    "bossReached": 1.875
    },
    "weapons": [
     "shrapnel",
@@ -3488,11 +3488,11 @@
      "island": -8.165,
      "behemoth": -2.92,
      "needle": -3,
-     "archipelago": -6.971
+     "archipelago": -6.008
     },
-    "mean": -5.264,
-    "predicted": 3.278,
-    "win": -0.392,
+    "mean": -5.023,
+    "predicted": 3.269,
+    "win": -0.35,
     "winPredicted": 0.85
    }
   },
@@ -3537,25 +3537,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.5,
-     "endWave": 12.833,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 2.056,
-     "lostAll": 9,
-     "bossNormal": 1.857,
-     "bossReached": 2.333
+     "boss": 1.444,
+     "lostAll": 7.167,
+     "bossNormal": 1.267,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.583,
-    "endWave": 12.625,
+    "endWave": 12.667,
     "flawless": 0.042,
     "lost10": 4.208,
-    "boss": 1.181,
-    "lostAll": 7.75,
-    "bossNormal": 1.025,
-    "bossReached": 2.083
+    "boss": 1.028,
+    "lostAll": 7.292,
+    "bossNormal": 0.878,
+    "bossReached": 2.125
    },
    "weapons": [
     "shrapnel",
@@ -3566,12 +3566,12 @@
      "island": -3.097,
      "behemoth": -1.577,
      "needle": -4.333,
-     "archipelago": -7.26
+     "archipelago": -5.759
     },
-    "mean": -4.067,
-    "predicted": 3.683,
-    "win": -0.172,
-    "winPredicted": 0.756
+    "mean": -3.692,
+    "predicted": 3.6,
+    "win": -0.158,
+    "winPredicted": 0.742
    }
   },
   {
@@ -3614,25 +3614,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.5,
+     "won": 0.333,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.833,
-     "lostAll": 9.667,
-     "bossNormal": 1.733,
+     "boss": 1.5,
+     "lostAll": 8.667,
+     "bossNormal": 1.667,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.167,
+    "won": 0.333,
+    "endWave": 12.125,
     "flawless": 0,
     "lost10": 4.792,
-    "boss": 1.583,
-    "lostAll": 9.542,
-    "bossNormal": 1.439,
+    "boss": 1.5,
+    "lostAll": 9.292,
+    "bossNormal": 1.423,
     "bossReached": 1.958
    },
    "weapons": [
@@ -3644,12 +3644,12 @@
      "island": -3.92,
      "behemoth": -5.568,
      "needle": -2.167,
-     "archipelago": -8.382
+     "archipelago": -6.93
     },
-    "mean": -5.009,
-    "predicted": 4.533,
-    "win": -0.275,
-    "winPredicted": 0.65
+    "mean": -4.646,
+    "predicted": 4.646,
+    "win": -0.261,
+    "winPredicted": 0.594
    }
   },
   {
@@ -3692,26 +3692,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 11.333,
+     "won": 0.333,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 5.833,
-     "boss": 3.333,
-     "lostAll": 15.833,
-     "bossNormal": 2.333,
-     "bossReached": 1.5
+     "boss": 2.556,
+     "lostAll": 13.5,
+     "bossNormal": 1.455,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.208,
-    "endWave": 10.583,
+    "won": 0.25,
+    "endWave": 10.708,
     "flawless": 0,
     "lost10": 7,
-    "boss": 2.139,
-    "lostAll": 13.417,
-    "bossNormal": 1.63,
-    "bossReached": 1
+    "boss": 1.944,
+    "lostAll": 12.833,
+    "bossNormal": 1.337,
+    "bossReached": 1.083
    },
    "weapons": [
     "shrapnel",
@@ -3722,12 +3722,12 @@
      "island": -4.864,
      "behemoth": -3.394,
      "needle": -3.417,
-     "archipelago": -10.023
+     "archipelago": -7.061
     },
-    "mean": -5.424,
-    "predicted": 7.992,
-    "win": -0.287,
-    "winPredicted": 0.496
+    "mean": -4.684,
+    "predicted": 8.149,
+    "win": -0.162,
+    "winPredicted": 0.412
    }
   },
   {
@@ -3774,9 +3774,9 @@
      "endWave": 13,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1.5,
-     "lostAll": 7.167,
-     "bossNormal": 1.467,
+     "boss": 1.667,
+     "lostAll": 7.667,
+     "bossNormal": 1.533,
      "bossReached": 2.5
     }
    },
@@ -3786,9 +3786,9 @@
     "endWave": 12.5,
     "flawless": 0.042,
     "lost10": 3.583,
-    "boss": 1.417,
-    "lostAll": 7.833,
-    "bossNormal": 1.2,
+    "boss": 1.458,
+    "lostAll": 7.958,
+    "bossNormal": 1.217,
     "bossReached": 2.25
    },
    "weapons": [
@@ -3800,12 +3800,12 @@
      "island": -5.385,
      "behemoth": -4.759,
      "needle": -1.417,
-     "archipelago": -4.677
+     "archipelago": -5.211
     },
-    "mean": -4.059,
-    "predicted": 3.774,
-    "win": -0.185,
-    "winPredicted": 0.643
+    "mean": -4.193,
+    "predicted": 3.765,
+    "win": -0.101,
+    "winPredicted": 0.56
    }
   },
   {
@@ -3848,25 +3848,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.167,
+     "won": 0.333,
+     "endWave": 12.833,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1.333,
-     "lostAll": 6.833,
-     "bossNormal": 1.267,
+     "boss": 1.889,
+     "lostAll": 8.5,
+     "bossNormal": 1.8,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 13.083,
+    "won": 0.583,
+    "endWave": 13,
     "flawless": 0,
     "lost10": 3.5,
-    "boss": 1.306,
-    "lostAll": 7.417,
-    "bossNormal": 1.339,
+    "boss": 1.444,
+    "lostAll": 7.833,
+    "bossNormal": 1.472,
     "bossReached": 2.458
    },
    "weapons": [
@@ -3878,12 +3878,12 @@
      "island": -5.953,
      "behemoth": -3.35,
      "needle": -3,
-     "archipelago": -5.575
+     "archipelago": -6.763
     },
-    "mean": -4.469,
-    "predicted": 2.947,
-    "win": -0.149,
-    "winPredicted": 0.815
+    "mean": -4.767,
+    "predicted": 3.067,
+    "win": -0.162,
+    "winPredicted": 0.746
    }
   },
   {
@@ -3926,25 +3926,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.167,
+     "won": 0.667,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 4.5,
-     "boss": 1.611,
-     "lostAll": 9.333,
-     "bossNormal": 1.417,
+     "boss": 1.389,
+     "lostAll": 8.667,
+     "bossNormal": 1.333,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 13.042,
+    "won": 0.708,
+    "endWave": 13.083,
     "flawless": 0,
     "lost10": 3.458,
-    "boss": 1.222,
-    "lostAll": 7.125,
-    "bossNormal": 1.015,
+    "boss": 1.167,
+    "lostAll": 6.958,
+    "bossNormal": 0.994,
     "bossReached": 2.458
    },
    "weapons": [
@@ -3956,12 +3956,12 @@
      "island": 1.708,
      "behemoth": 0.957,
      "needle": -2.167,
-     "archipelago": -4.139
+     "archipelago": -3.156
     },
-    "mean": -0.91,
-    "predicted": 6.215,
-    "win": 0.101,
-    "winPredicted": 0.565
+    "mean": -0.665,
+    "predicted": 6.294,
+    "win": 0.226,
+    "winPredicted": 0.482
    }
   },
   {
@@ -4004,24 +4004,24 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12,
+     "won": 0.333,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 1.556,
-     "lostAll": 9.333,
+     "boss": 1.667,
+     "lostAll": 9.667,
      "bossNormal": 1.636,
      "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 11.875,
+    "won": 0.458,
+    "endWave": 11.833,
     "flawless": 0,
     "lost10": 4.625,
-    "boss": 1.542,
-    "lostAll": 9.25,
+    "boss": 1.569,
+    "lostAll": 9.333,
     "bossNormal": 1.284,
     "bossReached": 1.708
    },
@@ -4034,12 +4034,12 @@
      "island": -5.484,
      "behemoth": -2.556,
      "needle": -4.5,
-     "archipelago": -6.977
+     "archipelago": -7.001
     },
-    "mean": -4.879,
-    "predicted": 4.371,
-    "win": -0.083,
-    "winPredicted": 0.583
+    "mean": -4.885,
+    "predicted": 4.448,
+    "win": -0.042,
+    "winPredicted": 0.5
    }
   },
   {
@@ -4083,25 +4083,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.333,
-     "endWave": 12.167,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 1.5,
-     "lostAll": 9.167,
-     "bossNormal": 1.667,
-     "bossReached": 2
+     "boss": 1.722,
+     "lostAll": 9.833,
+     "bossNormal": 1.8,
+     "bossReached": 1.667
     }
    },
    "all": {
     "n": 24,
     "won": 0.292,
-    "endWave": 11.958,
+    "endWave": 11.875,
     "flawless": 0,
     "lost10": 4.917,
-    "boss": 1.694,
-    "lostAll": 10,
-    "bossNormal": 1.763,
-    "bossReached": 1.75
+    "boss": 1.75,
+    "lostAll": 10.167,
+    "bossNormal": 1.797,
+    "bossReached": 1.667
    },
    "weapons": [
     "shrapnel",
@@ -4112,12 +4112,12 @@
      "island": -3.397,
      "behemoth": -6.574,
      "needle": -5.833,
-     "archipelago": -4.99
+     "archipelago": -5.102
     },
-    "mean": -5.199,
-    "predicted": 4.801,
-    "win": -0.351,
-    "winPredicted": 0.643
+    "mean": -5.227,
+    "predicted": 4.94,
+    "win": -0.268,
+    "winPredicted": 0.56
    }
   },
   {
@@ -4160,25 +4160,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.167,
+     "won": 0.833,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 1.833,
-     "lostAll": 9.333,
-     "bossNormal": 1.467,
+     "boss": 0.889,
+     "lostAll": 6.5,
+     "bossNormal": 0.933,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.083,
+    "won": 0.458,
+    "endWave": 12.125,
     "flawless": 0,
     "lost10": 4.917,
-    "boss": 1.819,
-    "lostAll": 10.375,
-    "bossNormal": 1.689,
+    "boss": 1.583,
+    "lostAll": 9.667,
+    "bossNormal": 1.556,
     "bossReached": 1.875
    },
    "weapons": [
@@ -4190,12 +4190,12 @@
      "island": -5.502,
      "behemoth": -2.049,
      "needle": -8.167,
-     "archipelago": -6.87
+     "archipelago": -3.984
     },
-    "mean": -5.647,
-    "predicted": 4.728,
-    "win": -0.193,
-    "winPredicted": 0.61
+    "mean": -4.926,
+    "predicted": 4.741,
+    "win": -0.11,
+    "winPredicted": 0.568
    }
   },
   {
@@ -4242,9 +4242,9 @@
      "endWave": 13.833,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.056,
-     "lostAll": 5.667,
-     "bossNormal": 1,
+     "boss": 1.167,
+     "lostAll": 6,
+     "bossNormal": 1.167,
      "bossReached": 3
     }
    },
@@ -4254,9 +4254,9 @@
     "endWave": 12.375,
     "flawless": 0,
     "lost10": 4,
-    "boss": 1.056,
-    "lostAll": 7.167,
-    "bossNormal": 0.988,
+    "boss": 1.083,
+    "lostAll": 7.25,
+    "bossNormal": 1.029,
     "bossReached": 2.125
    },
    "weapons": [
@@ -4271,9 +4271,9 @@
      "archipelago": -4.73
     },
     "mean": -3.853,
-    "predicted": 3.314,
-    "win": -0.314,
-    "winPredicted": 0.856
+    "predicted": 3.397,
+    "win": -0.3,
+    "winPredicted": 0.842
    }
   },
   {
@@ -4320,9 +4320,9 @@
      "endWave": 12.167,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.611,
-     "lostAll": 8.5,
-     "bossNormal": 1.545,
+     "boss": 1.5,
+     "lostAll": 8.167,
+     "bossNormal": 1.091,
      "bossReached": 1.833
     }
    },
@@ -4332,9 +4332,9 @@
     "endWave": 12.292,
     "flawless": 0,
     "lost10": 3.833,
-    "boss": 1.319,
-    "lostAll": 7.792,
-    "bossNormal": 1.199,
+    "boss": 1.292,
+    "lostAll": 7.708,
+    "bossNormal": 1.086,
     "bossReached": 2.042
    },
    "weapons": [
@@ -4346,12 +4346,12 @@
      "island": -3.942,
      "behemoth": -5.278,
      "needle": -1.603,
-     "archipelago": -7.59
+     "archipelago": -6.669
     },
-    "mean": -4.603,
-    "predicted": 3.188,
-    "win": -0.358,
-    "winPredicted": 0.858
+    "mean": -4.373,
+    "predicted": 3.335,
+    "win": -0.337,
+    "winPredicted": 0.838
    }
   },
   {
@@ -4394,26 +4394,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.833,
+     "won": 0.833,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 2.333,
-     "lostAll": 10.167,
-     "bossNormal": 1.643,
-     "bossReached": 2.333
+     "boss": 1.111,
+     "lostAll": 6.5,
+     "bossNormal": 1.067,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 11.875,
+    "won": 0.5,
+    "endWave": 12,
     "flawless": 0,
     "lost10": 4.417,
-    "boss": 1.528,
-    "lostAll": 9,
-    "bossNormal": 1.349,
-    "bossReached": 1.792
+    "boss": 1.222,
+    "lostAll": 8.083,
+    "bossNormal": 1.205,
+    "bossReached": 1.833
    },
    "weapons": [
     "frigate",
@@ -4424,12 +4424,12 @@
      "island": -3.778,
      "behemoth": -4.517,
      "needle": -4.44,
-     "archipelago": -8.185
+     "archipelago": -4.189
     },
-    "mean": -5.23,
-    "predicted": 3.77,
-    "win": -0.383,
-    "winPredicted": 0.8
+    "mean": -4.231,
+    "predicted": 3.853,
+    "win": -0.279,
+    "winPredicted": 0.779
    }
   },
   {
@@ -4472,25 +4472,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.5,
+     "won": 0.667,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 4.5,
-     "boss": 1.444,
-     "lostAll": 8.833,
-     "bossNormal": 1.667,
+     "boss": 1.167,
+     "lostAll": 8,
+     "bossNormal": 1.25,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.708,
+    "won": 0.625,
+    "endWave": 12.75,
     "flawless": 0,
     "lost10": 4.125,
-    "boss": 1.306,
-    "lostAll": 8.042,
-    "bossNormal": 1.204,
+    "boss": 1.236,
+    "lostAll": 7.833,
+    "bossNormal": 1.1,
     "bossReached": 2.25
    },
    "weapons": [
@@ -4502,12 +4502,12 @@
      "island": -2.864,
      "behemoth": -4.816,
      "needle": -4.408,
-     "archipelago": -7.843
+     "archipelago": -6.763
     },
-    "mean": -4.983,
-    "predicted": 3.059,
-    "win": -0.254,
-    "winPredicted": 0.838
+    "mean": -4.713,
+    "predicted": 3.12,
+    "win": -0.199,
+    "winPredicted": 0.824
    }
   },
   {
@@ -4550,26 +4550,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.167,
+     "won": 0.333,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.667,
-     "lostAll": 9.167,
-     "bossNormal": 1.4,
-     "bossReached": 2.5
+     "boss": 2.167,
+     "lostAll": 10.667,
+     "bossNormal": 1.615,
+     "bossReached": 2.167
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.75,
+    "won": 0.542,
+    "endWave": 12.583,
     "flawless": 0,
     "lost10": 3.958,
-    "boss": 1.347,
-    "lostAll": 8,
-    "bossNormal": 1.197,
-    "bossReached": 2.25
+    "boss": 1.472,
+    "lostAll": 8.375,
+    "bossNormal": 1.251,
+    "bossReached": 2.167
    },
    "weapons": [
     "frigate",
@@ -4580,12 +4580,12 @@
      "island": -3.955,
      "behemoth": -3.525,
      "needle": -2.337,
-     "archipelago": -5.633
+     "archipelago": -5.719
     },
-    "mean": -3.862,
-    "predicted": 4.138,
-    "win": -0.175,
-    "winPredicted": 0.8
+    "mean": -3.884,
+    "predicted": 4.491,
+    "win": -0.217,
+    "winPredicted": 0.758
    }
   },
   {
@@ -4628,24 +4628,24 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.333,
-     "lostAll": 7.167,
+     "boss": 1.278,
+     "lostAll": 7,
      "bossNormal": 1.278,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 13.042,
+    "won": 0.708,
+    "endWave": 13.125,
     "flawless": 0,
     "lost10": 3.625,
-    "boss": 1.319,
-    "lostAll": 7.583,
+    "boss": 1.306,
+    "lostAll": 7.542,
     "bossNormal": 1.333,
     "bossReached": 2.5
    },
@@ -4658,12 +4658,12 @@
      "island": -5.202,
      "behemoth": -3.881,
      "needle": -3.574,
-     "archipelago": -5.801
+     "archipelago": -4.949
     },
-    "mean": -4.615,
-    "predicted": 2.969,
-    "win": -0.21,
-    "winPredicted": 0.835
+    "mean": -4.402,
+    "predicted": 3.14,
+    "win": -0.099,
+    "winPredicted": 0.807
    }
   },
   {
@@ -4710,9 +4710,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 0.889,
-     "lostAll": 5,
-     "bossNormal": 0.889,
+     "boss": 1.222,
+     "lostAll": 6,
+     "bossNormal": 1.222,
      "bossReached": 3
     }
    },
@@ -4722,9 +4722,9 @@
     "endWave": 12.75,
     "flawless": 0.042,
     "lost10": 3.292,
-    "boss": 1.542,
-    "lostAll": 7.917,
-    "bossNormal": 1.413,
+    "boss": 1.625,
+    "lostAll": 8.167,
+    "bossNormal": 1.496,
     "bossReached": 2.333
    },
    "weapons": [
@@ -4736,10 +4736,10 @@
      "island": -7.545,
      "behemoth": -1.049,
      "needle": -7.096,
-     "archipelago": -4.304
+     "archipelago": -5.284
     },
-    "mean": -4.999,
-    "predicted": 2.918,
+    "mean": -5.244,
+    "predicted": 2.923,
     "win": -0.419,
     "winPredicted": 0.919
    }
@@ -4788,8 +4788,8 @@
      "endWave": 12.5,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.722,
-     "lostAll": 8.333,
+     "boss": 1.444,
+     "lostAll": 7.5,
      "bossNormal": 1.643,
      "bossReached": 2.333
     }
@@ -4800,8 +4800,8 @@
     "endWave": 12.833,
     "flawless": 0,
     "lost10": 4,
-    "boss": 1.083,
-    "lostAll": 7.25,
+    "boss": 1.014,
+    "lostAll": 7.042,
     "bossNormal": 1.061,
     "bossReached": 2.333
    },
@@ -4814,12 +4814,12 @@
      "island": -2.872,
      "behemoth": -3.318,
      "needle": -3.085,
-     "archipelago": -6.593
+     "archipelago": -5.97
     },
-    "mean": -3.967,
-    "predicted": 3.283,
-    "win": -0.193,
-    "winPredicted": 0.86
+    "mean": -3.811,
+    "predicted": 3.23,
+    "win": -0.186,
+    "winPredicted": 0.853
    }
   },
   {
@@ -4863,25 +4863,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.667,
-     "endWave": 12.833,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.556,
-     "lostAll": 7.667,
-     "bossNormal": 1.615,
-     "bossReached": 2.167
+     "boss": 1.333,
+     "lostAll": 7,
+     "bossNormal": 1.2,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.542,
-    "endWave": 12.292,
+    "endWave": 12.375,
     "flawless": 0,
     "lost10": 4.667,
-    "boss": 1.319,
-    "lostAll": 8.625,
-    "bossNormal": 1.265,
-    "bossReached": 1.917
+    "boss": 1.264,
+    "lostAll": 8.458,
+    "bossNormal": 1.161,
+    "bossReached": 2
    },
    "weapons": [
     "frigate",
@@ -4892,12 +4892,12 @@
      "island": -2.432,
      "behemoth": -5.586,
      "needle": -3.943,
-     "archipelago": -6.382
+     "archipelago": -5.112
     },
-    "mean": -4.586,
-    "predicted": 4.039,
-    "win": -0.247,
-    "winPredicted": 0.789
+    "mean": -4.268,
+    "predicted": 4.19,
+    "win": -0.219,
+    "winPredicted": 0.761
    }
   },
   {
@@ -4940,26 +4940,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 11.667,
+     "won": 0,
+     "endWave": 11.167,
      "flawless": 0,
      "lost10": 5.667,
-     "boss": 3.667,
-     "lostAll": 16.667,
-     "bossNormal": 2.2,
-     "bossReached": 1.667
+     "boss": 3.611,
+     "lostAll": 16.5,
+     "bossNormal": 3,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.167,
-    "endWave": 11,
+    "won": 0.125,
+    "endWave": 10.875,
     "flawless": 0,
     "lost10": 6.417,
-    "boss": 1.833,
-    "lostAll": 11.917,
-    "bossNormal": 1.511,
-    "bossReached": 1.042
+    "boss": 1.819,
+    "lostAll": 11.875,
+    "bossNormal": 1.778,
+    "bossReached": 0.958
    },
    "weapons": [
     "frigate",
@@ -4970,12 +4970,12 @@
      "island": -0.821,
      "behemoth": -4.005,
      "needle": -3.397,
-     "archipelago": -10.857
+     "archipelago": -9.501
     },
-    "mean": -4.77,
-    "predicted": 7.147,
+    "mean": -4.431,
+    "predicted": 7.444,
     "win": -0.524,
-    "winPredicted": 0.69
+    "winPredicted": 0.649
    }
   },
   {
@@ -5022,9 +5022,9 @@
      "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.333,
-     "lostAll": 7.667,
-     "bossNormal": 1.267,
+     "boss": 1.111,
+     "lostAll": 7,
+     "bossNormal": 1.2,
      "bossReached": 2.5
     }
    },
@@ -5034,9 +5034,9 @@
     "endWave": 13.042,
     "flawless": 0,
     "lost10": 4.042,
-    "boss": 1.222,
-    "lostAll": 7.708,
-    "bossNormal": 1.167,
+    "boss": 1.167,
+    "lostAll": 7.542,
+    "bossNormal": 1.15,
     "bossReached": 2.375
    },
    "weapons": [
@@ -5048,12 +5048,12 @@
      "island": -5.868,
      "behemoth": -1.815,
      "needle": -4.337,
-     "archipelago": -5.177
+     "archipelago": -4.331
     },
-    "mean": -4.299,
-    "predicted": 3.409,
-    "win": -0.074,
-    "winPredicted": 0.782
+    "mean": -4.088,
+    "predicted": 3.454,
+    "win": -0.032,
+    "winPredicted": 0.74
    }
   },
   {
@@ -5096,24 +5096,24 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.167,
+     "won": 0.833,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.222,
-     "lostAll": 6.833,
+     "boss": 1.111,
+     "lostAll": 6.5,
      "bossNormal": 1.267,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.542,
+    "won": 0.583,
+    "endWave": 12.583,
     "flawless": 0,
     "lost10": 3.75,
-    "boss": 1.5,
-    "lostAll": 8.25,
+    "boss": 1.472,
+    "lostAll": 8.167,
     "bossNormal": 1.454,
     "bossReached": 2.208
    },
@@ -5126,12 +5126,12 @@
      "island": -4.208,
      "behemoth": -4.98,
      "needle": -7.73,
-     "archipelago": -5.575
+     "archipelago": -4.612
     },
-    "mean": -5.623,
-    "predicted": 2.627,
-    "win": -0.364,
-    "winPredicted": 0.906
+    "mean": -5.383,
+    "predicted": 2.784,
+    "win": -0.288,
+    "winPredicted": 0.871
    }
   },
   {
@@ -5174,25 +5174,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.722,
-     "lostAll": 7.667,
-     "bossNormal": 1.222,
+     "boss": 1.111,
+     "lostAll": 5.833,
+     "bossNormal": 1.111,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 13.042,
+    "won": 0.75,
+    "endWave": 13.125,
     "flawless": 0,
     "lost10": 3.208,
-    "boss": 1.444,
-    "lostAll": 7.542,
-    "bossNormal": 1.093,
+    "boss": 1.292,
+    "lostAll": 7.083,
+    "bossNormal": 1.065,
     "bossReached": 2.5
    },
    "weapons": [
@@ -5204,12 +5204,12 @@
      "island": -3.072,
      "behemoth": -0.358,
      "needle": -1.922,
-     "archipelago": -2.473
+     "archipelago": 0.156
     },
-    "mean": -1.956,
-    "predicted": 5.586,
-    "win": -0.051,
-    "winPredicted": 0.718
+    "mean": -1.299,
+    "predicted": 5.784,
+    "win": 0.074,
+    "winPredicted": 0.676
    }
   },
   {
@@ -5252,25 +5252,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
+     "won": 0.833,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.667,
-     "lostAll": 8.167,
-     "bossNormal": 1.467,
+     "boss": 1.222,
+     "lostAll": 6.833,
+     "bossNormal": 1.2,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.75,
+    "won": 0.667,
+    "endWave": 12.792,
     "flawless": 0,
     "lost10": 4.167,
-    "boss": 1.097,
-    "lostAll": 7.458,
-    "bossNormal": 1.072,
+    "boss": 0.986,
+    "lostAll": 7.125,
+    "bossNormal": 1.006,
     "bossReached": 2.25
    },
    "weapons": [
@@ -5282,12 +5282,12 @@
      "island": -2.862,
      "behemoth": -2.722,
      "needle": -2.918,
-     "archipelago": -5.811
+     "archipelago": -3.936
     },
-    "mean": -3.578,
-    "predicted": 3.88,
-    "win": -0.111,
-    "winPredicted": 0.736
+    "mean": -3.11,
+    "predicted": 4.015,
+    "win": -0.028,
+    "winPredicted": 0.694
    }
   },
   {
@@ -5334,9 +5334,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.056,
-     "lostAll": 5.667,
-     "bossNormal": 1.056,
+     "boss": 0.889,
+     "lostAll": 5.167,
+     "bossNormal": 0.889,
      "bossReached": 3
     }
    },
@@ -5346,9 +5346,9 @@
     "endWave": 13.042,
     "flawless": 0,
     "lost10": 3.875,
-    "boss": 1.347,
-    "lostAll": 7.917,
-    "bossNormal": 1.212,
+    "boss": 1.306,
+    "lostAll": 7.792,
+    "bossNormal": 1.171,
     "bossReached": 2.458
    },
    "weapons": [
@@ -5360,12 +5360,12 @@
      "island": -5.43,
      "behemoth": -1.352,
      "needle": -6.074,
-     "archipelago": -1.49
+     "archipelago": -0.023
     },
-    "mean": -3.587,
-    "predicted": 4.33,
-    "win": -0.115,
-    "winPredicted": 0.782
+    "mean": -3.22,
+    "predicted": 4.572,
+    "win": -0.074,
+    "winPredicted": 0.74
    }
   },
   {
@@ -5412,9 +5412,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 4,
-     "boss": 1.222,
-     "lostAll": 7.667,
-     "bossNormal": 1.267,
+     "boss": 1.167,
+     "lostAll": 7.5,
+     "bossNormal": 1.333,
      "bossReached": 2.5
     }
    },
@@ -5424,9 +5424,9 @@
     "endWave": 12.333,
     "flawless": 0.042,
     "lost10": 4.75,
-    "boss": 1.75,
-    "lostAll": 10,
-    "bossNormal": 1.452,
+    "boss": 1.736,
+    "lostAll": 9.958,
+    "bossNormal": 1.468,
     "bossReached": 2.083
    },
    "weapons": [
@@ -5438,12 +5438,12 @@
      "island": -6.788,
      "behemoth": -6.29,
      "needle": -4.791,
-     "archipelago": -5.203
+     "archipelago": -4.766
     },
-    "mean": -5.768,
-    "predicted": 4.232,
-    "win": -0.381,
-    "winPredicted": 0.797
+    "mean": -5.659,
+    "predicted": 4.3,
+    "win": -0.36,
+    "winPredicted": 0.776
    }
   },
   {
@@ -5490,8 +5490,8 @@
      "endWave": 11.667,
      "flawless": 0,
      "lost10": 4.5,
-     "boss": 1.222,
-     "lostAll": 8.167,
+     "boss": 1,
+     "lostAll": 7.5,
      "bossNormal": 1.333,
      "bossReached": 1.5
     }
@@ -5502,8 +5502,8 @@
     "endWave": 11.958,
     "flawless": 0,
     "lost10": 4.75,
-    "boss": 1.319,
-    "lostAll": 8.708,
+    "boss": 1.264,
+    "lostAll": 8.542,
     "bossNormal": 1.25,
     "bossReached": 1.667
    },
@@ -5516,12 +5516,12 @@
      "island": -5.342,
      "behemoth": -5.5,
      "needle": -1.603,
-     "archipelago": -7.37
+     "archipelago": -6.332
     },
-    "mean": -4.954,
-    "predicted": 3.755,
-    "win": -0.414,
-    "winPredicted": 0.831
+    "mean": -4.694,
+    "predicted": 3.848,
+    "win": -0.4,
+    "winPredicted": 0.817
    }
   },
   {
@@ -5564,26 +5564,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 0.667,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1.556,
-     "lostAll": 7.5,
-     "bossNormal": 1.5,
-     "bossReached": 3
+     "boss": 1.722,
+     "lostAll": 8,
+     "bossNormal": 1.625,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 12.5,
+    "won": 0.583,
+    "endWave": 12.375,
     "flawless": 0,
     "lost10": 4,
-    "boss": 1.319,
-    "lostAll": 7.958,
-    "bossNormal": 1.175,
-    "bossReached": 2.167
+    "boss": 1.361,
+    "lostAll": 8.083,
+    "bossNormal": 1.206,
+    "bossReached": 2.083
    },
    "weapons": [
     "thermo",
@@ -5594,12 +5594,12 @@
      "island": -2.722,
      "behemoth": -2.819,
      "needle": -2.773,
-     "archipelago": -5.766
+     "archipelago": -6.197
     },
-    "mean": -3.52,
-    "predicted": 4.438,
-    "win": -0.119,
-    "winPredicted": 0.744
+    "mean": -3.628,
+    "predicted": 4.455,
+    "win": -0.133,
+    "winPredicted": 0.717
    }
   },
   {
@@ -5642,25 +5642,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.389,
-     "lostAll": 7.167,
-     "bossNormal": 1.278,
+     "boss": 1.222,
+     "lostAll": 6.667,
+     "bossNormal": 1.167,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.458,
+    "won": 0.542,
+    "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.625,
-    "boss": 1.292,
-    "lostAll": 8.5,
-    "bossNormal": 1.386,
+    "boss": 1.25,
+    "lostAll": 8.375,
+    "bossNormal": 1.358,
     "bossReached": 2.208
    },
    "weapons": [
@@ -5672,12 +5672,12 @@
      "island": -1.21,
      "behemoth": -5.514,
      "needle": -6.074,
-     "archipelago": -6.3
+     "archipelago": -5.702
     },
-    "mean": -4.775,
-    "predicted": 3.725,
-    "win": -0.275,
-    "winPredicted": 0.775
+    "mean": -4.625,
+    "predicted": 3.75,
+    "win": -0.226,
+    "winPredicted": 0.768
    }
   },
   {
@@ -5720,25 +5720,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 11.5,
+     "won": 0.5,
+     "endWave": 11.667,
      "flawless": 0,
      "lost10": 6.667,
-     "boss": 1.667,
-     "lostAll": 11.667,
-     "bossNormal": 1.111,
+     "boss": 1.611,
+     "lostAll": 11.5,
+     "bossNormal": 0.889,
      "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 11.958,
+    "won": 0.417,
+    "endWave": 12,
     "flawless": 0,
     "lost10": 5.5,
-    "boss": 1.431,
-    "lostAll": 9.792,
-    "bossNormal": 1.331,
+    "boss": 1.417,
+    "lostAll": 9.75,
+    "bossNormal": 1.276,
     "bossReached": 1.833
    },
    "weapons": [
@@ -5750,12 +5750,12 @@
      "island": -4.626,
      "behemoth": -1.889,
      "needle": -4.504,
-     "archipelago": -8.574
+     "archipelago": -7.641
     },
-    "mean": -4.898,
-    "predicted": 4.894,
-    "win": -0.383,
-    "winPredicted": 0.758
+    "mean": -4.665,
+    "predicted": 5.085,
+    "win": -0.3,
+    "winPredicted": 0.717
    }
   },
   {
@@ -5798,25 +5798,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.278,
-     "lostAll": 7.167,
-     "bossNormal": 1.056,
+     "boss": 0.667,
+     "lostAll": 5.333,
+     "bossNormal": 0.667,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.208,
+    "won": 0.458,
+    "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.417,
-    "boss": 1.472,
-    "lostAll": 8.833,
-    "bossNormal": 1.389,
+    "boss": 1.319,
+    "lostAll": 8.375,
+    "bossNormal": 1.292,
     "bossReached": 2.083
    },
    "weapons": [
@@ -5828,12 +5828,12 @@
      "island": -6.971,
      "behemoth": -2.764,
      "needle": -5.408,
-     "archipelago": -5.972
+     "archipelago": -3.734
     },
-    "mean": -5.279,
-    "predicted": 3.555,
-    "win": -0.383,
-    "winPredicted": 0.8
+    "mean": -4.719,
+    "predicted": 3.656,
+    "win": -0.314,
+    "winPredicted": 0.772
    }
   },
   {
@@ -5876,25 +5876,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 13.5,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 2.056,
-     "lostAll": 8.667,
-     "bossNormal": 1.611,
+     "boss": 0.889,
+     "lostAll": 5.167,
+     "bossNormal": 0.889,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.292,
+    "won": 0.625,
+    "endWave": 12.417,
     "flawless": 0,
     "lost10": 4.25,
-    "boss": 1.375,
-    "lostAll": 8.375,
-    "bossNormal": 1.201,
+    "boss": 1.083,
+    "lostAll": 7.5,
+    "bossNormal": 1.021,
     "bossReached": 1.875
    },
    "weapons": [
@@ -5906,11 +5906,11 @@
      "island": -3.541,
      "behemoth": -5.111,
      "needle": -2.762,
-     "archipelago": -8.058
+     "archipelago": -4.608
     },
-    "mean": -4.868,
-    "predicted": 3.507,
-    "win": -0.364,
+    "mean": -4.006,
+    "predicted": 3.494,
+    "win": -0.239,
     "winPredicted": 0.864
    }
   },
@@ -5956,11 +5956,11 @@
      "n": 6,
      "won": 0.667,
      "endWave": 12.833,
-     "flawless": 0.167,
+     "flawless": 0,
      "lost10": 2.5,
      "boss": 1.222,
      "lostAll": 6.167,
-     "bossNormal": 1,
+     "bossNormal": 1.133,
      "bossReached": 2.5
     }
    },
@@ -5968,11 +5968,11 @@
     "n": 24,
     "won": 0.667,
     "endWave": 12.667,
-    "flawless": 0.042,
+    "flawless": 0,
     "lost10": 4.708,
     "boss": 1.056,
     "lostAll": 7.875,
-    "bossNormal": 0.766,
+    "bossNormal": 0.8,
     "bossReached": 2.333
    },
    "weapons": [
@@ -5984,12 +5984,12 @@
      "island": -3.566,
      "behemoth": -4.194,
      "needle": -3.418,
-     "archipelago": -4.644
+     "archipelago": -4.973
     },
-    "mean": -3.956,
-    "predicted": 3.919,
-    "win": -0.172,
-    "winPredicted": 0.839
+    "mean": -4.038,
+    "predicted": 3.837,
+    "win": -0.151,
+    "winPredicted": 0.818
    }
   },
   {
@@ -6036,9 +6036,9 @@
      "endWave": 10.833,
      "flawless": 0,
      "lost10": 5.167,
-     "boss": 2.333,
-     "lostAll": 12.167,
-     "bossNormal": 1.444,
+     "boss": 1.667,
+     "lostAll": 10.167,
+     "bossNormal": 1.222,
      "bossReached": 1.5
     }
    },
@@ -6048,9 +6048,9 @@
     "endWave": 11.75,
     "flawless": 0,
     "lost10": 4.833,
-    "boss": 1.708,
-    "lostAll": 9.958,
-    "bossNormal": 0.98,
+    "boss": 1.542,
+    "lostAll": 9.458,
+    "bossNormal": 0.925,
     "bossReached": 1.708
    },
    "weapons": [
@@ -6062,12 +6062,12 @@
      "island": -2.272,
      "behemoth": -4.278,
      "needle": -2.777,
-     "archipelago": -11.042
+     "archipelago": -8.694
     },
-    "mean": -5.092,
-    "predicted": 4.866,
-    "win": -0.206,
-    "winPredicted": 0.706
+    "mean": -4.505,
+    "predicted": 4.953,
+    "win": -0.185,
+    "winPredicted": 0.685
    }
   },
   {
@@ -6111,25 +6111,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.167,
-     "endWave": 10.667,
+     "endWave": 10.833,
      "flawless": 0,
      "lost10": 6.833,
-     "boss": 3.222,
-     "lostAll": 16.5,
-     "bossNormal": 2.667,
-     "bossReached": 1
+     "boss": 2.444,
+     "lostAll": 14.167,
+     "bossNormal": 2,
+     "bossReached": 1.167
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 10.542,
+    "endWave": 10.583,
     "flawless": 0,
     "lost10": 6.917,
-    "boss": 2.111,
-    "lostAll": 13.25,
-    "bossNormal": 2.365,
-    "bossReached": 1
+    "boss": 1.917,
+    "lostAll": 12.667,
+    "bossNormal": 2.143,
+    "bossReached": 1.042
    },
    "weapons": [
     "thermo",
@@ -6140,12 +6140,12 @@
      "island": -4.716,
      "behemoth": -1.708,
      "needle": -1.397,
-     "archipelago": -11.416
+     "archipelago": -8.708
     },
-    "mean": -4.809,
-    "predicted": 8.441,
-    "win": -0.406,
-    "winPredicted": 0.614
+    "mean": -4.132,
+    "predicted": 8.534,
+    "win": -0.364,
+    "winPredicted": 0.572
    }
   },
   {
@@ -6192,9 +6192,9 @@
      "endWave": 12.833,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.667,
-     "lostAll": 8.167,
-     "bossNormal": 1.571,
+     "boss": 1.333,
+     "lostAll": 7.167,
+     "bossNormal": 1.143,
      "bossReached": 2.333
     }
    },
@@ -6204,9 +6204,9 @@
     "endWave": 12.333,
     "flawless": 0,
     "lost10": 4.417,
-    "boss": 1.222,
-    "lostAll": 8.083,
-    "bossNormal": 0.898,
+    "boss": 1.139,
+    "lostAll": 7.833,
+    "bossNormal": 0.791,
     "bossReached": 2
    },
    "weapons": [
@@ -6218,12 +6218,12 @@
      "island": -3.971,
      "behemoth": -2.167,
      "needle": -4.337,
-     "archipelago": -5.988
+     "archipelago": -5.085
     },
-    "mean": -4.116,
-    "predicted": 3.968,
-    "win": -0.164,
-    "winPredicted": 0.747
+    "mean": -3.89,
+    "predicted": 3.943,
+    "win": -0.122,
+    "winPredicted": 0.706
    }
   },
   {
@@ -6266,25 +6266,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12,
+     "won": 0.667,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 1.556,
-     "lostAll": 8.167,
-     "bossNormal": 1.667,
+     "boss": 0.944,
+     "lostAll": 6.333,
+     "bossNormal": 0.917,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.542,
+    "won": 0.583,
+    "endWave": 12.625,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.458,
-    "lostAll": 8.458,
-    "bossNormal": 1.29,
+    "boss": 1.306,
+    "lostAll": 8,
+    "bossNormal": 1.102,
     "bossReached": 2.167
    },
    "weapons": [
@@ -6296,12 +6296,12 @@
      "island": -2.78,
      "behemoth": -6.319,
      "needle": -5.064,
-     "archipelago": -7.066
+     "archipelago": -4.861
     },
-    "mean": -5.307,
-    "predicted": 3.151,
-    "win": -0.378,
-    "winPredicted": 0.878
+    "mean": -4.756,
+    "predicted": 3.244,
+    "win": -0.267,
+    "winPredicted": 0.85
    }
   },
   {
@@ -6345,25 +6345,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.833,
-     "endWave": 13.833,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1.556,
-     "lostAll": 7.333,
-     "bossNormal": 1.5,
-     "bossReached": 3
+     "boss": 1.444,
+     "lostAll": 7,
+     "bossNormal": 1.353,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.75,
-    "endWave": 13.542,
+    "endWave": 13.5,
     "flawless": 0,
     "lost10": 3.125,
-    "boss": 1.236,
-    "lostAll": 6.833,
-    "bossNormal": 1.137,
-    "bossReached": 2.833
+    "boss": 1.208,
+    "lostAll": 6.75,
+    "bossNormal": 1.1,
+    "bossReached": 2.792
    },
    "weapons": [
     "thermo",
@@ -6374,12 +6374,12 @@
      "island": 3.677,
      "behemoth": 2.111,
      "needle": -4.089,
-     "archipelago": -2.788
+     "archipelago": -2.328
     },
-    "mean": -0.272,
-    "predicted": 6.561,
-    "win": 0.081,
-    "winPredicted": 0.669
+    "mean": -0.157,
+    "predicted": 6.593,
+    "win": 0.122,
+    "winPredicted": 0.628
    }
   },
   {
@@ -6426,9 +6426,9 @@
      "endWave": 12.833,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1.444,
-     "lostAll": 7.167,
-     "bossNormal": 1.286,
+     "boss": 1.556,
+     "lostAll": 7.5,
+     "bossNormal": 1.357,
      "bossReached": 2.333
     }
    },
@@ -6438,9 +6438,9 @@
     "endWave": 12.75,
     "flawless": 0,
     "lost10": 3.833,
-    "boss": 1.264,
-    "lostAll": 7.625,
-    "bossNormal": 1.131,
+    "boss": 1.292,
+    "lostAll": 7.708,
+    "bossNormal": 1.149,
     "bossReached": 2.292
    },
    "weapons": [
@@ -6452,12 +6452,12 @@
      "island": -0.496,
      "behemoth": -2,
      "needle": -4.252,
-     "archipelago": -5.105
+     "archipelago": -5.24
     },
-    "mean": -2.963,
-    "predicted": 4.662,
-    "win": -0.056,
-    "winPredicted": 0.681
+    "mean": -2.997,
+    "predicted": 4.711,
+    "win": -0.014,
+    "winPredicted": 0.639
    }
   },
   {
@@ -6500,26 +6500,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 11.667,
+     "won": 0.333,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 6,
-     "boss": 1.056,
-     "lostAll": 9.167,
-     "bossNormal": 1.222,
-     "bossReached": 1.5
+     "boss": 1.167,
+     "lostAll": 9.5,
+     "bossNormal": 1.75,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.042,
+    "won": 0.458,
+    "endWave": 11.958,
     "flawless": 0,
     "lost10": 5.167,
-    "boss": 1.208,
-    "lostAll": 8.792,
-    "bossNormal": 1.222,
-    "bossReached": 1.875
+    "boss": 1.236,
+    "lostAll": 8.875,
+    "bossNormal": 1.354,
+    "bossReached": 1.833
    },
    "weapons": [
     "thermo",
@@ -6530,12 +6530,12 @@
      "island": -2.391,
      "behemoth": -2.833,
      "needle": -4.241,
-     "archipelago": -5.512
+     "archipelago": -5.488
     },
-    "mean": -3.744,
-    "predicted": 5.047,
+    "mean": -3.738,
+    "predicted": 5.137,
     "win": -0.247,
-    "winPredicted": 0.747
+    "winPredicted": 0.706
    }
   },
   {
@@ -6578,25 +6578,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 12.667,
+     "won": 0.5,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 1.333,
-     "lostAll": 7.833,
-     "bossNormal": 1.417,
+     "boss": 1.722,
+     "lostAll": 9,
+     "bossNormal": 1.167,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.167,
+    "won": 0.417,
+    "endWave": 12.125,
     "flawless": 0,
     "lost10": 4.25,
-    "boss": 1.292,
-    "lostAll": 8.125,
-    "bossNormal": 1.346,
+    "boss": 1.389,
+    "lostAll": 8.417,
+    "bossNormal": 1.283,
     "bossReached": 1.792
    },
    "weapons": [
@@ -6608,12 +6608,12 @@
      "island": -4.959,
      "behemoth": 2.222,
      "needle": -4.124,
-     "archipelago": -5.678
+     "archipelago": -6.867
     },
-    "mean": -3.135,
-    "predicted": 4.99,
-    "win": -0.256,
-    "winPredicted": 0.714
+    "mean": -3.432,
+    "predicted": 4.985,
+    "win": -0.269,
+    "winPredicted": 0.686
    }
   },
   {
@@ -6656,24 +6656,24 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12.167,
+     "won": 0.5,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 2.111,
-     "lostAll": 10,
+     "boss": 1.556,
+     "lostAll": 8.333,
      "bossNormal": 1.417,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.292,
-    "endWave": 11.792,
+    "won": 0.333,
+    "endWave": 11.833,
     "flawless": 0,
     "lost10": 5,
-    "boss": 1.514,
-    "lostAll": 9.542,
+    "boss": 1.375,
+    "lostAll": 9.125,
     "bossNormal": 1.391,
     "bossReached": 1.708
    },
@@ -6686,12 +6686,12 @@
      "island": -2.111,
      "behemoth": -8.111,
      "needle": -2.496,
-     "archipelago": -8.316
+     "archipelago": -6.207
     },
-    "mean": -5.259,
-    "predicted": 4.283,
-    "win": -0.442,
-    "winPredicted": 0.733
+    "mean": -4.731,
+    "predicted": 4.394,
+    "win": -0.379,
+    "winPredicted": 0.712
    }
   },
   {
@@ -6734,26 +6734,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 13,
+     "won": 0.833,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 3,
-     "boss": 2.167,
-     "lostAll": 9.5,
-     "bossNormal": 1.733,
-     "bossReached": 2.5
+     "boss": 0.944,
+     "lostAll": 5.833,
+     "bossNormal": 1,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.417,
+    "won": 0.5,
+    "endWave": 12.583,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.736,
-    "lostAll": 9.292,
-    "bossNormal": 1.38,
-    "bossReached": 2.167
+    "boss": 1.431,
+    "lostAll": 8.375,
+    "bossNormal": 1.196,
+    "bossReached": 2.25
    },
    "weapons": [
     "scatter",
@@ -6764,12 +6764,12 @@
      "island": -1.957,
      "behemoth": -6.222,
      "needle": -6.348,
-     "archipelago": -8.658
+     "archipelago": -4.695
     },
-    "mean": -5.796,
-    "predicted": 3.496,
-    "win": -0.401,
-    "winPredicted": 0.818
+    "mean": -4.805,
+    "predicted": 3.57,
+    "win": -0.304,
+    "winPredicted": 0.804
    }
   },
   {
@@ -6812,25 +6812,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.333,
+     "won": 0.667,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 4.5,
-     "boss": 1.722,
-     "lostAll": 9.667,
-     "bossNormal": 1,
+     "boss": 0.611,
+     "lostAll": 6.333,
+     "bossNormal": 0.333,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12,
+    "won": 0.458,
+    "endWave": 12.042,
     "flawless": 0,
     "lost10": 5.208,
-    "boss": 1.431,
-    "lostAll": 9.5,
-    "bossNormal": 1.172,
+    "boss": 1.153,
+    "lostAll": 8.667,
+    "bossNormal": 1.005,
     "bossReached": 1.833
    },
    "weapons": [
@@ -6842,12 +6842,12 @@
      "island": -3.263,
      "behemoth": -5.889,
      "needle": -4.628,
-     "archipelago": -6.663
+     "archipelago": -1.781
     },
-    "mean": -5.111,
-    "predicted": 4.389,
-    "win": -0.365,
-    "winPredicted": 0.782
+    "mean": -3.89,
+    "predicted": 4.776,
+    "win": -0.282,
+    "winPredicted": 0.74
    }
   },
   {
@@ -6890,26 +6890,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.667,
+     "won": 0.833,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.722,
-     "lostAll": 8.833,
-     "bossNormal": 1.143,
-     "bossReached": 2.333
+     "boss": 0.889,
+     "lostAll": 6.333,
+     "bossNormal": 0.8,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.5,
+    "won": 0.458,
+    "endWave": 12.625,
     "flawless": 0,
     "lost10": 3.875,
-    "boss": 1.542,
-    "lostAll": 8.5,
-    "bossNormal": 1.32,
-    "bossReached": 2.333
+    "boss": 1.333,
+    "lostAll": 7.875,
+    "bossNormal": 1.235,
+    "bossReached": 2.375
    },
    "weapons": [
     "scatter",
@@ -6920,12 +6920,12 @@
      "island": -2.084,
      "behemoth": -7.222,
      "needle": -3.514,
-     "archipelago": -7.673
+     "archipelago": -4.447
     },
-    "mean": -5.123,
-    "predicted": 3.377,
-    "win": -0.414,
-    "winPredicted": 0.789
+    "mean": -4.317,
+    "predicted": 3.558,
+    "win": -0.303,
+    "winPredicted": 0.761
    }
   },
   {
@@ -6968,26 +6968,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
+     "won": 0.833,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 1.222,
-     "lostAll": 7.5,
-     "bossNormal": 1.071,
-     "bossReached": 2.333
+     "boss": 0.722,
+     "lostAll": 6,
+     "bossNormal": 0.733,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 12.75,
+    "won": 0.708,
+    "endWave": 12.833,
     "flawless": 0,
     "lost10": 4.875,
-    "boss": 1.069,
-    "lostAll": 8.083,
-    "bossNormal": 0.938,
-    "bossReached": 2.167
+    "boss": 0.944,
+    "lostAll": 7.708,
+    "bossNormal": 0.853,
+    "bossReached": 2.208
    },
    "weapons": [
     "scatter",
@@ -6998,11 +6998,11 @@
      "island": -4.07,
      "behemoth": -4.611,
      "needle": -3.447,
-     "archipelago": -6.908
+     "archipelago": -5.341
     },
-    "mean": -4.759,
-    "predicted": 3.324,
-    "win": -0.238,
+    "mean": -4.367,
+    "predicted": 3.341,
+    "win": -0.196,
     "winPredicted": 0.904
    }
   },
@@ -7047,25 +7047,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.5,
-     "endWave": 12.167,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.111,
-     "lostAll": 7,
-     "bossNormal": 1.167,
-     "bossReached": 2
+     "boss": 1.056,
+     "lostAll": 6.833,
+     "bossNormal": 1.273,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.667,
-    "endWave": 12.708,
+    "endWave": 12.667,
     "flawless": 0,
     "lost10": 3.875,
-    "boss": 1.167,
-    "lostAll": 7.375,
-    "bossNormal": 1.057,
-    "bossReached": 2.208
+    "boss": 1.153,
+    "lostAll": 7.333,
+    "bossNormal": 1.084,
+    "bossReached": 2.167
    },
    "weapons": [
     "scatter",
@@ -7076,12 +7076,12 @@
      "island": -3.212,
      "behemoth": -3.778,
      "needle": -2.397,
-     "archipelago": -5.521
+     "archipelago": -5.426
     },
-    "mean": -3.727,
-    "predicted": 3.648,
-    "win": -0.169,
-    "winPredicted": 0.836
+    "mean": -3.703,
+    "predicted": 3.63,
+    "win": -0.162,
+    "winPredicted": 0.829
    }
   },
   {
@@ -7124,26 +7124,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.833,
+     "won": 0.667,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.889,
-     "lostAll": 9,
-     "bossNormal": 1.357,
-     "bossReached": 2.333
+     "boss": 1.278,
+     "lostAll": 7.167,
+     "bossNormal": 1.133,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.375,
+    "won": 0.542,
+    "endWave": 12.458,
     "flawless": 0,
     "lost10": 4.708,
-    "boss": 1.319,
-    "lostAll": 8.667,
-    "bossNormal": 1.152,
-    "bossReached": 2.083
+    "boss": 1.167,
+    "lostAll": 8.208,
+    "bossNormal": 1.096,
+    "bossReached": 2.125
    },
    "weapons": [
     "scatter",
@@ -7154,12 +7154,12 @@
      "island": -1.228,
      "behemoth": -6.944,
      "needle": 0.043,
-     "archipelago": -7.908
+     "archipelago": -5.43
     },
-    "mean": -4.009,
-    "predicted": 4.657,
-    "win": -0.235,
-    "winPredicted": 0.735
+    "mean": -3.39,
+    "predicted": 4.818,
+    "win": -0.165,
+    "winPredicted": 0.707
    }
   },
   {
@@ -7202,25 +7202,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 10.833,
+     "won": 0.167,
+     "endWave": 11,
      "flawless": 0,
      "lost10": 6.167,
-     "boss": 4.611,
-     "lostAll": 20,
-     "bossNormal": 3,
+     "boss": 5,
+     "lostAll": 21.167,
+     "bossNormal": 2.333,
      "bossReached": 1
     }
    },
    "all": {
     "n": 24,
-    "won": 0.042,
-    "endWave": 10.583,
+    "won": 0.083,
+    "endWave": 10.625,
     "flawless": 0,
     "lost10": 7.125,
-    "boss": 2.639,
-    "lostAll": 15.042,
-    "bossNormal": 2.477,
+    "boss": 2.736,
+    "lostAll": 15.333,
+    "bossNormal": 2.311,
     "bossReached": 0.917
    },
    "weapons": [
@@ -7232,12 +7232,12 @@
      "island": -3.117,
      "behemoth": -9,
      "needle": -1.965,
-     "archipelago": -15.062
+     "archipelago": -14.728
     },
-    "mean": -7.286,
-    "predicted": 7.756,
-    "win": -0.571,
-    "winPredicted": 0.612
+    "mean": -7.202,
+    "predicted": 8.131,
+    "win": -0.487,
+    "winPredicted": 0.571
    }
   },
   {
@@ -7284,9 +7284,9 @@
      "endWave": 13.833,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.611,
-     "lostAll": 7.333,
-     "bossNormal": 1.556,
+     "boss": 0.944,
+     "lostAll": 5.333,
+     "bossNormal": 0.944,
      "bossReached": 3
     }
    },
@@ -7296,9 +7296,9 @@
     "endWave": 12.667,
     "flawless": 0,
     "lost10": 4.25,
-    "boss": 1.056,
-    "lostAll": 7.417,
-    "bossNormal": 1.139,
+    "boss": 0.889,
+    "lostAll": 6.917,
+    "bossNormal": 0.986,
     "bossReached": 2.125
    },
    "weapons": [
@@ -7310,12 +7310,12 @@
      "island": -2.751,
      "behemoth": -7.333,
      "needle": 0.872,
-     "archipelago": -5.217
+     "archipelago": -2.878
     },
-    "mean": -3.607,
-    "predicted": 3.809,
-    "win": -0.068,
-    "winPredicted": 0.735
+    "mean": -3.022,
+    "predicted": 3.894,
+    "win": -0.026,
+    "winPredicted": 0.693
    }
   },
   {
@@ -7358,26 +7358,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1,
-     "lostAll": 5.667,
-     "bossNormal": 1.133,
-     "bossReached": 2.5
+     "boss": 1.389,
+     "lostAll": 6.833,
+     "bossNormal": 1.357,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.625,
+    "won": 0.542,
+    "endWave": 12.542,
     "flawless": 0,
     "lost10": 3.792,
-    "boss": 1.069,
-    "lostAll": 7,
-    "bossNormal": 1.075,
-    "bossReached": 2.25
+    "boss": 1.167,
+    "lostAll": 7.292,
+    "bossNormal": 1.131,
+    "bossReached": 2.208
    },
    "weapons": [
     "scatter",
@@ -7388,12 +7388,12 @@
      "island": -3.276,
      "behemoth": -4.278,
      "needle": -3.965,
-     "archipelago": -4.597
+     "archipelago": -5.096
     },
-    "mean": -4.029,
-    "predicted": 2.971,
-    "win": -0.286,
-    "winPredicted": 0.869
+    "mean": -4.154,
+    "predicted": 3.138,
+    "win": -0.293,
+    "winPredicted": 0.835
    }
   },
   {
@@ -7436,25 +7436,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.778,
-     "lostAll": 8.333,
-     "bossNormal": 1.278,
+     "boss": 0.722,
+     "lostAll": 5.167,
+     "bossNormal": 0.722,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.833,
+    "won": 0.667,
+    "endWave": 12.917,
     "flawless": 0,
     "lost10": 3.75,
-    "boss": 1.333,
-    "lostAll": 7.75,
-    "bossNormal": 1.313,
+    "boss": 1.069,
+    "lostAll": 6.958,
+    "bossNormal": 1.174,
     "bossReached": 2.375
    },
    "weapons": [
@@ -7466,12 +7466,12 @@
      "island": 2.934,
      "behemoth": -4.056,
      "needle": -1.358,
-     "archipelago": -3.918
+     "archipelago": 0.344
     },
-    "mean": -1.599,
-    "predicted": 6.151,
-    "win": -0.078,
-    "winPredicted": 0.661
+    "mean": -0.534,
+    "predicted": 6.424,
+    "win": 0.047,
+    "winPredicted": 0.619
    }
   },
   {
@@ -7518,9 +7518,9 @@
      "endWave": 12.5,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1,
-     "lostAll": 6.667,
-     "bossNormal": 1.083,
+     "boss": 0.611,
+     "lostAll": 5.5,
+     "bossNormal": 0.75,
      "bossReached": 2
     }
    },
@@ -7530,9 +7530,9 @@
     "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.292,
-    "lostAll": 7.958,
-    "bossNormal": 1.215,
+    "boss": 1.194,
+    "lostAll": 7.667,
+    "bossNormal": 1.132,
     "bossReached": 2.042
    },
    "weapons": [
@@ -7544,12 +7544,12 @@
      "island": -0.56,
      "behemoth": -4.333,
      "needle": -5.23,
-     "archipelago": -4.664
+     "archipelago": -2.835
     },
-    "mean": -3.697,
-    "predicted": 4.261,
-    "win": -0.125,
-    "winPredicted": 0.708
+    "mean": -3.24,
+    "predicted": 4.427,
+    "win": -0.083,
+    "winPredicted": 0.667
    }
   },
   {
@@ -7596,9 +7596,9 @@
      "endWave": 13,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 0.778,
-     "lostAll": 5.833,
-     "bossNormal": 0.533,
+     "boss": 0.889,
+     "lostAll": 6.167,
+     "bossNormal": 0.733,
      "bossReached": 2.5
     }
    },
@@ -7608,9 +7608,9 @@
     "endWave": 12.042,
     "flawless": 0,
     "lost10": 4.917,
-    "boss": 1.139,
-    "lostAll": 8.333,
-    "bossNormal": 1.072,
+    "boss": 1.167,
+    "lostAll": 8.417,
+    "bossNormal": 1.122,
     "bossReached": 1.792
    },
    "weapons": [
@@ -7622,12 +7622,12 @@
      "island": -1.831,
      "behemoth": -6.5,
      "needle": -3.681,
-     "archipelago": -2.283
+     "archipelago": -1.435
     },
-    "mean": -3.574,
-    "predicted": 4.76,
-    "win": -0.276,
-    "winPredicted": 0.735
+    "mean": -3.362,
+    "predicted": 5.055,
+    "win": -0.235,
+    "winPredicted": 0.693
    }
   },
   {
@@ -7674,9 +7674,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.111,
-     "lostAll": 7.5,
-     "bossNormal": 1.267,
+     "boss": 0.667,
+     "lostAll": 6.167,
+     "bossNormal": 0.467,
      "bossReached": 2.5
     }
    },
@@ -7686,9 +7686,9 @@
     "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.458,
-    "boss": 1.472,
-    "lostAll": 8.875,
-    "bossNormal": 1.403,
+    "boss": 1.361,
+    "lostAll": 8.542,
+    "bossNormal": 1.203,
     "bossReached": 2.083
    },
    "weapons": [
@@ -7700,12 +7700,12 @@
      "island": -5.43,
      "behemoth": -4.944,
      "needle": -1.135,
-     "archipelago": -5.406
+     "archipelago": -3.651
     },
-    "mean": -4.229,
-    "predicted": 4.646,
-    "win": -0.253,
-    "winPredicted": 0.753
+    "mean": -3.79,
+    "predicted": 4.752,
+    "win": -0.232,
+    "winPredicted": 0.732
    }
   },
   {
@@ -7748,25 +7748,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 11.5,
+     "won": 0.333,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 4,
-     "boss": 2.611,
-     "lostAll": 11.833,
-     "bossNormal": 2.182,
+     "boss": 2.389,
+     "lostAll": 11.167,
+     "bossNormal": 1.909,
      "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.542,
+    "won": 0.583,
+    "endWave": 12.625,
     "flawless": 0,
     "lost10": 3.875,
-    "boss": 1.528,
-    "lostAll": 8.458,
-    "bossNormal": 1.337,
+    "boss": 1.472,
+    "lostAll": 8.292,
+    "bossNormal": 1.269,
     "bossReached": 2.208
    },
    "weapons": [
@@ -7778,12 +7778,12 @@
      "island": -0.333,
      "behemoth": -2.335,
      "needle": -4.699,
-     "archipelago": -10.001
+     "archipelago": -9.41
     },
-    "mean": -4.342,
-    "predicted": 4.116,
-    "win": -0.254,
-    "winPredicted": 0.754
+    "mean": -4.194,
+    "predicted": 4.097,
+    "win": -0.143,
+    "winPredicted": 0.726
    }
   },
   {
@@ -7826,26 +7826,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 11.333,
+     "won": 0.167,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 5,
-     "boss": 3.333,
-     "lostAll": 15,
-     "bossNormal": 2.667,
-     "bossReached": 1.5
+     "boss": 3.444,
+     "lostAll": 15.333,
+     "bossNormal": 2,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.125,
+    "won": 0.417,
+    "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.5,
-    "boss": 1.792,
-    "lostAll": 9.875,
-    "bossNormal": 1.438,
-    "bossReached": 1.958
+    "boss": 1.819,
+    "lostAll": 9.958,
+    "bossNormal": 1.272,
+    "bossReached": 2.042
    },
    "weapons": [
     "boomerang",
@@ -7856,12 +7856,12 @@
      "island": -2.778,
      "behemoth": -1.377,
      "needle": -3.454,
-     "archipelago": -8.462
+     "archipelago": -8.307
     },
-    "mean": -4.018,
-    "predicted": 5.857,
+    "mean": -3.979,
+    "predicted": 5.979,
     "win": -0.133,
-    "winPredicted": 0.508
+    "winPredicted": 0.55
    }
   },
   {
@@ -7904,25 +7904,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.333,
+     "won": 0.167,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 2.778,
-     "lostAll": 11,
-     "bossNormal": 1.923,
+     "boss": 2.611,
+     "lostAll": 10.5,
+     "bossNormal": 2.231,
      "bossReached": 2.167
     }
    },
    "all": {
     "n": 24,
-    "won": 0.667,
-    "endWave": 12.833,
+    "won": 0.583,
+    "endWave": 12.75,
     "flawless": 0.042,
     "lost10": 3.125,
-    "boss": 1.472,
-    "lostAll": 7.542,
-    "bossNormal": 1.324,
+    "boss": 1.431,
+    "lostAll": 7.417,
+    "bossNormal": 1.401,
     "bossReached": 2.375
    },
    "weapons": [
@@ -7934,12 +7934,12 @@
      "island": -1.444,
      "behemoth": -0.511,
      "needle": -3.532,
-     "archipelago": -8.474
+     "archipelago": -7.588
     },
-    "mean": -3.49,
-    "predicted": 4.051,
-    "win": 0.068,
-    "winPredicted": 0.599
+    "mean": -3.269,
+    "predicted": 4.148,
+    "win": -0.043,
+    "winPredicted": 0.626
    }
   },
   {
@@ -7982,25 +7982,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 11.167,
+     "won": 0.167,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 4.222,
-     "lostAll": 16.333,
-     "bossNormal": 2.667,
+     "boss": 2.167,
+     "lostAll": 10.167,
+     "bossNormal": 2.556,
      "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.208,
+    "won": 0.5,
+    "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.417,
-    "boss": 1.972,
-    "lostAll": 10.333,
-    "bossNormal": 1.513,
+    "boss": 1.458,
+    "lostAll": 8.792,
+    "bossNormal": 1.485,
     "bossReached": 1.958
    },
    "weapons": [
@@ -8012,11 +8012,11 @@
      "island": -5.722,
      "behemoth": -2.586,
      "needle": -2.422,
-     "archipelago": -15.046
+     "archipelago": -9.15
     },
-    "mean": -6.444,
-    "predicted": 3.889,
-    "win": -0.364,
+    "mean": -4.97,
+    "predicted": 3.822,
+    "win": -0.322,
     "winPredicted": 0.822
    }
   },
@@ -8060,26 +8060,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 12,
+     "won": 0.167,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 4,
-     "boss": 3.389,
-     "lostAll": 14.167,
-     "bossNormal": 2.308,
-     "bossReached": 2.167
+     "boss": 2.556,
+     "lostAll": 11.667,
+     "bossNormal": 1.929,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.417,
+    "won": 0.417,
+    "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.167,
-    "boss": 1.778,
-    "lostAll": 9.5,
-    "bossNormal": 1.534,
-    "bossReached": 2.125
+    "boss": 1.569,
+    "lostAll": 8.875,
+    "bossNormal": 1.439,
+    "bossReached": 2.167
    },
    "weapons": [
     "boomerang",
@@ -8090,12 +8090,12 @@
      "island": -3.722,
      "behemoth": -3.077,
      "needle": -2.227,
-     "archipelago": -10.947
+     "archipelago": -9.494
     },
-    "mean": -4.993,
-    "predicted": 4.507,
-    "win": -0.249,
-    "winPredicted": 0.624
+    "mean": -4.63,
+    "predicted": 4.245,
+    "win": -0.297,
+    "winPredicted": 0.714
    }
   },
   {
@@ -8138,26 +8138,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 11.5,
+     "won": 0.333,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 3.333,
-     "lostAll": 14.833,
-     "bossNormal": 2.2,
-     "bossReached": 1.667
+     "boss": 2.389,
+     "lostAll": 12,
+     "bossNormal": 2,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.292,
-    "endWave": 11.042,
+    "won": 0.333,
+    "endWave": 11.125,
     "flawless": 0,
     "lost10": 5.625,
-    "boss": 1.639,
-    "lostAll": 10.542,
-    "bossNormal": 1.133,
-    "bossReached": 1.292
+    "boss": 1.403,
+    "lostAll": 9.833,
+    "bossNormal": 1.083,
+    "bossReached": 1.333
    },
    "weapons": [
     "boomerang",
@@ -8168,12 +8168,12 @@
      "island": 0,
      "behemoth": -5.568,
      "needle": -2.404,
-     "archipelago": -12.456
+     "archipelago": -9.319
     },
-    "mean": -5.107,
-    "predicted": 5.435,
-    "win": -0.261,
-    "winPredicted": 0.553
+    "mean": -4.323,
+    "predicted": 5.511,
+    "win": -0.206,
+    "winPredicted": 0.539
    }
   },
   {
@@ -8217,25 +8217,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.5,
+     "endWave": 11.167,
      "flawless": 0,
      "lost10": 5,
-     "boss": 4.056,
-     "lostAll": 17.167,
-     "bossNormal": 2.182,
-     "bossReached": 1.833
+     "boss": 3.667,
+     "lostAll": 16,
+     "bossNormal": 2.667,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 10.875,
+    "endWave": 10.792,
     "flawless": 0,
     "lost10": 6.167,
-    "boss": 2.014,
-    "lostAll": 12.208,
-    "bossNormal": 1.226,
-    "bossReached": 1.208
+    "boss": 1.917,
+    "lostAll": 11.917,
+    "bossNormal": 1.347,
+    "bossReached": 1.125
    },
    "weapons": [
     "boomerang",
@@ -8246,12 +8246,12 @@
      "island": 0.333,
      "behemoth": -2.394,
      "needle": -0.004,
-     "archipelago": -6.418
+     "archipelago": -6.062
     },
-    "mean": -2.121,
-    "predicted": 10.088,
-    "win": -0.093,
-    "winPredicted": 0.301
+    "mean": -2.031,
+    "predicted": 9.885,
+    "win": -0.135,
+    "winPredicted": 0.343
    }
   },
   {
@@ -8294,25 +8294,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 11.5,
+     "won": 0.333,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 3.278,
-     "lostAll": 14,
-     "bossNormal": 2.182,
+     "boss": 2.389,
+     "lostAll": 11.333,
+     "bossNormal": 1.909,
      "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.208,
+    "won": 0.5,
+    "endWave": 12.292,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.792,
-    "lostAll": 9.458,
-    "bossNormal": 1.493,
+    "boss": 1.569,
+    "lostAll": 8.792,
+    "bossNormal": 1.424,
     "bossReached": 1.958
    },
    "weapons": [
@@ -8324,12 +8324,12 @@
      "island": -2.278,
      "behemoth": -3.759,
      "needle": -3.287,
-     "archipelago": -9.394
+     "archipelago": -7.543
     },
-    "mean": -4.679,
-    "predicted": 4.779,
-    "win": -0.06,
-    "winPredicted": 0.476
+    "mean": -4.217,
+    "predicted": 4.575,
+    "win": -0.018,
+    "winPredicted": 0.518
    }
   },
   {
@@ -8372,26 +8372,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 12.833,
+     "won": 0.167,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 3,
-     "lostAll": 11.333,
-     "bossNormal": 2.118,
-     "bossReached": 2.833
+     "boss": 2.278,
+     "lostAll": 9.167,
+     "bossNormal": 2.267,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.458,
+    "won": 0.417,
+    "endWave": 12.417,
     "flawless": 0,
     "lost10": 4.208,
-    "boss": 1.639,
-    "lostAll": 9.125,
-    "bossNormal": 1.386,
-    "bossReached": 2.208
+    "boss": 1.458,
+    "lostAll": 8.583,
+    "bossNormal": 1.424,
+    "bossReached": 2.125
    },
    "weapons": [
     "boomerang",
@@ -8402,12 +8402,12 @@
      "island": -5.278,
      "behemoth": -4.85,
      "needle": -3.004,
-     "archipelago": -9.005
+     "archipelago": -6.486
     },
-    "mean": -5.534,
-    "predicted": 3.591,
-    "win": -0.336,
-    "winPredicted": 0.711
+    "mean": -4.904,
+    "predicted": 3.679,
+    "win": -0.287,
+    "winPredicted": 0.704
    }
   },
   {
@@ -8450,26 +8450,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 11.667,
+     "won": 0.333,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 4,
-     "boss": 3.556,
-     "lostAll": 14.667,
-     "bossNormal": 2.091,
-     "bossReached": 1.833
+     "boss": 2.944,
+     "lostAll": 12.833,
+     "bossNormal": 1.667,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.417,
+    "won": 0.583,
+    "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.333,
-    "boss": 1.514,
-    "lostAll": 8.875,
-    "bossNormal": 1.139,
-    "bossReached": 2.083
+    "boss": 1.361,
+    "lostAll": 8.417,
+    "bossNormal": 1.033,
+    "bossReached": 2.125
    },
    "weapons": [
     "boomerang",
@@ -8480,12 +8480,12 @@
      "island": 2.556,
      "behemoth": -0.377,
      "needle": -0.681,
-     "archipelago": -5.058
+     "archipelago": -4.328
     },
-    "mean": -0.89,
-    "predicted": 7.985,
+    "mean": -0.707,
+    "predicted": 7.709,
     "win": 0.143,
-    "winPredicted": 0.399
+    "winPredicted": 0.44
    }
   },
   {
@@ -8532,9 +8532,9 @@
      "endWave": 11.5,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 2.556,
-     "lostAll": 12.333,
-     "bossNormal": 1.889,
+     "boss": 2.722,
+     "lostAll": 12.833,
+     "bossNormal": 1.667,
      "bossReached": 1.5
     }
    },
@@ -8544,9 +8544,9 @@
     "endWave": 12.542,
     "flawless": 0,
     "lost10": 4.042,
-    "boss": 1.708,
-    "lostAll": 9.167,
-    "bossNormal": 1.338,
+    "boss": 1.75,
+    "lostAll": 9.292,
+    "bossNormal": 1.282,
     "bossReached": 2.25
    },
    "weapons": [
@@ -8558,12 +8558,12 @@
      "island": -2.611,
      "behemoth": -0.889,
      "needle": -3.727,
-     "archipelago": -7.975
+     "archipelago": -8.719
     },
-    "mean": -3.8,
-    "predicted": 5.366,
-    "win": 0.069,
-    "winPredicted": 0.431
+    "mean": -3.987,
+    "predicted": 5.305,
+    "win": 0.028,
+    "winPredicted": 0.472
    }
   },
   {
@@ -8606,25 +8606,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.167,
+     "won": 0.5,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 3.389,
-     "lostAll": 13.833,
-     "bossNormal": 2.231,
+     "boss": 2.056,
+     "lostAll": 9.833,
+     "bossNormal": 1.923,
      "bossReached": 2.167
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.208,
+    "won": 0.542,
+    "endWave": 12.292,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.736,
-    "lostAll": 9.75,
-    "bossNormal": 1.21,
+    "boss": 1.403,
+    "lostAll": 8.75,
+    "bossNormal": 1.134,
     "bossReached": 1.917
    },
    "weapons": [
@@ -8636,12 +8636,12 @@
      "island": -0.444,
      "behemoth": -5.241,
      "needle": -2.365,
-     "archipelago": -6.106
+     "archipelago": -2.53
     },
-    "mean": -3.539,
-    "predicted": 6.211,
-    "win": -0.018,
-    "winPredicted": 0.476
+    "mean": -2.645,
+    "predicted": 6.105,
+    "win": 0.024,
+    "winPredicted": 0.518
    }
   },
   {
@@ -8684,26 +8684,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 13,
+     "won": 0,
+     "endWave": 11.833,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.778,
-     "lostAll": 9,
-     "bossNormal": 1.467,
-     "bossReached": 2.5
+     "boss": 3.389,
+     "lostAll": 13.833,
+     "bossNormal": 2.727,
+     "bossReached": 1.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.375,
+    "won": 0.292,
+    "endWave": 12.083,
     "flawless": 0,
     "lost10": 4.458,
-    "boss": 1.722,
-    "lostAll": 9.625,
-    "bossNormal": 1.697,
-    "bossReached": 2.042
+    "boss": 2.125,
+    "lostAll": 10.833,
+    "bossNormal": 2.012,
+    "bossReached": 1.875
    },
    "weapons": [
     "boomerang",
@@ -8714,12 +8714,12 @@
      "island": -3.778,
      "behemoth": -3.549,
      "needle": -3.387,
-     "archipelago": -4.443
+     "archipelago": -9.951
     },
-    "mean": -3.789,
-    "predicted": 5.836,
-    "win": -0.019,
-    "winPredicted": 0.436
+    "mean": -5.166,
+    "predicted": 5.667,
+    "win": -0.207,
+    "winPredicted": 0.499
    }
   },
   {
@@ -8762,26 +8762,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.167,
+     "won": 0.667,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.222,
-     "lostAll": 7.833,
-     "bossNormal": 0.909,
-     "bossReached": 1.833
+     "boss": 0.333,
+     "lostAll": 5.167,
+     "bossNormal": 0.417,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 11.875,
+    "won": 0.5,
+    "endWave": 11.958,
     "flawless": 0,
     "lost10": 4.958,
-    "boss": 1.25,
-    "lostAll": 8.708,
-    "bossNormal": 1.073,
-    "bossReached": 1.667
+    "boss": 1.028,
+    "lostAll": 8.042,
+    "bossNormal": 0.95,
+    "bossReached": 1.708
    },
    "weapons": [
     "flak",
@@ -8792,12 +8792,12 @@
      "island": -4.049,
      "behemoth": -2.623,
      "needle": -5.518,
-     "archipelago": -4.564
+     "archipelago": -1.406
     },
-    "mean": -4.189,
-    "predicted": 4.52,
-    "win": -0.289,
-    "winPredicted": 0.747
+    "mean": -3.399,
+    "predicted": 4.642,
+    "win": -0.206,
+    "winPredicted": 0.706
    }
   },
   {
@@ -8844,9 +8844,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 0.5,
-     "lostAll": 5,
-     "bossNormal": 0.5,
+     "boss": 0.389,
+     "lostAll": 4.667,
+     "bossNormal": 0.389,
      "bossReached": 3
     }
    },
@@ -8856,9 +8856,9 @@
     "endWave": 13.542,
     "flawless": 0,
     "lost10": 3.417,
-    "boss": 0.917,
-    "lostAll": 6.167,
-    "bossNormal": 0.875,
+    "boss": 0.889,
+    "lostAll": 6.083,
+    "bossNormal": 0.847,
     "bossReached": 2.75
    },
    "weapons": [
@@ -8870,12 +8870,12 @@
      "island": -2.068,
      "behemoth": -2.656,
      "needle": -3.039,
-     "archipelago": -3.737
+     "archipelago": -3.108
     },
-    "mean": -2.875,
-    "predicted": 3.292,
-    "win": 0.037,
-    "winPredicted": 0.796
+    "mean": -2.718,
+    "predicted": 3.366,
+    "win": 0.065,
+    "winPredicted": 0.768
    }
   },
   {
@@ -8918,26 +8918,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.667,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 2,
-     "boss": 0.556,
-     "lostAll": 3.667,
-     "bossNormal": 0.556,
-     "bossReached": 3
+     "boss": 1.111,
+     "lostAll": 5.333,
+     "bossNormal": 1.133,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.583,
+    "won": 0.458,
+    "endWave": 12.375,
     "flawless": 0,
     "lost10": 4.208,
-    "boss": 1.264,
-    "lostAll": 8,
-    "bossNormal": 1.306,
-    "bossReached": 2.125
+    "boss": 1.403,
+    "lostAll": 8.417,
+    "bossNormal": 1.45,
+    "bossReached": 2
    },
    "weapons": [
     "flak",
@@ -8948,11 +8948,11 @@
      "island": -7.117,
      "behemoth": -4.914,
      "needle": -4.145,
-     "archipelago": -3.023
+     "archipelago": -4.789
     },
-    "mean": -4.8,
-    "predicted": 3.2,
-    "win": -0.328,
+    "mean": -5.241,
+    "predicted": 3.175,
+    "win": -0.411,
     "winPredicted": 0.869
    }
   },
@@ -9002,7 +9002,7 @@
      "lost10": 3.833,
      "boss": 0.889,
      "lostAll": 6.5,
-     "bossNormal": 0.636,
+     "bossNormal": 0.909,
      "bossReached": 1.833
     }
    },
@@ -9014,7 +9014,7 @@
     "lost10": 4.833,
     "boss": 1.264,
     "lostAll": 8.625,
-    "bossNormal": 0.889,
+    "bossNormal": 0.958,
     "bossReached": 1.542
    },
    "weapons": [
@@ -9026,12 +9026,12 @@
      "island": -5.654,
      "behemoth": -4.923,
      "needle": -4.592,
-     "archipelago": -4.89
+     "archipelago": -5.337
     },
-    "mean": -5.015,
-    "predicted": 3.61,
-    "win": -0.461,
-    "winPredicted": 0.836
+    "mean": -5.127,
+    "predicted": 3.498,
+    "win": -0.44,
+    "winPredicted": 0.815
    }
   },
   {
@@ -9078,9 +9078,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 0.667,
-     "lostAll": 5.333,
-     "bossNormal": 0.667,
+     "boss": 0.778,
+     "lostAll": 5.667,
+     "bossNormal": 0.778,
      "bossReached": 3
     }
    },
@@ -9090,9 +9090,9 @@
     "endWave": 12.542,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.319,
-    "lostAll": 8.5,
-    "bossNormal": 1.238,
+    "boss": 1.347,
+    "lostAll": 8.583,
+    "bossNormal": 1.266,
     "bossReached": 2.083
    },
    "weapons": [
@@ -9104,12 +9104,12 @@
      "island": -1.741,
      "behemoth": -6.099,
      "needle": -4.05,
-     "archipelago": -4.145
+     "archipelago": -4.232
     },
-    "mean": -4.008,
-    "predicted": 4.492,
-    "win": -0.158,
-    "winPredicted": 0.7
+    "mean": -4.03,
+    "predicted": 4.553,
+    "win": -0.138,
+    "winPredicted": 0.679
    }
   },
   {
@@ -9152,25 +9152,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 10.833,
+     "won": 0.5,
+     "endWave": 11.167,
      "flawless": 0,
      "lost10": 6.667,
      "boss": 1.556,
      "lostAll": 11.333,
-     "bossNormal": 1.333,
+     "bossNormal": 0.667,
      "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.167,
-    "endWave": 10.583,
+    "won": 0.25,
+    "endWave": 10.667,
     "flawless": 0,
     "lost10": 6.625,
     "boss": 1.944,
     "lostAll": 12.458,
-    "bossNormal": 1.456,
+    "bossNormal": 1.233,
     "bossReached": 1.042
    },
    "weapons": [
@@ -9182,12 +9182,12 @@
      "island": -1.241,
      "behemoth": -4.273,
      "needle": -6.986,
-     "archipelago": -5.959
+     "archipelago": -6.014
     },
-    "mean": -4.615,
-    "predicted": 7.844,
-    "win": -0.432,
-    "winPredicted": 0.599
+    "mean": -4.629,
+    "predicted": 7.83,
+    "win": -0.307,
+    "winPredicted": 0.557
    }
   },
   {
@@ -9230,25 +9230,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1.333,
-     "lostAll": 6.667,
-     "bossNormal": 1,
+     "boss": 0.5,
+     "lostAll": 4.167,
+     "bossNormal": 0.5,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 13,
+    "won": 0.542,
+    "endWave": 13.042,
     "flawless": 0,
     "lost10": 3.375,
-    "boss": 1.681,
-    "lostAll": 8.417,
-    "bossNormal": 1.366,
+    "boss": 1.472,
+    "lostAll": 7.792,
+    "bossNormal": 1.241,
     "bossReached": 2.583
    },
    "weapons": [
@@ -9260,12 +9260,12 @@
      "island": -4.901,
      "behemoth": -4.907,
      "needle": -4.684,
-     "archipelago": -4.363
+     "archipelago": -2.138
     },
-    "mean": -4.714,
-    "predicted": 3.703,
-    "win": -0.235,
-    "winPredicted": 0.735
+    "mean": -4.158,
+    "predicted": 3.634,
+    "win": -0.151,
+    "winPredicted": 0.693
    }
   },
   {
@@ -9308,25 +9308,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 0.389,
-     "lostAll": 4.5,
-     "bossNormal": 0.389,
+     "boss": 0.833,
+     "lostAll": 5.833,
+     "bossNormal": 0.833,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.625,
+    "won": 0.5,
+    "endWave": 12.583,
     "flawless": 0,
     "lost10": 4.458,
-    "boss": 1.319,
-    "lostAll": 8.417,
-    "bossNormal": 1.271,
+    "boss": 1.431,
+    "lostAll": 8.75,
+    "bossNormal": 1.382,
     "bossReached": 2.208
    },
    "weapons": [
@@ -9338,12 +9338,12 @@
      "island": -4.698,
      "behemoth": -8.15,
      "needle": -5.819,
-     "archipelago": -3.336
+     "archipelago": -4.398
     },
-    "mean": -5.501,
-    "predicted": 2.916,
-    "win": -0.349,
-    "winPredicted": 0.89
+    "mean": -5.766,
+    "predicted": 2.984,
+    "win": -0.362,
+    "winPredicted": 0.862
    }
   },
   {
@@ -9390,9 +9390,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 0.444,
-     "lostAll": 4.5,
-     "bossNormal": 0.467,
+     "boss": 0.667,
+     "lostAll": 5.167,
+     "bossNormal": 0.667,
      "bossReached": 2.5
     }
    },
@@ -9402,9 +9402,9 @@
     "endWave": 12.792,
     "flawless": 0,
     "lost10": 3.583,
-    "boss": 1.25,
-    "lostAll": 7.333,
-    "bossNormal": 1.271,
+    "boss": 1.306,
+    "lostAll": 7.5,
+    "bossNormal": 1.321,
     "bossReached": 2.292
    },
    "weapons": [
@@ -9416,12 +9416,12 @@
      "island": 0.988,
      "behemoth": -0.623,
      "needle": -5.277,
-     "archipelago": 0.305
+     "archipelago": -0.615
     },
-    "mean": -1.152,
-    "predicted": 6.181,
-    "win": -0.057,
-    "winPredicted": 0.64
+    "mean": -1.382,
+    "predicted": 6.118,
+    "win": -0.015,
+    "winPredicted": 0.599
    }
   },
   {
@@ -9468,9 +9468,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 4,
-     "boss": 0.778,
-     "lostAll": 6.333,
-     "bossNormal": 0.8,
+     "boss": 0.556,
+     "lostAll": 5.667,
+     "bossNormal": 0.6,
      "bossReached": 2.5
     }
    },
@@ -9480,9 +9480,9 @@
     "endWave": 12.167,
     "flawless": 0,
     "lost10": 4.583,
-    "boss": 1.472,
-    "lostAll": 9,
-    "bossNormal": 1.44,
+    "boss": 1.417,
+    "lostAll": 8.833,
+    "bossNormal": 1.39,
     "bossReached": 1.958
    },
    "weapons": [
@@ -9494,12 +9494,12 @@
      "island": -5.272,
      "behemoth": -2.611,
      "needle": -6.759,
-     "archipelago": -4.154
+     "archipelago": -3.465
     },
-    "mean": -4.699,
-    "predicted": 4.301,
-    "win": -0.194,
-    "winPredicted": 0.653
+    "mean": -4.527,
+    "predicted": 4.307,
+    "win": -0.153,
+    "winPredicted": 0.611
    }
   },
   {
@@ -9544,11 +9544,11 @@
      "n": 6,
      "won": 0.667,
      "endWave": 12.333,
-     "flawless": 0.167,
+     "flawless": 0,
      "lost10": 4,
-     "boss": 0.056,
-     "lostAll": 4.167,
-     "bossNormal": 0.083,
+     "boss": 0.278,
+     "lostAll": 4.833,
+     "bossNormal": 0.167,
      "bossReached": 2
     }
    },
@@ -9556,11 +9556,11 @@
     "n": 24,
     "won": 0.542,
     "endWave": 12.333,
-    "flawless": 0.042,
+    "flawless": 0,
     "lost10": 4.5,
-    "boss": 0.958,
-    "lostAll": 7.375,
-    "bossNormal": 0.873,
+    "boss": 1.014,
+    "lostAll": 7.542,
+    "bossNormal": 0.894,
     "bossReached": 2.083
    },
    "weapons": [
@@ -9572,12 +9572,12 @@
      "island": 1.136,
      "behemoth": -5.593,
      "needle": -5.706,
-     "archipelago": -0.303
+     "archipelago": -0.924
     },
-    "mean": -2.616,
-    "predicted": 4.759,
-    "win": -0.193,
-    "winPredicted": 0.735
+    "mean": -2.772,
+    "predicted": 4.77,
+    "win": -0.151,
+    "winPredicted": 0.693
    }
   },
   {
@@ -9626,7 +9626,7 @@
      "lost10": 5.5,
      "boss": 0.611,
      "lostAll": 7.333,
-     "bossNormal": 0.667,
+     "bossNormal": 0.583,
      "bossReached": 2
     }
    },
@@ -9638,7 +9638,7 @@
     "lost10": 5.292,
     "boss": 1.417,
     "lostAll": 9.542,
-    "bossNormal": 1.007,
+    "bossNormal": 0.986,
     "bossReached": 1.75
    },
    "weapons": [
@@ -9650,12 +9650,12 @@
      "island": -2.883,
      "behemoth": -4.284,
      "needle": -7.621,
-     "archipelago": -5.055
+     "archipelago": -5.255
     },
-    "mean": -4.961,
-    "predicted": 4.581,
-    "win": -0.19,
-    "winPredicted": 0.732
+    "mean": -5.011,
+    "predicted": 4.531,
+    "win": -0.162,
+    "winPredicted": 0.704
    }
   },
   {
@@ -9699,25 +9699,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.333,
+     "endWave": 11,
      "flawless": 0,
      "lost10": 5,
-     "boss": 5.278,
-     "lostAll": 20.833,
-     "bossNormal": 2.727,
-     "bossReached": 1.833
+     "boss": 5,
+     "lostAll": 20,
+     "bossNormal": 3.333,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.333,
-    "endWave": 11.875,
+    "endWave": 11.792,
     "flawless": 0,
     "lost10": 4.792,
-    "boss": 2.514,
-    "lostAll": 12.333,
-    "bossNormal": 1.792,
-    "bossReached": 1.708
+    "boss": 2.444,
+    "lostAll": 12.125,
+    "bossNormal": 1.944,
+    "bossReached": 1.625
    },
    "weapons": [
     "seeker",
@@ -9728,10 +9728,10 @@
      "island": -7.578,
      "behemoth": -1.364,
      "needle": -5.851,
-     "archipelago": -16.327
+     "archipelago": -13.766
     },
-    "mean": -7.78,
-    "predicted": 4.553,
+    "mean": -7.14,
+    "predicted": 4.985,
     "win": -0.279,
     "winPredicted": 0.612
    }
@@ -9780,8 +9780,8 @@
      "endWave": 12,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 4.944,
-     "lostAll": 17.167,
+     "boss": 5.278,
+     "lostAll": 18.167,
      "bossNormal": 3,
      "bossReached": 2
     }
@@ -9792,8 +9792,8 @@
     "endWave": 12.333,
     "flawless": 0,
     "lost10": 3.625,
-    "boss": 2.236,
-    "lostAll": 10.333,
+    "boss": 2.319,
+    "lostAll": 10.583,
     "bossNormal": 1.783,
     "bossReached": 2.125
    },
@@ -9806,10 +9806,10 @@
      "island": -4.484,
      "behemoth": -1.08,
      "needle": -4.142,
-     "archipelago": -14.869
+     "archipelago": -15.99
     },
-    "mean": -6.144,
-    "predicted": 4.19,
+    "mean": -6.424,
+    "predicted": 4.16,
     "win": -0.468,
     "winPredicted": 0.843
    }
@@ -9858,8 +9858,8 @@
      "endWave": 10.167,
      "flawless": 0,
      "lost10": 5.833,
-     "boss": 5.611,
-     "lostAll": 22.667,
+     "boss": 5.444,
+     "lostAll": 22.167,
      "bossNormal": 3,
      "bossReached": 0.667
     }
@@ -9870,8 +9870,8 @@
     "endWave": 11.292,
     "flawless": 0,
     "lost10": 5.625,
-    "boss": 2.5,
-    "lostAll": 13.125,
+    "boss": 2.458,
+    "lostAll": 13,
     "bossNormal": 1.911,
     "bossReached": 1.375
    },
@@ -9884,12 +9884,12 @@
      "island": -6.94,
      "behemoth": -5.006,
      "needle": -2.663,
-     "archipelago": -16.924
+     "archipelago": -17.516
     },
-    "mean": -7.883,
-    "predicted": 5.242,
-    "win": -0.318,
-    "winPredicted": 0.61
+    "mean": -8.031,
+    "predicted": 4.969,
+    "win": -0.401,
+    "winPredicted": 0.693
    }
   },
   {
@@ -9933,25 +9933,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.667,
+     "endWave": 12,
      "flawless": 0,
      "lost10": 5,
-     "boss": 5.778,
-     "lostAll": 22.333,
-     "bossNormal": 3,
-     "bossReached": 1.667
+     "boss": 5.222,
+     "lostAll": 20.667,
+     "bossNormal": 2.5,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 24,
     "won": 0.5,
-    "endWave": 12.292,
+    "endWave": 12.375,
     "flawless": 0,
     "lost10": 4.667,
-    "boss": 2.319,
-    "lostAll": 11.625,
-    "bossNormal": 1.669,
-    "bossReached": 2
+    "boss": 2.181,
+    "lostAll": 11.208,
+    "bossNormal": 1.544,
+    "bossReached": 2.083
    },
    "weapons": [
     "seeker",
@@ -9962,12 +9962,12 @@
      "island": -3.191,
      "behemoth": -2.265,
      "needle": 0.553,
-     "archipelago": -18.092
+     "archipelago": -14.927
     },
-    "mean": -5.749,
-    "predicted": 5.876,
-    "win": -0.087,
-    "winPredicted": 0.587
+    "mean": -4.958,
+    "predicted": 6.251,
+    "win": -0.046,
+    "winPredicted": 0.546
    }
   },
   {
@@ -10011,25 +10011,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 9.667,
+     "endWave": 9.5,
      "flawless": 0,
      "lost10": 7.167,
-     "boss": 6.722,
-     "lostAll": 27.333,
-     "bossNormal": 2,
-     "bossReached": 0.5
+     "boss": 8.167,
+     "lostAll": 31.667,
+     "bossNormal": 3,
+     "bossReached": 0.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 10.542,
+    "endWave": 10.5,
     "flawless": 0,
     "lost10": 6.708,
-    "boss": 2.861,
-    "lostAll": 15.292,
-    "bossNormal": 1.569,
-    "bossReached": 1
+    "boss": 3.222,
+    "lostAll": 16.375,
+    "bossNormal": 1.819,
+    "bossReached": 0.958
    },
    "weapons": [
     "seeker",
@@ -10040,10 +10040,10 @@
      "island": -0.08,
      "behemoth": 0.852,
      "needle": -3.789,
-     "archipelago": -8.161
+     "archipelago": -10.391
     },
-    "mean": -2.795,
-    "predicted": 12.497,
+    "mean": -3.352,
+    "predicted": 13.023,
     "win": -0.114,
     "winPredicted": 0.322
    }
@@ -10089,25 +10089,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11,
+     "endWave": 11.333,
      "flawless": 0,
      "lost10": 4,
-     "boss": 5.944,
-     "lostAll": 21.833,
-     "bossNormal": 3.429,
-     "bossReached": 1.167
+     "boss": 4.611,
+     "lostAll": 17.833,
+     "bossNormal": 2.667,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.458,
-    "endWave": 12.375,
+    "endWave": 12.458,
     "flawless": 0,
     "lost10": 3.833,
-    "boss": 2.417,
-    "lostAll": 11.083,
-    "bossNormal": 1.637,
-    "bossReached": 2.083
+    "boss": 2.083,
+    "lostAll": 10.083,
+    "bossNormal": 1.447,
+    "bossReached": 2.167
    },
    "weapons": [
     "seeker",
@@ -10118,10 +10118,10 @@
      "island": -1.912,
      "behemoth": -1.574,
      "needle": -4.576,
-     "archipelago": -13.616
+     "archipelago": -9.719
     },
-    "mean": -5.42,
-    "predicted": 5.664,
+    "mean": -4.445,
+    "predicted": 5.638,
     "win": -0.011,
     "winPredicted": 0.469
    }
@@ -10167,25 +10167,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.167,
+     "endWave": 11,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 4.722,
-     "lostAll": 19,
-     "bossNormal": 2.667,
-     "bossReached": 1.5
+     "boss": 5.611,
+     "lostAll": 21.667,
+     "bossNormal": 3,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.375,
-    "endWave": 12,
+    "endWave": 11.958,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 2.208,
-    "lostAll": 11.167,
-    "bossNormal": 1.676,
-    "bossReached": 1.833
+    "boss": 2.431,
+    "lostAll": 11.833,
+    "bossNormal": 1.76,
+    "bossReached": 1.792
    },
    "weapons": [
     "seeker",
@@ -10196,12 +10196,12 @@
      "island": -5.621,
      "behemoth": -3.025,
      "needle": -4.872,
-     "archipelago": -14.847
+     "archipelago": -15.927
     },
-    "mean": -7.091,
-    "predicted": 4.075,
-    "win": -0.364,
-    "winPredicted": 0.739
+    "mean": -7.361,
+    "predicted": 4.472,
+    "win": -0.322,
+    "winPredicted": 0.697
    }
   },
   {
@@ -10245,25 +10245,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10,
+     "endWave": 10.167,
      "flawless": 0,
      "lost10": 5,
-     "boss": 6,
-     "lostAll": 23,
-     "bossNormal": 3,
-     "bossReached": 1
+     "boss": 4.667,
+     "lostAll": 19,
+     "bossNormal": 2.571,
+     "bossReached": 1.167
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 10.917,
+    "endWave": 10.958,
     "flawless": 0,
     "lost10": 5.333,
-    "boss": 2.472,
-    "lostAll": 12.75,
-    "bossNormal": 1.455,
-    "bossReached": 1.208
+    "boss": 2.139,
+    "lostAll": 11.75,
+    "bossNormal": 1.347,
+    "bossReached": 1.25
    },
    "weapons": [
     "seeker",
@@ -10274,10 +10274,10 @@
      "island": -1.171,
      "behemoth": 0.377,
      "needle": -4.656,
-     "archipelago": -5.859
+     "archipelago": -0.792
     },
-    "mean": -2.827,
-    "predicted": 9.923,
+    "mean": -1.56,
+    "predicted": 10.19,
     "win": -0.176,
     "winPredicted": 0.385
    }
@@ -10323,25 +10323,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11,
+     "endWave": 10.833,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 5.944,
-     "lostAll": 22.667,
-     "bossNormal": 2.667,
-     "bossReached": 1.5
+     "boss": 5.611,
+     "lostAll": 21.667,
+     "bossNormal": 3,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.417,
-    "endWave": 12,
+    "endWave": 11.958,
     "flawless": 0,
     "lost10": 5,
-    "boss": 2.403,
-    "lostAll": 12.208,
-    "bossNormal": 1.485,
-    "bossReached": 1.833
+    "boss": 2.319,
+    "lostAll": 11.958,
+    "bossNormal": 1.568,
+    "bossReached": 1.792
    },
    "weapons": [
     "seeker",
@@ -10352,10 +10352,10 @@
      "island": -5.035,
      "behemoth": -0.611,
      "needle": -2.663,
-     "archipelago": -14.892
+     "archipelago": -12.859
     },
-    "mean": -5.8,
-    "predicted": 6.408,
+    "mean": -5.292,
+    "predicted": 6.666,
     "win": 0.028,
     "winPredicted": 0.389
    }
@@ -10401,25 +10401,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10,
+     "endWave": 10.167,
      "flawless": 0,
      "lost10": 6.5,
-     "boss": 6.222,
-     "lostAll": 25.167,
-     "bossNormal": 3,
-     "bossReached": 0.333
+     "boss": 4.278,
+     "lostAll": 19.333,
+     "bossNormal": 2,
+     "bossReached": 0.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.333,
-    "endWave": 12,
+    "endWave": 12.042,
     "flawless": 0,
     "lost10": 4.25,
-    "boss": 2.75,
-    "lostAll": 12.5,
-    "bossNormal": 1.84,
-    "bossReached": 1.75
+    "boss": 2.264,
+    "lostAll": 11.042,
+    "bossNormal": 1.59,
+    "bossReached": 1.792
    },
    "weapons": [
     "seeker",
@@ -10430,10 +10430,10 @@
      "island": -0.844,
      "behemoth": -2.426,
      "needle": -4.351,
-     "archipelago": -11.384
+     "archipelago": -3.698
     },
-    "mean": -4.751,
-    "predicted": 7.749,
+    "mean": -2.83,
+    "predicted": 8.212,
     "win": -0.136,
     "winPredicted": 0.469
    }
@@ -10479,25 +10479,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 11.667,
+     "endWave": 11.5,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 5.5,
-     "lostAll": 20.333,
-     "bossNormal": 2.4,
-     "bossReached": 1.667
+     "boss": 4.389,
+     "lostAll": 17,
+     "bossNormal": 2.667,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 11.583,
+    "endWave": 11.542,
     "flawless": 0,
     "lost10": 5.042,
-    "boss": 2.639,
-    "lostAll": 12.958,
-    "bossNormal": 1.787,
-    "bossReached": 1.5
+    "boss": 2.361,
+    "lostAll": 12.125,
+    "bossNormal": 1.853,
+    "bossReached": 1.458
    },
    "weapons": [
     "seeker",
@@ -10508,12 +10508,12 @@
      "island": -7.183,
      "behemoth": 0.049,
      "needle": -4.918,
-     "archipelago": -12.205
+     "archipelago": -8.687
     },
-    "mean": -6.064,
-    "predicted": 6.894,
-    "win": -0.256,
-    "winPredicted": 0.464
+    "mean": -5.185,
+    "predicted": 6.94,
+    "win": -0.297,
+    "winPredicted": 0.506
    }
   },
   {
@@ -10560,9 +10560,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 2.056,
-     "lostAll": 8.667,
-     "bossNormal": 1.4,
+     "boss": 1.167,
+     "lostAll": 6,
+     "bossNormal": 1.133,
      "bossReached": 2.5
     }
    },
@@ -10572,9 +10572,9 @@
     "endWave": 12.75,
     "flawless": 0,
     "lost10": 4.042,
-    "boss": 1.542,
-    "lostAll": 8.667,
-    "bossNormal": 1.35,
+    "boss": 1.319,
+    "lostAll": 8,
+    "bossNormal": 1.283,
     "bossReached": 2.25
    },
    "weapons": [
@@ -10586,10 +10586,10 @@
      "island": -6.588,
      "behemoth": -5.228,
      "needle": -2.812,
-     "archipelago": -7.779
+     "archipelago": -5.098
     },
-    "mean": -5.602,
-    "predicted": 3.065,
+    "mean": -4.932,
+    "predicted": 3.068,
     "win": -0.329,
     "winPredicted": 0.871
    }
@@ -10634,25 +10634,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1.167,
-     "lostAll": 6.333,
-     "bossNormal": 1.111,
+     "boss": 0.833,
+     "lostAll": 5.333,
+     "bossNormal": 0.833,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.917,
+    "won": 0.667,
+    "endWave": 13,
     "flawless": 0,
     "lost10": 3.667,
-    "boss": 1.236,
-    "lostAll": 7.375,
-    "bossNormal": 1.139,
+    "boss": 1.153,
+    "lostAll": 7.125,
+    "bossNormal": 1.069,
     "bossReached": 2.375
    },
    "weapons": [
@@ -10664,12 +10664,12 @@
      "island": -4.842,
      "behemoth": -1.627,
      "needle": -4.759,
-     "archipelago": -4.114
+     "archipelago": -3.406
     },
-    "mean": -3.835,
-    "predicted": 3.54,
-    "win": -0.124,
-    "winPredicted": 0.707
+    "mean": -3.658,
+    "predicted": 3.467,
+    "win": -0.096,
+    "winPredicted": 0.763
    }
   },
   {
@@ -10716,8 +10716,8 @@
      "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 1.167,
-     "lostAll": 7,
+     "boss": 1.056,
+     "lostAll": 6.667,
      "bossNormal": 1.133,
      "bossReached": 2.5
     }
@@ -10728,8 +10728,8 @@
     "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.208,
-    "boss": 1.431,
-    "lostAll": 8.5,
+    "boss": 1.403,
+    "lostAll": 8.417,
     "bossNormal": 1.394,
     "bossReached": 2.125
    },
@@ -10742,12 +10742,12 @@
      "island": -2.951,
      "behemoth": -4.858,
      "needle": -3.55,
-     "archipelago": -5.361
+     "archipelago": -4.288
     },
-    "mean": -4.18,
-    "predicted": 4.32,
-    "win": -0.157,
-    "winPredicted": 0.657
+    "mean": -3.912,
+    "predicted": 4.505,
+    "win": -0.129,
+    "winPredicted": 0.629
    }
   },
   {
@@ -10790,26 +10790,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 10.833,
+     "won": 0.167,
+     "endWave": 11.167,
      "flawless": 0,
      "lost10": 5.333,
-     "boss": 3.778,
-     "lostAll": 16.667,
-     "bossNormal": 2.571,
-     "bossReached": 1.167
+     "boss": 2.167,
+     "lostAll": 11.833,
+     "bossNormal": 2,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.167,
-    "endWave": 10.875,
+    "won": 0.208,
+    "endWave": 10.958,
     "flawless": 0,
     "lost10": 6.417,
-    "boss": 2.014,
-    "lostAll": 12.458,
-    "bossNormal": 1.837,
-    "bossReached": 1.042
+    "boss": 1.611,
+    "lostAll": 11.25,
+    "bossNormal": 1.694,
+    "bossReached": 1.083
    },
    "weapons": [
     "aegis",
@@ -10820,11 +10820,11 @@
      "island": -1.34,
      "behemoth": -5.245,
      "needle": -2.486,
-     "archipelago": -9.259
+     "archipelago": -3.015
     },
-    "mean": -4.582,
-    "predicted": 7.876,
-    "win": -0.287,
+    "mean": -3.021,
+    "predicted": 8.229,
+    "win": -0.246,
     "winPredicted": 0.454
    }
   },
@@ -10869,25 +10869,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.833,
-     "endWave": 13.833,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 1.167,
-     "lostAll": 7,
-     "bossNormal": 1.056,
-     "bossReached": 3
+     "boss": 1.667,
+     "lostAll": 8.5,
+     "bossNormal": 1.176,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.667,
-    "endWave": 12.833,
+    "endWave": 12.792,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.319,
-    "lostAll": 8.5,
-    "bossNormal": 1.11,
-    "bossReached": 2.25
+    "boss": 1.444,
+    "lostAll": 8.875,
+    "bossNormal": 1.14,
+    "bossReached": 2.208
    },
    "weapons": [
     "aegis",
@@ -10898,10 +10898,10 @@
      "island": -5.955,
      "behemoth": -4.852,
      "needle": -4.518,
-     "archipelago": -3.825
+     "archipelago": -5.137
     },
-    "mean": -4.787,
-    "predicted": 3.713,
+    "mean": -5.115,
+    "predicted": 3.76,
     "win": 0.079,
     "winPredicted": 0.587
    }
@@ -10946,25 +10946,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12,
+     "won": 0.667,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 4.167,
-     "boss": 1.333,
-     "lostAll": 8.167,
-     "bossNormal": 1.083,
+     "boss": 1,
+     "lostAll": 7.167,
+     "bossNormal": 1.167,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.792,
+    "won": 0.625,
+    "endWave": 12.875,
     "flawless": 0,
     "lost10": 4,
-    "boss": 1.264,
-    "lostAll": 7.792,
-    "bossNormal": 1.09,
+    "boss": 1.181,
+    "lostAll": 7.542,
+    "bossNormal": 1.111,
     "bossReached": 2.375
    },
    "weapons": [
@@ -10976,12 +10976,12 @@
      "island": -2.702,
      "behemoth": -3.715,
      "needle": -6.819,
-     "archipelago": -6.562
+     "archipelago": -4.788
     },
-    "mean": -4.949,
-    "predicted": 2.842,
-    "win": -0.246,
-    "winPredicted": 0.788
+    "mean": -4.506,
+    "predicted": 3.036,
+    "win": -0.135,
+    "winPredicted": 0.76
    }
   },
   {
@@ -11028,9 +11028,9 @@
      "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 1.5,
-     "lostAll": 7.333,
-     "bossNormal": 1.267,
+     "boss": 0.611,
+     "lostAll": 4.667,
+     "bossNormal": 0.733,
      "bossReached": 2.5
     }
    },
@@ -11040,9 +11040,9 @@
     "endWave": 13.042,
     "flawless": 0,
     "lost10": 2.917,
-    "boss": 1.361,
-    "lostAll": 7,
-    "bossNormal": 1.267,
+    "boss": 1.139,
+    "lostAll": 6.333,
+    "bossNormal": 1.133,
     "bossReached": 2.5
    },
    "weapons": [
@@ -11054,10 +11054,10 @@
      "island": 2.73,
      "behemoth": 0.136,
      "needle": -5.11,
-     "archipelago": -0.711
+     "archipelago": 2.88
     },
-    "mean": -0.739,
-    "predicted": 6.261,
+    "mean": 0.159,
+    "predicted": 6.492,
     "win": 0.15,
     "winPredicted": 0.517
    }
@@ -11102,25 +11102,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.833,
+     "won": 0.833,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 2.056,
-     "lostAll": 11,
-     "bossNormal": 1.133,
+     "boss": 0.667,
+     "lostAll": 6.833,
+     "bossNormal": 0.6,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.625,
+    "won": 0.625,
+    "endWave": 12.708,
     "flawless": 0,
     "lost10": 4.958,
-    "boss": 1.542,
-    "lostAll": 9.583,
-    "bossNormal": 1.176,
+    "boss": 1.194,
+    "lostAll": 8.542,
+    "bossNormal": 1.043,
     "bossReached": 2.167
    },
    "weapons": [
@@ -11132,11 +11132,11 @@
      "island": -1.208,
      "behemoth": -6.278,
      "needle": -5.926,
-     "archipelago": -7.996
+     "archipelago": -3.183
     },
-    "mean": -5.352,
-    "predicted": 4.232,
-    "win": 0,
+    "mean": -4.149,
+    "predicted": 4.393,
+    "win": 0.083,
     "winPredicted": 0.542
    }
   },
@@ -11180,25 +11180,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 12.833,
+     "won": 0.833,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.444,
-     "lostAll": 7.667,
-     "bossNormal": 1.333,
+     "boss": 1.111,
+     "lostAll": 6.667,
+     "bossNormal": 0.8,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.75,
+    "won": 0.625,
+    "endWave": 12.792,
     "flawless": 0.042,
     "lost10": 3.625,
-    "boss": 1.639,
-    "lostAll": 8.542,
-    "bossNormal": 1.294,
+    "boss": 1.556,
+    "lostAll": 8.292,
+    "bossNormal": 1.161,
     "bossReached": 2.375
    },
    "weapons": [
@@ -11210,11 +11210,11 @@
      "island": -1.591,
      "behemoth": -5.648,
      "needle": -5.206,
-     "archipelago": -2.341
+     "archipelago": -0.186
     },
-    "mean": -3.696,
-    "predicted": 4.845,
-    "win": -0.004,
+    "mean": -3.158,
+    "predicted": 5.134,
+    "win": 0.038,
     "winPredicted": 0.587
    }
   },
@@ -11258,25 +11258,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12,
+     "won": 0.5,
+     "endWave": 12.167,
      "flawless": 0,
      "lost10": 4.333,
-     "boss": 1.667,
-     "lostAll": 9.333,
-     "bossNormal": 1.75,
+     "boss": 0.889,
+     "lostAll": 7,
+     "bossNormal": 0.667,
      "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 12.458,
+    "won": 0.5,
+    "endWave": 12.5,
     "flawless": 0,
     "lost10": 4.208,
-    "boss": 1.597,
-    "lostAll": 9,
-    "bossNormal": 1.368,
+    "boss": 1.403,
+    "lostAll": 8.417,
+    "bossNormal": 1.097,
     "bossReached": 2.208
    },
    "weapons": [
@@ -11288,12 +11288,12 @@
      "island": -5.578,
      "behemoth": -1.988,
      "needle": -4.121,
-     "archipelago": -6.193
+     "archipelago": -3.555
     },
-    "mean": -4.47,
-    "predicted": 4.53,
-    "win": -0.124,
-    "winPredicted": 0.582
+    "mean": -3.81,
+    "predicted": 4.606,
+    "win": -0.11,
+    "winPredicted": 0.61
    }
   },
   {
@@ -11340,9 +11340,9 @@
      "endWave": 12.5,
      "flawless": 0.167,
      "lost10": 3.167,
-     "boss": 0.278,
-     "lostAll": 4,
-     "bossNormal": 0.167,
+     "boss": 0.389,
+     "lostAll": 4.333,
+     "bossNormal": 0.333,
      "bossReached": 2
     }
    },
@@ -11352,9 +11352,9 @@
     "endWave": 12.792,
     "flawless": 0.042,
     "lost10": 4.125,
-    "boss": 1,
-    "lostAll": 7.125,
-    "bossNormal": 0.842,
+    "boss": 1.028,
+    "lostAll": 7.208,
+    "bossNormal": 0.883,
     "bossReached": 2.25
    },
    "weapons": [
@@ -11366,10 +11366,10 @@
      "island": -3.893,
      "behemoth": -5.846,
      "needle": -2.238,
-     "archipelago": -2.869
+     "archipelago": -3.66
     },
-    "mean": -3.711,
-    "predicted": 3.414,
+    "mean": -3.909,
+    "predicted": 3.299,
     "win": -0.185,
     "winPredicted": 0.893
    }
@@ -11420,7 +11420,7 @@
      "lost10": 4,
      "boss": 1,
      "lostAll": 7,
-     "bossNormal": 0.333,
+     "bossNormal": 0.5,
      "bossReached": 2
     }
    },
@@ -11432,7 +11432,7 @@
     "lost10": 4.417,
     "boss": 1.403,
     "lostAll": 8.625,
-    "bossNormal": 1.229,
+    "bossNormal": 1.271,
     "bossReached": 2.167
    },
    "weapons": [
@@ -11444,10 +11444,10 @@
      "island": -3.475,
      "behemoth": -4.198,
      "needle": -3.73,
-     "archipelago": -6.165
+     "archipelago": -6.169
     },
-    "mean": -4.392,
-    "predicted": 4.233,
+    "mean": -4.393,
+    "predicted": 4.232,
     "win": -0.349,
     "winPredicted": 0.807
    }
@@ -11492,26 +11492,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 9.667,
+     "won": 0.333,
+     "endWave": 10,
      "flawless": 0,
      "lost10": 7.167,
-     "boss": 1.611,
-     "lostAll": 12,
-     "bossNormal": 2.2,
-     "bossReached": 0.833
+     "boss": 0.833,
+     "lostAll": 9.667,
+     "bossNormal": 0.833,
+     "bossReached": 1
     }
    },
    "all": {
     "n": 24,
-    "won": 0.208,
-    "endWave": 10.25,
+    "won": 0.25,
+    "endWave": 10.333,
     "flawless": 0,
     "lost10": 6.958,
-    "boss": 1.444,
-    "lostAll": 11.292,
-    "bossNormal": 1.494,
-    "bossReached": 0.833
+    "boss": 1.25,
+    "lostAll": 10.708,
+    "bossNormal": 1.153,
+    "bossReached": 0.875
    },
    "weapons": [
     "well",
@@ -11522,11 +11522,11 @@
      "island": -2.42,
      "behemoth": -0.13,
      "needle": -5.72,
-     "archipelago": -8.224
+     "archipelago": -6.587
     },
-    "mean": -4.123,
-    "predicted": 7.168,
-    "win": -0.547,
+    "mean": -3.714,
+    "predicted": 6.994,
+    "win": -0.506,
     "winPredicted": 0.756
    }
   },
@@ -11570,26 +11570,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13.5,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 1.278,
-     "lostAll": 6.333,
-     "bossNormal": 0.824,
-     "bossReached": 2.833
+     "boss": 0.222,
+     "lostAll": 3.167,
+     "bossNormal": 0.222,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.708,
-    "endWave": 13.167,
+    "won": 0.792,
+    "endWave": 13.292,
     "flawless": 0,
     "lost10": 3.542,
-    "boss": 1.028,
-    "lostAll": 6.625,
-    "bossNormal": 0.846,
-    "bossReached": 2.542
+    "boss": 0.764,
+    "lostAll": 5.833,
+    "bossNormal": 0.696,
+    "bossReached": 2.583
    },
    "weapons": [
     "well",
@@ -11600,11 +11600,11 @@
      "island": -4.422,
      "behemoth": -2.315,
      "needle": -1.309,
-     "archipelago": -4.715
+     "archipelago": -1.992
     },
-    "mean": -3.19,
-    "predicted": 3.435,
-    "win": -0.133,
+    "mean": -2.509,
+    "predicted": 3.324,
+    "win": -0.05,
     "winPredicted": 0.842
    }
   },
@@ -11652,9 +11652,9 @@
      "endWave": 14,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 0.444,
-     "lostAll": 3.833,
-     "bossNormal": 0.444,
+     "boss": 0.389,
+     "lostAll": 3.667,
+     "bossNormal": 0.389,
      "bossReached": 3
     }
    },
@@ -11664,9 +11664,9 @@
     "endWave": 13.042,
     "flawless": 0,
     "lost10": 3.333,
-    "boss": 1.153,
-    "lostAll": 6.792,
-    "bossNormal": 0.911,
+    "boss": 1.139,
+    "lostAll": 6.75,
+    "bossNormal": 0.897,
     "bossReached": 2.375
    },
    "weapons": [
@@ -11678,10 +11678,10 @@
      "island": -3.712,
      "behemoth": -3.716,
      "needle": -5.887,
-     "archipelago": -3.015
+     "archipelago": -2.836
     },
-    "mean": -4.082,
-    "predicted": 2.709,
+    "mean": -4.038,
+    "predicted": 2.712,
     "win": -0.242,
     "winPredicted": 0.908
    }
@@ -11730,9 +11730,9 @@
      "endWave": 13.333,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 0.389,
-     "lostAll": 4.833,
-     "bossNormal": 0.467,
+     "boss": 0.278,
+     "lostAll": 4.5,
+     "bossNormal": 0.2,
      "bossReached": 2.5
     }
    },
@@ -11742,9 +11742,9 @@
     "endWave": 12.75,
     "flawless": 0,
     "lost10": 3.5,
-    "boss": 1.097,
-    "lostAll": 6.792,
-    "bossNormal": 1.099,
+    "boss": 1.069,
+    "lostAll": 6.708,
+    "bossNormal": 1.032,
     "bossReached": 2.208
    },
    "weapons": [
@@ -11756,10 +11756,10 @@
      "island": -1.829,
      "behemoth": -1.08,
      "needle": -1.213,
-     "archipelago": -1.457
+     "archipelago": -1.865
     },
-    "mean": -1.395,
-    "predicted": 5.397,
+    "mean": -1.497,
+    "predicted": 5.212,
     "win": -0.179,
     "winPredicted": 0.804
    }
@@ -11804,26 +11804,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 12.667,
+     "won": 0.833,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 1.111,
-     "lostAll": 6,
-     "bossNormal": 0.462,
-     "bossReached": 2.167
+     "boss": 0.444,
+     "lostAll": 4,
+     "bossNormal": 0.4,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.458,
+    "won": 0.542,
+    "endWave": 12.583,
     "flawless": 0,
     "lost10": 3.75,
-    "boss": 1.333,
-    "lostAll": 7.75,
-    "bossNormal": 1.057,
-    "bossReached": 2.083
+    "boss": 1.167,
+    "lostAll": 7.25,
+    "bossNormal": 1.042,
+    "bossReached": 2.167
    },
    "weapons": [
     "well",
@@ -11834,11 +11834,11 @@
      "island": -6.298,
      "behemoth": -1.556,
      "needle": -2.738,
-     "archipelago": -4.469
+     "archipelago": -2.725
     },
-    "mean": -3.765,
-    "predicted": 3.985,
-    "win": -0.306,
+    "mean": -3.329,
+    "predicted": 3.921,
+    "win": -0.264,
     "winPredicted": 0.806
    }
   },
@@ -11888,7 +11888,7 @@
      "lost10": 4.5,
      "boss": 0.167,
      "lostAll": 5,
-     "bossNormal": 0.133,
+     "bossNormal": 0.067,
      "bossReached": 2.5
     }
    },
@@ -11900,7 +11900,7 @@
     "lost10": 4.333,
     "boss": 1.139,
     "lostAll": 7.75,
-    "bossNormal": 1.117,
+    "bossNormal": 1.1,
     "bossReached": 2.375
    },
    "weapons": [
@@ -11912,10 +11912,10 @@
      "island": -2.49,
      "behemoth": -3.852,
      "needle": -5.645,
-     "archipelago": -2.285
+     "archipelago": -2.737
     },
-    "mean": -3.568,
-    "predicted": 4.182,
+    "mean": -3.681,
+    "predicted": 4.069,
     "win": -0.342,
     "winPredicted": 0.842
    }
@@ -11964,9 +11964,9 @@
      "endWave": 13.333,
      "flawless": 0,
      "lost10": 2.833,
-     "boss": 0.056,
-     "lostAll": 3,
-     "bossNormal": 0,
+     "boss": 0.222,
+     "lostAll": 3.5,
+     "bossNormal": 0.267,
      "bossReached": 2.5
     }
    },
@@ -11976,9 +11976,9 @@
     "endWave": 12.292,
     "flawless": 0,
     "lost10": 4.625,
-    "boss": 1.153,
-    "lostAll": 8.083,
-    "bossNormal": 0.887,
+    "boss": 1.194,
+    "lostAll": 8.208,
+    "bossNormal": 0.954,
     "bossReached": 1.958
    },
    "weapons": [
@@ -11990,10 +11990,10 @@
      "island": -9.484,
      "behemoth": -0.735,
      "needle": -2.965,
-     "archipelago": -1.399
+     "archipelago": -2.297
     },
-    "mean": -3.645,
-    "predicted": 4.438,
+    "mean": -3.87,
+    "predicted": 4.338,
     "win": -0.289,
     "winPredicted": 0.789
    }
@@ -12038,26 +12038,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.333,
+     "won": 0.5,
+     "endWave": 12.833,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.944,
-     "lostAll": 8.833,
-     "bossNormal": 2,
-     "bossReached": 2.333
+     "boss": 1.556,
+     "lostAll": 7.667,
+     "bossNormal": 1.667,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12,
+    "won": 0.458,
+    "endWave": 12.125,
     "flawless": 0,
     "lost10": 4.5,
-    "boss": 1.431,
-    "lostAll": 8.792,
-    "bossNormal": 1.183,
-    "bossReached": 1.833
+    "boss": 1.333,
+    "lostAll": 8.5,
+    "bossNormal": 1.1,
+    "bossReached": 1.875
    },
    "weapons": [
     "railgun",
@@ -12068,12 +12068,12 @@
      "island": -0.16,
      "behemoth": -5.605,
      "needle": -3.723,
-     "archipelago": -6.745
+     "archipelago": -5.892
     },
-    "mean": -4.058,
-    "predicted": 4.733,
-    "win": -0.329,
-    "winPredicted": 0.704
+    "mean": -3.845,
+    "predicted": 4.655,
+    "win": -0.253,
+    "winPredicted": 0.711
    }
   },
   {
@@ -12116,26 +12116,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 10.5,
+     "won": 0.167,
+     "endWave": 10.833,
      "flawless": 0,
      "lost10": 8.167,
-     "boss": 4.167,
-     "lostAll": 20.667,
-     "bossNormal": 3,
-     "bossReached": 0.667
+     "boss": 3.778,
+     "lostAll": 19.5,
+     "bossNormal": 2,
+     "bossReached": 0.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.208,
-    "endWave": 11.083,
+    "won": 0.25,
+    "endWave": 11.167,
     "flawless": 0,
     "lost10": 6.458,
-    "boss": 2.181,
-    "lostAll": 13,
-    "bossNormal": 1.917,
-    "bossReached": 1.208
+    "boss": 2.083,
+    "lostAll": 12.708,
+    "bossNormal": 1.667,
+    "bossReached": 1.25
    },
    "weapons": [
     "railgun",
@@ -12146,12 +12146,12 @@
      "island": -1.772,
      "behemoth": 0.676,
      "needle": -3.936,
-     "archipelago": -11.226
+     "archipelago": -12.921
     },
-    "mean": -4.064,
-    "predicted": 8.936,
-    "win": -0.289,
-    "winPredicted": 0.497
+    "mean": -4.488,
+    "predicted": 8.22,
+    "win": -0.331,
+    "winPredicted": 0.581
    }
   },
   {
@@ -12194,25 +12194,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.5,
+     "won": 0.333,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 2.556,
-     "lostAll": 11,
-     "bossNormal": 2,
+     "boss": 2.333,
+     "lostAll": 10.333,
+     "bossNormal": 1.929,
      "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.5,
-    "endWave": 12.917,
+    "won": 0.542,
+    "endWave": 12.958,
     "flawless": 0,
     "lost10": 3.917,
-    "boss": 1.736,
-    "lostAll": 9.125,
-    "bossNormal": 1.45,
+    "boss": 1.681,
+    "lostAll": 8.958,
+    "bossNormal": 1.432,
     "bossReached": 2.458
    },
    "weapons": [
@@ -12224,12 +12224,12 @@
      "island": -6.175,
      "behemoth": -4.537,
      "needle": -2.163,
-     "archipelago": -6.954
+     "archipelago": -7.824
     },
-    "mean": -4.957,
-    "predicted": 4.168,
-    "win": -0.1,
-    "winPredicted": 0.6
+    "mean": -5.175,
+    "predicted": 3.784,
+    "win": -0.142,
+    "winPredicted": 0.683
    }
   },
   {
@@ -12272,26 +12272,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 13.333,
+     "won": 0.667,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 2.111,
-     "lostAll": 8.667,
-     "bossNormal": 1.824,
-     "bossReached": 2.833
+     "boss": 1.611,
+     "lostAll": 7.167,
+     "bossNormal": 1.389,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 13.083,
+    "won": 0.625,
+    "endWave": 13.167,
     "flawless": 0,
     "lost10": 3.083,
-    "boss": 1.431,
-    "lostAll": 7.375,
-    "bossNormal": 1.15,
-    "bossReached": 2.583
+    "boss": 1.306,
+    "lostAll": 7,
+    "bossNormal": 1.042,
+    "bossReached": 2.625
    },
    "weapons": [
     "railgun",
@@ -12302,12 +12302,12 @@
      "island": -2.706,
      "behemoth": -2.818,
      "needle": -4.77,
-     "archipelago": -6.622
+     "archipelago": -5.392
     },
-    "mean": -4.229,
-    "predicted": 3.146,
-    "win": -0.212,
-    "winPredicted": 0.796
+    "mean": -3.921,
+    "predicted": 3.079,
+    "win": -0.192,
+    "winPredicted": 0.817
    }
   },
   {
@@ -12350,26 +12350,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 13.333,
+     "won": 0.5,
+     "endWave": 13.167,
      "flawless": 0,
      "lost10": 2.5,
-     "boss": 2.056,
-     "lostAll": 8.667,
-     "bossNormal": 1.778,
-     "bossReached": 3
+     "boss": 1.833,
+     "lostAll": 8,
+     "bossNormal": 1.75,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 13.25,
+    "won": 0.625,
+    "endWave": 13.208,
     "flawless": 0.042,
     "lost10": 2.625,
-    "boss": 1.528,
-    "lostAll": 7.208,
-    "bossNormal": 1.336,
-    "bossReached": 2.75
+    "boss": 1.472,
+    "lostAll": 7.042,
+    "bossNormal": 1.329,
+    "bossReached": 2.667
    },
    "weapons": [
     "railgun",
@@ -12380,12 +12380,12 @@
      "island": 0.307,
      "behemoth": 0.66,
      "needle": -1.578,
-     "archipelago": -0.226
+     "archipelago": -2.37
     },
-    "mean": -0.209,
-    "predicted": 6.999,
-    "win": 0.038,
-    "winPredicted": 0.546
+    "mean": -0.745,
+    "predicted": 6.296,
+    "win": -0.004,
+    "winPredicted": 0.629
    }
   },
   {
@@ -12429,25 +12429,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.333,
-     "endWave": 12.5,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 2.222,
-     "lostAll": 11.333,
-     "bossNormal": 1.8,
-     "bossReached": 2.5
+     "boss": 2.333,
+     "lostAll": 11.667,
+     "bossNormal": 1.857,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.5,
-    "endWave": 12.708,
+    "endWave": 12.667,
     "flawless": 0,
     "lost10": 4,
-    "boss": 1.583,
-    "lostAll": 8.75,
-    "bossNormal": 1.358,
-    "bossReached": 2.458
+    "boss": 1.611,
+    "lostAll": 8.833,
+    "bossNormal": 1.372,
+    "bossReached": 2.417
    },
    "weapons": [
     "railgun",
@@ -12458,12 +12458,12 @@
      "island": -4.477,
      "behemoth": -0.556,
      "needle": -3.415,
-     "archipelago": -7.505
+     "archipelago": -8.943
     },
-    "mean": -3.988,
-    "predicted": 4.762,
-    "win": -0.056,
-    "winPredicted": 0.556
+    "mean": -4.348,
+    "predicted": 4.486,
+    "win": -0.139,
+    "winPredicted": 0.639
    }
   },
   {
@@ -12506,26 +12506,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 12,
+     "won": 0.5,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 5,
-     "boss": 3.167,
-     "lostAll": 14.5,
-     "bossNormal": 2.308,
-     "bossReached": 2.167
+     "boss": 1.889,
+     "lostAll": 10.667,
+     "bossNormal": 1.714,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.25,
+    "won": 0.542,
+    "endWave": 12.417,
     "flawless": 0,
     "lost10": 4.417,
-    "boss": 1.861,
-    "lostAll": 10,
-    "bossNormal": 1.412,
-    "bossReached": 2
+    "boss": 1.542,
+    "lostAll": 9.042,
+    "bossNormal": 1.264,
+    "bossReached": 2.042
    },
    "weapons": [
     "railgun",
@@ -12536,12 +12536,12 @@
      "island": -2.484,
      "behemoth": -2.296,
      "needle": -5.759,
-     "archipelago": -7.713
+     "archipelago": -5.832
     },
-    "mean": -4.563,
-    "predicted": 5.437,
-    "win": -0.183,
-    "winPredicted": 0.6
+    "mean": -4.093,
+    "predicted": 4.949,
+    "win": -0.142,
+    "winPredicted": 0.683
    }
   },
   {
@@ -12584,25 +12584,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 1,
+     "endWave": 14,
      "flawless": 0,
      "lost10": 3.5,
-     "boss": 1.333,
-     "lostAll": 7.5,
-     "bossNormal": 1.333,
+     "boss": 1.444,
+     "lostAll": 7.833,
+     "bossNormal": 1.444,
      "bossReached": 3
     }
    },
    "all": {
     "n": 24,
-    "won": 0.458,
-    "endWave": 11.875,
+    "won": 0.5,
+    "endWave": 11.917,
     "flawless": 0,
     "lost10": 5.292,
-    "boss": 1.444,
-    "lostAll": 9.625,
-    "bossNormal": 1.282,
+    "boss": 1.472,
+    "lostAll": 9.708,
+    "bossNormal": 1.31,
     "bossReached": 1.792
    },
    "weapons": [
@@ -12614,12 +12614,12 @@
      "island": -7.274,
      "behemoth": -3.698,
      "needle": -3.376,
-     "archipelago": -3.497
+     "archipelago": -5.263
     },
-    "mean": -4.461,
-    "predicted": 5.164,
-    "win": -0.14,
-    "winPredicted": 0.599
+    "mean": -4.903,
+    "predicted": 4.806,
+    "win": -0.189,
+    "winPredicted": 0.689
    }
   },
   {
@@ -12662,26 +12662,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
+     "won": 0,
      "endWave": 10.833,
      "flawless": 0,
      "lost10": 6.167,
-     "boss": 4.278,
-     "lostAll": 19,
-     "bossNormal": 2.875,
-     "bossReached": 1.333
+     "boss": 3.667,
+     "lostAll": 17.167,
+     "bossNormal": 2.667,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.167,
+    "won": 0.125,
     "endWave": 10.25,
     "flawless": 0,
     "lost10": 7.292,
-    "boss": 2.139,
-    "lostAll": 13.708,
-    "bossNormal": 1.885,
-    "bossReached": 0.833
+    "boss": 1.986,
+    "lostAll": 13.25,
+    "bossNormal": 1.833,
+    "bossReached": 0.875
    },
    "weapons": [
     "tesla",
@@ -12692,12 +12692,12 @@
      "island": 3.463,
      "behemoth": -4.852,
      "needle": -0.543,
-     "archipelago": -12.028
+     "archipelago": -9.048
     },
-    "mean": -3.49,
-    "predicted": 10.218,
+    "mean": -2.745,
+    "predicted": 10.505,
     "win": -0.203,
-    "winPredicted": 0.369
+    "winPredicted": 0.328
    }
   },
   {
@@ -12741,25 +12741,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.333,
-     "endWave": 10.833,
+     "endWave": 10.667,
      "flawless": 0,
      "lost10": 6,
-     "boss": 1.833,
-     "lostAll": 11.5,
-     "bossNormal": 1.667,
-     "bossReached": 1.5
+     "boss": 1.944,
+     "lostAll": 11.833,
+     "bossNormal": 2,
+     "bossReached": 1.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.375,
-    "endWave": 11.625,
+    "endWave": 11.583,
     "flawless": 0.042,
     "lost10": 5.167,
-    "boss": 1.375,
-    "lostAll": 9.292,
-    "bossNormal": 1.25,
-    "bossReached": 1.625
+    "boss": 1.403,
+    "lostAll": 9.375,
+    "bossNormal": 1.333,
+    "bossReached": 1.583
    },
    "weapons": [
     "tesla",
@@ -12770,12 +12770,12 @@
      "island": -2.951,
      "behemoth": -5.259,
      "needle": -0.947,
-     "archipelago": -8.512
+     "archipelago": -8.737
     },
-    "mean": -4.417,
-    "predicted": 4.874,
-    "win": -0.186,
-    "winPredicted": 0.561
+    "mean": -4.473,
+    "predicted": 4.902,
+    "win": -0.144,
+    "winPredicted": 0.519
    }
   },
   {
@@ -12822,8 +12822,8 @@
      "endWave": 13,
      "flawless": 0,
      "lost10": 3.333,
-     "boss": 1.5,
-     "lostAll": 7.833,
+     "boss": 1.556,
+     "lostAll": 8,
      "bossNormal": 1.467,
      "bossReached": 2.5
     }
@@ -12834,8 +12834,8 @@
     "endWave": 12.917,
     "flawless": 0,
     "lost10": 3.875,
-    "boss": 1.347,
-    "lostAll": 7.917,
+    "boss": 1.361,
+    "lostAll": 7.958,
     "bossNormal": 1.223,
     "bossReached": 2.333
    },
@@ -12848,12 +12848,12 @@
      "island": -3.932,
      "behemoth": -2.086,
      "needle": -4.043,
-     "archipelago": -6.323
+     "archipelago": -5.81
     },
-    "mean": -4.096,
-    "predicted": 3.821,
-    "win": -0.147,
-    "winPredicted": 0.772
+    "mean": -3.968,
+    "predicted": 3.991,
+    "win": -0.106,
+    "winPredicted": 0.731
    }
   },
   {
@@ -12896,26 +12896,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.667,
-     "endWave": 13,
+     "won": 0.333,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.111,
-     "lostAll": 6.333,
-     "bossNormal": 1,
-     "bossReached": 2.5
+     "boss": 2.056,
+     "lostAll": 9.167,
+     "bossNormal": 1.857,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 12.417,
+    "won": 0.458,
+    "endWave": 12.292,
     "flawless": 0,
     "lost10": 4.375,
-    "boss": 1.389,
-    "lostAll": 8.542,
-    "bossNormal": 1.075,
-    "bossReached": 2.167
+    "boss": 1.625,
+    "lostAll": 9.25,
+    "bossNormal": 1.29,
+    "bossReached": 2.125
    },
    "weapons": [
     "tesla",
@@ -12926,12 +12926,12 @@
      "island": 2.827,
      "behemoth": -2.265,
      "needle": -2.504,
-     "archipelago": -0.1
+     "archipelago": -2.219
     },
-    "mean": -0.511,
-    "predicted": 8.031,
-    "win": 0.082,
-    "winPredicted": 0.46
+    "mean": -1.04,
+    "predicted": 8.21,
+    "win": 0.04,
+    "winPredicted": 0.418
    }
   },
   {
@@ -12974,26 +12974,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 1,
-     "endWave": 14,
+     "won": 0.5,
+     "endWave": 13.333,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.167,
-     "lostAll": 6.5,
-     "bossNormal": 1.167,
-     "bossReached": 3
+     "boss": 2.167,
+     "lostAll": 9.5,
+     "bossNormal": 1.529,
+     "bossReached": 2.833
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 12.792,
+    "won": 0.458,
+    "endWave": 12.625,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.375,
-    "lostAll": 8.208,
-    "bossNormal": 1.33,
-    "bossReached": 2.208
+    "boss": 1.625,
+    "lostAll": 8.958,
+    "bossNormal": 1.421,
+    "bossReached": 2.167
    },
    "weapons": [
     "tesla",
@@ -13004,12 +13004,12 @@
      "island": -1.469,
      "behemoth": -2.389,
      "needle": -2.89,
-     "archipelago": -3.673
+     "archipelago": -6.139
     },
-    "mean": -2.605,
-    "predicted": 5.603,
-    "win": 0.097,
-    "winPredicted": 0.486
+    "mean": -3.222,
+    "predicted": 5.736,
+    "win": 0.014,
+    "winPredicted": 0.444
    }
   },
   {
@@ -13052,26 +13052,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.5,
-     "endWave": 12.667,
+     "won": 0.667,
+     "endWave": 13,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 1.556,
-     "lostAll": 8.333,
-     "bossNormal": 1.357,
-     "bossReached": 2.333
+     "boss": 0.944,
+     "lostAll": 6.5,
+     "bossNormal": 0.8,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.417,
-    "endWave": 12.375,
+    "won": 0.458,
+    "endWave": 12.458,
     "flawless": 0,
     "lost10": 4.458,
-    "boss": 1.486,
-    "lostAll": 8.917,
-    "bossNormal": 1.2,
-    "bossReached": 2.083
+    "boss": 1.333,
+    "lostAll": 8.458,
+    "bossNormal": 1.061,
+    "bossReached": 2.125
    },
    "weapons": [
     "tesla",
@@ -13082,12 +13082,12 @@
      "island": 1.568,
      "behemoth": -4.241,
      "needle": -4.883,
-     "archipelago": -3.321
+     "archipelago": -0.534
     },
-    "mean": -2.719,
-    "predicted": 6.197,
-    "win": -0.144,
-    "winPredicted": 0.561
+    "mean": -2.022,
+    "predicted": 6.436,
+    "win": -0.061,
+    "winPredicted": 0.519
    }
   },
   {
@@ -13131,25 +13131,25 @@
     "archipelago": {
      "n": 6,
      "won": 0.667,
-     "endWave": 13.5,
+     "endWave": 13.667,
      "flawless": 0,
      "lost10": 3,
-     "boss": 1.833,
-     "lostAll": 8.5,
-     "bossNormal": 1.588,
-     "bossReached": 2.833
+     "boss": 1.778,
+     "lostAll": 8.333,
+     "bossNormal": 1.389,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 24,
     "won": 0.417,
-    "endWave": 12.375,
+    "endWave": 12.417,
     "flawless": 0,
     "lost10": 4.75,
-    "boss": 1.597,
-    "lostAll": 9.542,
-    "bossNormal": 1.432,
-    "bossReached": 2.083
+    "boss": 1.583,
+    "lostAll": 9.5,
+    "bossNormal": 1.382,
+    "bossReached": 2.125
    },
    "weapons": [
     "tesla",
@@ -13160,12 +13160,12 @@
      "island": -3.191,
      "behemoth": -2.16,
      "needle": -3.138,
-     "archipelago": -5.544
+     "archipelago": -5.161
     },
-    "mean": -3.509,
-    "predicted": 6.033,
-    "win": -0.1,
-    "winPredicted": 0.517
+    "mean": -3.413,
+    "predicted": 6.087,
+    "win": -0.086,
+    "winPredicted": 0.503
    }
   },
   {
@@ -13212,8 +13212,8 @@
      "endWave": 10,
      "flawless": 0,
      "lost10": 8,
-     "boss": 7.944,
-     "lostAll": 31.833,
+     "boss": 7.611,
+     "lostAll": 30.833,
      "bossNormal": 3.6,
      "bossReached": 0.833
     }
@@ -13224,8 +13224,8 @@
     "endWave": 10.083,
     "flawless": 0,
     "lost10": 7.75,
-    "boss": 3.042,
-    "lostAll": 16.875,
+    "boss": 2.958,
+    "lostAll": 16.625,
     "bossNormal": 2.274,
     "bossReached": 0.708
    },
@@ -13238,10 +13238,10 @@
      "island": -3.173,
      "behemoth": -4.556,
      "needle": -2.622,
-     "archipelago": -18.325
+     "archipelago": -19.355
     },
-    "mean": -7.169,
-    "predicted": 9.706,
+    "mean": -7.427,
+    "predicted": 9.198,
     "win": -0.196,
     "winPredicted": 0.279
    }
@@ -13287,25 +13287,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10.5,
+     "endWave": 10.667,
      "flawless": 0,
      "lost10": 6.833,
-     "boss": 7.833,
-     "lostAll": 30.333,
-     "bossNormal": 4,
-     "bossReached": 1
+     "boss": 6.667,
+     "lostAll": 26.833,
+     "bossNormal": 3.429,
+     "bossReached": 1.167
     }
    },
    "all": {
     "n": 24,
     "won": 0.417,
-    "endWave": 11.917,
+    "endWave": 11.958,
     "flawless": 0,
     "lost10": 5.625,
-    "boss": 2.931,
-    "lostAll": 14.417,
-    "bossNormal": 2.068,
-    "bossReached": 1.75
+    "boss": 2.639,
+    "lostAll": 13.542,
+    "bossNormal": 1.925,
+    "bossReached": 1.792
    },
    "weapons": [
     "lance",
@@ -13316,12 +13316,12 @@
      "island": -0.988,
      "behemoth": -2.671,
      "needle": -2.369,
-     "archipelago": -23.507
+     "archipelago": -18.715
     },
-    "mean": -7.384,
-    "predicted": 7.033,
-    "win": -0.221,
-    "winPredicted": 0.638
+    "mean": -6.186,
+    "predicted": 7.356,
+    "win": -0.179,
+    "winPredicted": 0.596
    }
   },
   {
@@ -13368,8 +13368,8 @@
      "endWave": 9,
      "flawless": 0,
      "lost10": 7.5,
-     "boss": 9.556,
-     "lostAll": 36.167,
+     "boss": 9.056,
+     "lostAll": 34.667,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -13380,8 +13380,8 @@
     "endWave": 9.833,
     "flawless": 0,
     "lost10": 7.667,
-    "boss": 3.625,
-    "lostAll": 18.542,
+    "boss": 3.5,
+    "lostAll": 18.167,
     "bossNormal": 1.583,
     "bossReached": 0.625
    },
@@ -13394,10 +13394,10 @@
      "island": 4.772,
      "behemoth": 2.519,
      "needle": -5.142,
-     "archipelago": -7.989
+     "archipelago": -8.911
     },
-    "mean": -1.46,
-    "predicted": 17.082,
+    "mean": -1.691,
+    "predicted": 16.476,
     "win": -0.062,
     "winPredicted": 0.187
    }
@@ -13443,25 +13443,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 9.833,
+     "endWave": 9.667,
      "flawless": 0,
      "lost10": 6.333,
-     "boss": 8.167,
-     "lostAll": 30.833,
-     "bossNormal": 4,
-     "bossReached": 0.5
+     "boss": 8.833,
+     "lostAll": 32.833,
+     "bossNormal": 6,
+     "bossReached": 0.333
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 10.917,
+    "endWave": 10.875,
     "flawless": 0,
     "lost10": 6.667,
-    "boss": 3.375,
-    "lostAll": 16.792,
-    "bossNormal": 2.395,
-    "bossReached": 1.167
+    "boss": 3.542,
+    "lostAll": 17.292,
+    "bossNormal": 3.062,
+    "bossReached": 1.125
    },
    "weapons": [
     "lance",
@@ -13472,10 +13472,10 @@
      "island": 0.975,
      "behemoth": -2.5,
      "needle": -3.936,
-     "archipelago": -18.052
+     "archipelago": -20.376
     },
-    "mean": -5.878,
-    "predicted": 10.914,
+    "mean": -6.459,
+    "predicted": 10.833,
     "win": 0.028,
     "winPredicted": 0.181
    }
@@ -13524,8 +13524,8 @@
      "endWave": 10,
      "flawless": 0,
      "lost10": 6.167,
-     "boss": 8.889,
-     "lostAll": 32.833,
+     "boss": 8.722,
+     "lostAll": 32.333,
      "bossNormal": 6,
      "bossReached": 0.333
     }
@@ -13536,8 +13536,8 @@
     "endWave": 11.125,
     "flawless": 0,
     "lost10": 6.75,
-    "boss": 3.667,
-    "lostAll": 17.75,
+    "boss": 3.625,
+    "lostAll": 17.625,
     "bossNormal": 2.831,
     "bossReached": 1.292
    },
@@ -13550,10 +13550,10 @@
      "island": -2.154,
      "behemoth": -1.278,
      "needle": -4.152,
-     "archipelago": -10.175
+     "archipelago": -10.217
     },
-    "mean": -4.44,
-    "predicted": 13.31,
+    "mean": -4.451,
+    "predicted": 13.174,
     "win": -0.112,
     "winPredicted": 0.279
    }
@@ -13602,8 +13602,8 @@
      "endWave": 10,
      "flawless": 0,
      "lost10": 7,
-     "boss": 8.611,
-     "lostAll": 32.833,
+     "boss": 7.389,
+     "lostAll": 29.167,
      "bossNormal": 6,
      "bossReached": 0.5
     }
@@ -13614,8 +13614,8 @@
     "endWave": 10.042,
     "flawless": 0,
     "lost10": 7.708,
-    "boss": 3.556,
-    "lostAll": 18.375,
+    "boss": 3.25,
+    "lostAll": 17.458,
     "bossNormal": 3.074,
     "bossReached": 0.75
    },
@@ -13628,12 +13628,12 @@
      "island": -2.08,
      "behemoth": -2.907,
      "needle": -2.532,
-     "archipelago": -19.471
+     "archipelago": -17.409
     },
-    "mean": -6.748,
-    "predicted": 11.627,
-    "win": -0.143,
-    "winPredicted": 0.268
+    "mean": -6.232,
+    "predicted": 11.226,
+    "win": -0.185,
+    "winPredicted": 0.31
    }
   },
   {
@@ -13676,26 +13676,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 13,
+     "won": 0,
+     "endWave": 12.5,
      "flawless": 0,
      "lost10": 1.833,
-     "boss": 2.889,
-     "lostAll": 10.5,
-     "bossNormal": 2.059,
-     "bossReached": 2.833
+     "boss": 3.444,
+     "lostAll": 12.167,
+     "bossNormal": 2.4,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.542,
-    "endWave": 13.042,
+    "won": 0.5,
+    "endWave": 12.917,
     "flawless": 0,
     "lost10": 3.042,
-    "boss": 1.569,
-    "lostAll": 7.75,
-    "bossNormal": 1.408,
-    "bossReached": 2.542
+    "boss": 1.708,
+    "lostAll": 8.167,
+    "bossNormal": 1.494,
+    "bossReached": 2.458
    },
    "weapons": [
     "droneScreen",
@@ -13706,12 +13706,12 @@
      "island": -2.035,
      "behemoth": -3.481,
      "needle": -4.706,
-     "archipelago": -7.574
+     "archipelago": -9.07
     },
-    "mean": -4.449,
-    "predicted": 3.301,
+    "mean": -4.823,
+    "predicted": 3.344,
     "win": -0.182,
-    "winPredicted": 0.724
+    "winPredicted": 0.682
    }
   },
   {
@@ -13754,25 +13754,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
-     "endWave": 12.167,
+     "won": 0.167,
+     "endWave": 12.333,
      "flawless": 0,
      "lost10": 2.667,
-     "boss": 3,
-     "lostAll": 11.667,
-     "bossNormal": 2.308,
+     "boss": 2.889,
+     "lostAll": 11.333,
+     "bossNormal": 2.231,
      "bossReached": 2.167
     }
    },
    "all": {
     "n": 24,
-    "won": 0.583,
-    "endWave": 13.125,
+    "won": 0.625,
+    "endWave": 13.167,
     "flawless": 0,
     "lost10": 3.333,
-    "boss": 1.583,
-    "lostAll": 8.083,
-    "bossNormal": 1.31,
+    "boss": 1.556,
+    "lostAll": 8,
+    "bossNormal": 1.291,
     "bossReached": 2.542
    },
    "weapons": [
@@ -13784,11 +13784,11 @@
      "island": 1.564,
      "behemoth": -1.074,
      "needle": -1.989,
-     "archipelago": 0.41
+     "archipelago": -1.51
     },
-    "mean": -0.273,
-    "predicted": 7.811,
-    "win": 0.235,
+    "mean": -0.753,
+    "predicted": 7.247,
+    "win": 0.276,
     "winPredicted": 0.349
    }
   },
@@ -13832,26 +13832,26 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0,
+     "won": 0.167,
      "endWave": 11.833,
      "flawless": 0,
      "lost10": 2.333,
-     "boss": 3.333,
-     "lostAll": 12.333,
-     "bossNormal": 2.308,
-     "bossReached": 2.167
+     "boss": 3.778,
+     "lostAll": 13.667,
+     "bossNormal": 2.417,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 24,
-    "won": 0.333,
+    "won": 0.375,
     "endWave": 11.917,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.903,
-    "lostAll": 10.25,
-    "bossNormal": 1.643,
-    "bossReached": 1.917
+    "boss": 2.014,
+    "lostAll": 10.583,
+    "bossNormal": 1.68,
+    "bossReached": 1.875
    },
    "weapons": [
     "droneScreen",
@@ -13862,11 +13862,11 @@
      "island": -4.208,
      "behemoth": -7.833,
      "needle": -1.996,
-     "archipelago": -6.855
+     "archipelago": -8.915
     },
-    "mean": -5.223,
-    "predicted": 5.027,
-    "win": -0.042,
+    "mean": -5.738,
+    "predicted": 4.845,
+    "win": 0,
     "winPredicted": 0.375
    }
   },
@@ -13914,8 +13914,8 @@
      "endWave": 10.667,
      "flawless": 0,
      "lost10": 5.5,
-     "boss": 3.333,
-     "lostAll": 15.5,
+     "boss": 2.833,
+     "lostAll": 14,
      "bossNormal": 2.4,
      "bossReached": 0.833
     }
@@ -13926,8 +13926,8 @@
     "endWave": 12.083,
     "flawless": 0,
     "lost10": 4.542,
-    "boss": 1.861,
-    "lostAll": 10.125,
+    "boss": 1.736,
+    "lostAll": 9.75,
     "bossNormal": 1.458,
     "bossReached": 1.833
    },
@@ -13940,10 +13940,10 @@
      "island": -2.424,
      "behemoth": -3.556,
      "needle": -4.351,
-     "archipelago": -5.789
+     "archipelago": -5.565
     },
-    "mean": -4.03,
-    "predicted": 6.095,
+    "mean": -3.974,
+    "predicted": 5.776,
     "win": -0.068,
     "winPredicted": 0.443
    }
@@ -13988,25 +13988,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.167,
-     "endWave": 12.833,
+     "won": 0,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 3.056,
-     "lostAll": 12.833,
-     "bossNormal": 2.188,
+     "boss": 3.167,
+     "lostAll": 13.167,
+     "bossNormal": 2.25,
      "bossReached": 2.667
     }
    },
    "all": {
     "n": 24,
-    "won": 0.375,
-    "endWave": 12.5,
+    "won": 0.333,
+    "endWave": 12.458,
     "flawless": 0,
     "lost10": 4.083,
-    "boss": 1.986,
-    "lostAll": 10.042,
-    "bossNormal": 1.536,
+    "boss": 2.014,
+    "lostAll": 10.125,
+    "bossNormal": 1.551,
     "bossReached": 2.333
    },
    "weapons": [
@@ -14018,12 +14018,12 @@
      "island": -2.912,
      "behemoth": -4.037,
      "needle": -4.418,
-     "archipelago": -7.106
+     "archipelago": -8.682
     },
-    "mean": -4.618,
-    "predicted": 5.423,
-    "win": -0.079,
-    "winPredicted": 0.454
+    "mean": -5.012,
+    "predicted": 5.113,
+    "win": -0.162,
+    "winPredicted": 0.496
    }
   },
   {
@@ -14070,9 +14070,9 @@
      "endWave": 12.167,
      "flawless": 0,
      "lost10": 3.167,
-     "boss": 1.111,
-     "lostAll": 6.5,
-     "bossNormal": 0.917,
+     "boss": 1.444,
+     "lostAll": 7.5,
+     "bossNormal": 1.5,
      "bossReached": 2
     }
    },
@@ -14082,9 +14082,9 @@
     "endWave": 12.792,
     "flawless": 0,
     "lost10": 3.042,
-    "boss": 1.306,
-    "lostAll": 6.958,
-    "bossNormal": 1.132,
+    "boss": 1.389,
+    "lostAll": 7.208,
+    "bossNormal": 1.278,
     "bossReached": 2.333
    },
    "weapons": [
@@ -14096,12 +14096,12 @@
      "island": -1.405,
      "behemoth": -0.525,
      "needle": -3.142,
-     "archipelago": -0.397
+     "archipelago": -0.552
     },
-    "mean": -1.367,
-    "predicted": 5.591,
-    "win": -0.068,
-    "winPredicted": 0.693
+    "mean": -1.406,
+    "predicted": 5.802,
+    "win": -0.026,
+    "winPredicted": 0.651
    }
   },
   {
@@ -14144,25 +14144,25 @@
     },
     "archipelago": {
      "n": 6,
-     "won": 0.333,
-     "endWave": 12.167,
+     "won": 0.833,
+     "endWave": 12.667,
      "flawless": 0,
      "lost10": 3.833,
-     "boss": 1.722,
-     "lostAll": 9,
-     "bossNormal": 1.667,
+     "boss": 1.222,
+     "lostAll": 7.5,
+     "bossNormal": 1.2,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 24,
-    "won": 0.625,
-    "endWave": 13.083,
+    "won": 0.75,
+    "endWave": 13.208,
     "flawless": 0,
     "lost10": 3.542,
-    "boss": 1.319,
-    "lostAll": 7.5,
-    "bossNormal": 1.225,
+    "boss": 1.194,
+    "lostAll": 7.125,
+    "bossNormal": 1.108,
     "bossReached": 2.625
    },
    "weapons": [
@@ -14174,12 +14174,12 @@
      "island": -2.362,
      "behemoth": -1.222,
      "needle": -5.103,
-     "archipelago": -6.232
+     "archipelago": -4.139
     },
-    "mean": -3.73,
-    "predicted": 3.77,
-    "win": -0.083,
-    "winPredicted": 0.708
+    "mean": -3.207,
+    "predicted": 3.918,
+    "win": 0.083,
+    "winPredicted": 0.667
    }
   },
   {
@@ -14226,8 +14226,8 @@
      "endWave": 12.167,
      "flawless": 0,
      "lost10": 4.667,
-     "boss": 1.278,
-     "lostAll": 8.5,
+     "boss": 1.111,
+     "lostAll": 8,
      "bossNormal": 1.083,
      "bossReached": 2
     }
@@ -14238,8 +14238,8 @@
     "endWave": 12.125,
     "flawless": 0,
     "lost10": 4.167,
-    "boss": 1.375,
-    "lostAll": 8.292,
+    "boss": 1.333,
+    "lostAll": 8.167,
     "bossNormal": 1.287,
     "bossReached": 1.958
    },
@@ -14252,12 +14252,12 @@
      "island": -3.097,
      "behemoth": -3.185,
      "needle": -5.986,
-     "archipelago": -3.592
+     "archipelago": -2.034
     },
-    "mean": -3.965,
-    "predicted": 4.327,
-    "win": -0.265,
-    "winPredicted": 0.724
+    "mean": -3.575,
+    "predicted": 4.591,
+    "win": -0.224,
+    "winPredicted": 0.682
    }
   },
   {
@@ -14304,9 +14304,9 @@
      "endWave": 12.667,
      "flawless": 0,
      "lost10": 4.333,
-     "boss": 1.778,
-     "lostAll": 9.667,
-     "bossNormal": 1.462,
+     "boss": 1.889,
+     "lostAll": 10,
+     "bossNormal": 1.615,
      "bossReached": 2.167
     }
    },
@@ -14316,9 +14316,9 @@
     "endWave": 12.25,
     "flawless": 0,
     "lost10": 4.5,
-    "boss": 1.514,
-    "lostAll": 9.042,
-    "bossNormal": 1.324,
+    "boss": 1.542,
+    "lostAll": 9.125,
+    "bossNormal": 1.362,
     "bossReached": 2.042
    },
    "weapons": [
@@ -14330,12 +14330,12 @@
      "island": -5.121,
      "behemoth": -5.123,
      "needle": -3.032,
-     "archipelago": -6.772
+     "archipelago": -6.828
     },
-    "mean": -5.012,
-    "predicted": 4.029,
-    "win": -0.233,
-    "winPredicted": 0.692
+    "mean": -5.026,
+    "predicted": 4.099,
+    "win": -0.226,
+    "winPredicted": 0.685
    }
   },
   {
@@ -14379,25 +14379,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10.833,
+     "endWave": 10.667,
      "flawless": 0,
      "lost10": 4.833,
-     "boss": 6.944,
-     "lostAll": 25.667,
-     "bossNormal": 3.429,
-     "bossReached": 1.167
+     "boss": 8.278,
+     "lostAll": 29.667,
+     "bossNormal": 4,
+     "bossReached": 1
     }
    },
    "all": {
     "n": 24,
     "won": 0.208,
-    "endWave": 11.292,
+    "endWave": 11.25,
     "flawless": 0,
     "lost10": 5.625,
-    "boss": 3.028,
-    "lostAll": 14.708,
-    "bossNormal": 1.884,
-    "bossReached": 1.5
+    "boss": 3.361,
+    "lostAll": 15.708,
+    "bossNormal": 2.027,
+    "bossReached": 1.458
    },
    "weapons": [
     "supplyRun",
@@ -14408,10 +14408,10 @@
      "island": -3.134,
      "behemoth": -1.778,
      "needle": -5.078,
-     "archipelago": -14.24
+     "archipelago": -19.005
     },
-    "mean": -6.057,
-    "predicted": 8.651,
+    "mean": -7.249,
+    "predicted": 8.46,
     "win": -0.042,
     "winPredicted": 0.25
    }
@@ -14457,25 +14457,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 9.833,
+     "endWave": 10,
      "flawless": 0,
      "lost10": 6.833,
-     "boss": 7.778,
-     "lostAll": 30.167,
-     "bossNormal": 4,
-     "bossReached": 0.5
+     "boss": 7.111,
+     "lostAll": 28.167,
+     "bossNormal": 3,
+     "bossReached": 0.667
     }
    },
    "all": {
     "n": 24,
     "won": 0.375,
-    "endWave": 11.25,
+    "endWave": 11.292,
     "flawless": 0,
     "lost10": 5.875,
-    "boss": 2.986,
-    "lostAll": 14.833,
-    "bossNormal": 1.99,
-    "bossReached": 1.458
+    "boss": 2.819,
+    "lostAll": 14.333,
+    "bossNormal": 1.74,
+    "bossReached": 1.5
    },
    "weapons": [
     "supplyRun",
@@ -14486,10 +14486,10 @@
      "island": 1.206,
      "behemoth": -2.426,
      "needle": -3.943,
-     "archipelago": -9.91
+     "archipelago": -9.24
     },
-    "mean": -3.768,
-    "predicted": 11.065,
+    "mean": -3.601,
+    "predicted": 10.733,
     "win": 0.026,
     "winPredicted": 0.349
    }
@@ -14535,25 +14535,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10.167,
+     "endWave": 10.333,
      "flawless": 0,
      "lost10": 7.167,
-     "boss": 4.889,
-     "lostAll": 21.833,
-     "bossNormal": 3,
-     "bossReached": 0.667
+     "boss": 4.111,
+     "lostAll": 19.5,
+     "bossNormal": 2.4,
+     "bossReached": 0.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.125,
-    "endWave": 10.458,
+    "endWave": 10.5,
     "flawless": 0,
     "lost10": 6.792,
-    "boss": 2.431,
-    "lostAll": 14.083,
-    "bossNormal": 2.019,
-    "bossReached": 1.167
+    "boss": 2.236,
+    "lostAll": 13.5,
+    "bossNormal": 1.819,
+    "bossReached": 1.208
    },
    "weapons": [
     "supplyRun",
@@ -14564,12 +14564,12 @@
      "island": -5.004,
      "behemoth": -2.284,
      "needle": -3.294,
-     "archipelago": -9.887
+     "archipelago": -9.437
     },
-    "mean": -5.117,
-    "predicted": 8.966,
-    "win": -0.254,
-    "winPredicted": 0.379
+    "mean": -5.005,
+    "predicted": 8.495,
+    "win": -0.296,
+    "winPredicted": 0.421
    }
   },
   {
@@ -14616,8 +14616,8 @@
      "endWave": 11.833,
      "flawless": 0,
      "lost10": 3.667,
-     "boss": 5.444,
-     "lostAll": 20,
+     "boss": 4.5,
+     "lostAll": 17.167,
      "bossNormal": 2.727,
      "bossReached": 1.833
     }
@@ -14628,8 +14628,8 @@
     "endWave": 11.792,
     "flawless": 0,
     "lost10": 5.083,
-    "boss": 2.486,
-    "lostAll": 12.542,
+    "boss": 2.25,
+    "lostAll": 11.833,
     "bossNormal": 1.445,
     "bossReached": 1.667
    },
@@ -14642,10 +14642,10 @@
      "island": -2.584,
      "behemoth": -3.667,
      "needle": -6.259,
-     "archipelago": -10.811
+     "archipelago": -8.012
     },
-    "mean": -5.83,
-    "predicted": 6.711,
+    "mean": -5.13,
+    "predicted": 6.703,
     "win": -0.042,
     "winPredicted": 0.375
    }
@@ -14694,8 +14694,8 @@
      "endWave": 10,
      "flawless": 0,
      "lost10": 7,
-     "boss": 3.944,
-     "lostAll": 18.833,
+     "boss": 4,
+     "lostAll": 19,
      "bossNormal": 2.4,
      "bossReached": 0.833
     }
@@ -14706,8 +14706,8 @@
     "endWave": 11.167,
     "flawless": 0,
     "lost10": 6.583,
-    "boss": 2.375,
-    "lostAll": 13.708,
+    "boss": 2.389,
+    "lostAll": 13.75,
     "bossNormal": 1.788,
     "bossReached": 1.375
    },
@@ -14720,12 +14720,12 @@
      "island": -5.368,
      "behemoth": -5.556,
      "needle": -5.876,
-     "archipelago": -13.414
+     "archipelago": -14.133
     },
-    "mean": -7.554,
-    "predicted": 6.155,
-    "win": -0.139,
-    "winPredicted": 0.389
+    "mean": -7.733,
+    "predicted": 6.017,
+    "win": -0.181,
+    "winPredicted": 0.431
    }
   },
   {
@@ -14769,25 +14769,25 @@
     "archipelago": {
      "n": 6,
      "won": 0,
-     "endWave": 10.5,
+     "endWave": 10.333,
      "flawless": 0,
      "lost10": 6.333,
-     "boss": 4.944,
-     "lostAll": 21.167,
-     "bossNormal": 3,
-     "bossReached": 1
+     "boss": 5.722,
+     "lostAll": 23.5,
+     "bossNormal": 3.6,
+     "bossReached": 0.833
     }
    },
    "all": {
     "n": 24,
     "won": 0.167,
-    "endWave": 11.042,
+    "endWave": 11,
     "flawless": 0,
     "lost10": 5.875,
-    "boss": 2.514,
-    "lostAll": 13.417,
-    "bossNormal": 2.12,
-    "bossReached": 1.25
+    "boss": 2.708,
+    "lostAll": 14,
+    "bossNormal": 2.27,
+    "bossReached": 1.208
    },
    "weapons": [
     "shield",
@@ -14798,12 +14798,12 @@
      "island": -3.01,
      "behemoth": -4.963,
      "needle": -6.121,
-     "archipelago": -11.56
+     "archipelago": -14.859
     },
-    "mean": -6.414,
-    "predicted": 7.003,
-    "win": -0.287,
-    "winPredicted": 0.454
+    "mean": -7.238,
+    "predicted": 6.762,
+    "win": -0.329,
+    "winPredicted": 0.496
    }
   }
  ]
