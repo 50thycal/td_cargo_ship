@@ -1437,7 +1437,7 @@ function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
   const crx = CARRIER.halfLength + 22;
   const cry = CARRIER.halfBeam + 20;
   bubble(c.x, c.y, crx, cry, 7);
-  if (boost && max) shieldPips(ctx, c.x, c.y - cry - 12, hits, max);
+  if (boost && max) shieldPips(ctx, c.x, c.y - cry - 30, hits, max);
 }
 
 /** Cracks across a shield bubble: more of them, and longer, the more hits
@@ -1445,8 +1445,8 @@ function drawShields(ctx: CanvasRenderingContext2D, g: Game): void {
 function shieldCracks(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, worn: number, seed: number): void {
   const n = Math.ceil(worn * 5);
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-  ctx.lineWidth = 1.3;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
   for (let k = 0; k < n; k++) {
     // A fixed angle round the rim for each crack, from the seed.
     const a = ((seed * 2.39 + k * 2.1) % (Math.PI * 2)) - Math.PI;
@@ -1470,23 +1470,23 @@ function shieldCracks(ctx: CanvasRenderingContext2D, x: number, y: number, rx: n
 /** The Shield's hits left, over the carrier: a pip for each hit it can
  *  still take, a hollow one for each it has taken. */
 function shieldPips(ctx: CanvasRenderingContext2D, x: number, y: number, hits: number, max: number): void {
-  const gap = 11;
+  const gap = 20;
   const x0 = x - ((max - 1) * gap) / 2;
   ctx.save();
   ctx.fillStyle = 'rgba(7,17,25,0.7)';
   ctx.beginPath();
-  ctx.roundRect(x0 - 9, y - 7, (max - 1) * gap + 18, 14, 7);
+  ctx.roundRect(x0 - 14, y - 11, (max - 1) * gap + 28, 22, 11);
   ctx.fill();
   for (let k = 0; k < max; k++) {
     const on = k < hits;
     ctx.beginPath();
-    ctx.arc(x0 + k * gap, y, 3.6, 0, Math.PI * 2);
+    ctx.arc(x0 + k * gap, y, 6.5, 0, Math.PI * 2);
     if (on) {
       ctx.fillStyle = hits === 1 ? '#fca5a5' : '#7dd3fc';
       ctx.fill();
     } else {
       ctx.strokeStyle = 'rgba(226,232,240,0.45)';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
   }

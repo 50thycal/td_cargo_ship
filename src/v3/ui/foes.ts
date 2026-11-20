@@ -563,15 +563,15 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
   ctx.globalAlpha = k;
   // The shadow: a long hull and its sail, blurred at the edge.
   ctx.rotate(a);
-  for (const [grow, alpha] of [[8, 0.12], [4, 0.2], [0, 0.32]] as const) {
+  for (const [grow, alpha] of [[10, 0.16], [5, 0.26], [0, 0.42]] as const) {
     ctx.fillStyle = `rgba(2,10,18,${alpha})`;
     ctx.beginPath();
-    ctx.ellipse(-6, 0, 40 + grow, 9 + grow * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(-8, 0, 56 + grow, 12 + grow * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = 'rgba(2,10,18,0.32)';
+  ctx.fillStyle = 'rgba(2,10,18,0.45)';
   ctx.beginPath();
-  ctx.ellipse(4, 0, 9, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(6, 0, 13, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.rotate(-a);
   // The wake: a V of foam trailing the periscope, shimmering.
@@ -591,11 +591,15 @@ function drawTorpedoSub(ctx: CanvasRenderingContext2D, g: Game, th: Threat): voi
   }
   // The periscope: a dark mast with its head turned, a red glint.
   ctx.fillStyle = '#1f2933';
-  ctx.fillRect(px - 2, py - 14, 4, 14);
-  ctx.fillRect(px - 2, py - 14, 8, 4);
-  ctx.fillStyle = 'rgba(255,77,61,0.9)';
+  ctx.strokeStyle = 'rgba(220,240,255,0.6)';
+  ctx.lineWidth = 1;
+  ctx.fillRect(px - 3, py - 22, 6, 22);
+  ctx.strokeRect(px - 3, py - 22, 6, 22);
+  ctx.fillRect(px - 3, py - 22, 12, 6);
+  ctx.strokeRect(px - 3, py - 22, 12, 6);
+  ctx.fillStyle = 'rgba(255,77,61,0.95)';
   ctx.beginPath();
-  ctx.arc(px + 6, py - 12, 2.5, 0, Math.PI * 2);
+  ctx.arc(px + 9, py - 19, 3.5, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }

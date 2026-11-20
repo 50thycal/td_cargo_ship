@@ -123,7 +123,8 @@ for (const size of [{ width: 667, height: 375 }, { width: 844, height: 390 }]) {
     window.__v3.advance(8);
     g.levels.shield = 3;
     if (!g.slots.includes('shield')) g.slots.push('shield');
-    g.boost = { id: 'shield', level: 3, t: 14, n: 0, bank: 0, crateT: 0, age: 1, hits: 7 };
+    // One of its two hits (MAX) taken: cracked, one pip left.
+    g.boost = { id: 'shield', level: 3, t: 14, n: 0, bank: 0, crateT: 0, age: 1, hits: 1 };
   });
   await page.evaluate(() => window.__v3.advance(4));
   await page.evaluate(() => window.__v3.freeze(true));
@@ -137,7 +138,7 @@ for (const size of [{ width: 667, height: 375 }, { width: 844, height: 390 }]) {
   const { ctx, page } = await open({ width: 844, height: 390 }, 5);
   await page.evaluate(() => window.__v3.advance(6));
   await page.evaluate(() => window.__v3.foe('torpedoSub'));
-  await page.evaluate(() => window.__v3.advance(4.6));
+  await page.evaluate(() => window.__v3.advance(3.4));
   await page.evaluate(() => window.__v3.freeze(true));
   await page.waitForTimeout(400);
   await shot(page, 'sub');
