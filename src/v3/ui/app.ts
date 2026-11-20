@@ -1156,7 +1156,7 @@ export class App {
    *  player: "tell me what the script is essentially ... maybe when u
    *  pause"): on a run with the encounter layer on, the pause screen shows
    *  this wave's encounters (name, role, premise, every beat, and the
-   *  designer's decision, counters and test) and the map's arc in one line,
+   *  designer's decision and test) and the map's arc in one line,
    *  this wave marked. Nothing in it is shown during play. */
   private encounterScript(g: Game): HTMLElement | null {
     if (!g.enc) return null;
@@ -1187,7 +1187,12 @@ export class App {
       ].sort((a, b) => a.at - b.at);
       for (const l of lines) beats.append(el('li', '', l.text));
       const dl = el('dl', 'v3-enc-notes');
-      for (const [k, v] of [['Decision', e.decision], ['Counters', e.counters], ['Works if', e.succeeds]] as const) dl.append(el('dt', '', k), el('dd', '', v));
+      // Round 8 (the player: "we really should not nudge the player with
+      // these kits. They should just figure that out alone through play
+      // testing"): the encounter's `counters` (how the designer would
+      // answer it, at times by kind of weapon) stays a design note in
+      // data/encounters.ts and the map cards, never on screen.
+      for (const [k, v] of [['Decision', e.decision], ['Works if', e.succeeds]] as const) dl.append(el('dt', '', k), el('dd', '', v));
       card.append(title, el('p', 'v3-enc-premise', e.premise), beats, dl);
       box.append(card);
     }
@@ -1862,7 +1867,12 @@ export class App {
           const def = g.map.posts?.[ev.post];
           // News, not something to answer: shown at Call-outs: All only.
           if (def?.kind === 'radar' && ev.lost) this.showBanner('RADAR LOST', 'No more tracking for the rest of the run.', {}, null);
-          else if (def?.kind === 'radar' && !ev.down) this.showBanner('RADAR HIT', `${g.posts[ev.post].hp} hits left.`, {}, null);
+          else if (def?.kind === 'radar' && !ev.down) {
+            // Hits as the player counts them: a missile or shell takes
+            // THREATS.guided.damage of its points (log v32: 6, so three).
+            const left = Math.ceil(g.posts[ev.post].hp / THREATS.guided.damage);
+            this.showBanner('RADAR HIT', `${left} more ${left === 1 ? 'hit' : 'hits'} and it is lost.`, {}, null);
+          }
           else if (def?.kind === 'battery' && ev.down) this.showBanner('BATTERY KNOCKED OUT', 'Back in a few seconds.', {}, null);
           if (ev.down) this.shake = Math.max(this.shake, 10);
           break;

@@ -92,7 +92,7 @@ const marrow: MapDef = {
   subSpots: [{ x: 180, y: 330 }, { x: 1420, y: 330 }, { x: 300, y: 742 }, { x: 1320, y: 742 }],
   bomberLines: [258, 742],
   vectors: { trucks: 2, subs: 3, strafers: 5, bombers: 7 },
-  posts: [{ kind: 'radar', x: 800, y: 318, hp: 4, reach: 400 }],
+  posts: [{ kind: 'radar', x: 800, y: 318, hp: 6, reach: 400 }],
 };
 
 // ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ const BEHEMOTH_BASES: BaseDef[] = [
 const behemoth: MapDef = {
   id: 'behemoth',
   name: 'The Behemoth Run',
-  blurb: 'Once a wave a supertanker crawls through the deep lane. Six hits to sink, worth three ships. Guard it, and the convoy, at once.',
+  blurb: 'Once a wave a supertanker crawls through the deep lane. Eight hits to sink, worth three ships. Guard it, and the convoy, at once.',
   land: [
     { side: 'enemy', points: shore('top', 140, 13, 2.6) },
     { side: 'friendly', points: [{ x: 0, y: 900 }, ...curve(0, 800, 1150, 785, 1.1), { x: 1150, y: 900 }] },

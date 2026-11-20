@@ -213,7 +213,7 @@ describe('each new map\'s own system', () => {
     expect(g2.lost).toBe(VIP.loss);
   });
 
-  it('Lee of Marrow: enemies in the radar\'s sweep are slowed (log v29); four hits and the radar is lost for good', () => {
+  it('Lee of Marrow: enemies in the radar\'s sweep are slowed (log v29); three missiles (6 hit points, log v32) and the radar is lost for good', () => {
     const g = quiet('marrow');
     const r = g.map.posts![0];
     const inSweep = addThreat(g, { x: r.x + 100, y: r.y + 200 });
@@ -229,12 +229,20 @@ describe('each new map\'s own system', () => {
     expect((a.x - ax) / (b.x - bx)).toBeCloseTo(POST.radarSlow, 1);
     expect(POST.radarSlow).toBeGreaterThanOrEqual(0.6);
     expect(POST.radarSlow).toBeLessThanOrEqual(0.7);
-    // Hits on the tower (a guided aimed at it lands on it).
-    for (let k = 0; k < 2; k++) {
+    // Hits on the tower (a guided aimed at it lands on it). Round 8 (log
+    // v32, the player: more hit points so it lasts into the late waves): 6,
+    // so it takes three missiles or shells (2 each), not two.
+    expect(r.hp).toBe(6);
+    const hit = () => {
       addThreat(g, { kind: 'guided', x: r.x, y: r.y + 4, target: -10, speed: 10, hp: 2 });
       step(g, DT);
       step(g, DT);
-    }
+    };
+    hit();
+    hit();
+    expect(g.posts[0].lost).toBe(false);
+    expect(g.posts[0].hp).toBe(2);
+    hit();
     expect(g.posts[0].lost).toBe(true);
     expect(tracked(g, inSweep)).toBe(false);
     run(g, 60);

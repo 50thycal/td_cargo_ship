@@ -18,14 +18,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ThreatKind } from '../../src/v3/data/config';
-import { ENCOUNTERS, LAYER_MAPS, arc, encountersFor, type EncounterVersion } from '../../src/v3/data/encounters';
+import { ENCOUNTER_REV, ENCOUNTERS, LAYER_MAPS, arc, encountersFor, type EncounterVersion } from '../../src/v3/data/encounters';
 import { MAP_PLANS } from '../../src/v3/data/mapPlans';
 import { ABILITIES } from '../../src/v3/data/abilities';
 import { FOES, FOE_OF_KIND, FOE_ORDER, foeCount } from '../../src/v3/data/foes';
 import { MAP_ORDER, chapterOf, type MapId } from '../../src/v3/data/maps';
 import { debuts, kindChapter, mapKindWaves, mapListedKinds, PLAN_WAVES } from '../../src/v3/data/mapRules';
 import { enemyPair, memberChapter, memberKind } from '../../src/v3/data/pairs';
-import { createGame } from '../../src/v3/sim/game';
+import { applyEncounters, createGame, step } from '../../src/v3/sim/game';
 import { isFoe, mapDebut, newFoeState, planFoes } from '../../src/v3/sim/foes';
 
 /** The style kept on every map (round 1): the original encounters. */
@@ -303,6 +303,66 @@ describe('m-enemy: each kind\'s debut in the campaign', () => {
         return undefined;
       });
       expect(Math.min(...waves.map((w) => w ?? Infinity)), `${d.kind} on ${d.map}`).toBe(d.wave);
+    }
+  });
+});
+
+describe('m-kits: a map\'s counter kit is a design note, never a nudge (round 8)', () => {
+  // The player: "we really should not nudge the player with these kits.
+  // They should just figure that out alone through play testing."
+  it('no game code reads MAP_PLANS: only the tools and tests do', () => {
+    const files = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? files(join(dir, d.name)) : d.name.endsWith('.ts') ? [join(dir, d.name)] : []));
+    const readers = files('src').filter((f) => !f.endsWith(join('data', 'mapPlans.ts')) && /mapPlans|MAP_PLANS|mapPlan\(/.test(readFileSync(f, 'utf8')));
+    expect(readers).toEqual([]);
+  });
+
+  it('the draft deals the same cards on every map of a chapter (no map leans the offer)', () => {
+    const firstOffer = (map: MapId, seed: number) => {
+      const g = createGame(map, seed, 1);
+      g.tempo = { ...g.tempo, lossLimit: 1e9 };
+      for (let i = 0; i < 200 * 60 && g.phase === 'wave'; i++) {
+        for (const s of g.ships) s.hp = 999;
+        g.carrierHp = 999;
+        step(g, 1 / 60);
+      }
+      expect(g.phase, map).toBe('draft');
+      return g.offer.join(' ');
+    };
+    for (const seed of [3, 11]) {
+      for (const chapter of [1, 2]) {
+        const maps = MAP_ORDER.filter((m) => chapterOf(m) === chapter);
+        const offers = new Set(maps.map((m) => firstOffer(m, seed)));
+        expect([...offers], `chapter ${chapter}, seed ${seed}`).toHaveLength(1);
+      }
+    }
+  });
+});
+
+describe('m-enemy: chapter 2\'s new enemies each get a light debut wave on the Island (round 8)', () => {
+  // The player's rule: "each new enemy should have its own debut", alone or
+  // with drones only for a wave before it mixes in. The Island's card
+  // (encounters v1) plans each of chapter 2's new enemies on its own wave,
+  // 2 to 5, with nothing else but drones: no shells, missiles, jets or
+  // bombers, and no other new enemy.
+  it('waves 2-5: the debut enemy and drones, nothing else', () => {
+    const island = debuts().filter((d) => d.map === 'island');
+    expect(island.map((d) => `${d.foe ?? d.kind} ${d.wave}`)).toEqual(['attackHeli 2', 'torpedoSub 3', 'armored 4', 'scavenger 5']);
+    for (const seed of SEEDS) {
+      for (const d of island) {
+        const g = createGame('island', seed, d.wave);
+        // The planner's cursor as a run carries it into this wave.
+        g.foe = newFoeState('island');
+        for (let w = 1; w < d.wave; w++) {
+          g.wave = w;
+          planFoes(g, foeCount(w));
+        }
+        g.wave = d.wave;
+        applyEncounters(g, { rev: ENCOUNTER_REV, version: KEPT });
+        const kinds = new Set([...g.queue.filter((l) => l.at < 1e8).map((l) => l.kind), ...g.raiderQueue.flatMap((r) => r.units.map((u) => u.kind))]);
+        expect(kinds.has(d.kind), `seed ${seed} wave ${d.wave}: ${d.kind}`).toBe(true);
+        expect([...kinds].filter((k) => k !== 'drone' && k !== d.kind), `seed ${seed} wave ${d.wave} (${d.kind})`).toEqual([]);
+      }
     }
   });
 });
