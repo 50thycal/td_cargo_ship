@@ -1,0 +1,40 @@
+{
+  "answers": {
+    "r11-airstrike": {
+      "at": "2026-11-20T21:36:19.273Z",
+      "choice": 1,
+      "note": ""
+    },
+    "r12-boilers": {
+      "at": "2026-11-20T21:38:28.464Z",
+      "choice": 1,
+      "note": ""
+    },
+    "r12-lifeboats": {
+      "at": "2026-11-20T21:40:49.799Z",
+      "note": "I think we changed lifeboat up. I forgot to add this comments so with lifeboat I think we can make it an option in the draft that you could pick to give yourself an extra life once again for the first level or maybe you just get one extra for the first level and then for the next, I don’t know it’s kinda hard without breaking too many things here, but I think we could rework it so the players can get an extra life. I don’t think that breaks it too much but the leveling will be kind of hard here so it’s kind of brainstorm in this one.\n\nSome other options might be like all ships automatically get like Health restore or just the carrier gets health restored you know things like that is what we could bring storm on"
+    },
+    "r12-quartermaster": {
+      "at": "2026-11-20T21:40:29.025Z",
+      "note": "Played this one yet, but I mean each level should I give something new so if one level doesn’t give anything we need to brainstorm that Idea though like re-rolling, giving for a bomb maybe number of re-rolls could have like an automatic like level up for one of the weapons too as an option"
+    },
+    "r12-saltgate": {
+      "at": "2026-11-20T21:38:25.692Z",
+      "note": "I say just switch the signature for the canal one we can make it the boss the trucks I had an idea one point that you should just have like a shit ton of trucks for one of the boss ones like they all drive in and what knots and they can shoot missiles and it could be pretty intense if all the ships are like cluster together, so I think that would be the best change here and then we can make the someone on a different map that’s more open, so let’s kind of switch that up just a little bit"
+    }
+  },
+  "reviews": {
+    "r12-play-ch2": {
+      "at": "2026-11-20T21:37:06.497Z",
+      "note": "Only comment here is it says round 123 to say 12 I mean just say like one up two or one or three or one of 32 of three don’t have a whole round there the text wrap and then it looks weird. That’s just for the boss round.",
+      "verdict": "approve"
+    }
+  },
+  "logs": [
+    "v3-20261120142741-31828 saltgate",
+    "v3-20261120153216-2081 archipelago",
+    "v3-20261120154200-2082 needle",
+    "v3-20261120161113-26515 behemoth",
+    "v3-20261120200020-17822 island"
+  ]
+}
