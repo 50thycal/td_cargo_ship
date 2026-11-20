@@ -216,10 +216,18 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch2-saltgate.md
   saltgate: {
     problem: 'Two locks stop the convoy: every ship waits still in a chamber while it fills, right under the silos over the locks, so the enemy fires at ships that cannot move, with banks close on both sides and little warning.',
-    counters: ['shrapnel', 'aegis', 'thermo'],
-    offCounter: ['seeker', 'railgun', 'frigate'],
-    convoy: 'The map\'s own convoy, no commands: pairs west to east down the canal; each lock takes what its chamber holds, shuts and fills, so the ships sail in short bursts and wait, bunched and still, at each gate.',
-    stretches: { danger: 'late', safe: 'middle' },
+    // The fire comes point-blank off the lock silos and from the seas at
+    // ships that cannot move: each ship's own Point Defense needs no warning
+    // and no reach; the Railgun's line runs down the straight canal and the
+    // Scattergun's spread meets threats close in. The Thermobaric Shell is
+    // too slow for the short warning, the Tesla Arc's chain wants threats
+    // bunched near the carrier, and Full Steam cannot hurry a ship through a
+    // shut gate (forced, the combo sweep's singles: docs/design/
+    // v3-ch2-saltgate.md, Kits). Every weapon is in chapter 2's draft.
+    counters: ['aegis', 'railgun', 'scatter'],
+    offCounter: ['thermo', 'tesla', 'fullSteam'],
+    convoy: 'The map\'s own convoy, no commands: pairs west to east down the canal at the campaign\'s own schedule; each lock takes what its chamber holds, shuts and fills, so the ships sail in short bursts and wait, bunched and still, at each gate.',
+    stretches: { danger: 'early', safe: 'late' },
     boss: {
       plan: 'Run the Canal, rising: Torpedo Subs as the round opens (2, 3, 3; the event sends 2), a gunship over the far bank by a lock (1, 1, then 2; 4 then 5 hits), a block of armored drones (4, 6, 6; the event sends 4) and drone swarms (2 of 5, 2 of 6, 3 of 6; the event sends 1 of 5), with clusters and guided missiles off the silos over the locks at the ships held in them (encounters rev 4, MAP_BOSS; lab only).',
       botTarget: 2,
