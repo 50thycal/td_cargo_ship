@@ -855,7 +855,9 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     case 'supply-raid': {
       if (s.op === 'cargo') {
         const n = EV['supply-raid'].drops[s.k];
-        const held = g.slots.filter((id) => (g.levels[id] ?? 0) > 0);
+        // Encounters rev 4 (lab only, MAP_BOSS `cargoWeapons`): the
+        // Archipelago's cargo runs carry fewer weapons.
+        const held = g.slots.filter((id) => (g.levels[id] ?? 0) > 0).slice(0, bossRound(g, ev)?.cargoWeapons?.[s.k] ?? Infinity);
         // No Nuke in the cargo (round 6: "no nukes for these special
         // events"): it used to be the first run's third supply crate.
         const fill: PickupKind[] = s.k === 0 ? ['ammo', 'repair', 'repair', 'ammo', 'repair'] : ['ammo', 'repair', 'ammo'];

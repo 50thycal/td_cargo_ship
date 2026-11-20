@@ -3549,7 +3549,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.35, kind: 'ballistic', count: 3, gap: 0.75, from: sub(2), aim: 'rear' },
       { at: 0.35, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'rear' },
-      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.8, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
     ],
     replaces: { drones: 0, ballistic: 6, guided: 2 },
   },
@@ -3567,7 +3567,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'A submarine by your own shore in the west (500, 742), the west islet\'s silo (swarm), the middle islet\'s silo (guided), the east islet\'s silo (swarm).',
       target: 'The shells, the missile and the west swarm at the ship least far along or nearest its islet, the east swarm at any ship.',
-      usesMap: 'Behind and in front of the long reach at once, in place of the wave\'s shells and guided missiles.',
+      usesMap: 'Behind and in front of the long reach at once, in place of the wave\'s shells, guided missiles and the map\'s own mothership (the signature\'s two are the wave\'s).',
     },
     beats: [
       { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: sub(4), aim: 'rear' },
@@ -3576,7 +3576,7 @@ const ARCHIPELAGO_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
       { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(1) },
     ],
-    replaces: { drones: 0, ballistic: 8, guided: 1 },
+    replaces: { drones: 0, ballistic: 8, guided: 1, extras: { mothership: 1 } },
   },
   {
     id: 'archipelago-strafe',
@@ -3908,6 +3908,11 @@ export interface MapSignature {
    *  each taking out of the wave what the enemy it stands in for would
    *  have (rule w-budget). */
   kind?: ThreatKind;
+  /** The Archipelago (log v36): each signature threat comes with one of
+   *  these (a Scavenger Drone, the Supply Raid's own), its launch taken out
+   *  of the wave's own drones one for one, so the wave sends no more (rule
+   *  w-budget). */
+  escort?: FoeId;
   jets?: BeatAim;
   heavies?: BeatAim;
 }
@@ -3928,8 +3933,10 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // motherships off the west islets, the Supply Raid's (MAP_BOSS), from
   // wave 4: each crawls over the convoy towards the carrier and launches
   // mini-drones as it goes, so the drones come at the ships from wherever
-  // it is.
-  archipelago: { from: 4, kind: 'mothership', foeShare: 1 },
+  // it is. Each comes with a Scavenger Drone, the Supply Raid's own, in
+  // from an edge: it locks the pickups in its ring (the mothership's drop
+  // among them) until it is shot down.
+  archipelago: { from: 4, kind: 'mothership', foeShare: 1, escort: 'scavenger' },
 };
 
 /** A map's signature for a wave under a run's encounter setup (none before
@@ -3994,6 +4001,12 @@ export interface BossRound {
    *  armored drones, `cols` wide (the event's own: 12, 4 wide). */
   block?: number;
   cols?: number;
+  /** The Archipelago's Supply Raid (log v36): at most this many of each
+   *  cargo run's pickups are weapons, run by run (the event's own: one for
+   *  each weapon held, taking turns with the supplies, in both runs). With a
+   *  weapon back twice a round, a Shield or an Air Strike held at its best
+   *  covered the whole round. */
+  cargoWeapons?: number[];
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -4097,9 +4110,9 @@ export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
  *  the far shore and a cluster off the west islet at the ships coming in
  *  (aim 'rear': the long reach). */
 export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
-  { swarms: 6, size: 6, fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 9, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
-  { swarms: 6, size: 10, fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 6, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 2, gap: 4, base: 0 }, { kind: 'ballistic', at: 4, count: 3, gap: 3, base: 3, aim: 'rear' }, { kind: 'cluster', at: 7, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 10, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 4, gap: 2.5, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 2, aim: 'lead' }] },
+  { swarms: 6, size: 10, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 2, count: 3, gap: 2.5, base: 0 }, { kind: 'ballistic', at: 4, count: 5, gap: 2, base: 3, aim: 'rear' }, { kind: 'cluster', at: 6, count: 2, gap: 4, base: 0, aim: 'rear' }, { kind: 'guided', at: 8, count: 1, base: 2, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

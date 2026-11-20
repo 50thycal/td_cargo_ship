@@ -1176,6 +1176,19 @@ function startWave(g: Game): void {
   const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
   const drawn = labFoes(g, cut(foeCount(g.wave), len)) ?? planFoes(g, cut(foeCount(g.wave), len));
   const signed = sig?.foe || sig?.kind ? Math.ceil(drawn.length * (sig.foeShare ?? 1)) : 0;
+  // One drone out of the wave's own (the biggest swarm in a raid, else the
+  // biggest that trickles in), for a signature's extra launch.
+  const takeDrone = (): boolean => {
+    const r = units.reduce((b, u, i) => (u.kind === 'drone' && (b < 0 || u.size > units[b].size) ? i : b), -1);
+    if (r >= 0) {
+      if (--units[r].size <= 0) units.splice(r, 1);
+      return true;
+    }
+    const t = swarms.slice(0, trickle).reduce((b, n, i) => (n > 1 && (b < 0 || n > swarms[b]) ? i : b), -1);
+    if (t < 0) return false;
+    swarms[t]--;
+    return true;
+  };
   for (let k = 0; k < drawn.length; k++) {
     const id = drawn[k];
     replace('drone', 1);
@@ -1188,17 +1201,13 @@ function startWave(g: Game): void {
     let size = 1;
     if (k < signed && sig!.block) {
       for (let more = sig!.block - 1; more > 0; more--) {
-        const r = units.reduce((b, u, i) => (u.kind === 'drone' && (b < 0 || u.size > units[b].size) ? i : b), -1);
-        if (r >= 0) {
-          if (--units[r].size <= 0) units.splice(r, 1);
-        } else {
-          const t = swarms.slice(0, trickle).reduce((b, n, i) => (n > 1 && (b < 0 || n > swarms[b]) ? i : b), -1);
-          if (t < 0) break;
-          swarms[t]--;
-        }
+        if (!takeDrone()) break;
         size++;
       }
     }
+    // The Archipelago (log v36, MAP_SIGNATURE `escort`): a Scavenger Drone
+    // with each mothership, its launch one drone out of the wave's own.
+    if (k < signed && sig!.escort && takeDrone()) units.push({ kind: FOES[sig!.escort].kind, size: 1 });
     // The Archipelago (log v36, MAP_SIGNATURE `kind`): one of the map's own
     // threat kinds (a drone mothership) in place of the enemy.
     units.push({ kind: k < signed ? (sig!.kind ?? FOES[sig!.foe!].kind) : FOES[id].kind, size });

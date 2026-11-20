@@ -198,7 +198,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -211,7 +211,9 @@ try {
   check(hub.island === enc1 && hub.behemoth === enc1, `the Island and the Behemoth Run say they open with their encounters (${hub.island} | ${hub.behemoth})`);
   // The Needle of Bosk (docs/design/v3-ch2-needle.md): the same.
   check(hub.needle === enc1, `the Needle of Bosk says it opens with its encounters (${hub.needle})`);
-  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.archipelago ?? ''), `a map with no commands or encounters yet says so ("${hub.archipelago}")`);
+  // The Archipelago (docs/design/v3-ch2-archipelago.md): the same.
+  check(hub.archipelago === enc1, `the Archipelago says it opens with its encounters (${hub.archipelago})`);
+  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.saltgate ?? ''), `a map with no commands or encounters yet says so ("${hub.saltgate}")`);
   await shot(page, 'hub-card');
 
   // ---- Tap The Strait's card: wave 1, no command (round 11), no Bring one ----
@@ -450,8 +452,8 @@ try {
   check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 4 && s5.count === 'full map · wave 1/13', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
   // Chapter 1: the bare link to the Kesh Hook and Lee of Marrow opens the
   // full map with their encounters (rev 4) and no command; chapter 2's
-  // Island, Behemoth Run and Needle of Bosk the same.
-  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle']) {
+  // Island, Behemoth Run, Needle of Bosk and Archipelago the same.
+  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago']) {
     await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.playing.lab-on');
     await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
