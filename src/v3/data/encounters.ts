@@ -3814,9 +3814,9 @@ export const BEHEMOTH_BOSS_ROUNDS: BossRound[] = [
  *  queue at the mouth (aim 'near': the ship nearest the silo, early in the
  *  round) and a shell into the Needle late in it. */
 export const NEEDLE_BOSS_ROUNDS: BossRound[] = [
-  { block: 7, cols: 4, fire: [{ kind: 'cluster', at: 6, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
-  { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
-  { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 13, count: 1, base: 2, aim: 'near' }] },
+  { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 6, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 12, count: 1, base: 2, aim: 'near' }] },
+  { block: 8, cols: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 9, count: 2, gap: 3, base: 2, aim: 'near' }] },
+  { block: 9, cols: 3, fire: [{ kind: 'cluster', at: 4, count: 1, base: 2, aim: 'near' }, { kind: 'ballistic', at: 9, count: 2, gap: 4, base: 2, aim: 'near' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
