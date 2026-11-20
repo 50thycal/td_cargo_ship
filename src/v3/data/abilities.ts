@@ -402,7 +402,7 @@ export const ABILITIES: Record<AbilityId, AbilityDef> = {
     levels: [
       'For 15 s, ships and the carrier take no damage from missiles, drones and boats; breaks on the first hit',
       'Takes 2 hits before it breaks; every hit it blocks puts 1 round back in the rack',
-      'Lasts 18 s; a blocked missile bounces back and bursts on what is behind it',
+      'Takes 3 hits and lasts 18 s; a blocked missile bounces back and bursts on what is behind it',
     ],
     how: 'Your hulls are shielded',
   },
@@ -669,9 +669,10 @@ export const AB = {
   // after x amount of hits, not damage but actual hits"): it breaks after
   // `hits` hits stopped, a level (log v34). Tuned on the combo sweep's
   // singles on the chapter 2 maps (docs/design/v3-playtest-fixes.md): at
-  // MAX, 2 hits puts it mid-pack alone (Island #9, Behemoth #10 of 20);
-  // 3 left it #3 on both, 5 #3 too, unbreakable #1-2.
-  shield: { time: [1, 1, 1.2], refund: [0, 1, 1], hits: [1, 2, 2], bounce: 110, burst: 70 },
+  // MAX 3 puts it in the middle alone on round 9's maps (12 seeds: Island
+  // about #6, the Behemoth Run about #13 of 20; unbreakable it was #3 on
+  // both, and #1 alone on the Behemoth Run before round 9).
+  shield: { time: [1, 1, 1.2], refund: [0, 1, 1], hits: [1, 2, 3], bounce: 110, burst: 70 },
   /** Hyper Overdrive (Overdrive MAX): every shot fires twice, the second
    *  `twin` px to the side of the first (from its own muzzle) so both show
    *  (Test Lab round 5: "it should clearly show two projectiles"). */
