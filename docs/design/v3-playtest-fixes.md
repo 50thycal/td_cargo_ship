@@ -48,6 +48,17 @@ Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 - 3 puts it mid-pack on both.
 - Files: `tools/v3/combo-sweep/results/v35-ch2-playtest-fixes/singles.json` (after) and `v34-ch2-before-playtest-fixes/` (before). The tables are in `tools/v3/playtest-fixes/results/singles-v3{4,5}.txt`.
 
+**Round 11: 2 / 3 / 4 (log v39).** The player chose the softer setting on the hub ("Softer: 2 / 3 / 4"): the Shield now breaks after **2 hits at level 1, 3 at level 2, 4 at MAX**. The same singles, all five chapter 2 maps, 12 seeds (`npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth,needle,archipelago,saltgate --out=tools/v3/combo-sweep/results/v39-ch2-shield`). Shield alone, levelled to MAX, ships lost per run with every wave played, rank of 20:
+
+| Shield alone | The Island | The Behemoth Run | The Needle | The Archipelago | Saltgate Canal |
+| --- | --- | --- | --- | --- | --- |
+| before: 1 / 2 / 3 (v37; Saltgate v38) | #17, 11.00 | #13, 10.67 | #6, 7.50 | #17, 28.42 | #12, 8.67 |
+| **after: 2 / 3 / 4 (v39)** | **#11**, 8.92 | **#11**, 10.00 | **#15**, 8.92 | **#17**, 27.00 | **#11**, 8.33 |
+
+- Every other weapon's runs are the same games as before (only the Shield changed), so the ranks move by the Shield alone.
+- It gains on the Island and a little on the Behemoth Run and Saltgate, and stays near the bottom on the Archipelago. It doesn't return to the top 3.
+- The Needle's drop (7.5 to 8.9 ships) is against the change's direction and inside the noise: 12 seeds, standard errors about 0.5–1, and the Needle's singles were already the noisiest (`docs/design/v3-combo-diversity.md`).
+
 ## 3. The attack helicopter fires as soon as it can
 
 > "it doesn't need to go to a specific spot it should just start hitting targets"
@@ -279,7 +290,7 @@ Ships lost each wave, your run against the mirror's mean (v35):
 
 ## Questions for you
 
-1. **Shield at 1/2/3 hits:** is a level-1 Shield that breaks on its first hit too fragile? *Recommended: keep 1/2/3.* It is mid-pack now, and 2/3/4 would put it back near the top.
+1. **Answered (round 11): 2 / 3 / 4.** ~~**Shield at 1/2/3 hits:** is a level-1 Shield that breaks on its first hit too fragile? *Recommended: keep 1/2/3.* It is mid-pack now, and 2/3/4 would put it back near the top.~~ Built in log v39; see the table above.
 2. **The sub now always fires:** that makes the Behemoth Run's early waves and the Island's wave 3 a little harder, even at 2 torpedoes a sub. *Recommended: keep 2 torpedoes and watch your next Behemoth run.* If it feels harsh, slower torpedoes are the next lever.
 3. **The rating screen:** it shows after every wave 1–10 in the campaign and Free Play too, not just map cards. *Recommended: keep it everywhere playtest notes are on.*
 

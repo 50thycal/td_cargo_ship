@@ -433,8 +433,9 @@ try {
   await page.click('[data-screen="review"] [data-axis="fun"] [data-n="3"]');
   await page.click('[data-screen="review"] [data-axis="effort"] [data-n="2"]');
   await page.click('.v3-review-done');
-  const runRating = await page.evaluate(() => window.__v3.log().rating);
-  check(JSON.stringify(runRating) === '{"fun":3,"effort":2}', `the run's rating, Effort included, is in the log (${JSON.stringify(runRating)})`);
+  // The sealed log is stored (and sent) again with it.
+  const runRating = await page.evaluate(() => (JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') ?? '[]').at(-1) ?? {}).rating ?? null);
+  check(JSON.stringify(runRating) === '{"fun":3,"effort":2}', `the run's rating, Effort included, is in the stored log (${JSON.stringify(runRating)})`);
   await page.waitForSelector('[data-screen="result"]');
 
   // ---- Free Play (round 7): any map, wave, weapons and Armory; nothing counts ----
