@@ -213,12 +213,24 @@ import type { EncounterSetup } from '../data/encounters';
  *      Magazine adds a round at every level (11 at level 5, was 10). A v32
  *      log with any of those four in its `armory` no longer replays to the
  *      same game; one without them does, but only its own version replays
- *      here. */
-export const LOG_VERSION = 33;
+ *      here.
+ *  34: the player's round 9 (docs/design/v3-combo-diversity.md, "Round
+ *      9"; built as 33 beside the Armory overhaul, merged after it as
+ *      34): Overdrive lasts 18 s from level 1 (was 15; level 2 and MAX
+ *      21 s, was 18; campaign and lab); chapter 2's maps each get a signature
+ *      threat (MAP_SIGNATURE, lab: the Island's new enemies are attack
+ *      helicopters from wave 6; the Behemoth Run's jets and heavies go for
+ *      the supertanker from wave 4), and the Behemoth Run's boss rounds are
+ *      a strike on the tanker led by jets, which the Shield never stops,
+ *      in place of most of the Wolf Pack's subs (MAP_BOSS, lab; a boss
+ *      round's `fire` may send jets). A v33 log with Overdrive,
+ *      or a v33 Island or Behemoth card log, no longer replays to the same
+ *      game. */
+export const LOG_VERSION = 34;
 /** The log versions this build replays exactly (only its own: round 11
  *  changed the game). Tools that replay logs (Map Analytics, the map lab)
  *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [33];
+export const LOG_REPLAYS: readonly number[] = [34];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
