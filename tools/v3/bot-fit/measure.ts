@@ -19,7 +19,13 @@ import { CARRIER_TARGET, released, step, timeToImpact, worthShooting, type Game 
 export const PLAYER_ARMORY: ArmoryLevels = { reload: 5, repair: 4, stockpile: 5 };
 /** The player's latest Armory (2026-11-19, chapter 2's rebuild: Wide Warhead
  *  5, Point Defense 4, Supply Lines 3): a second "good player" yardstick for
- *  the bot reports (`--armory=latest`). */
+ *  the bot reports (`--armory=latest`).
+ *
+ *  The Armory overhaul (LOG_VERSION 32) kept every id and every level a save
+ *  holds, so both presets are still the player's levels: Quick Reload 5,
+ *  Damage Control 4, Stockpile 5 (now the lifted −40% reload and 3.25× /
+ *  2.5× power-ups), and Wide Warhead 5, Deck Guns 4 (`pointdef`, renamed),
+ *  Supply Lines 3 (unchanged numbers). Each is still one card a bay. */
 export const LATEST_ARMORY: ArmoryLevels = { warhead: 5, pointdef: 4, drops: 3 };
 
 /** Taps under this many real seconds apart are one burst. */

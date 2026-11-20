@@ -10,7 +10,7 @@
 // rate to the target, at the Armory a player has when they reach it.
 
 import { ABILITY_ORDER, type AbilityId } from '../../../src/v3/data/abilities';
-import { ARMORY, BAY_ORDER, bayItems, cardsFor, drawCards, type ArmoryId, type ArmoryLevels } from '../../../src/v3/data/armory';
+import { ARMORY, ARMORY_ORDER, BAY_ORDER, bayItems, cardsFor, findCards, scrapFor, spendScrap, type ArmoryId, type ArmoryLevels } from '../../../src/v3/data/armory';
 import { MAPS, MAP_ORDER, type MapId } from '../../../src/v3/data/maps';
 import { runBot, SKILLS, type BotRun } from '../../../src/v3/sim/bot';
 import { playMimic } from '../../../src/v3/sim/mimic';
@@ -63,6 +63,7 @@ for (let c = 0; c < campaigns; c++) {
   const rng = makeRng(0xa4e0 + (c + offset) * 7919);
   let seed = 5000 + (c + offset) * 1000;
   let seconds = 0;
+  let bank = 0;
   for (const map of MAP_ORDER) {
     (kits[map] ??= []).push(loadout(owned));
     let n = 0;
@@ -71,7 +72,11 @@ for (let c = 0; c < campaigns; c++) {
       const r = play(map, seed++, loadout(owned));
       n++;
       seconds += realSeconds(r);
-      drawCards(owned, cardsFor({ wavesCleared: r.wavesCleared, cleared: r.won }, r.won && first), (k) => rng.int(k));
+      // The Armory overhaul: cards are finds, levels are bought with Scrap
+      // (spent on the loadout's cards first, then the rest).
+      const found = findCards(owned, cardsFor({ wavesCleared: r.wavesCleared, cleared: r.won }, r.won && first), (k) => rng.int(k));
+      bank += scrapFor({ waves: Math.min(r.wavesCleared, 10), boss: Math.max(0, r.wavesCleared - 10) }, r.won, r.won && first, found.filter((f) => f.dup).length).total;
+      bank = spendScrap(owned, spendScrap(owned, bank, Object.keys(loadout(owned)) as ArmoryId[]), ARMORY_ORDER);
       if (r.won) first = false;
       if (r.won || n >= CAP) break;
     }

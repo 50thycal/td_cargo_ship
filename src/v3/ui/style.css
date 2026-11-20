@@ -7566,3 +7566,212 @@ a.v3-lab-page {
     transform: none;
   }
 }
+
+/* ---- The Armory overhaul: Scrap (docs/design/v3-armory-overhaul.md) ---- */
+
+/* Four cards a bay (Gun and Supply), three for Hull. */
+.v3-armory-cards.n4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(100%, 820px);
+  margin: 0 auto;
+}
+
+/* The card whose bar is open: a cyan frame (gold is EQUIPPED). */
+.v3-armory .v2-card.picked:not(.chosen) {
+  --edge: var(--accent);
+  filter: brightness(1.08);
+}
+
+.v3-armory .v2-card.picked.chosen {
+  --edge: var(--gold);
+  outline: 1.5px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The bank in the screen head and the run's ledger: amber readouts. */
+.v3-scrap-count b {
+  font-family: var(--mono);
+  color: var(--amber);
+}
+
+.v3-scrap-count .v3-cards-n {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.v3-scrap-count i {
+  font-style: normal;
+  margin: 0 6px;
+  opacity: 0.5;
+}
+
+/* A card's next level in the Armory: what it costs (amber when banked). */
+.v3-card-cost {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.v3-card-cost.ok {
+  color: var(--amber);
+}
+
+/* The bar under the cards: the picked card, Equip and Level up. */
+.v3-armory-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 820px);
+  margin: 0 auto;
+  padding: 6px 8px 6px 12px;
+  border: 1px solid var(--cic-line);
+  border-left: 3px solid var(--card-color, var(--accent));
+  border-radius: 3px;
+  background: var(--brackets), var(--cic-fill);
+}
+
+.v3-armory-bar-what {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.v3-armory-bar-what strong {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--card-color, var(--ink));
+}
+
+.v3-armory-bar-what span {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-armory-bar-btns {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.v3-armory-bar .v2-btn {
+  min-height: 40px;
+  padding: 4px 14px;
+}
+
+.v3-level-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 150px;
+  line-height: 1.15;
+}
+
+.v3-level-btn b {
+  font-size: 13px;
+}
+
+.v3-level-btn span {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.v3-level-btn.ready {
+  border-color: var(--amber);
+  color: var(--amber);
+  box-shadow: inset 0 0 0 1px rgb(255 181 71 / 0.25), 0 0 14px rgb(255 181 71 / 0.18);
+}
+
+.v3-level-btn.ready span {
+  color: color-mix(in srgb, var(--amber) 75%, var(--ink));
+}
+
+.v3-level-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* In the run: the HUD's Scrap read-out, amber like the bank. */
+.v2-hud .v3-hud-scrap {
+  color: var(--amber);
+}
+
+/* The result screen: the run's Scrap, line by line. */
+.v3-scrap-ledger {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.v3-scrap-ledger b {
+  font-size: 14px;
+  color: var(--amber);
+}
+
+.v3-scrap-ledger .v3-scrap-bank {
+  color: var(--ink);
+}
+
+.v2-stats .v3-scrap-stat b {
+  color: var(--amber);
+}
+
+/* A card found again: it paid Scrap, so it reads as Scrap, not a level. */
+.v3-won-cards .v2-card.dup .v2-badge {
+  background: var(--amber);
+  color: #1a1206;
+}
+
+@media (max-height: 430px) {
+  .v3-armory-bar {
+    padding: 4px 6px 4px 10px;
+  }
+  .v3-armory-bar .v2-btn {
+    min-height: 34px;
+    padding: 3px 12px;
+  }
+  .v3-level-btn {
+    min-width: 132px;
+  }
+}
+
+@media (max-width: 560px) {
+  .v3-armory-bar {
+    flex-wrap: wrap;
+  }
+  .v3-armory-bar-btns {
+    width: 100%;
+  }
+  .v3-armory-bar-btns .v2-btn {
+    flex: 1;
+  }
+}
+
+/* The menu's Armory key while a level can be bought: the count glows. */
+.v3-armory-btn.v3-can-level .v3-count {
+  background: var(--amber);
+  box-shadow: 0 0 10px rgb(255 181 71 / 0.55);
+}

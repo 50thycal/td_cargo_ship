@@ -1,7 +1,7 @@
 // Writes docs/design/v3-armory-overhaul.md from ideas.mjs (the same data
 // as the review page, so the two can't drift).
 // Usage: node tools/v3/armory-ideas/doc.mjs
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import {
   DATE, PLAYER_ASK, PLAYER_LIFT, TODAY, UPGRADES, BAYS, BAYS_NOW, BAY_OPTIONS, SCRAP, SCRAP_PER_LEVEL_TOTAL, SCRAP_WIN, PACING,
   ALTERNATIVES, NEW_COUNT, NEW_UPGRADES, LIFT_NOTE, LIFT_ITEMS, LIFT_BUILDS, LIFT_WATCH, QUESTIONS, ELSE_ID, LIFT, SWEEP_SEEDS, SWEEP_NONE, sweepSaved, lift, fill, allIds,
@@ -12,10 +12,13 @@ const REC = { keep: 'Keep', change: 'Change', merge: 'Merge', cut: 'Cut' };
 const L = [];
 const p = (...x) => L.push(...x);
 
-p(`# V3 Armory overhaul (brainstorm, round ar1)`, '');
-p(`> Made by \`node tools/v3/armory-ideas/doc.mjs\` from \`tools/v3/armory-ideas/ideas.mjs\`, ${DATE}. The review page is made from the same data by \`tools/v3/armory-ideas/page.mjs\`. Nothing here is applied to the game yet.`, '');
+p(`# V3 Armory overhaul (round ar1: brainstorm and build)`, '');
+p(`> Made by \`node tools/v3/armory-ideas/doc.mjs\` from \`tools/v3/armory-ideas/ideas.mjs\`, ${DATE}. The review page is made from the same data by \`tools/v3/armory-ideas/page.mjs\`. The brainstorm below is as the player marked it; what was built from the marks is the first section (hand-written in \`tools/v3/armory-ideas/built.md\`).`, '');
 p(`The player asked (${DATE}):`, '', `> ${PLAYER_ASK}`, '');
 p(`and picked, as a quick fix:`, '', `> ${PLAYER_LIFT}`, '');
+
+// What was built from the player's marks (hand-written, kept on a re-run).
+p(readFileSync(new URL('./built.md', import.meta.url), 'utf8').trimEnd(), '');
 
 p('## The short version', '');
 p(
@@ -74,7 +77,7 @@ p('| Candidate | Bay | Gap it fills | What it does | Risk | |', '| --- | --- | -
 for (const n of NEW_UPGRADES) p(`| ${n.name} | ${BAYS[n.bay].name} | ${f(n.gap)} | ${f(n.pitch)} | ${f(n.risk)} | ${n.rec ? '**recommended**' : 'spare'} |`);
 p('');
 
-p('## The short-term lift (not yet applied)', '');
+p('## The short-term lift (measured before the build; applied, see What was built)', '');
 p(f(LIFT_NOTE), '');
 p(`Measured with \`tools/v3/armory-ideas/lift.ts\` (configs in \`candidates.mjs\`; runs in \`lift-runs.jsonl\`, summed by \`summarize.mjs\` into \`lift-results.json\`). A candidate replaces the run’s Armory numbers after the run is made, so no game code changed; the rack refill is played by the harness (a pickup is counted, then the rack is filled).`, '');
 p('| Config | Ships lost a run | Saved | ± |', '| --- | --- | --- | --- |');

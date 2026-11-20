@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-Merged: the UI overhaul (opens straight into V3, command-room look, “Ready to test” first in the Test Lab) and the bot that plays Overdrive like you. Being built: your Armory overhaul (the lift, Scrap, Deck Guns) and the round 8 changes (Marrow’s tower, The Island’s debut waves, no kit nudges). Needs you: play Kesh, Marrow, The Island and The Behemoth Run, and four quick questions (Overdrive, map signatures, the Behemoth’s boss, new Armory upgrades).
+Ready for you: play the four maps in Test Lab → Ready to test (Kesh, Marrow, The Island, The Behemoth Run; play log v32). Being built, merged after your play: the Armory overhaul (Scrap, the lift, Deck Guns), Overdrive’s buff, chapter 2’s signature threats and the Behemoth’s new boss.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.
