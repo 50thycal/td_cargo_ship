@@ -168,6 +168,19 @@ try {
   check(bothRun.same && bothRun.problems.length === 0, `and that run replays to the same telemetry (${bothRun.problems[0] ?? 'no problems'})`);
   await page.screenshot({ path: `${OUT_DIR}/harbor-encounter-tactical.png` });
 
+  // ---- Saltgate Canal (log v42): the trucks come to the locks, and the
+  // boss is the Gatecrashers ----
+  // The full map from wave 1: the pause screen's script names the boss
+  // and sends no torpedo sub.
+  await open(page, 'lab=map-saltgate&seed=7');
+  const sg = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev }));
+  check(sg.map === 'saltgate' && sg.rev === ENCOUNTER_REV, `Saltgate's card opens with its encounters (${JSON.stringify(sg)})`);
+  await labMenu(page);
+  const arcLine = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Gatecrashers/.test(arcLine), `Saltgate's script names its boss, the Gatecrashers (${arcLine})`);
+  check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
+  await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
+
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-battery', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);

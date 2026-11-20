@@ -239,7 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
-## Saltgate Canal: chapter 2's fifth map (game version 38)
+## Saltgate Canal at game version 42: the trucks
+
+> 2026-11-20. The player's answer to the v38 card made Saltgate's boss a truck assault (the Gatecrashers) and its signature "the trucks come to the locks" (Rocket Trucks for half the wave's new enemies from wave 4, the wave's clusters at the locks; no Torpedo Sub on the map; docs/design/v3-ch2-saltgate.md, "Log v42"). Swept again the same way at version 42 (on top of v41's cluster climb and sub sites): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16. The other four maps are read from `results/v37-ch2` as at v38 (not re-swept at v41). Results: `tools/v3/combo-sweep/results/v42-ch2`; the comparison: `python3 tools/v3/saltgate/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Saltgate Canal (v42) | **Air Strike + Boomerang + Tesla Arc** 5.1 ±0.7, won 88% | Air Strike + Gunship Pair + Supply Run 5.2 | Shrapnel Shell + Thermobaric Shell + Railgun 5.4 | Air Strike + Boomerang + Railgun 5.8 | Air Strike + Scattergun + Railgun 5.9 |
+
+| Measure | v42 | v38 |
+| --- | --- | --- |
+| Jaccard of the top-5 kits, Saltgate against the Island / Behemoth / Needle / Archipelago | **0 / 0 / 0 / 0** | 0.11 / 0 / 0 / 0 |
+| The same, Saltgate against itself (two halves of its seeds) | 0.25 | 0.67 |
+| #1 kit | its own | its own |
+| Best weapon alone | **Thermobaric Shell** 4.8 (Gravity Well 5.0, Frigate Escort 5.1, Point Defense 5.7, Air Strike 5.9) | Point Defense 5.8 |
+| Rank correlation of the weapons alone, Saltgate against the Island / Behemoth / Needle / Archipelago | 0.43 / 0.58 / 0.49 / 0.57 | 0.70 / 0.84 / 0.35 / 0.60 |
+
+### Reading
+
+- **All five of Saltgate's best kits are its own** (the v38 overlap with the Island's #1 is gone), and its best weapon alone is neither Air Strike nor the v38 Point Defense: Thermobaric Shell, an area weapon that catches a truck column on the road.
+- **Air Strike is still in four of its five best kits**, and fifth alone: it stays the best single on three maps of five, not four.
+- **The weapons alone rank less like the other maps' than at v38** (0.43–0.58 against 0.35–0.84).
+- **The halves agree less** (0.25): Saltgate's top kits are within a standard error of each other, so their order is noise; that none is another map's is not.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=saltgate --out=tools/v3/combo-sweep/results/v42-ch2
+npm run v3:combo-sweep -- --stage=pairs --maps=saltgate --out=tools/v3/combo-sweep/results/v42-ch2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v42-ch2 --maps=saltgate --json=tools/v3/combo-sweep/results/v42-ch2/diversity.json
+python3 tools/v3/saltgate/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=saltgate --seeds=4
+```
+
+## Saltgate Canal: chapter 2's fifth map (game version 38) (before log v42's trucks)
 
 > 2026-11-20. Saltgate Canal rebuilt to the map rules (docs/design/v3-ch2-saltgate.md), with a signature of its own: a strike on the locks (torpedo subs for half the wave's new enemies, and the wave's clusters at the ships held in a lock) from wave 4. The player's rule: its best kits and best weapon alone must differ from the other four chapter 2 maps', and Air Strike, the best single on three of them, should not become a fourth's. Saltgate was swept at version 38 the same way: singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16. The other four maps play the same game at 38 as at 37 (the build changes nothing of theirs), so they are read from `results/v37-ch2`. Results: `tools/v3/combo-sweep/results/v38-ch2`.
 

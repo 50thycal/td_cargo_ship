@@ -79,7 +79,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, signatureOf, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -415,6 +415,12 @@ export interface Launch {
    *  it is aimed at as it leaves. */
   enc?: string;
   aim?: BeatAim;
+  /** A Rocket Truck (log v42, Saltgate Canal): the pop-up road it takes
+   *  (its index; absent, one at random), its salvos (absent, its own) and
+   *  its speed driving in (× its own). */
+  road?: number;
+  salvos?: number;
+  drive?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1224,7 +1230,10 @@ function startWave(g: Game): void {
     return true;
   };
   for (let k = 0; k < drawn.length; k++) {
-    const id = drawn[k];
+    // Log v42 (MAP_FOE_SWAP, lab only): Saltgate Canal sends no Torpedo
+    // Sub; one drawn comes as a Rocket Truck (as heavy, so the wave sends
+    // the same).
+    const id = swapFoe(g.map.id, g.wave, drawn[k], g.enc?.setup);
     // A Torpedo Sub drawn before its map lets it in stays a drone swarm.
     if (id === 'torpedoSub' && k >= signed && g.wave < (SUB_FROM[g.map.id] ?? 0)) continue;
     replace('drone', 1);
@@ -1296,7 +1305,9 @@ function startWave(g: Game): void {
       }
       // A new enemy that doesn't come out of a base comes on its own.
       if (isFoe(u.kind) && !fromBase(u.kind)) {
-        queue.push({ at, kind: u.kind, base: -1 });
+        // Saltgate Canal (log v42, MAP_SIGNATURE `trucks`): the wave's
+        // Rocket Trucks fire at the ships held at the locks.
+        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1429,6 +1440,12 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim });
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
         start = Math.min(start, at - RAID.warn);
+      } else if ('road' in b.from) {
+        // Log v42 (Saltgate Canal): a Rocket Truck down a pop-up road; the
+        // truck itself is its warning (it drives in, then raises its
+        // launcher, a ring filling round it, before its first salvo).
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, road: b.from.road, enc: e.id, ...aim, ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.drive !== undefined ? { drive: b.drive } : {}) });
+        start = Math.min(start, at);
       } else if ('sub' in b.from) {
         // It shows its periscope and surfaces first, so its salvo starts at `at`.
         const up = Math.max(0.2, at - SUB.warn - SUB.surface);
@@ -1481,7 +1498,7 @@ function updateEncCalls(g: Game): void {
  *  nearest halfway along its lane; 'post', the map's allied structure while
  *  it stands (Lee of Marrow's radar), else the ship nearest where it stood.
  *  Chapter 2's Behemoth Run: 'vip', the supertanker while it sails. */
-function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
+export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   let from: Point = { x: th.x, y: th.y };
   if (aim === 'post' && g.map.posts) {
     const up = g.map.posts.map((_, i) => i).filter((i) => postUp(g, i));

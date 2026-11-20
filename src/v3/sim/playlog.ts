@@ -286,12 +286,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      hovers is kept whole on the screen. A Test Lab "Skip to boss" log
  *      has a lab `loadout`, and a retry or skip a `retry` record. A v40 log
  *      with a cluster missile, a torpedo sub or the Gunship Pair no longer
- *      replays to the same game. */
-export const LOG_VERSION = 41;
-/** The log versions this build replays exactly (only its own: round 12
- *  changed the game). Tools that replay logs (Map Analytics, the map lab)
- *  take any of these. */
-export const LOG_REPLAYS: readonly number[] = [41];
+ *      replays to the same game.
+ *  42: Saltgate Canal's trucks (docs/design/v3-ch2-saltgate.md; lab, under
+ *      the encounter layer; the player's answer to the v38 card): the boss
+ *      is the Gatecrashers, columns of Rocket Trucks down to the banks by
+ *      the locks (MAP_BOSS.saltgate `trucks`, `name`, `truck`; a truck aimed
+ *      'lock' marks its ship and may fire a cluster), the signature is
+ *      Rocket Trucks at the locks (MAP_SIGNATURE.saltgate `foe`, `trucks`),
+ *      no Torpedo Sub on the map (MAP_FOE_SWAP), a truck down a road in an
+ *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
+ *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
+ *      longer replays to the same game; the campaign plays as it did. */
+export const LOG_VERSION = 42;
+/** The log versions this build replays exactly. Tools that replay logs
+ *  (Map Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [42];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

@@ -712,7 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'saltgate', log: 38, tag: 'New', note: 'Ships wait still in the locks under the silos; torpedo subs and clusters. Fair?' },
+  { map: 'saltgate', log: 42, tag: 'Polished', note: 'Trucks come to the locks: shoot them on the road. Boss: a truck assault. Intense?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },
   { map: 'behemoth', log: 34, tag: 'Polished', note: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike. Shield no help?' },

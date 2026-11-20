@@ -277,10 +277,11 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 41 (round 12: cluster missiles climb before they split, torpedo subs at good sites, the Gunship row on screen; after 40, four new Armory upgrades, 39, the Shield takes 2 / 3 / 4 hits, 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest); only its own version replays here', () => {
-    expect(LOG_VERSION).toBe(41);
-    expect(LOG_REPLAYS).toEqual([41]);
-    expect(replaysHere(41)).toBe(true);
+  it('the log is version 42 (Saltgate Canal\'s trucks; after 41, round 12\'s cluster climb and sub sites, 40, four new Armory upgrades, 39, the Shield takes 2 / 3 / 4 hits, 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest); only 42 replays here (a v40 Saltgate card log plays a different game)', () => {
+    expect(LOG_VERSION).toBe(42);
+    expect(LOG_REPLAYS).toEqual([42]);
+    expect(replaysHere(42)).toBe(true);
+    expect(replaysHere(41)).toBe(false);
     expect(replaysHere(40)).toBe(false);
     expect(replaysHere(39)).toBe(false);
     expect(replaysHere(38)).toBe(false);

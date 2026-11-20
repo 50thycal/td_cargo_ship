@@ -114,6 +114,9 @@ export interface EventRun {
   /** A heavy in rings of guards (the Escort Run, Siege of Vey's): its id,
    *  its own speed, and how much each ring stripped speeds it up. */
   escort?: { id: number; speed: number; slow: number; per: number; rings: number };
+  /** Saltgate Canal's Gatecrashers (log v42): each truck column's road,
+   *  down to the bank by its lock and along it over the chamber. */
+  roads?: Point[][];
 }
 
 /** An armored block's numbers (the Shield Wall's, or a finale's smaller
@@ -656,6 +659,21 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'run-the-canal': {
+      // Log v42 (encounters rev 4, lab only; docs/design/v3-ch2-saltgate.md):
+      // Saltgate Canal's boss is the Gatecrashers, columns of Rocket Trucks
+      // down to the banks by the locks (MAP_BOSS `trucks`), with drone
+      // swarms and launches of their own.
+      const T = bossRound(g, ev);
+      if (T?.trucks) {
+        ev.roads = T.trucks.map((c) => bankRoad(g, c.lock, c.bank));
+        return [
+          ...T.trucks.flatMap((c, col) => Array.from({ length: c.count }, (_, i): EventStep => ({ at: B + c.at + i * c.gap, op: 'ctruck', k: col * 100 + i }))),
+          // The swarm comes as the column sets up (and keeps a round going
+          // 15 s or so when its trucks are shot fast).
+          ...steps(T.swarms ?? 0, (k) => 11 + k * 5, 'swarm'),
+          ...fireSteps(T),
+        ];
+      }
       // Round 8, cut down: the subs as the convoy comes in, then one
       // gunship over the bank, then a smaller armored block.
       // Encounters rev 4 (lab only; docs/design/v3-ch2-saltgate.md): Saltgate
@@ -1063,6 +1081,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'run-the-canal': {
+      if (s.op === 'ctruck') {
+        gateTruck(g, ev, Math.floor(s.k / 100), s.k % 100);
+        return;
+      }
       const E = canalRound(g, ev);
       if (s.op === 'sub') {
         // Round 8: a Torpedo Sub as any other now (its torpedoes one by one,
@@ -1138,6 +1160,41 @@ function truck(g: Game, ev: EventRun, col: number, i: number, E: { trucks: numbe
   th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
   th.hp = th.maxHp = E.hp;
   th.foe = foeData({ path, along: 0, n: E.salvos, stop: Math.max(60, L * E.stop - i * E.spacing), wait: i * E.stagger + col * E.stagger * 0.5, drive: E.drive });
+  sent(ev, 'rocketTruck');
+}
+
+/** The road a Gatecrashers column takes to lock `lock` (log v42): on the
+ *  enemy's bank (`north`) down the pop-up road by the lock's exit, on your
+ *  own (`south`) up from the bottom of the screen at the same x, then along
+ *  the bank, 29 px back from the lock's water, to just short of its entry
+ *  gate, so a column parks along the chamber. */
+function bankRoad(g: Game, lock: number, bank: 'north' | 'south'): Point[] {
+  const l = (g.map.locks ?? [])[lock] ?? { x0: VIEW.width * 0.35, x1: VIEW.width * 0.45 };
+  const ch = g.map.channels[0];
+  const half = 66; // a lock's half-width (data/maps20.ts, Saltgate's widths)
+  const popup = g.map.roads.popups.reduce((m, r) => (Math.abs(r.to.x - (l.x1 + 30)) < Math.abs(m.to.x - (l.x1 + 30)) ? r : m), g.map.roads.popups[0] ?? { from: { x: l.x1 + 30, y: -40 }, to: { x: l.x1 + 30, y: 0 } });
+  const x = popup.to.x;
+  const y = bank === 'north' ? ch.y - half - 29 : ch.y + half + 29;
+  const y0 = bank === 'north' ? -40 : VIEW.height + 40;
+  return [{ x, y: y0 }, { x, y }, { x: l.x0 - 30, y }];
+}
+
+/** Truck `i` of a Gatecrashers column (log v42): down its road in line,
+ *  parking `spacing` px behind the one ahead along the bank, its salvos at
+ *  the ship held at the lock nearest it (each marked first), the column's
+ *  last `clusters` firing a cluster missile in place of their first. */
+function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
+  const tune = bossTune(g.map.id, g.enc?.setup.rev);
+  const c = bossRound(g, ev)?.trucks?.[col];
+  const path = ev.roads?.[col];
+  if (!tune?.truck || !c || !path) return;
+  const T = tune.truck;
+  const L = pathLength(path);
+  const th = spawnThreat(g, 'rocketTruck', path[0].x, path[0].y, 'truck');
+  th.target = CARRIER_TARGET;
+  th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
+  th.hp = th.maxHp = T.hp;
+  th.foe = foeData({ path, along: 0, n: c.salvos, full: c.salvos, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', clusters: i >= c.count - (c.clusters ?? 0) ? 1 : 0 });
   sent(ev, 'rocketTruck');
 }
 
@@ -1649,8 +1706,9 @@ export function eventFoeDown(g: Game, th: Threat): void {
     }
     return;
   }
-  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout') || th.kind !== 'rocketTruck') return;
-  const E = ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy'];
+  const gate = ev.id === 'run-the-canal' && !!ev.roads ? bossTune(g.map.id, g.enc?.setup.rev)?.truck : undefined;
+  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout' && !gate) || th.kind !== 'rocketTruck') return;
+  const E = gate ?? (ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy']);
   const at = th.foe?.along ?? 0;
   for (const t of g.threats) {
     const f = t.foe;
