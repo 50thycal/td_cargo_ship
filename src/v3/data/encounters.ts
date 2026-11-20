@@ -3710,17 +3710,20 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'At the first lock',
     callout: 'Drones at the lock',
-    premise: 'The first ships stop in the west lock while it fills, and a few drones come off the west shore at them.',
+    premise: 'The first ships stop in the west lock while it fills, and a few drones come off the west shore at them; later more drop off the east lock\'s silo at the ships held in the locks.',
     decision: 'The first look at the locks: a ship in a chamber cannot move, so the drones will reach it unless you get them first.',
     counters: 'Tap the drones as they cross the sea; the ship in the lock will still be there.',
     succeeds: 'Nothing is sunk on wave 1; the drones are shot down over the west sea or the lock.',
     notes: {
-      sites: 'The west shore silo (220, 150).',
-      target: 'The ship held at the west lock (in its chamber or at its shut gate): aim \'lock\'.',
-      usesMap: 'Shows the map\'s mechanic on wave 1: ships wait in a lock\'s chamber while it fills, sitting still under the silos.',
+      sites: 'The west shore silo (220, 150), then the east lock\'s silo (1220, 240).',
+      target: 'The ship held at the lock nearest each silo (in its chamber or at its shut gate): aim \'lock\'.',
+      usesMap: 'Shows the map\'s mechanic on wave 1: ships wait in a lock\'s chamber while it fills, sitting still under the silos (log v42: a second swarm at the locks, so the first wave is not a quiet one).',
     },
-    beats: [{ at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lock' }],
-    replaces: { drones: 3 },
+    beats: [
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lock' },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lock' },
+    ],
+    replaces: { drones: 7 },
   },
   {
     id: 'saltgate-chamber',
@@ -3798,22 +3801,23 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Two gates',
     callout: 'Both chambers at once',
-    premise: 'A guided missile off the silo over the west lock at the ship inside and a swarm off the east lock\'s silo, at the same moment; swarms off the west shore follow.',
-    decision: 'Both ends of the canal at once: the missile at the west lock, or the swarm from the east?',
-    counters: 'The missile while it crosses, the swarm as it leaves, the west swarms last.',
+    premise: 'A guided missile off the silo over the west lock at the ship inside and a swarm off the east lock\'s silo, at the same moment, while a rocket truck drives down to the east lock; swarms off the west shore follow.',
+    decision: 'Both ends of the canal at once: the missile at the west lock, or the swarm and the truck at the east one?',
+    counters: 'The missile while it crosses, the truck before it raises its launcher, the swarm as it leaves, the west swarms last.',
     succeeds: 'One lock is saved first and the other takes a hit or a close call in most runs.',
     notes: {
-      sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; a swarm), the west shore silo (220, 150; two swarms).',
-      target: 'The missile at the ship held at the west lock, the swarms at any ship.',
-      usesMap: 'Both ends of the canal at once (rule g-split), in place of the wave\'s shells, guided missiles, its heavy and its cluster.',
+      sites: 'The silo over the west lock (580, 240; guided), the east lock\'s silo (1220, 240; a swarm), the pop-up road by the east lock\'s exit (1330, down to the bank; a truck), the west shore silo (220, 150; two swarms).',
+      target: 'The missile at the ship held at the west lock, the truck\'s salvos at the ship held at the east lock, the swarms at any ship.',
+      usesMap: 'Both ends of the canal at once (rule g-split), in place of the wave\'s shells, guided missiles, its heavy, its cluster and a swarm (log v42: a truck at the east lock).',
     },
     beats: [
       { at: 0.4, kind: 'guided', count: 1, from: base(1), aim: 'lock' },
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.3, kind: 'rocketTruck', count: 1, from: road(1), aim: 'lock', salvos: 3 },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 4, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
+    replaces: { drones: 11, ballistic: 5, guided: 2, extras: { heavy: 1, cluster: 1 } },
   },
   {
     id: 'saltgate-periscope',
@@ -4087,6 +4091,10 @@ export const MAP_VERSIONS: Record<EncounterMap, Record<EncounterVersion, Version
  *  the ten. */
 const KESH_CLIMB = [1, 0.9, 1, 1.05, 1.05, 1.08, 1.08, 1.06, 0.93, 0.85];
 const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
+/** Saltgate Canal (log v42; the player's v38 play: waves 1-6 rated 1-2 for
+ *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
+ *  waves 1-5, within ±15% of each wave and never more than the ten. */
+const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.1, 1.1, 0.92, 0.9, 0.9, 0.9, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4097,7 +4105,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   behemoth: { v1: { name: 'Original', idea: 'One encounter a wave, built on the supertanker and the convoy sailing below it; jets and heavies at the tanker from wave 4.', callouts: false } },
   needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
   archipelago: { v1: { name: 'Original', idea: 'One encounter a wave, built on the chain of islets: fire from the islets, through the gaps between them, from the far shore and from behind, at once; drone motherships off the west islets from wave 4.', callouts: false } },
-  saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; torpedo subs in the seas at either end from wave 4.', callouts: false } },
+  saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; rocket trucks drive down to the locks from wave 4.', callouts: false, scale: SALTGATE_CLIMB } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -4464,15 +4472,15 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, gap: 0.9, salvos: 3 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, gap: 1, salvos: 2 }],
     swarms: 1,
     size: 5,
     fire: [],
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 5, gap: 1, salvos: 2 },
-      { at: 3, lock: 0, bank: 'south', count: 4, gap: 1, salvos: 2 },
+      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1, salvos: 2 },
+      { at: 3, lock: 0, bank: 'south', count: 3, gap: 1, salvos: 2 },
     ],
     swarms: 1,
     size: 5,
@@ -4480,10 +4488,10 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 5, gap: 0.9, salvos: 2, clusters: 1 },
-      { at: 2, lock: 1, bank: 'north', count: 5, gap: 0.9, salvos: 2, clusters: 1 },
-      { at: 4, lock: 0, bank: 'south', count: 3, gap: 0.9, salvos: 2 },
-      { at: 6, lock: 1, bank: 'south', count: 3, gap: 0.9, salvos: 2 },
+      { at: 0, lock: 0, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
+      { at: 2, lock: 1, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
+      { at: 5, lock: 0, bank: 'south', count: 3, gap: 0.9, salvos: 1 },
+      { at: 8, lock: 1, bank: 'south', count: 3, gap: 0.9, salvos: 1 },
     ],
     swarms: 1,
     size: 5,
