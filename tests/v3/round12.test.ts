@@ -7,6 +7,14 @@ import { AB } from '../../src/v3/data/abilities';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { clusterPace, createGame, spawnThreat, step, tap, type Game } from '../../src/v3/sim/game';
 import { shipHull } from '../../src/v3/ui/render';
+import { EVENT_WAVE } from '../../src/v3/data/events';
+import { VERSION_DEFAULT } from '../../src/v3/data/encounters';
+import { labCard, mapCardId } from '../../src/v3/data/lab';
+import { defaultSetup, labRunPlan, parseLabProgress } from '../../src/v3/ui/lab';
+import { BotRun, PERSONAS } from '../../src/v3/sim/mimic';
+import { Recorder, replay, replayTo } from '../../src/v3/sim/playlog';
+import { runPrint } from '../../src/v3/sim/resume';
+import { PLAYER_ARMORY } from '../../tools/v3/bot-fit/measure';
 import { SUB_SIGHT, onLand, subClear, subLaneSight, subSite, subSpot } from '../../src/v3/sim/foes';
 
 const DT = 1 / 60;
@@ -98,6 +106,58 @@ describe('the Shield bubble fits the hull', () => {
   it('the supertanker is twice a freighter, and its bubble with it', () => {
     expect(shipHull(true).L).toBeGreaterThanOrEqual(2 * shipHull(false).L);
     expect(shipHull(true).B).toBeGreaterThan(shipHull(false).B);
+  });
+});
+
+describe('Test Lab: Retry wave N and Skip to boss', () => {
+  const setup = (map: 'island' | 'behemoth') => {
+    const card = labCard(mapCardId(map, VERSION_DEFAULT))!;
+    return labRunPlan(card, defaultSetup(card, parseLabProgress(null)), null);
+  };
+
+  it('Retry: the run replayed to its wave mark, a new log marked retry, that replays exactly', () => {
+    const plan = setup('island');
+    const run = new BotRun('island', 905, { persona: PERSONAS.you, armory: PLAYER_ARMORY, lab: plan.lab, ...(plan.convoy ? { convoy: plan.convoy } : {}), ...(plan.encounters ? { encounters: plan.encounters } : {}) });
+    while (!run.done && !(run.game.wave === 3 && run.game.phase === 'wave' && run.game.waveT > 20)) run.advance(1);
+    const old = run.rec.snapshot();
+    const mark = { ...run.rec.mark };
+    expect(mark.wave).toBe(3);
+    const g = replayTo(old, mark.steps, mark.commands);
+    expect(g.wave).toBe(3);
+    expect(g.waveT).toBeLessThan(0.1);
+    expect(g.levels).toEqual(replayTo(old, mark.steps, mark.commands).levels);
+    const rec = new Recorder(g, { build: 'test', startedAt: '2026-11-20T20:00:00.000Z', firstWave: old.firstWave, lab: old.lab, ...(old.encounters ? { encounters: old.encounters } : {}), ...(old.convoy ? { convoy: old.convoy } : {}), retry: { of: old.id, wave: mark.wave, step: mark.steps }, device: old.device }, { log: old, mark });
+    for (let k = 0; k < 600 && g.phase === 'wave'; k++) {
+      if (k % 50 === 0) rec.tap(800, 300, 30);
+      step(g, DT);
+    }
+    const log = rec.finish('quit');
+    expect(log.retry).toEqual({ of: old.id, wave: 3, step: mark.steps });
+    expect(log.id).not.toBe(old.id);
+    expect(log.commands.slice(0, mark.commands)).toEqual(old.commands.slice(0, mark.commands));
+    expect(runPrint(replay(log)).hash).toBe(runPrint(g).hash);
+    // (The bot fit, tools/v3/bot-fit/fit.ts playerRun, leaves out a log
+    // with `retry`.)
+  });
+
+  it('Skip to boss: a new run at the first boss round holding the loadout, that replays exactly', () => {
+    const plan = setup('behemoth');
+    const loadout = [
+      { id: 'shield' as const, level: 3 },
+      { id: 'gunships' as const, level: 2 },
+    ];
+    const lab = { ...plan.lab, loadout };
+    const run = new BotRun('behemoth', 77, { persona: PERSONAS.you, armory: PLAYER_ARMORY, firstWave: EVENT_WAVE, lab, ...(plan.convoy ? { convoy: plan.convoy } : {}), ...(plan.encounters ? { encounters: plan.encounters } : {}) });
+    const g = run.game;
+    expect(g.wave).toBe(EVENT_WAVE);
+    expect(g.event?.run).toBe(1);
+    expect(g.event?.runs).toBe(3);
+    expect(g.levels).toEqual({ shield: 3, gunships: 2 });
+    expect(g.slots).toEqual(['shield', 'gunships']);
+    expect(g.freePlay).toBeFalsy();
+    for (let k = 0; k < 3000 && !run.done; k++) run.advance(1);
+    const log = run.rec.finish('quit');
+    expect(runPrint(replay(log)).hash).toBe(runPrint(g).hash);
   });
 });
 
