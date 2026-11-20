@@ -150,8 +150,11 @@ export function playCombo(job: ComboJob, onStep?: (g: Game) => void): ComboRun {
         continue;
       }
       const before = { ...g.levels };
+      const wave = g.wave;
       run.advance(1);
       const got = (Object.keys(g.levels) as AbilityId[]).find((k) => (g.levels[k] ?? 0) > (before[k] ?? 0));
+      // A Quartermaster re-roll: the same draft, dealt again; no pick yet.
+      if (!got && g.phase === 'draft' && g.wave === wave) continue;
       picks.push(got ?? 'resupply');
       continue;
     }
