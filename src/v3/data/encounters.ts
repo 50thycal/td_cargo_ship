@@ -4475,7 +4475,7 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, gap: 1, salvos: 2 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 8, gap: 1.25, salvos: 2 }],
     swarms: 1,
     size: 5,
     fire: [],
