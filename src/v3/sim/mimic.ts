@@ -21,7 +21,7 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, quieterBranch, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, quieterBranch, rerollWorth, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { isBoost } from '../data/roster';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
@@ -256,7 +256,14 @@ export interface BotIO {
   formation(id: FormationId): void;
   /** The game speed it plays at from now (UI and analysis only). */
   pace?(speed: number): void;
+  /** Quartermaster: deal the draft again (true if it was). */
+  reroll?(): boolean;
 }
+
+/** Quartermaster: the bot re-rolls a hand with nothing it wants (no weapon
+ *  it holds to level, none of its top PREFER_TOP favourites for a free
+ *  slot), while re-rolls last. */
+export const PREFER_TOP = 4;
 
 /** A finger on an iPhone in landscape reaches 44 CSS px, ~108 world units. */
 export const BOT_TAP_RADIUS = 108;
@@ -305,6 +312,12 @@ export class Mimic {
     this.formationPlan = p.formation.to >= p.formation.from ? { wave, at, id } : null;
   }
 
+  /** Quartermaster: would it deal this hand again? (A persona that picks
+   *  at random never does.) */
+  wantsReroll(g: Game): boolean {
+    return this.persona.cards !== 'random' && rerollWorth(g, this.persona.taste.slice(0, PREFER_TOP));
+  }
+
   /** The card it would take from the offer on screen. */
   choose(g: Game): { id: CardId; replace?: AbilityId } {
     const takeable = g.offer.filter((id) => canTake(g.levels, id));
@@ -339,6 +352,7 @@ export class Mimic {
   act(g: Game, io: BotIO, drafts = true): void {
     if (g.phase === 'draft') {
       if (drafts) {
+        if (io.reroll && this.wantsReroll(g) && io.reroll()) return;
         const c = this.choose(g);
         io.pick(c.id, c.replace);
       }
@@ -752,6 +766,7 @@ export class BotRun {
       flow: (v) => rec.flow(v),
       formation: (id) => rec.formation(id),
       pace: (v) => rec.pace(v),
+      reroll: () => rec.reroll(),
     };
   }
 
