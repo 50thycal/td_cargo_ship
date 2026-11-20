@@ -2,6 +2,33 @@
 
 You asked: "Are we running bot tests on all possible combination of the weapon load outs?? ... we should do that same with the armory too." This is that sweep: every weapon on its own, every pair, the best pairs with every third weapon, the best and worst triples again on more seeds, and the Armory builds. The "you" bot played about 11,000 runs on the Strait, the Gauntlet, Harbor Mouth, Kesh and Marrow. It was first run on game version 28, then run again in full on version 29 (Marrow's slowing radar, Kesh's harder Drone Storm, the calm before every boss). Everything below is version 29.
 
+## Overdrive buff (round 9, game version 33)
+
+You chose r9-overdrive-buff: level 1 lasts 18 s, as level 2 did. Level 2 and MAX now last 21 s (MAX also fires every shot twice), so each level still adds something. Measured with the "you" bot and your Armory on version 32 (before) and on version 33 with only the buff (after); nothing else changed between the two.
+
+| Ships lost a run, all 13 waves | Before (v32) | After (v33) |
+| --- | --- | --- |
+| Overdrive alone, chapter 1's five maps (singles, 12 seeds) | 10.7 (won 33%), 13th of 16 | 11.0 (32%), 13th of 16 |
+| Overdrive alone, the Island and the Behemoth Run (singles, 12 seeds) | 12.5 (25%), 15th of 20 | 12.9 (13%), 15th of 20 |
+| Overdrive first, then the bot's own picks, chapter 1 / chapter 2 | 9.8 (32%) / 9.0 (50%) | 9.2 (45%) / 8.9 (63%) |
+| Overdrive alone, 24 fresh seeds a map (seeds 1000+), chapter 1 / chapter 2 | 11.5 / 13.1 | 10.5 / 13.3 |
+| **Overdrive + Scattergun + Supply Run**, 24 fresh seeds a map, chapter 1 / chapter 2 | 9.9 (won 40%) / 11.0 (30%) | 9.6 (42%) / 11.4 (29%) |
+| _For scale: Air Strike alone, chapter 1; Shield alone, chapter 2_ | 6.95; 8.0 | unchanged |
+
+Your kit by map (24 fresh seeds, before → after): the Strait 11.1 → 10.0, the Gauntlet 9.0 → 9.4, Harbor 13.2 → 12.9, Kesh 10.9 → 10.4, Marrow 5.5 → 5.5, the Island 12.0 → 11.5, the Behemoth Run 10.0 → 11.2 (standard errors 0.5–1.2).
+
+- **The buff barely shows on the bot.** Alone, Overdrive moves by less than the noise (±0.5) and keeps its rank. A forced single is levelled to MAX in three drafts, so most of its runs are spent at MAX, which gained 3 s (18 → 21), not the level-1 change.
+- **Where the first level matters, it helps:** Overdrive as the first pick, then the bot's own picks, wins 45% of chapter 1 runs (was 32%) and 63% of chapter 2's (was 50%), about 0.6 ships a run better on chapter 1.
+- **Your kit gains 0.3 of a ship on chapter 1 and none on chapter 2.** Still behind the best kits (7–8).
+- Overdrive stays near the bottom alone. If it should be a real first pick, it needs more than time: see the hub question.
+
+```
+npm run v3:combo-sweep -- --stage=singles --out=<dir>
+npm run v3:combo-sweep -- --stage=singles --maps=island,behemoth --out=<dir>
+npx vite-node tools/v3/combo-sweep/check-one.ts -- <map> overdrive,scatter,supplyRun 24 you 1000
+npx vite-node tools/v3/combo-sweep/check-one.ts -- <map> overdrive 24 you 1000
+```
+
 ## Boosts re-judged (2026-11-20, game version 31)
 
 You chose "Teach the bot to use boosts like you first, then decide". The bot now plays boosts the way you do (docs/design/v3-bot-refit.md, "Boosts"). What the replays of your logs showed:
