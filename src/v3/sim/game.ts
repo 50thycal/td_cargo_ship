@@ -1932,19 +1932,25 @@ export interface FreePlaySetup {
   enemies?: FoeSetting;
 }
 
-/** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
-export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
-
-export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
+/** Hold these weapons, in slot order, at their levels (1–3), in place of
+ *  whatever is held (Free Play's setup; a Test Lab "Skip to boss"). */
+export function holdWeapons(g: Game, weapons: { id: AbilityId; level: number }[]): void {
   g.levels = {};
   g.slots = [];
   // A weapon cut since the setup was saved (or logged) is left out
   // (Test Lab round 5 cut Overclock and Time Warp).
-  for (const w of setup.weapons.filter((o) => knownWeapon(o.id)).slice(0, MAX_SLOTS)) {
+  for (const w of weapons.filter((o) => knownWeapon(o.id)).slice(0, MAX_SLOTS)) {
     if (g.slots.includes(w.id)) continue;
     g.levels[w.id] = Math.max(1, Math.min(ABILITY_MAX, Math.floor(w.level)));
     g.slots.push(w.id);
   }
+}
+
+/** Free Play's frequent drops: a weapon at least every 8 s, at twice the chance. */
+export const FREE_PLAY_DROPS = { pity: 8, share: 2 } as const;
+
+export function applyFreePlay(g: Game, setup: FreePlaySetup): void {
+  holdWeapons(g, setup.weapons);
   if (setup.frequentDrops) {
     g.stats = { ...g.stats, dropPity: Math.min(g.stats.dropPity, FREE_PLAY_DROPS.pity), dropShare: g.stats.dropShare * FREE_PLAY_DROPS.share };
   }
@@ -2197,6 +2203,8 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
  *  wave for wave, on the same seed. */
 export function applyLab(g: Game, setup: LabSetup): void {
   setUpLab(g, setup);
+  // Round 12's "Skip to boss": the weapons the run skipped from held.
+  if (setup.loadout) holdWeapons(g, setup.loadout);
   if (!g.lab?.full) replanWave(g);
 }
 

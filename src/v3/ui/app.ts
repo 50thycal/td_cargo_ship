@@ -60,7 +60,7 @@ import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
 import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
-import { endingOutcome, lastWave } from '../sim/events';
+import { endingOutcome, eventFor, lastWave } from '../sim/events';
 import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, bossShort, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
   addLabEntry,
@@ -1138,6 +1138,7 @@ export class App {
           lab.waves,
           labWaves(lab),
         ),
+        ...this.labJumps(g!),
       );
     } else if (this.notesOn && this.rec && g) {
       extra.push(button('📝 Add a note', 'v2-btn v3-pause-note', () => this.openNote('pause')));
@@ -3049,6 +3050,15 @@ export class App {
         },
       }, draft, plays, played, strip, review),
     ]);
+    // Round 12: Retry the wave, or Skip to boss, under the title (nothing
+    // of this sheet is saved by them: the run's log is kept as it ended).
+    const jumps = this.labJumps(g);
+    if (jumps.length) {
+      const row = el('div', 'v3-lab-jumps');
+      row.dataset.labJumps = '1';
+      row.append(...jumps);
+      this.overlay.querySelector('.v3-review-title')?.after(row);
+    }
     if (again) {
       const panel = this.overlay.querySelector<HTMLElement>('.v2-panel');
       if (panel) panel.scrollTop = scroll;
@@ -3792,8 +3802,8 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null): void {
-    if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters))) return;
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null, jump?: { start: number; retry: NonNullable<PlayLog['retry']> }): void {
+    if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters, jump))) return;
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     // A map card's full run in the Test Lab (round 10) is the campaign's own
@@ -3802,7 +3812,8 @@ export class App {
     const fullMap = lab?.plays === 'full';
     const preset = this.dev && !free && !fullMap ? DEV_PRESETS[this.devSettings.preset] : null;
     const tempo = preset?.tempo;
-    const start = free ? free.wave : fullMap ? 1 : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
+    // A Test Lab "Skip to boss" (round 12, `jump`) starts at the boss rounds.
+    const start = jump ? jump.start : free ? free.wave : fullMap ? 1 : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = !STORE && params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
     const watch = this.dev && !free && !fullMap && this.devSettings.watch;
@@ -3828,10 +3839,12 @@ export class App {
       ...(encounters ? { encounters } : {}),
       ...(convoy ? { convoy } : {}),
       ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
+      ...(jump ? { retry: jump.retry } : {}),
       device: this.deviceInfo(),
     });
     this.lastTel = null;
-    if (this.telWanted(!!lab)) {
+    // A skip is not a whole run: no Map & Convoy Lab telemetry for it.
+    if (!jump && this.telWanted(!!lab)) {
       this.rec.telemetry(lab ? 'lab' : watch ? 'watch' : free ? 'freePlay' : 'campaign', watch ? this.devSettings.bot : 'human', {
         touch: navigator.maxTouchPoints > 0,
         w: window.innerWidth,
@@ -3956,6 +3969,99 @@ export class App {
       },
       dealt + 1400 / Math.sqrt(this.speed),
     );
+  }
+
+  /** Round 12 (the player: "when I fail like this in the test lab have an
+   *  option to reset that wave so I can try again or I can also skip forward
+   *  to the boss wave so all of that can save me time"): the Test Lab's two
+   *  jumps, for its end screen and its pause menu. "Retry wave N": the wave
+   *  in play (or just lost) again from its start, as it was (the run
+   *  replayed to there: the same weapons, ships, score and Scrap). "Skip to
+   *  boss" (a full map run before its boss rounds): a new run from the
+   *  first boss round holding the weapons held now. Either one seals this
+   *  run's log (lost, or left) and starts a new log marked `retry`. */
+  private labJumps(g: Game): HTMLElement[] {
+    const run = this.labRun;
+    const rec = this.rec;
+    if (!run || !rec || !g.lab || this.playback || rec.game !== g) return [];
+    const out: HTMLElement[] = [];
+    const mark = rec.mark;
+    if ((g.phase === 'wave' || g.phase === 'lost') && mark.wave <= g.wave) {
+      const label = mark.wave >= EVENT_WAVE && eventFor(g) ? 'Retry the boss rounds' : `Retry wave ${mark.wave}`;
+      const b = button(label, 'v2-btn v3-lab-act v3-lab-retry', () => this.labRetry());
+      b.dataset.labRetry = String(mark.wave);
+      out.push(b);
+    }
+    if (g.lab.full && eventFor(g) && g.wave < EVENT_WAVE && g.phase !== 'won') {
+      const b = button('Skip to boss', 'v2-btn v3-lab-act v3-lab-skip', () => this.labSkipToBoss());
+      b.dataset.labSkip = '1';
+      out.push(b);
+    }
+    return out;
+  }
+
+  /** The run's log sealed (a loss as lost, anything else as left) and kept
+   *  with the card's tests, for a jump to start a new one. */
+  private sealForJump(): PlayLog | null {
+    const run = this.labRun;
+    const g = this.game;
+    if (!run || !g || !this.rec) return null;
+    const log = this.endRun(g.phase === 'lost' ? 'lost' : 'quit');
+    this.rec = null;
+    this.labDraft = null;
+    if (!log) return null;
+    clearRun(log.id);
+    keepLabLog(run.card.id, log);
+    return log;
+  }
+
+  /** "Retry wave N" (round 12): as the dev retry, for a test. */
+  private labRetry(): void {
+    const run = this.labRun;
+    const rec = this.rec;
+    if (!run || !rec) return;
+    const mark = { ...rec.mark };
+    const log = this.sealForJump();
+    if (!log) return;
+    const g = replayTo(log, mark.steps, mark.commands);
+    // The replay's own banners and blasts are old news.
+    g.events = [{ kind: 'wave', wave: g.wave }];
+    this.lastTel = null;
+    this.game = g;
+    this.rec = new Recorder(
+      g,
+      {
+        build: __BUILD__,
+        startedAt: new Date().toISOString(),
+        firstWave: log.firstWave,
+        ...(log.tempo ? { tempo: log.tempo } : {}),
+        ...(log.freePlay ? { freePlay: log.freePlay } : {}),
+        ...(log.lab ? { lab: log.lab } : {}),
+        ...(log.encounters ? { encounters: log.encounters } : {}),
+        ...(log.convoy ? { convoy: log.convoy } : {}),
+        retry: { of: log.id, wave: mark.wave, step: mark.steps },
+        device: this.deviceInfo(),
+      },
+      { log, mark },
+    );
+    this.startWatch(false, g.seed);
+    this.root.classList.add('lab-on');
+    this.begin();
+  }
+
+  /** "Skip to boss" (round 12): the card's run again from the first boss
+   *  round, holding the weapons held now. */
+  private labSkipToBoss(): void {
+    const run = this.labRun;
+    const g = this.game;
+    if (!run || !g) return;
+    const loadout = g.slots.filter((id) => (g.levels[id] ?? 0) > 0).map((id) => ({ id, level: g.levels[id]! }));
+    const log = this.sealForJump();
+    if (!log) return;
+    const plan = labRunPlan(run.card, run.setup, null);
+    this.play(run.card.map, null, { ...plan.lab, loadout }, plan.convoy, plan.encounters, { start: EVENT_WAVE, retry: { of: log.id, wave: EVENT_WAVE, step: 0, skip: true } });
+    this.labRun = run;
+    this.root.classList.add('lab-on');
   }
 
   /** Dev: restart the wave just lost, with the same cards, ships and score,

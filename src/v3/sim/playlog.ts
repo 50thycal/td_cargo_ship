@@ -422,6 +422,15 @@ export interface PlayLog {
    *  is still one run (and replays as one); this only says it was played
    *  in more than one sitting. Never read by replay. */
   resumes?: { at: string; step: number; build: string }[];
+  /** Round 12: a Test Lab run started from another one's end screen or
+   *  pause menu. "Retry wave N" (`wave`, no `skip`): the run `of` replayed
+   *  to the start of its wave N, its inputs up to `step` carried over (they
+   *  were played in run `of`, whose log has them too; only what follows
+   *  `step` is new play). "Skip to boss" (`skip`): a new run from the first
+   *  boss round (`firstWave`) holding the weapons run `of` held (its lab
+   *  setup's `loadout`); `step` is 0. Either way this is not a whole run
+   *  from wave 1: the bot fit leaves it out. Never read by replay. */
+  retry?: { of: string; wave: number; step: number; skip?: boolean };
   commands: LogCommand[];
   summary?: PlaySummary;
   /** Playtest feedback (none of it touches replay; see sim/feedback.ts):
