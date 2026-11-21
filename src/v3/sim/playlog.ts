@@ -324,11 +324,21 @@ import type { EncounterSetup } from '../data/encounters';
  *  45: the Battery rebuild (43 above) on top of the Armory rework (44):
  *      the base took 44 while the Battery was built as 43, so it moved
  *      here. The campaign plays as at 44; a 44 Battery card log played the
- *      shared waves and no longer replays to the same game. */
-export const LOG_VERSION = 45;
+ *      shared waves and no longer replays to the same game.
+ *  46: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
+ *      Trucks (docs/design/v3-ch2-saltgate.md; lab, under the encounter
+ *      layer; the player's review of the v42 boss: "make it the missile
+ *      trucks so it is different"): a new boss-only enemy, the Missile
+ *      Truck (a TEL: it raises one long ballistic missile on its erector
+ *      and lobs it at a ship held at a lock; foes.ts, BOSS_FOES), its
+ *      columns nose to tail so each fires as one volley (MAP_BOSS.saltgate
+ *      `trucks` with `missiles`), no Rocket Truck in the boss. A new threat
+ *      kind, so the counts in every log carry it. A v42 Saltgate card log
+ *      no longer replays to the same game; the campaign plays as it did. */
+export const LOG_VERSION = 46;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [45];
+export const LOG_REPLAYS: readonly number[] = [46];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

@@ -7,7 +7,7 @@
 // Designer-only: nothing in the game reads this file.
 
 import type { ThreatKind } from './config';
-import { DEBUT_SLOTS, FOES, FOE_OF_KIND, foeCount, foesInChapter, type FoeId } from './foes';
+import { BOSS_FOE_MAP, DEBUT_SLOTS, FOES, FOE_OF_KIND, foeCount, foesInChapter, type FoeId } from './foes';
 import { MAPS, MAP_ORDER, chapterOf, type MapId } from './maps';
 import { WAVE_TABLE, waveSpec } from './waves';
 
@@ -113,7 +113,11 @@ export interface Debut {
  *  device, as before). Only the new enemies (data/foes.ts), not the
  *  original threats. */
 export function mapDebutsFoe(map: MapId, kind: ThreatKind): boolean {
-  if (!FOE_OF_KIND[kind]) return false;
+  const foe = FOE_OF_KIND[kind];
+  if (!foe) return false;
+  // Log v46: a boss-only enemy debuts on its boss's map.
+  const boss = BOSS_FOE_MAP[foe];
+  if (boss) return boss === map;
   DEBUT_MAPS ??= new Map(debuts().map((d) => [d.kind, d.map]));
   return DEBUT_MAPS.get(kind) === map;
 }

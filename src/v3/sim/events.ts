@@ -28,8 +28,8 @@
 import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gradeEvent, worstOutcome, type EventId, type EventOutcome, type EventRule } from '../data/events';
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
-import { PLANE, RULES, SUB, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
-import { bossTune, type BossFire, type BossRound } from '../data/encounters';
+import { PLANE, RULES, SUB, THREATS, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
+import { bossTune, type BossFire, type BossRound, type TruckRun } from '../data/encounters';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -670,7 +670,7 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       if (T?.trucks) {
         ev.roads = T.trucks.map((c) => bankRoad(g, c.lock, c.bank));
         return [
-          ...T.trucks.flatMap((c, col) => Array.from({ length: c.count }, (_, i): EventStep => ({ at: B + c.at + i * c.gap, op: 'ctruck', k: col * 100 + i }))),
+          ...T.trucks.flatMap((c, col) => Array.from({ length: c.count }, (_, i): EventStep => ({ at: B + c.at + i * columnGap(g, c), op: 'ctruck', k: col * 100 + i }))),
           // The swarm comes as the column sets up (and keeps a round going
           // 15 s or so when its trucks are shot fast).
           ...steps(T.swarms ?? 0, (k) => 11 + k * 5, 'swarm'),
@@ -1193,12 +1193,26 @@ function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
   if (!tune?.truck || !c || !path) return;
   const T = tune.truck;
   const L = pathLength(path);
-  const th = spawnThreat(g, 'rocketTruck', path[0].x, path[0].y, 'truck');
+  // Log v46: a missile column is Missile Trucks (one ballistic missile
+  // each, or `missiles`), the rest Rocket Trucks as at v42.
+  const kind = c.missiles !== undefined ? 'missileTruck' : 'rocketTruck';
+  const th = spawnThreat(g, kind, path[0].x, path[0].y, 'truck');
   th.target = CARRIER_TARGET;
   th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
   th.hp = th.maxHp = T.hp;
-  th.foe = foeData({ path, along: 0, n: c.salvos, full: c.salvos, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', clusters: i >= c.count - (c.clusters ?? 0) ? 1 : 0 });
-  sent(ev, 'rocketTruck');
+  const n = c.missiles ?? c.salvos ?? 1;
+  th.foe = foeData({ path, along: 0, n, full: n, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', ...(kind === 'rocketTruck' ? { clusters: i >= c.count - (c.clusters ?? 0) ? 1 : 0 } : {}) });
+  sent(ev, kind);
+}
+
+/** Log v46: seconds between a column's trucks setting out (TruckRun `gap`;
+ *  absent, nose to tail at the parade's own pace, `spacing` apart, so the
+ *  column parks together and raises and fires as one volley). */
+export function columnGap(g: Game, c: TruckRun): number {
+  if (c.gap !== undefined) return c.gap;
+  const T = bossTune(g.map.id, g.enc?.setup.rev)?.truck;
+  const kind = c.missiles !== undefined ? 'missileTruck' : 'rocketTruck';
+  return T ? T.spacing / (THREATS[kind].speed * T.drive) : 1;
 }
 
 /** An attack helicopter flown in from the nearer side to hold at `x` over
@@ -1710,13 +1724,13 @@ export function eventFoeDown(g: Game, th: Threat): void {
     return;
   }
   const gate = ev.id === 'run-the-canal' && !!ev.roads ? bossTune(g.map.id, g.enc?.setup.rev)?.truck : undefined;
-  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout' && !gate) || th.kind !== 'rocketTruck') return;
+  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout' && !gate) || (th.kind !== 'rocketTruck' && !(gate && th.kind === 'missileTruck'))) return;
   const E = gate ?? (ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy']);
   const at = th.foe?.along ?? 0;
   for (const t of g.threats) {
     const f = t.foe;
     // Only the trucks behind it on its own road.
-    if (t.dead || t === th || t.kind !== 'rocketTruck' || !f || f.path !== th.foe?.path || (f.along ?? 0) >= at) continue;
+    if (t.dead || t === th || t.kind !== th.kind || !f || f.path !== th.foe?.path || (f.along ?? 0) >= at) continue;
     if (f.state === 0) f.stall = Math.max(f.stall ?? 0, E.stall);
     else if (f.state === 1 && (f.wait ?? 0) > 0) f.wait = (f.wait ?? 0) + E.stall * 0.75;
   }

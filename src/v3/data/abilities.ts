@@ -576,7 +576,7 @@ export const AB = {
   // truck or sub up within `raider` px of it. Level 3, on the beat, only.
   cadence: {
     period: 0.9, window: [0.16, 0.24, 0.24], damage: 4, width: 40, run: 3, broadside: 8, free: true as boolean,
-    wrecks: ['rocketTruck', 'siege', 'attackHeli', 'torpedoSub', 'tender', 'stealthBomber', 'stealthJet', 'diveBomber', 'mothership'] as ThreatKind[],
+    wrecks: ['rocketTruck', 'missileTruck', 'siege', 'attackHeli', 'torpedoSub', 'tender', 'stealthBomber', 'stealthJet', 'diveBomber', 'mothership'] as ThreatKind[],
     raider: 50,
   },
   /** Drone Screen (the player's idea): a drone lifts off the carrier deck
