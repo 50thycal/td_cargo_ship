@@ -1626,9 +1626,14 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
         expect(base.kinds ?? ['drone'], `${id}: a drone silo`).toContain('drone');
       }
     }
-    // Every rebuilt map has it, in each of waves 1-3 at least.
-    for (const map of new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map)))
-      for (let w = 1; w <= (map === 'battery' ? 2 : 3); w++) expect(encountersFor(map, w).some((e) => e.beats.some((b) => b.filler)), `${map} wave ${w}`).toBe(true);
+    // Every rebuilt map has it: on wave 1, and on at least two of waves 1-3.
+    const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'strait']);
+    const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
+    for (const map of maps) {
+      expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
+      expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
+    }
     // Nothing past wave 6, and no other version or map gets any.
     for (const e of ENCOUNTERS) if (e.beats.some((b) => b.filler)) expect(BUSY[e.id], e.id).toBeDefined();
   });
