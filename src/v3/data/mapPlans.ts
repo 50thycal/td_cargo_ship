@@ -261,7 +261,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch3-sowers.md
   sowers: {
-    problem: 'Mines drift down across the lane on the current, from three chutes on the far shore and from stealth bombers that sow them just ahead of the ships: a ship cannot steer round one, and one sinks it, so each must be shot or waited out (Hold), while the shells, clusters and swarms keep coming at the ships about to deliver in the east.',
+    problem: 'Mines drift down across the lane on the current, from three chutes on the far shore and from stealth bombers that sow them just ahead of the ships: a ship cannot steer round one and one sinks it, so each must be shot or waited out with Hold, while the shells, missiles and swarms keep coming, most of all at the middle of the lane, where the middle chute\'s curtains cross and a held convoy sits still.',
     // The fire is mines in strings and curtains across the lane (one hit
     // each, but every one in a ship's way must go), sown by stealth bombers
     // just ahead of the ships, and swarms and clusters at the lead ship in
@@ -277,8 +277,8 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // chapter 3's draft.
     counters: ['tesla', 'flak', 'shield'],
     offCounter: ['seeker', 'shrapnel', 'fullSteam'],
-    convoy: 'The map\'s own convoy at the campaign\'s schedule, with Hold, the map\'s one command (rule m-convoy: the mines need it): pairs west to east down one lane under the three chutes, delivering in the east under the silos over the east end and the enemy\'s bank in the south-east; Hold stops every ship for up to 6 s so a string of mines can drift through, at the cost of sitting still under the rest of the wave.',
-    stretches: { danger: 'late', safe: 'early' },
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, with Hold, the map\'s one command (rule m-convoy: the mines need it): pairs west to east down one lane under the three chutes, past the carrier in the middle, delivering in the east under the silos over the east end; Hold stops every ship for up to 6 s so a string of mines can drift through, at the cost of sitting still under the rest of the wave.',
+    stretches: { danger: 'middle', safe: 'early' },
     boss: {
       plan: 'The Carpet Run sowing: vees of three stealth bombers across the lane (2, 3, then 3; 8, 8 and 7 s apart; 3 hits each), each sowing 3 mines just ahead of the convoy in place of its missiles (the event sends 2 vees, 11 s apart, dropping guided missiles, every round), with mines off the chutes (3, 3, then 6), 3 shells from the east silo and guided missiles from the enemy\'s bank in the south-east (1, 1, then 2) at the lead ship (encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery, to keep the win rate up.',
       botTarget: 2,

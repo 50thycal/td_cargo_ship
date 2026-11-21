@@ -239,6 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## Sowers' Reach: chapter 3's second map (game version 48)
+
+> 2026-11-21. Sowers' Reach rebuilt to the map rules (docs/design/v3-ch3-sowers.md): its signature is "sown" (from wave 4 the wave's new enemies are Stealth Bombers, the Carpet Run's own, and every stealth bomber sows mines just ahead of the ships in place of its missiles), and nearly every shell of its shared waves is gone (mines and drones in their place). The question, as for each rebuild: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 48, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps and the Battery are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`). Results: `tools/v3/combo-sweep/results/v48-ch3`; the comparison: `python3 tools/v3/sowers/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Sowers' Reach (v48) | **Air Strike + Gravity Well + Supply Run** 5.4 ±0.6, won 94% | Frigate Escort + Supply Run + Shield 5.4 | Shrapnel Shell + Railgun + Gunship Pair 5.5 | Air Strike + Scattergun + Supply Run 5.6 | Air Strike + Gunship Pair + Shield 6.1 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, Sowers against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery | **0 / 0 / 0 / 0 / 0 / 0** |
+| The same, Sowers against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no chapter 2 or chapter 3 map's top 5 (it is the Strait's #1 of the v31 sweep, chapter 1) |
+| Best weapon alone | **Tesla Arc** 4.7 (Flak 5.8, Shield 5.8, Boomerang 5.9, Gravity Well 5.9; Air Strike 7.2: 14th) |
+| Rank correlation of the weapons alone, Sowers against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery | 0.27 / 0.38 / 0.41 / 0.45 / 0.30 / 0.67 |
+| The bot drafting for itself; the plain gun | 9.0 lost, won 42%; 11.9, won 17% |
+
+### Reading
+
+- **All five of Sowers' best kits are its own** among chapters 2 and 3 (Jaccard 0 against all six), within about a standard error of each other (5.4–6.1, ±0.6), so their order is noise. Its #1 is the same three weapons as the Strait's #1 in the chapter 1 sweep (v31): an older build and another chapter's draft.
+- **Its best weapon alone is its own: the Tesla Arc** (4.7), the best single on no other rebuilt map and the Battery's off-counter: its chain jumps along a string of mines and the swarm beside it.
+- **Air Strike is not over-dominant alone** (14th), but it is in three of the five best kits (with Supply Run twice and Shield once), as on most maps.
+- **The weapons alone rank least like chapter 2's of any rebuilt map** (0.27–0.45), and most like the Battery's (0.67).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=sowers --out=tools/v3/combo-sweep/results/v48-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=sowers --out=tools/v3/combo-sweep/results/v48-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v48-ch3 --maps=sowers --json=tools/v3/combo-sweep/results/v48-ch3/diversity.json
+python3 tools/v3/sowers/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=sowers --seeds=8
+```
+
 ## Battery Point: chapter 3's first map (game version 43)
 
 > 2026-11-21. Battery Point rebuilt to the map rules (docs/design/v3-ch3-battery.md): its signature is "silence the battery" (the wave's heavy cruise missiles at your two shore guns, the wave's strike jets as Stealth Strafers) from wave 4, and most of its shells go for the guns. The question, as for each chapter 2 map: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 43, with chapter 3's draft (25 weapons: chapter 2's and Grapnel, Bomber Wing, Orbital Strike, Dual Wield, Focus Fire): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`; the build changes nothing of theirs). Results: `tools/v3/combo-sweep/results/v43-ch3`; the comparison: `python3 tools/v3/battery/compare.py`.
