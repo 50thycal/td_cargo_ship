@@ -160,7 +160,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -194,6 +194,11 @@ describe('a campaign run has no encounter layer', () => {
       'saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates',
       'saltgate-periscope', 'saltgate-strafe', 'saltgate-both-chambers', 'saltgate-gate-by-gate', 'saltgate-climax',
     ]);
+    // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
+    expect(arc('battery').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'battery-guns', 'battery-ranging', 'battery-gap', 'battery-silence', 'battery-under-headland',
+      'battery-both-ends', 'battery-dark-jet', 'battery-counter-battery', 'battery-crossfire', 'battery-last-light',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -209,8 +214,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('battery')).toBe(false);
-    expect(encountersFor('battery', 5)).toEqual([]);
+    expect(hasEncounters('rigs')).toBe(false);
+    expect(encountersFor('rigs', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -402,8 +407,14 @@ describe('every authored launch is warned of', () => {
       const w = e.waves[e.waves.length - 1];
       const { sc } = wave(e.map, w, true, 9, 90, e.version, lastRev(e));
       const mine = launches(sc).filter((l) => l.enc === e.id && beatLaunch(l));
-      const want = e.beats.filter((b) => !isFoe(b.kind)).reduce((a, b) => a + b.count, 0);
+      // Log v43 (Battery Point, MAP_SIGNATURE `stealth`): a jet comes in
+      // dark from the signature's first wave, a Stealth Strafer with no
+      // arrow (the Blackout's own: only its short run-in); it came, tagged.
+      const dark = (b: Encounter['beats'][number]) => b.kind === 'strafer' && !!signatureOf(e.map, w, { rev: lastRev(e) })?.stealth;
+      const want = e.beats.filter((b) => !isFoe(b.kind) && !dark(b)).reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
+      const darkWant = e.beats.filter(dark).reduce((a, b) => a + b.count, 0);
+      expect(launches(sc).filter((l) => l.enc === e.id && l.kind === 'stealthJet').length, `${e.id}: its jets came in dark`).toBe(darkWant);
       // Log v42 (Saltgate Canal): a truck down a road is its own warning (it
       // drives in, then raises its launcher): it came, tagged.
       for (const b of e.beats.filter((x) => 'road' in x.from)) {
@@ -682,7 +693,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -718,9 +729,59 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(LAYER_MAPS.filter((m) => m !== 'saltgate').some((m) => ENCOUNTERS.some((e) => e.map === m && e.beats.some((b) => b.aim === 'lock')))).toBe(false);
   });
 
+  // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md, log v45):
+  // 'post', the shore guns: the first that stands; a launch whose gun is
+  // knocked out on its way goes for the other (lab only).
+  it('Battery Point: a shot at the shore guns goes for the first that stands, then the other; with both down, the ship nearest them', () => {
+    const guns = MAPS.battery.posts!;
+    expect(guns.map((p) => p.kind)).toEqual(['battery', 'battery']);
+    const up = aimed('battery', 2, 'battery-ranging');
+    const shells = up.out.filter((o) => o.th.kind === 'ballistic');
+    expect(shells).toHaveLength(2);
+    for (const o of shells) expect(o.th.target).toBe(-10);
+    // Gun 0 knocked out: at gun 1.
+    const one = aimed('battery', 2, 'battery-ranging', (g) => {
+      g.posts[0].downT = 99;
+    });
+    for (const o of one.out.filter((x) => x.th.kind === 'ballistic')) expect(o.th.target).toBe(-11);
+    // Both down: the ship nearest where the first stood.
+    const none = aimed('battery', 2, 'battery-ranging', (g) => {
+      g.posts[0].downT = 99;
+      g.posts[1].downT = 99;
+    });
+    const s2 = none.out.find((o) => o.th.kind === 'ballistic')!;
+    const target = s2.ships.find((x) => x.id === s2.th.target)!;
+    expect(target).toBeDefined();
+    const pool = s2.ships.filter((x) => x.x <= VIEW.width - 320);
+    expect(d(target, guns[0])).toBeCloseTo(Math.min(...pool.map((x) => d(x, guns[0]))), 3);
+    // A heavy at the guns whose gun is knocked out on its way turns for the
+    // other gun, under the layer; the campaign's turns for a ship as ever.
+    const turn = (lab: boolean) => {
+      const g = createGame('battery', 9, 4);
+      if (lab) applyEncounters(g, VER('v1'));
+      g.tempo = { ...g.tempo, lossLimit: 999 };
+      g.carrierHp = 999;
+      for (let i = 0; i < 60 / DT && !g.threats.some((t) => t.kind === 'heavy' && t.target === -10); i++) {
+        step(g, DT);
+        if (!lab) for (const t of g.threats) if (t.kind === 'heavy') t.target = -10;
+      }
+      const heavy = g.threats.find((t) => t.kind === 'heavy' && t.target === -10);
+      if (!heavy) return undefined;
+      g.posts[0].downT = 99;
+      step(g, DT);
+      return heavy.target;
+    };
+    expect(turn(true)).toBe(-11);
+    const camp = turn(false);
+    expect(camp === undefined || camp >= 0).toBe(true);
+  });
+
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
     const at = (map: Encounter['map']) => arc(map).filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'post'))).map((a) => a.wave);
     expect(at('marrow')).toEqual([2, 5, 8, 10]);
+    // Battery Point (log v45): its shore guns are the target in every wave
+    // from the first shell (wave 2) to the climax.
+    expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
   });
@@ -1133,6 +1194,49 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
 
 const trucksIn = (r: BossRound) => (r.trucks ?? []).reduce((a, c) => a + c.count, 0);
 
+describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the guns rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('more stealth strafers each round, closer together, with shells and heavies at the shore guns', () => {
+    const off = playMimic('battery', 218, opts);
+    const old = playMimic('battery', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own 8 strafers and nothing else.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('blackout');
+      expect(e.sent.stealthJet).toBe(8);
+      expect((e.sent.ballistic ?? 0) + (e.sent.heavy ?? 0)).toBe(0);
+    }
+    const on = playMimic('battery', 218, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.battery!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['blackout', 1], ['blackout', 2], ['blackout', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.stealthJet)).toEqual(done.map((e) => rounds[e.run! - 1].jets));
+    for (const kind of ['ballistic', 'heavy'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(done.map((e) => fired(rounds[e.run! - 1], kind)));
+    for (const r of rounds) {
+      // The jets lead; every shell and heavy goes for the shore guns, off a
+      // silo that launches it.
+      expect(r.jets!, 'the jets lead').toBeGreaterThan(fired(r, 'ballistic') + fired(r, 'heavy'));
+      expect(fired(r, 'heavy'), 'a heavy at the guns').toBeGreaterThanOrEqual(1);
+      for (const f of r.fire ?? []) {
+        expect(MAPS.battery.bases[f.base!].kinds).toContain(f.kind);
+        expect(f.aim).toBe('post');
+      }
+    }
+    // More each round, and the jets closer together.
+    const weight = rounds.map((r) => 3 * r.jets! + 2 * fired(r, 'ballistic') + 8 * fired(r, 'heavy'));
+    for (let k = 1; k < weight.length; k++) {
+      expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+      expect(rounds[k].jetGap!, `round ${k + 1}`).toBeLessThan(rounds[k - 1].jetGap!);
+    }
+    roundLengths(done);
+    // The boss keeps the event's name, and the shared intro cards.
+    expect(eventName('blackout', 'battery', ENCOUNTER_REV)).toBe('Blackout');
+  }, 90_000);
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -1331,6 +1435,55 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(seen).toBeGreaterThan(0);
     // The other signatures leave the clusters alone.
     for (const m of ['island', 'behemoth', 'needle', 'archipelago'] as const) expect(MAP_SIGNATURE[m]!.clusters, m).toBeUndefined();
+  });
+
+  it('Battery Point (log v45): from wave 4 the wave\'s heavies go for the shore guns, off a silo or a truck, and its strike jets come in dark; chapter 3\'s debut waves are as they were', () => {
+    expect(MAP_SIGNATURE.battery).toMatchObject({ from: 4, heavies: 'post', stealth: true });
+    let heavies = 0;
+    let dark = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('battery', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('battery', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('battery', seed, w);
+        // Every heavy goes for the guns (an encounter's says so itself).
+        for (const l of kinds(on, 'heavy')) {
+          expect(l.aim, `wave ${w}`).toBe('post');
+          heavies++;
+        }
+        // From wave 4 no jet comes with an arrow: each is a Stealth Strafer.
+        if (w >= 4) expect(kinds(on, 'strafer'), `wave ${w}`).toHaveLength(0);
+        else expect(kinds(on, 'stealthJet').filter((l) => l.enc), `wave ${w}`).toHaveLength(0);
+        if (w >= 4) dark += kinds(on, 'stealthJet').length;
+        // The new enemies the wave draws are the planner's own (the debuts
+        // of chapter 3's five: waves 2-6).
+        const drawn = (g: Game) => g.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && l.kind !== 'stealthJet').map((l) => l.kind).sort();
+        expect(drawn(on), `wave ${w}`).toEqual(drawn(shared));
+        // The campaign and the shared wave aim their heavies as ever.
+        for (const l of [...kinds(camp, 'heavy'), ...kinds(shared, 'heavy')]) expect(l.aim).toBeUndefined();
+        // The campaign's jets keep their arrows.
+        if (w >= 3) expect(kinds(camp, 'strafer').length, `wave ${w}`).toBeGreaterThan(0);
+      }
+    expect(heavies).toBeGreaterThan(0);
+    expect(dark).toBeGreaterThan(0);
+    // A truck's heavy at the guns too (the layer only).
+    const g = createGame('battery', 3, 8);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    const truckHeavies: number[] = [];
+    for (let i = 0; i < 70 / DT && g.wave === 8; i++) {
+      step(g, DT);
+      for (const t of g.threats) if (t.kind === 'heavy' && t.from !== undefined && !truckHeavies.includes(t.id) && g.posts.some((_, k) => g.posts[k].downT <= 0)) {
+        truckHeavies.push(t.id);
+        expect(t.target, `heavy ${t.id}`).toBeLessThanOrEqual(-10);
+      }
+    }
+    expect(truckHeavies.length).toBeGreaterThan(0);
+    expect(signatureOf('battery', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('battery', 4, { rev: 3 })).toBeUndefined();
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {

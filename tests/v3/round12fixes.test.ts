@@ -190,8 +190,9 @@ describe('wave 1 says something about the map, in every version', () => {
       expect(first.map((e) => [e.rev, e.opener, e.role]), map).toEqual([[4, undefined, 'teach']]);
       // Light: a few drones out of the map's own signature launcher.
       // (Saltgate Canal, log v42: a second small swarm at the locks, so the
-      // player's flat first wave has a little more in it.)
-      expect(first[0].beats.map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : [['drone', 3]]);
+      // player's flat first wave has a little more in it. Battery Point, log
+      // v43: four, at the lead ship under the shore guns, which take some.)
+      expect(first[0].beats.map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : map === 'battery' ? [['drone', 4]] : [['drone', 3]]);
       expect(encountersFor(map, 1, 'v1', 3), map).toEqual([]);
       const p = plan(map, 'v1');
       expect(p.encounters, map).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });

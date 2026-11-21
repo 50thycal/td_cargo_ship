@@ -3951,6 +3951,273 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Battery Point (log v45, docs/design/v3-ch3-battery.md): chapter 3's first
+ *  map. Two allied shore guns on the headland (posts 0 at (1085, 652) and 1
+ *  at (1210, 646), reach 330) fire on their own at anything over the east of
+ *  the lane, where the ships deliver; a hit knocks one out for 12 s. The
+ *  bases, counted from 0 here (from 1 on the pause screen), all on the far
+ *  shore: 0 the west silo (260, 100: drones, guided, shells), 1 the
+ *  west-middle silo (700, 95: drones, heavies, clusters), 2 the silo across
+ *  from the guns (1100, 95: shells, supersonic, guided), 3 the east silo
+ *  (1450, 100: drones, heavies, motherships). Sub spots: 0 off the far shore
+ *  in the west (180, 240), 1 off the far shore in the east (1440, 240), 2
+ *  behind the convoy by your own shore, mid-lane (800, 690), 3 behind the
+ *  convoy under the headland (1450, 690). The carrier sits at (520, 702), in
+ *  the west: the guns cover the east, the carrier the west, and the middle,
+ *  between the two, is the furthest from both. Ships sail west to east. */
+const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'battery-guns',
+    map: 'battery',
+    waves: [1],
+    role: 'teach',
+    name: 'The guns on the headland',
+    callout: 'Drones at the lead ship',
+    premise: 'The east silo sends a few drones at the lead ship as it sails under your two shore guns, and the guns open up on them.',
+    decision: 'The first look at the map\'s help: two guns of your own on the headland shoot at anything over the east of the lane.',
+    counters: 'Let the guns take the near ones; tap the rest.',
+    succeeds: 'Nothing is sunk on wave 1; most drones fall under the guns.',
+    notes: {
+      sites: 'The east silo (1450, 100).',
+      target: 'The lead ship: the east of the lane, under the guns\' reach.',
+      usesMap: 'Shows the map\'s mechanic on wave 1: the shore guns fire on their own at what comes into their reach.',
+    },
+    beats: [{ at: 0.35, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' }],
+    replaces: { drones: 4 },
+  },
+  {
+    id: 'battery-ranging',
+    map: 'battery',
+    waves: [2],
+    role: 'teach',
+    name: 'Ranging shots',
+    callout: 'Shells at the guns',
+    premise: 'The silo across from the headland lobs two shells at your shore guns; then a swarm comes off the west-middle silo at the ships in the middle.',
+    decision: 'The enemy wants the guns silenced first: a shell on a gun knocks it out for a while.',
+    counters: 'The shells as they climb, then the swarm.',
+    succeeds: 'The shells are shot at in most runs; no ship lost on wave 2.',
+    notes: {
+      sites: 'The silo across from the guns (1100, 95; shells), then the west-middle silo (700, 95; a swarm).',
+      target: 'The shells at the shore guns (aim post), the swarm at the ship halfway along.',
+      usesMap: 'The guns as a target, in place of all of the wave\'s shells (a sub then carries drones, not a salvo).',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.3, plus: 3, kind: 'drone', count: 4, gap: 0.35, from: base(1), aim: 'mid' },
+    ],
+    replaces: { drones: 2, ballistic: 4 },
+  },
+  {
+    id: 'battery-gap',
+    map: 'battery',
+    waves: [3],
+    role: 'teach',
+    name: 'Between the guns',
+    callout: 'Shells on both',
+    premise: 'Shells go for your shore guns and for the ships coming in from the west silo, then a swarm comes at the ships in the middle, between your carrier\'s reach and the guns\'.',
+    decision: 'The first stakes: the guns, the ships coming in and the gap between your two covers, one after another.',
+    counters: 'Each pair of shells as it climbs, then the swarm.',
+    succeeds: 'A close call in the middle in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The silo across from the guns (shells), the west silo (260, 100; shells), the west-middle silo (swarm).',
+      target: 'Two shells at the guns, two at the ship least far along, the swarm at the ship halfway along.',
+      usesMap: 'The gap between the carrier\'s guns and the shore guns, in place of the wave\'s shells and its heavy (the first heavy comes on wave 4, at the guns).',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.75, from: base(0), aim: 'rear' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
+    ],
+    replaces: { drones: 0, ballistic: 7, extras: { heavy: 1 } },
+  },
+  {
+    id: 'battery-silence',
+    map: 'battery',
+    waves: [4],
+    role: 'combine',
+    name: 'Silence the guns',
+    callout: 'A heavy for the guns',
+    premise: 'A heavy cruise missile crawls from the west-middle silo towards your shore guns, and the silo across from them lobs shells at the guns as it comes; swarms come at the ships coming in and at the lead ship.',
+    decision: 'Eight hits to keep the guns firing, or let them fall and cover the lead ship yourself.',
+    counters: 'The heavy all the way in, the shells as they climb, the swarms between.',
+    succeeds: 'The guns are hit in some runs, not all; no ship lost in most runs.',
+    notes: {
+      sites: 'The west-middle silo (a heavy), the silo across from the guns (shells), the west and east silos (swarms).',
+      target: 'The heavy and the shells at the shore guns, the swarms at the ship least far along and at the lead ship under the guns.',
+      usesMap: 'The signature\'s first wave: the guns are the target, in place of the wave\'s shells, a guided missile, its own heavy and its first cluster (the wave\'s own heavies go for the guns from now on too).',
+    },
+    beats: [
+      { at: 0.25, kind: 'heavy', count: 1, from: base(1), aim: 'post' },
+      { at: 0.25, plus: 4, kind: 'ballistic', count: 3, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+    ],
+    replaces: { drones: 0, ballistic: 9, guided: 1, extras: { heavy: 1 } },
+  },
+  {
+    id: 'battery-under-headland',
+    map: 'battery',
+    waves: [5],
+    role: 'combine',
+    name: 'Under the headland',
+    callout: 'A periscope by the guns',
+    premise: 'A periscope rises under the headland, right beside your guns, and fires at them; at the same time the west silo sends a swarm at the ships coming in, and later the silo across from the guns tries again.',
+    decision: 'Both ends at once: the guns in the east at point-blank range, the ships coming in in the west.',
+    counters: 'The shells as they climb, the swarm before it reaches the lane.',
+    succeeds: 'A close call at one end in most runs; the losses are in the west or the middle, not under the guns.',
+    notes: {
+      sites: 'A submarine under the headland (1450, 690), the west silo (260, 100; a swarm), the west-middle silo (a swarm), the silo across from the guns (shells).',
+      target: 'The shells at the shore guns, the west swarm at the ship least far along, the other at the ship halfway along.',
+      usesMap: 'The guns from behind, with no far shore to warn of it, and the far west end at once, in place of the wave\'s shells, a heavy, its first bomber, a cluster and a supersonic missile (the Siege Battery\'s debut wave keeps the rest light).',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.75, from: sub(3), aim: 'post' },
+      { at: 0.35, plus: 1.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.7, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
+    ],
+    replaces: { drones: 0, ballistic: 9, extras: { heavy: 1, bomber: 1, cluster: 1 } },
+  },
+  {
+    id: 'battery-both-ends',
+    map: 'battery',
+    waves: [6],
+    role: 'combine',
+    name: 'Guns or ships',
+    callout: 'The guns or the ships',
+    premise: 'A heavy goes for the guns from the east silo while swarms come at them over the headland; the west silo lobs shells at the ships coming in, and a guided missile from across the headland goes for the lead ship.',
+    decision: 'Three places at once: the guns, the ships coming in and the lead ship.',
+    counters: 'The shells first (they are fastest), the missile, the heavy all the way in.',
+    succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The east silo (1450, 100; a heavy and swarms), the west silo (shells, a swarm), the silo across from the guns (a guided missile, shells), the west-middle silo (a swarm).',
+      target: 'The heavy, two swarms and two shells at the shore guns, the west shells at the ship least far along, the missile at the lead ship, a swarm at the ship halfway along, the last at any ship.',
+      usesMap: 'The whole lane at once, the guns its east end, in place of the wave\'s shells, two guided missiles, a supersonic missile and its first mothership.',
+    },
+    beats: [
+      { at: 0.2, kind: 'heavy', count: 1, from: base(3), aim: 'post' },
+      { at: 0.4, kind: 'ballistic', count: 2, gap: 0.75, from: base(0), aim: 'rear' },
+      { at: 0.4, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.6, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.1, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'post' },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'post' },
+    ],
+    replaces: { drones: 0, ballistic: 13, guided: 2, extras: { mothership: 1 } },
+  },
+  {
+    id: 'battery-dark-jet',
+    map: 'battery',
+    waves: [7],
+    role: 'escalate',
+    name: 'A jet in the dark',
+    callout: 'A jet with no warning',
+    premise: 'A strafer runs in from the east down the lane with no warning, over the guns, while shells, missiles and a swarm come at the guns and swarms come off the silos at the convoy.',
+    decision: 'A jet you only see as it comes in, while the guns are under fire: are they up to meet it?',
+    counters: 'The jet as it comes in (the guns help), the shells as they climb, the swarms last.',
+    succeeds: 'The jet is shot down or passes with a hit or two; a close call in most runs.',
+    notes: {
+      sites: 'A strafer from the east edge (dark, from wave 4), the silo across from the guns (shells), the west silo (a swarm, guided missiles), the west-middle and east silos (swarms).',
+      target: 'The jet down the lane; the shells, the missiles and one swarm at the shore guns; the other swarms at the ship least far along, the ship halfway along and the lead ship.',
+      usesMap: 'A jet through the guns\' reach while they are under fire, in place of the wave\'s shells, three guided missiles, a cluster and its own jet.',
+    },
+    beats: [
+      { at: 0.4, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 0.4, plus: 1.5, kind: 'ballistic', count: 3, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
+      { at: 0.55, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.85, kind: 'guided', count: 2, gap: 1, from: base(0), aim: 'post' },
+      { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'post' },
+    ],
+    replaces: { drones: 0, ballistic: 13, guided: 3, extras: { strafer: 1, cluster: 1 } },
+  },
+  {
+    id: 'battery-counter-battery',
+    map: 'battery',
+    waves: [8],
+    role: 'escalate',
+    name: 'Counter-battery',
+    callout: 'Everything at the guns',
+    premise: 'A periscope off the far shore and the silo across from the headland both fire at your guns, a heavy and two missiles follow them in, and a swarm comes at the guns too; swarms come at the convoy.',
+    decision: 'The enemy goes all out for the guns: hold them, or let them fall and fight the east yourself.',
+    counters: 'The shells as they climb, a salvo at a time; the heavy all the way in; the swarms between.',
+    succeeds: 'The guns are down for part of the wave in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A submarine off the far shore in the east (1440, 240), the silo across from the guns (shells), the west-middle silo (a heavy, a swarm), the west silo (guided missiles, a swarm), the east silo (swarms).',
+      target: 'The shells, the heavy, the missiles and one swarm at the shore guns; the other swarms at the ship halfway along, the ship least far along and any ship.',
+      usesMap: 'The guns as the stake of the whole wave, in place of the wave\'s shells, four guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'post' },
+      { at: 0.3, plus: 2.5, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 0.3, plus: 1, kind: 'heavy', count: 1, from: base(1), aim: 'post' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'rear' },
+      { at: 0.5, kind: 'guided', count: 2, gap: 1, from: base(0), aim: 'post' },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'post' },
+    ],
+    replaces: { drones: 0, ballistic: 16, guided: 4, extras: { cluster: 1 } },
+  },
+  {
+    id: 'battery-crossfire',
+    map: 'battery',
+    waves: [9],
+    role: 'escalate',
+    name: 'Crossfire',
+    callout: 'Periscopes behind',
+    premise: 'Periscopes rise behind the convoy by your own shore, one at the ships in the middle and one at the guns, while a cluster comes off the west-middle silo and missiles and a swarm go for the guns.',
+    decision: 'Fire from behind the convoy as well as the far shore: which salvo first?',
+    counters: 'The shells as they climb, the cluster before it splits, the swarms between.',
+    succeeds: 'Most shells are shot down; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Submarines behind the convoy mid-lane (800, 690) and under the headland (1450, 690), the west-middle silo (a cluster, a swarm), the silo across from the guns (guided missiles), the west and east silos (swarms).',
+      target: 'The mid-lane sub\'s shells at the ship nearest it; the headland sub\'s shells, the missiles and one swarm at the shore guns; the cluster at any ship; the other swarms at the ship halfway along and any ship.',
+      usesMap: 'Both shores at once, in place of the wave\'s shells, four guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.75, from: sub(2), aim: 'near' },
+      { at: 0.35, plus: 2.5, kind: 'ballistic', count: 2, gap: 0.75, from: sub(3), aim: 'post' },
+      { at: 0.55, kind: 'cluster', count: 1, from: base(1) },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 5, gap: 0.35, from: base(1) },
+      { at: 0.45, kind: 'guided', count: 2, gap: 1, from: base(2), aim: 'post' },
+      { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'post' },
+    ],
+    replaces: { drones: 0, ballistic: 16, guided: 4, extras: { cluster: 1 } },
+  },
+  {
+    id: 'battery-last-light',
+    map: 'battery',
+    waves: [10],
+    role: 'climax',
+    name: 'Last light',
+    callout: 'The guns and the convoy',
+    premise: 'Once the wave\'s own fire is spent, a breath, then a heavy at the guns, shells and a swarm at them from across the headland, a cluster over the ships coming in and a swarm at the lead ship.',
+    decision: 'Everything at once, the guns first: the map\'s question at its hardest.',
+    counters: 'The shells and the cluster first, the heavy all the way in, the swarms last.',
+    succeeds: 'A close call at both ends in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'The west-middle silo (a heavy, a cluster), the silo across from the guns (shells), the east silo (swarms), the west silo (a swarm), after the wave\'s own fire and a calm.',
+      target: 'The heavy, the shells and both east swarms at the shore guns, the cluster at the ship least far along, the west swarm at the lead ship.',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s shells, two guided missiles, a heavy and a cluster; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'heavy', count: 1, from: base(1), aim: 'post' },
+      { at: 1, plus: 2, kind: 'ballistic', count: 3, gap: 0.75, from: base(2), aim: 'post' },
+      { at: 1, plus: 3, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
+      { at: 1, plus: 4, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'post' },
+      { at: 1, plus: 5, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.3, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'post' },
+    ],
+    replaces: { drones: 0, ballistic: 20, guided: 2, extras: { heavy: 1, cluster: 1 } },
+    calm: 6,
+  },
+];
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
@@ -3968,6 +4235,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...NEEDLE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...ARCHIPELAGO_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   ...SALTGATE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // Chapter 3, Dark Water (docs/design/v3-ch3-battery.md).
+  ...BATTERY_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ];
 
 /** The rev an encounter came in. */
@@ -4006,14 +4275,18 @@ export const ENCOUNTER_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
  *  rev 4: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md). Chapter 2 so far:
  *  the Island and the Behemoth Run (rev 4: docs/design/v3-ch2-island.md,
  *  v3-ch2-behemoth.md). */
-export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap;
+export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap | ChapterThreeMap;
 /** Chapter 2: the Island, the Behemoth Run, the Needle of Bosk, the
  *  Archipelago and Saltgate Canal (docs/design/v3-ch2-island.md,
  *  v3-ch2-behemoth.md, v3-ch2-needle.md, v3-ch2-archipelago.md,
  *  v3-ch2-saltgate.md). */
 export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | 'saltgate';
 export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
-export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS];
+/** Chapter 3, Dark Water, a map at a time as chapter 2's were: so far Battery
+ *  Point (log v45, docs/design/v3-ch3-battery.md). */
+export type ChapterThreeMap = 'battery';
+export const CHAPTER_THREE_MAPS: MapId[] = ['battery'];
+export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
 
@@ -4098,6 +4371,11 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
 const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96];
+/** Battery Point (log v45; the player's three v40 runs: the bot lost two
+ *  ships in waves 1-5 and won 8% with the player's Armory): waves 5-10
+ *  send a little less, within ±15% of each wave and never more than the
+ *  ten. */
+const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4109,6 +4387,8 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   needle: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mouth of the Needle, where the convoy queues in single file under both headlands; armored drones in small walls from wave 4.', callouts: false } },
   archipelago: { v1: { name: 'Original', idea: 'One encounter a wave, built on the chain of islets: fire from the islets, through the gaps between them, from the far shore and from behind, at once; drone motherships off the west islets from wave 4.', callouts: false } },
   saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; rocket trucks drive down to the locks from wave 4.', callouts: false, scale: SALTGATE_CLIMB } },
+  // Chapter 3.
+  battery: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two allied shore guns on the headland: they cover the ships about to deliver while they stand, and the enemy\'s shells and heavies go for them first; jets come in dark from wave 4.', callouts: false, scale: BATTERY_CLIMB } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -4196,6 +4476,10 @@ export interface MapSignature {
   /** Saltgate Canal (log v42): the wave's Rocket Trucks fire their salvos
    *  at this ('lock': the ships held at the lock nearest the truck). */
   trucks?: BeatAim;
+  /** Battery Point (log v45): the wave's own strike jets come in dark, as
+   *  Stealth Strafers (the Blackout's own: no warning arrow, only their
+   *  short run-in), one for one, so the wave sends no more (rule w-budget). */
+  stealth?: boolean;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -4229,6 +4513,15 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // boss rounds' clusters do the same). Log v38-v41: Torpedo Subs in place
   // of the trucks (the player: put the subs on a more open map).
   saltgate: { from: 4, foe: 'rocketTruck', foeShare: 0.5, clusters: 'lock', trucks: 'lock' },
+  // Battery Point (log v45, docs/design/v3-ch3-battery.md): "silence the
+  // battery", from wave 4. The wave's heavy cruise missiles go for your two
+  // shore guns on the headland while one stands (aim 'post'; with both
+  // knocked out, the ship nearest them), so each is a choice: eight hits to
+  // keep the guns firing, or the guns down for twelve seconds over the ships
+  // about to deliver. And the wave's strike jets come in dark, as Stealth
+  // Strafers, the Blackout's own (the boss rounds' night raiders), with no
+  // warning arrow. Chapter 3's new enemies keep their debut waves (2-6).
+  battery: { from: 4, heavies: 'post', stealth: true },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -4351,6 +4644,12 @@ export interface BossRound {
   /** Saltgate Canal's Gatecrashers (log v42): its truck columns, in place
    *  of Run the Canal's subs, gunships and block. */
   trucks?: TruckRun[];
+  /** Battery Point's Blackout (log v45): `jets` stealth strafers (the
+   *  event's own: 8), the first `jetAt` s into the round, `jetGap` s apart
+   *  (the event's: 2.4), from alternate sides. */
+  jets?: number;
+  jetAt?: number;
+  jetGap?: number;
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -4508,6 +4807,19 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
  *  its launcher (2.4 s, a ring filling round it) and between salvos (1.5 s). */
 export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2 };
 
+/** Battery Point's Blackout (log v45, docs/design/v3-ch3-battery.md): night,
+ *  and stealth strafers from alternate sides (before: 8, 2.4 s apart, and a
+ *  star shell at 6 s, every round), with the map's signature in it: shells
+ *  from the silo across from the headland and heavies at your shore guns
+ *  while they stand, so the guns that shoot at the jets in the dark are the
+ *  enemy's first target. Rising: more fire at the guns and the jets closer
+ *  together each round. */
+export const BATTERY_BOSS_ROUNDS: BossRound[] = [
+  { jets: 7, jetAt: 2, jetGap: 2.4, fire: [{ kind: 'ballistic', at: 1, count: 2, gap: 1, base: 2, aim: 'post' }, { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'post' }] },
+  { jets: 8, jetAt: 2, jetGap: 2.3, fire: [{ kind: 'ballistic', at: 1, count: 2, gap: 1, base: 2, aim: 'post' }, { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'post' }] },
+  { jets: 9, jetAt: 2, jetGap: 2.2, fire: [{ kind: 'ballistic', at: 1, count: 3, gap: 1, base: 2, aim: 'post' }, { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'post' }, { kind: 'heavy', at: 7, count: 1, base: 3, aim: 'post' }] },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -4547,6 +4859,8 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   needle: { rounds: NEEDLE_BOSS_ROUNDS },
   archipelago: { rounds: ARCHIPELAGO_BOSS_ROUNDS },
   saltgate: { rounds: SALTGATE_BOSS_ROUNDS, name: 'Gatecrashers', truck: SALTGATE_TRUCK },
+  // Chapter 3 (BATTERY_BOSS_ROUNDS above).
+  battery: { rounds: BATTERY_BOSS_ROUNDS },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or

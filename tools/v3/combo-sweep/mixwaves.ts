@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -36,6 +36,9 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // and the cluster missiles with their bomblets (log v38-v41: Torpedo Subs
   // with their torpedoes in place of the trucks).
   saltgate: ['rocketTruck', 'cluster', 'bomblet'],
+  // Battery Point (log v43): silence the battery: the heavy cruise missiles
+  // that go for the shore guns, and the jets that come in dark.
+  battery: ['heavy', 'stealthJet'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit

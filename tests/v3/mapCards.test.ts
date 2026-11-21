@@ -24,7 +24,7 @@ const REF: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** Every map with authored encounters: the reference maps and (map
  *  rebuild, chapter 1: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md) Kesh
  *  and Marrow, which have the original (v1) only. */
-const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
+const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery'];
 
 /** A map card's run as the app starts it from the hub (no setup given, no
  *  link): the plan labRunPlan makes. */
@@ -209,16 +209,18 @@ describe('a map card is the full production map', () => {
     expect(productionText('archipelago')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the same.
     expect(productionText('saltgate')).toBe("The map's own convoy (no commands) · encounters v1 Original");
-    expect(productionText('battery')).toMatch(/^Today's convoy controls/);
+    // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
+    expect(productionText('battery')).toBe("The map's own convoy (no commands) · encounters v1 Original");
+    expect(productionText('rigs')).toMatch(/^Today's convoy controls/);
   });
 });
 
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '' };
 
-  it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold; the other 14: today\'s convoy, no encounters', () => {
+  it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold; the other 13: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {
       const plan = fromHub(`map-${id}`);
       if (LAYER.includes(id)) {

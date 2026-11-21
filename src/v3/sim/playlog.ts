@@ -299,7 +299,16 @@ import type { EncounterSetup } from '../data/encounters';
  *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
  *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
  *      longer replays to the same game; the campaign plays as it did.
- *  43: (taken: the Battery rebuild, claude/v3-ch3-battery.)
+ *  43: chapter 3's first map, Battery Point, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-battery.md; lab, under the encounter
+ *      layer): ten encounters (BATTERY_R4), a climb (BATTERY_CLIMB), the
+ *      signature (MAP_SIGNATURE.battery: the wave's heavies at the shore
+ *      guns, off a truck as off a silo, and its strike jets as Stealth
+ *      Strafers), a launch at a knocked-out gun goes for the other gun,
+ *      and the Blackout's rounds rise (MAP_BOSS.battery: `jets`, `jetAt`,
+ *      `jetGap`, `fire`). A v42 Battery card log played the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
  *  44: the Armory's Lifeboats and Quartermaster reworked (docs/design/
  *      v3-armory-overhaul.md, "Lifeboats and Quartermaster reworked"; the
  *      player's answers on the hub). Lifeboats: the half loss is gone;
@@ -311,11 +320,15 @@ import type { EncounterSetup } from '../data/encounters';
  *      from level 3 (the Nuke when tapped: a new command, 'n'), and at level
  *      5 four cards and a free weapon level-up in a draft (a new command,
  *      'l'). A v42 log without either card plays the same game (the map-lab
- *      baseline replays unchanged); one with either needs this build. */
-export const LOG_VERSION = 44;
+ *      baseline replays unchanged); one with either needs this build.
+ *  45: the Battery rebuild (43 above) on top of the Armory rework (44):
+ *      the base took 44 while the Battery was built as 43, so it moved
+ *      here. The campaign plays as at 44; a 44 Battery card log played the
+ *      shared waves and no longer replays to the same game. */
+export const LOG_VERSION = 45;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [44];
+export const LOG_REPLAYS: readonly number[] = [45];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

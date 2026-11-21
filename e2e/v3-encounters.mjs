@@ -181,8 +181,18 @@ try {
   check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
 
+  // ---- Battery Point (log v45): chapter 3's first map, the Blackout at
+  // the guns ----
+  await open(page, 'lab=map-battery&seed=7');
+  const bp = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, posts: window.__v3.game().posts.length }));
+  check(bp.map === 'battery' && bp.rev === ENCOUNTER_REV && bp.posts === 2, `Battery Point's card opens with its encounters and its two shore guns (${JSON.stringify(bp)})`);
+  await labMenu(page);
+  const bpArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Blackout/.test(bpArc), `Battery Point's script names its boss, the Blackout (${bpArc})`);
+  await page.screenshot({ path: `${OUT_DIR}/battery-script.png` });
+
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-battery', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-rigs', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point since chapter 3)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');
