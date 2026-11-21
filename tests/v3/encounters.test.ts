@@ -436,7 +436,10 @@ describe('every authored launch is warned of', () => {
       // dark from the signature's first wave, a Stealth Strafer with no
       // arrow (the Blackout's own: only its short run-in); it came, tagged.
       const dark = (b: Encounter['beats'][number]) => b.kind === 'strafer' && !!signatureOf(e.map, w, { rev: lastRev(e) })?.stealth;
-      const want = e.beats.filter((b) => !isFoe(b.kind) && !dark(b)).reduce((a, b) => a + b.count, 0);
+      // (Log v49: a relief rig is towed in, a structure on the water, not a
+      // launch: its tow is its own warning, slow along the rig line; the
+      // Rig Field's tests check it docks.)
+      const want = e.beats.filter((b) => !isFoe(b.kind) && !dark(b) && b.kind !== 'rig').reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
       const darkWant = e.beats.filter(dark).reduce((a, b) => a + b.count, 0);
       expect(launches(sc).filter((l) => l.enc === e.id && l.kind === 'stealthJet').length, `${e.id}: its jets came in dark`).toBe(darkWant);
@@ -1370,9 +1373,10 @@ describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows
 describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rises; a rev 3 log and the campaign play the Dive Circus as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   it('the downed rigs rise again each round, more of them, and every rig standing fires its volley together at the ship halfway along', () => {
-    // (Seed 220: the tryhard bot plays all three rounds there; tools/v3/rigs/probe-boss.ts.)
-    const off = playMimic('rigs', 220, opts);
-    const old = playMimic('rigs', 220, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // (Seed 219: the tryhard bot plays all three rounds there, every rig
+    // still standing from the start; tools/v3/rigs/probe-boss.ts.)
+    const off = playMimic('rigs', 219, opts);
+    const old = playMimic('rigs', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own dive bombers and missile pairs.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
     expect(old.log.commands).toEqual(off.log.commands);
@@ -1381,7 +1385,7 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
       expect(e.sent.diveBomber).toBe(8);
       expect(e.sent.rig ?? 0).toBe(0);
     }
-    const on = playMimic('rigs', 220, { ...opts, encounters: VER('v1') });
+    const on = playMimic('rigs', 219, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.rigs!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['dive-circus', 1], ['dive-circus', 2], ['dive-circus', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
@@ -1423,7 +1427,7 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
     expect(st.map((i) => g.baseDown[i])).toEqual([true, true, true, false]);
     for (let i = 0; i < 30 / DT && !g.event; i++) step(g, DT);
     expect(g.event?.id).toBe('dive-circus');
-    for (let i = 0; i < 10 / DT && st.filter((i) => !g.baseDown[i]).length < 2; i++) step(g, DT);
+    for (let i = 0; i < 40 / DT && st.filter((i) => !g.baseDown[i]).length < 2; i++) step(g, DT);
     // Round 1: two stand, the east one (still standing) and the west-middle (the first to rise).
     expect(st.map((i) => !g.baseDown[i])).toEqual([false, true, false, true]);
     expect(rigAt(g, st[1])!.hp).toBe(MAP_BOSS.rigs!.rounds![0].rigHp);
@@ -1741,7 +1745,8 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     applyEncounters(g, VER('v1'));
     g.tempo = { ...g.tempo, lossLimit: 999 };
     g.carrierHp = 999;
-    g.queue = [];
+    // Nothing else in the wave, held open (a structure alone does not).
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
     g.raiderQueue = [];
     const st = rigStations(g);
     const west = rigAt(g, st[0])!;

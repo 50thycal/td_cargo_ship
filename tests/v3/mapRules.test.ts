@@ -22,7 +22,7 @@ import { ENCOUNTER_REV, ENCOUNTERS, LAYER_MAPS, arc, encountersFor, type Encount
 import { MAP_PLANS } from '../../src/v3/data/mapPlans';
 import { ABILITIES } from '../../src/v3/data/abilities';
 import { FOES, FOE_OF_KIND, FOE_ORDER, foeCount } from '../../src/v3/data/foes';
-import { MAP_ORDER, chapterOf, type MapId } from '../../src/v3/data/maps';
+import { MAPS, MAP_ORDER, chapterOf, type MapId } from '../../src/v3/data/maps';
 import { debuts, kindChapter, mapDebutsFoe, mapKindWaves, mapListedKinds, PLAN_WAVES } from '../../src/v3/data/mapRules';
 import { enemyPair, memberChapter, memberKind } from '../../src/v3/data/pairs';
 import { applyEncounters, createGame, step } from '../../src/v3/sim/game';
@@ -52,7 +52,8 @@ describe('g-named: internal notes on every encounter, a plain call-out', () => {
       for (const b of e.beats) {
         if ('sub' in b.from) expect(sites, `${e.id}: a sub fires`).toMatch(/sub/);
         else if ('air' in b.from) expect(sites, `${e.id}: from the ${b.from.air > 0 ? 'west' : 'east'} edge`).toContain(`${b.from.air > 0 ? 'west' : 'east'} edge`);
-        else expect(sites, `${e.id}: a base fires`).toMatch(/silo/);
+        // (The Rig Field, log v49: its rigs in the sea are its launchers.)
+        else expect(sites, `${e.id}: a base fires`).toMatch("base" in b.from && MAPS[e.map].bases[b.from.base]?.rig ? /\brigs?\b/ : /silo/);
       }
     }
   });
@@ -134,7 +135,9 @@ describe('no later-chapter foes (q-bots, m-enemy)', () => {
       const ch = chapterOf(e.map);
       const later: string[] = [];
       for (const b of e.beats) {
-        const c = kindChapter(b.kind);
+        // A relief rig (the Rig Field, log v49) is the map's own structure,
+        // standing from its wave 1: its chapter is the map's.
+        const c = b.kind === 'rig' && MAPS[e.map].bases.some((x) => x.rig) ? ch : kindChapter(b.kind);
         expect(c, `${e.id}: ${b.kind} has a chapter`).toBeDefined();
         if (c! > ch) later.push(`${b.kind} (ch ${c})`);
       }
@@ -277,7 +280,8 @@ describe('m-enemy: each kind\'s debut in the campaign', () => {
   it('it covers every kind an encounter uses, and every new enemy', () => {
     const have = new Set(debuts().map((d) => d.kind));
     for (const e of ENCOUNTERS) {
-      for (const b of e.beats) expect(have.has(b.kind), `${e.id}: ${b.kind}`).toBe(true);
+      // (A relief rig, the Rig Field's, log v49: the map's own structure, standing from wave 1.)
+      for (const b of e.beats) expect(have.has(b.kind) || (b.kind === 'rig' && MAPS[e.map].bases.some((x) => x.rig)), `${e.id}: ${b.kind}`).toBe(true);
       for (const p of e.pairs ?? []) for (const m of enemyPair(p.pair)!.members) expect(have.has(memberKind(m)), `${e.id}: ${m}`).toBe(true);
     }
     for (const f of FOE_ORDER) expect(have.has(FOES[f].kind), f).toBe(true);

@@ -5840,6 +5840,7 @@ export function towRig(g: Game, side?: number, enc?: string): void {
   th.heading = from > 0 ? 0 : Math.PI;
   if (enc) th.enc = enc;
   g.threats.push(th);
+  if (g.tel) g.tel.spawn(g, th, 'structure');
 }
 
 /** Log v49 (The Rig Field's Rig Barrage): a rig rises again on downed
@@ -5850,6 +5851,7 @@ export function raiseRig(g: Game, i: number, hp: number): void {
   const th = structure(g, 'rig', b.x, b.y, hp, i);
   th.maxHp = b.rig?.hp ?? THREATS.rig.hp;
   g.threats.push(th);
+  if (g.tel) g.tel.spawn(g, th, 'structure');
   addFx(g, 'splash', b.x, b.y + 30, { life: 1.2, r: 60 });
   g.events.push({ kind: 'bigKill', label: 'RIG RAISED', x: b.x, y: b.y });
 }
@@ -5892,7 +5894,7 @@ function dockRig(g: Game, th: Threat): void {
     g.events.push({ kind: 'bigKill', label: 'RIG MENDED', x: b.x, y: b.y });
   }
   addFx(g, 'launch', b.x, b.y, { life: TOW.fire, r: 46 });
-  for (let k = 0; k < TOW.rack; k++) g.queue.push({ at: g.waveT + TOW.fire + k * TOW.gap, kind: 'guided', base: i, aim: 'near', ...(th.enc ? { enc: th.enc } : {}), tow: true });
+  for (let k = 0; k < TOW.rack; k++) g.queue.push({ at: g.waveT + TOW.fire + k * TOW.gap, kind: 'guided', base: i, aim: 'near', tow: true });
   g.queue.sort((x, y) => x.at - y.at);
 }
 
