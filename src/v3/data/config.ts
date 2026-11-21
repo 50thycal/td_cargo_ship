@@ -240,6 +240,15 @@ export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 /** Mines: how near a hull sets one off, and their wobble on the current. */
 export const MINE = { hitRadius: 30, wobble: 6 } as const;
 
+/** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`, and its Carpet Run under the
+ *  encounter layer): a sowing bomber lays its mines in place of missiles,
+ *  one every `every` s, while it is `near` to `far` px ahead of a ship along
+ *  its course and within `across` px of its line, so each mine goes down in
+ *  the water the ship is about to sail through. Its own route runs `line` of
+ *  the lane's half-width up-current of the lane's middle, so its mines drift
+ *  across the whole lane. */
+export const SOW = { near: 110, far: 340, across: 190, every: 0.55, line: 0.6 } as const;
+
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
 

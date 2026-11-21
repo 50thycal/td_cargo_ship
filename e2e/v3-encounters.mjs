@@ -217,8 +217,44 @@ try {
   check(/Boss rounds: Blackout/.test(bpArc), `Battery Point's script names its boss, the Blackout (${bpArc})`);
   await page.screenshot({ path: `${OUT_DIR}/battery-script.png` });
 
+  // ---- Sowers' Reach (log v48): chapter 3's second map, mines on the
+  // current, stealth bombers that sow them, and the Carpet Run ----
+  await open(page, 'lab=map-sowers&seed=7');
+  const sw = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command) }));
+  check(sw.map === 'sowers' && sw.rev === ENCOUNTER_REV && sw.cmds.join() === 'hold', `Sowers' Reach's card opens with its encounters and Hold (${JSON.stringify(sw)})`);
+  await labMenu(page);
+  const swArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Carpet Run/.test(swArc), `Sowers' Reach's script names its boss, the Carpet Run (${swArc})`);
+  await page.screenshot({ path: `${OUT_DIR}/sowers-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): the vees of stealth bombers sow mines ahead of the convoy.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-sowers&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let carpet = { bombers: 0, sown: 0, sowing: 0 };
+    for (let k = 0; k < 400 && carpet.sown < 4; k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      carpet = await one.evaluate(() => {
+        const g = window.__v3.game();
+        return {
+          bombers: g.threats.filter((t) => t.kind === 'stealthBomber' && !t.dead).length,
+          sowing: g.threats.filter((t) => t.kind === 'stealthBomber' && t.sow).length,
+          sown: g.threats.filter((t) => t.kind === 'mine' && t.parent === 'stealthBomber' && !t.dead).length,
+        };
+      });
+    }
+    check(carpet.sown >= 1 && carpet.sowing >= 1, `the Carpet Run's stealth bombers sow mines ahead of the convoy (${JSON.stringify(carpet)})`);
+    await one.screenshot({ path: `${OUT_DIR}/sowers-boss.png` });
+    await one.close();
+  }
+
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-rigs', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point since chapter 3)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-rigs', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point and Sowers\' Reach since chapter 3)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');

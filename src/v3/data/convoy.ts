@@ -149,7 +149,9 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   battery: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   // The campaign's own schedule and formation (DEFAULT_FLOW, step 1, and
   // Pairs), so the ships sail as a campaign run's do when the controls are
-  // left alone: only Hold is added.
+  // left alone: only Hold is added. Chapter 3's rebuild (docs/design/
+  // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
+  // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
 };
 

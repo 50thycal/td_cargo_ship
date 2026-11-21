@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -39,6 +39,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // Battery Point (log v43): silence the battery: the heavy cruise missiles
   // that go for the shore guns, and the jets that come in dark.
   battery: ['heavy', 'stealthJet'],
+  // Sowers' Reach (log v48): sown, the stealth bombers that sow mines just
+  // ahead of the ships, and the mines they sow (counted apart from the
+  // chutes' own, the map's mechanic, as `sownMine`).
+  sowers: ['stealthBomber', 'sownMine'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -60,12 +64,15 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         if (seen.has(th.id)) continue;
         seen.add(th.id);
         const w = out[Math.min(13, g.wave) - 1];
-        if (w) w[th.kind] = (w[th.kind] ?? 0) + 1 / nSeeds;
+        // A mine a stealth bomber sowed (log v48) is the signature's; a
+        // chute's is the map's mechanic.
+        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.kind;
+        if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
         // from the front, the way it flies at its ship): counted with its
         // hull (log v35, the Needle's walls).
-        if (h) h[th.kind] = (h[th.kind] ?? 0) + (th.hp + (th.kind === 'armored' ? (th.foe?.n ?? 0) : 0)) / nSeeds;
+        if (h) h[kind] = (h[kind] ?? 0) + (th.hp + (th.kind === 'armored' ? (th.foe?.n ?? 0) : 0)) / nSeeds;
       }
     }
   }

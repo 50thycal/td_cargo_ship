@@ -342,11 +342,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      two of filler drones on top of the wave (encounters.ts BUSY, Beat
  *      `filler`), tagged `fill` in the telemetry. Lab only: a v46 map card
  *      log no longer replays to the same game; the campaign plays as it
- *      did. */
-export const LOG_VERSION = 47;
+ *      did.
+ *  48: chapter 3's second map, Sowers' Reach, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-sowers.md; lab, under the encounter
+ *      layer): ten encounters (SOWERS_R4) with their filler, a climb
+ *      (SOWERS_CLIMB), the signature (MAP_SIGNATURE.sowers: the wave's new
+ *      enemies are Stealth Bombers from wave 4, and a stealth bomber sows
+ *      mines just ahead of the ships in place of its missiles, `sow`,
+ *      Launch and Threat `sow`, data/config.ts SOW), and the Carpet Run's
+ *      rounds rise (MAP_BOSS.sowers: `vees`, `veeAt`, `veeGap`, `veeHp`,
+ *      `sow`, `fire`, a boss round's mines off the chutes). A v47 Sowers
+ *      card log played the shared waves and no longer replays to the same
+ *      game; the campaign plays as it did. */
+export const LOG_VERSION = 48;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [47];
+export const LOG_REPLAYS: readonly number[] = [48];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

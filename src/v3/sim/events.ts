@@ -34,7 +34,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -606,8 +606,14 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(R?.jets ?? E.strafers, (k) => (R?.jetAt ?? 0) + k * every, 'jet'), ...steps(1, () => E.shellAt, 'shell'), ...fireSteps(R)];
     }
     case 'carpet-run': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch3-sowers.md): Sowers'
+      // Reach's rounds rise, their own vees (how many, when, how far apart,
+      // their hits, the mines each sows in place of its missiles) and
+      // launches of their own (MAP_BOSS: mines off the chutes, shells).
       const E = EV['carpet-run'];
-      return steps(E.passes, (k) => k * E.gap, 'vee');
+      const R = bossRound(g, ev);
+      const gap = R?.veeGap ?? E.gap;
+      return [...steps(R?.vees ?? E.passes, (k) => (R?.veeAt ?? 0) + k * gap, 'vee'), ...fireSteps(R)];
     }
     case 'dive-circus': {
       // Dives on the beat; a missile pair on every other off-beat.
@@ -937,14 +943,18 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     case 'carpet-run': {
       // Three abreast across the lane, the middle one leading.
       const E = EV['carpet-run'];
+      const R = bossRound(g, ev);
       const ch = g.map.channels[0];
       const side = s.k % 2 ? -1 : 1;
       for (const lat of [-1, 0, 1]) {
         const id0 = g.nextId;
         launchPlane(g, { at: g.waveT, kind: 'stealthBomber', base: -1, side, y: ch.y + lat * E.spread * ch.halfWidth });
         for (const t of since(g, id0, 'stealthBomber')) {
-          t.hp = t.maxHp = E.hp;
+          t.hp = t.maxHp = R?.veeHp ?? E.hp;
           if (lat !== 0) t.x -= side * E.behind;
+          // Log v48 (Sowers' Reach, lab only): the vee sows a carpet of
+          // mines ahead of the convoy in place of its missiles.
+          if (R?.sow) sowMines(t, R.sow);
         }
         sent(ev, 'stealthBomber');
       }
