@@ -242,7 +242,8 @@ export interface Threat {
   /** Telemetry only: the authored encounter (data/encounters.ts) that
    *  sent it. */
   enc?: string;
-  /** Telemetry only: an encounter's easy filler (Beat `filler`, log v47). */
+  /** An encounter's easy filler (Beat `filler`, log v47): it drops nothing
+   *  when shot down (and the telemetry tags it). */
   filler?: boolean;
   /** Telemetry only (nothing in the sim reads it): what launched it when
    *  that is not a base, a sub or a truck: the bomber or helicopter that
@@ -6339,7 +6340,11 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
     cue(g, KILL_CUE[th.kind], th.x, th.y);
     if (THREATS[th.kind].hp >= 3) g.events.push({ kind: 'bigKill', threat: th.kind, x: th.x, y: th.y });
   }
-  if (!drops) return;
+  // An encounter's easy filler (log v47) drops nothing: it rolls no dice and
+  // moves no pity clock, so the run's pickups and weapons come as they would
+  // without it (with drops, the Island's extra early kills brought weapons
+  // on at other moments, and the bots lost more on its wave 4).
+  if (!drops || th.filler) return;
   // A special event's supply drone always drops (the Bombardment's).
   if (th.cargo && g.event) {
     const c = eventCargo(g);

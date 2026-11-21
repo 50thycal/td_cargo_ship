@@ -124,7 +124,9 @@ export interface Beat {
    *  playtests: "just add in more drones and easy things to kill so it
    *  doesn't increase the difficulty but keep it busy"): easy filler on top
    *  of the wave, taken out of nothing. Only drones from a base, and only
-   *  in waves 1-6. The wave budget counts each filler launch as
+   *  in waves 1-6. One shot down drops nothing (no pickup, no weapon:
+   *  the run's loot comes as it would without it). The wave budget counts
+   *  each filler launch as
    *  FILLER_WEIGHT of one (rule w-budget: a lone one-hit drone with a long
    *  flight is not a fraction of a raid). */
   filler?: boolean;
@@ -4274,9 +4276,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['harbor-first-look', 'harbor-wide-water', 'harbor-periscope', 'harbor-south-headland', 'harbor-funnel-tail', 'harbor-both-headlands'], 0, 3, [2]),
   ['harbor-wide-water', [fill(0.75, 2, 3)]],
   // Chapter 2. The Island: the north shore's silo only (the island's own two sit over both lanes).
-  ...busy(['island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes', 'island-behind'], 3, 3, [1, 4]),
-  // (Its wave 1 one string, after the point-blank swarm.)
-  ['island-point-blank', [fill(0.65, 3, 3)]],
+  // Even that silo's flight to the north lane is short: a string of two on
+  // waves 1 and 3 only, the first after the point-blank swarm (more cost the
+  // bots up to 0.2 of a ship in waves 1-5 on 288-384 seeds; this, 0.08).
+  ['island-point-blank', [fill(0.65, 2, 3)]],
+  ['island-quiet-water', [fill(0.15, 2, 3)]],
   ...busy(['behemoth-first-tanker', 'behemoth-tanker-shell', 'behemoth-headland', 'behemoth-periscope', 'behemoth-tanker-or-convoy', 'behemoth-both-sides'], 0, 2),
   // The Needle: the north-west silo only (the south one is at the mouth).
   ...busy(['needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands', 'needle-way-out'], 0, 0, [5]),
