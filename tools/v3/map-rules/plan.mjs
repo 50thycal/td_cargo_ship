@@ -146,6 +146,7 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-21', what: 'Lifeboats level 5 stays as built (+1 life at the start of each run), as you answered. Added: a home-screen icon (a carrier on a cyan radar scope with a red contact) and a web app manifest. To get it on your iPhone, remove the old home-screen app and add it again from Safari (Share → Add to Home Screen); iOS only reads the icon when the shortcut is made.' },
     { date: '2026-11-21', what: 'Merged #213 (log v48): The Sowers rebuilt (Test Lab), chapter 3’s second map. The problem: mines drift down across the lane on the current from three chutes; a ship can’t steer round one and one sinks it, so each mine is shoot-it or Hold-and-wait while the rest of the wave fires. Signature from wave 4: Stealth Bombers fly the up-current edge and sow mines just ahead of your ships. Boss: the Carpet Run, vees of bombers carpeting the lane in mines (2, then 3, then 3 faster vees). Bot wins with your usual Armory 15% → 59%, plating 35% → 83%, latest 7% → 56%; waves 1–5 lose 0.72. Its best weapon alone is the Tesla Arc and its best kits share nothing with chapter 2 or the Battery. Note: the bot never misses a mine, so you may find it harder than the bot does.' },
     { date: '2026-11-21', what: 'Merged #212 (log v47): busier early waves, as you asked (“more drones and easy things to kill… less is more”). Every rebuilt map’s waves 1–6 get a few extra filler drones from the far silos (2–5 a wave, mostly waves 1–3; the Battery only on wave 2, since its start was already busy). They drop nothing, so pickups come as before. Wave 1 has about a fifth to two fifths more on the board and more kills a minute; bot losses in waves 1–5 moved by 0.08 at most and wins by 4 points or less. Also fixed: Skip to boss showed the old wave label for a moment.' },
     { date: '2026-11-21', what: 'Merged #211 (log v46): Saltgate’s Gatecrashers are now a parade of a new Missile Truck, as you asked. A long olive eight-wheeler with one big white missile on an erector: it drives in, raises the missile (the red ring fills and a dashed line marks its ship), and lobs a ballistic missile at the ships waiting at the lock gates. Kill the truck while it drives or raises, or shoot the missile in the air. Round 1: a column of 8; round 2: 9 on both banks; round 3: the big parade, 10 trucks at both locks, up to 7 missiles in the air at once. No rocket trucks in the boss any more. Bot with your Armory: wins 60%, boss rounds 0.7 / 1.5 / 2.0.' },
@@ -199,13 +200,6 @@ export const STATUS = {
 export const NEEDS = [
 
   {
-    id: 'r14-lifeboats-l5',
-    kind: 'question',
-    title: 'Lifeboats level 5: start each run with one extra life?',
-    text: 'You set levels 1–4 (repair, repair + all ships, the Lifeboat card, full repair). Level 5 is built as: everything from level 4, and every run starts with +1 life, keeping the repair / life alternation.',
-    options: ['Start with +1 life (as built, recommended)', 'Instead the Lifeboat card shows up every other wave', 'Something else (say in the note)'],
-  },
-  {
     id: 'r14-play-battery',
     kind: 'item',
     title: 'Play the rebuilt Battery (Test Lab → Ready to test)',
@@ -228,6 +222,15 @@ export const NEEDS = [
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r14-lifeboats-l5',
+    kind: 'question',
+    verdict: 'Answered',
+    note: 'Start each run with +1 life, as built.',
+    at: '2026-11-21',
+    title: 'Lifeboats level 5: start each run with one extra life?',
+    text: '',
+  },
   {
     id: 'r13-early-waves',
     kind: 'question',

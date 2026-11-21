@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#0f2a3a"/>
+      <stop offset="0.6" stop-color="#081620"/>
+      <stop offset="1" stop-color="#03080c"/>
+    </radialGradient>
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6fe6ff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#6fe6ff" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9d6dc"/>
+      <stop offset="1" stop-color="#7e939e"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- radar scope -->
+  <g fill="none" stroke="#6fe6ff" stroke-opacity="0.28" stroke-width="4">
+    <circle cx="256" cy="256" r="196"/>
+    <circle cx="256" cy="256" r="132"/>
+    <circle cx="256" cy="256" r="68"/>
+    <line x1="256" y1="52" x2="256" y2="460"/>
+    <line x1="52" y1="256" x2="460" y2="256"/>
+  </g>
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#6fe6ff" stroke-opacity="0.7" stroke-width="6"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L452 256 A196 196 0 0 0 394 117 Z" fill="url(#sweep)"/>
+  <line x1="256" y1="256" x2="394" y2="117" stroke="#6fe6ff" stroke-width="6" stroke-linecap="round"/>
+  <!-- carrier, top-down: hull, angled deck, island -->
+  <g transform="translate(250 268) rotate(-24)">
+    <path d="M-128 -40 L96 -40 Q150 -38 168 0 Q150 38 96 40 L-128 40 Q-146 0 -128 -40 Z" fill="url(#hull)" stroke="#03080c" stroke-width="6"/>
+    <path d="M-120 -30 L100 -30 Q140 -28 152 0 L-120 18 Z" fill="#4c5f69" opacity="0.55"/>
+    <path d="M-104 4 L120 -16" stroke="#eef3f4" stroke-width="5" stroke-dasharray="18 12"/>
+    <path d="M-100 26 L40 26" stroke="#f5c542" stroke-width="4" opacity="0.8"/>
+    <rect x="34" y="20" width="46" height="16" rx="3" fill="#24404f" stroke="#03080c" stroke-width="3"/>
+    <rect x="46" y="12" width="14" height="10" rx="2" fill="#6fe6ff"/>
+  </g>
+  <!-- threat contact and intercept -->
+  <circle cx="372" cy="150" r="13" fill="#ff4d3d"/>
+  <circle cx="372" cy="150" r="26" fill="none" stroke="#ff4d3d" stroke-width="5" stroke-opacity="0.6"/>
+  <g fill="#45e08a" stroke="#03080c" stroke-width="3">
+    <path d="M120 378 l30 -12 q10 0 8 8 l-30 12 q-10 0 -8 -8 z"/>
+    <path d="M168 404 l30 -12 q10 0 8 8 l-30 12 q-10 0 -8 -8 z"/>
+  </g>
+</svg>
