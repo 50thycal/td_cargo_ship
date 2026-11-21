@@ -111,8 +111,24 @@ export function phaseWords(sc: TelemetrySidecar): string[] {
 }
 
 /** The game's and its stats' fields for Boilers, Lifeboats, Quartermaster
- *  and Salvage Crews, at their values without them. */
-const UNUSED_ARMORY: Record<string, number> = { rerolls: 0, lossCredit: 0, boatsUsed: 0, boatWave: 0, convoySpeed: 1, steamTime: 1, lifeboats: 0, draftCards: 3, salvage: 0 };
+ *  and Salvage Crews, at their values without them (Lifeboats and
+ *  Quartermaster as reworked in log 44). */
+const UNUSED_ARMORY: Record<string, number> = {
+  rerolls: 0,
+  bombsLeft: 0,
+  freeLevelsLeft: 0,
+  extraLives: 0,
+  convoySpeed: 1,
+  steamTime: 1,
+  mendCarrier: 0,
+  mendShips: 0,
+  lifeCard: 0,
+  startLives: 0,
+  draftCards: 3,
+  goldBombs: 0,
+  freeLevels: 0,
+  salvage: 0,
+};
 
 /** The whole of a game that the sim reads, as text: everything but its
  *  seeded RNG streams (closed over: `rngPrint` covers those), its telemetry

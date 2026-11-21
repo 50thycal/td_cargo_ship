@@ -6,7 +6,7 @@
 
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
-import type { AbilityId, CardId } from '../data/abilities';
+import { ABILITY_MAX, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { LabSetup, LabStats } from './lab';
 import type { Scorecard } from '../data/scorecard';
@@ -19,6 +19,8 @@ import {
   createGame,
   pickUpgrade,
   rerollDraft,
+  freeLevelUp,
+  goldBomb,
   focusHold,
   labBring,
   press,
@@ -297,8 +299,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
  *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
  *      longer replays to the same game; the campaign plays as it did.
- *  43-45: kept for the parallel builds (the Armory rework is 44, the
- *      Battery rebuild 45).
+ *  43: (unused: the Battery rebuild took 45.)
+ *  44: the Armory's Lifeboats and Quartermaster reworked (docs/design/
+ *      v3-armory-overhaul.md, "Lifeboats and Quartermaster reworked"; the
+ *      player's answers on the hub). Lifeboats: the half loss is gone;
+ *      between waves the carrier (level 1+) and the ships (level 2+) mend
+ *      66% of their missing hull (all of it from level 4), a Lifeboat card
+ *      (+1 life: `lossLimit`) is dealt in the draft after every third wave
+ *      from level 3 (a pick, 'u' 'lifeboat'), and level 5 starts the run
+ *      with a life. Quartermaster: re-rolls 1 / 2 / 2 / 3 / 3, a golden bomb
+ *      from level 3 (the Nuke when tapped: a new command, 'n'), and at level
+ *      5 four cards and a free weapon level-up in a draft (a new command,
+ *      'l'). A v42 log without either card plays the same game (the map-lab
+ *      baseline replays unchanged); one with either needs this build.
+ *  45: (taken: the Battery rebuild, claude/v3-ch3-battery.)
  *  46: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
  *      Trucks (docs/design/v3-ch2-saltgate.md; lab, under the encounter
  *      layer; the player's review of the v42 boss: "make it the missile
@@ -389,6 +403,8 @@ export type LogCommand =
   | [number, 'k', CommandId] // a lab convoy command: rush, disperse, hold (sim/convoy.ts)
   | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
   | [number, 'x'] // Quartermaster: the draft dealt again
+  | [number, 'l', AbilityId] // Quartermaster 5: a free level-up of a held weapon, in a draft
+  | [number, 'n'] // Quartermaster 3+: the golden bomb set off
   | [number, 'e'] // continue into endless
   | [number, 's', number] // game speed (UI only; kept for context)
   | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
@@ -709,6 +725,24 @@ export class Recorder {
     return rerollDraft(this.game);
   }
 
+  /** Quartermaster 5: a free level-up of a held weapon, in a draft (only
+   *  one that happened is logged). */
+  freeLevel(id: AbilityId): boolean {
+    const g = this.game;
+    const lv = g.levels[id] ?? 0;
+    if (g.phase !== 'draft' || g.freeLevelsLeft <= 0 || lv <= 0 || lv >= ABILITY_MAX) return false;
+    this.log.commands.push([g.steps, 'l', id]);
+    return freeLevelUp(g, id);
+  }
+
+  /** Quartermaster 3+: set off the golden bomb (only one that went off is
+   *  logged). */
+  goldBomb(): boolean {
+    if (this.game.phase !== 'wave' || this.game.bombsLeft <= 0) return false;
+    this.log.commands.push([this.game.steps, 'n']);
+    return goldBomb(this.game);
+  }
+
 
   endless(): void {
     this.log.commands.push([this.game.steps, 'e']);
@@ -828,6 +862,12 @@ export function applyCommand(g: Game, c: LogCommand): void {
       break;
     case 'x':
       rerollDraft(g);
+      break;
+    case 'l':
+      freeLevelUp(g, c[2]);
+      break;
+    case 'n':
+      goldBomb(g);
       break;
     case 'e':
       continueEndless(g);

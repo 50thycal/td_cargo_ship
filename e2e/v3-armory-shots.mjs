@@ -4,6 +4,11 @@
 // phone held sideways (844×390, 667×375) and on a desktop. Expects
 // `vite preview` at BASE_URL. Fails on any page error or overflow.
 //
+// Lifeboats and Quartermaster reworked (log 44): on an iPhone held sideways
+// (874×402), the two cards in their bays, the HUD with the golden bomb and
+// the extra-life pip, and a draft with the Lifeboat card and the Free
+// level-up.
+//
 // Usage:  npm run build && npm run preview -- --port 4173 &  node e2e/v3-armory-shots.mjs
 // Env:    BASE_URL (default http://localhost:4173), SHOT_DIR (default docs/design/img/armory)
 
@@ -102,6 +107,54 @@ for (const [w, h, tag] of [[844, 390, 'phone'], [667, 375, 'small'], [1280, 720,
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${SHOT_DIR}/${tag}-result.png` });
   }
+  await ctx.close();
+}
+
+// Lifeboats and Quartermaster reworked, on an iPhone held sideways.
+{
+  const save = { ...SAVE, armory: { ...SAVE.armory, lifeboats: 4, quartermaster: 5 }, equipped: { gun: 'reload', hull: 'lifeboats', supply: 'quartermaster' } };
+  const ctx = await browser.newContext({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${BASE_URL}/v3.html?seed=5`, { waitUntil: 'networkidle' });
+  await page.evaluate((s) => { localStorage.clear(); localStorage.setItem('straitwatch.v3.progress', JSON.stringify(s)); }, save);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-screen="menu"]');
+  await page.locator('.v3-armory-btn').tap();
+  await page.waitForSelector('[data-screen="armory"]');
+  await page.locator('[data-bay="hull"]').tap();
+  await page.locator('.v3-armory-card[data-armory="lifeboats"]').tap();
+  await page.waitForTimeout(300);
+  if (!(await fits(page))) errors.push('iphone: the Hull bay overflows');
+  await page.screenshot({ path: `${SHOT_DIR}/iphone-hull-lifeboats.png` });
+  await page.locator('[data-bay="supply"]').tap();
+  await page.locator('.v3-armory-card[data-armory="quartermaster"]').tap();
+  await page.waitForTimeout(300);
+  if (!(await fits(page))) errors.push('iphone: the Supply bay overflows');
+  await page.screenshot({ path: `${SHOT_DIR}/iphone-supply-quartermaster.png` });
+  await page.locator('[data-back]').tap();
+  await page.locator('[data-map="strait"]').tap();
+  await page.waitForSelector('[data-screen="loadout"]');
+  await page.locator('[data-start]').tap();
+  await page.waitForSelector('.playing');
+  // A Lifeboat card already taken (an orange pip), threats in the air.
+  await page.evaluate(() => { window.__v3.game().extraLives = 1; });
+  await page.waitForFunction(() => window.__v3.game().threats.filter((t) => !t.dead).length >= 2, null, { timeout: 30000 });
+  await page.waitForTimeout(400);
+  const bomb = await page.evaluate(() => { const b = document.querySelector('.v3-gold-bomb'); const r = b.getBoundingClientRect(); return !b.hidden && r.left >= 0 && r.bottom <= innerHeight && r.right <= innerWidth; });
+  if (!bomb) errors.push('iphone: the golden bomb is not on screen');
+  await page.screenshot({ path: `${SHOT_DIR}/iphone-hud-gold-bomb.png` });
+  // The draft after wave 3, a weapon held: Re-roll, Free level-up, four
+  // weapons and the Lifeboat card.
+  await page.evaluate(() => { const g = window.__v3.game(); g.wave = 3; g.levels = { flak: 1 }; g.slots = ['flak']; g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
+  await page.waitForSelector('.v2-card, [data-rate-skip]', { timeout: 15000 });
+  if (await page.$('[data-rate-skip]')) await page.click('[data-rate-skip]');
+  await page.waitForSelector('.v2-card[data-upgrade="lifeboat"]', { timeout: 15000 });
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: `${SHOT_DIR}/iphone-draft-lifeboat.png` });
+  await page.locator('.v2-draft .v3-free-level').tap();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${SHOT_DIR}/iphone-draft-free-level.png` });
   await ctx.close();
 }
 await browser.close();

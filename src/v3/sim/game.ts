@@ -61,12 +61,13 @@ import {
   abilityName,
   canSwapIn,
   canTake,
+  isSpecialCard,
   loadout,
   type AbilityId,
   type CardId,
   type Levels,
 } from '../data/abilities';
-import { LIFEBOAT_LOSS, armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
+import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
 import { chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
@@ -338,7 +339,9 @@ export type GameEvent =
   | { kind: 'wave'; wave: number }
   | { kind: 'debut'; threat: ThreatKind }
   | { kind: 'vector'; vector: RaiderKind }
-  | { kind: 'shipLost'; lost: number; boat?: boolean }
+  | { kind: 'shipLost'; lost: number }
+  | { kind: 'life'; lives: number }
+  | { kind: 'goldBomb' }
   | { kind: 'carrierHit'; hp: number }
   /** A tough threat (3+ hits) went down: the UI gives it a punch. */
   | { kind: 'bigKill'; threat?: ThreatKind; label?: string; x: number; y: number }
@@ -382,9 +385,8 @@ export interface WaveRecord {
   kills: Record<ThreatKind, number>;
   sunkBy: Record<ThreatKind, number>;
   taps: TapCounts;
-  /** Lifeboats: boats used so far this run (absent: none), each a ship
-   *  sunk that counted as half a loss. */
-  boats?: number;
+  /** Lifeboats: extra lives the run holds as the wave ends (absent: none). */
+  lives?: number;
 }
 
 export type TapCounts = Record<TapResult, number>;
@@ -839,8 +841,12 @@ export interface Game {
   /** The run's numbers from the Armory: the gun, the hulls, the drops. */
   stats: ArmoryStats;
   offer: CardId[];
-  /** Quartermaster (Armory): draft re-rolls left this run. */
+  /** Quartermaster (Armory): draft re-rolls left this run, golden bombs
+   *  left (level 3+: the Nuke, set off when the player taps it), and free
+   *  weapon level-ups left (level 5). */
   rerolls: number;
+  bombsLeft: number;
+  freeLevelsLeft: number;
   score: number;
   delivered: number;
   lost: number;
@@ -913,12 +919,10 @@ export interface Game {
    *  ending): they stay in `lost`, but no longer count against the run's
    *  limit. */
   lossBase: number;
-  /** Lifeboats (Armory): the share of a loss forgiven since `lossBase`
-   *  (half a ship for each boat; a VIP's half of its three), the boats used
-   *  this run, and the wave the last one was used in (one a wave). */
-  lossCredit: number;
-  boatsUsed: number;
-  boatWave: number;
+  /** Lifeboats (Armory): extra lives this run (level 5's start, and each
+   *  Lifeboat card taken in a draft): ships the run can lose on top of its
+   *  limit (`lossLimit`). The convoy restored before the ending keeps them. */
+  extraLives: number;
   /** The Map & Convoy Lab's telemetry (sim/telemetry.ts): null unless a
    *  run asked for it. It only watches: nothing in the sim reads it. */
   tel: Telemetry | null;
@@ -1056,6 +1060,8 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     stats: s,
     offer: [],
     rerolls: s.rerolls,
+    bombsLeft: s.goldBombs,
+    freeLevelsLeft: s.freeLevels,
     score: 0,
     delivered: 0,
     lost: 0,
@@ -1093,9 +1099,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     eventLog: [],
     bonusDone: [],
     lossBase: 0,
-    lossCredit: 0,
-    boatsUsed: 0,
-    boatWave: 0,
+    extraLives: s.startLives,
     tel: null,
     convoy: null,
     enc: null,
@@ -1111,7 +1115,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
   for (let w = 1; w < Math.floor(firstWave); w++) {
     g.wave = w;
     openDraft(g);
-    const pick = g.offer.find((id): id is AbilityId => id !== 'resupply' && canTake(g.levels, id));
+    const pick = g.offer.find((id): id is AbilityId => !isSpecialCard(id) && canTake(g.levels, id));
     if (pick) gainLevel(g, pick);
   }
   g.ammo = g.stats.rack;
@@ -1917,7 +1921,16 @@ export function pickUpgrade(g: Game, id: CardId, replace?: AbilityId): void {
   if (g.tel) g.tel.input(g, 'pick', { card: id, ...(swap ? { rep: replace } : {}) });
   if (swap) {
     delete g.levels[replace];
-    if (id !== 'resupply') g.slots[g.slots.indexOf(replace!)] = id;
+    if (!isSpecialCard(id)) g.slots[g.slots.indexOf(replace!)] = id;
+  }
+  if (id === 'lifeboat') {
+    // Lifeboats (Armory, level 3+): one more ship can be lost, in place of
+    // this draft's weapon.
+    g.extraLives += 1;
+    g.events.push({ kind: 'life', lives: g.extraLives });
+    cue(g, 'repair', g.map.carrier.x, g.map.carrier.y);
+    afterPick(g);
+    return;
   }
   if (id === 'resupply') {
     if (g.tel) g.tel.healAll(g, () => g.stats.shipHp, g.stats.carrierHp, 'resupply');
@@ -2268,6 +2281,34 @@ export function rerollDraft(g: Game): boolean {
   return true;
 }
 
+/** Quartermaster level 5 (Armory): once a run, a held weapon gains a level
+ *  in a draft without spending the draft's pick (the 'l' command). */
+export function freeLevelUp(g: Game, id: AbilityId): boolean {
+  if (g.phase !== 'draft' || g.freeLevelsLeft <= 0) return false;
+  const lv = g.levels[id] ?? 0;
+  if (lv <= 0 || lv >= ABILITY_MAX) return false;
+  if (g.tel) g.tel.input(g, 'free', { card: id });
+  g.freeLevelsLeft -= 1;
+  gainLevel(g, id);
+  // A hand that offered this weapon's next level offers the one after (or
+  // nothing, at MAX: the card is greyed as any maxed one is).
+  return true;
+}
+
+/** Quartermaster level 3+ (Armory): the golden bomb, once a run, any time
+ *  in a wave: the Nuke's blast (the 'n' command). */
+export function goldBomb(g: Game): boolean {
+  if (g.phase !== 'wave' || g.bombsLeft <= 0) return false;
+  if (g.tel) g.tel.input(g, 'bomb');
+  g.bombsLeft -= 1;
+  nuke(g);
+  g.events.push({ kind: 'goldBomb' });
+  const c = g.map.carrier;
+  cue(g, 'nuke.blast', c.x, c.y);
+  addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 40, { life: 1.6, text: 'GOLDEN BOMB' });
+  return true;
+}
+
 /** Is a re-roll worth it for a player whose favourite weapons are
  *  `preferred` (the bots' rule)? Yes when the hand has nothing they would
  *  want: no weapon they hold to level up, and no favourite to take in a
@@ -2275,7 +2316,7 @@ export function rerollDraft(g: Game): boolean {
 export function rerollWorth(g: Game, preferred: readonly AbilityId[]): boolean {
   if (g.phase !== 'draft' || g.rerolls <= 0) return false;
   const room = loadout(g.levels).length < MAX_SLOTS;
-  const wanted = (id: CardId) => id !== 'resupply' && canTake(g.levels, id) && ((g.levels[id] ?? 0) > 0 || (room && preferred.includes(id)));
+  const wanted = (id: CardId) => !isSpecialCard(id) && canTake(g.levels, id) && ((g.levels[id] ?? 0) > 0 || (room && preferred.includes(id)));
   if (g.offer.some(wanted)) return false;
   // Only while a new hand could bring one: a held weapon still to level,
   // or a favourite still in the draft with a slot free.
@@ -2327,6 +2368,54 @@ function dealDraft(g: Game, avoid: readonly CardId[]): void {
     g.offer = [tested, ...g.offer.filter((id) => id !== tested)].slice(0, size);
   }
   if (!g.offer.some((id) => canTake(g.levels, id))) g.offer.push('resupply');
+  // Lifeboats (Armory, level 3+): after every stats.lifeCard waves the
+  // hand has one more card, the Lifeboat (an extra life). No dice: it is
+  // dealt by the wave's number, and a re-roll deals it again.
+  if (lifeCardDue(g)) g.offer.push('lifeboat');
+}
+
+/** The bots' rule for Lifeboats' card: take the extra life over a weapon
+ *  once half the run's lives or fewer are left (3 of 6), or when no weapon
+ *  in the hand can be taken. */
+export const LIFE_LOW = 3;
+export function lifeCardWorth(g: Game): boolean {
+  if (!g.offer.includes('lifeboat')) return false;
+  if (lossLimit(g) - shipsSunk(g) <= LIFE_LOW) return true;
+  return !g.offer.some((id) => !isSpecialCard(id) && canTake(g.levels, id));
+}
+
+/** The bots' rule for Quartermaster 5's free level-up: at the first draft
+ *  it can, the held weapon with the most levels (the one it is stacking;
+ *  ties to the first slot), else nothing. */
+export function freeLevelPick(g: Game): AbilityId | null {
+  if (g.phase !== 'draft' || g.freeLevelsLeft <= 0) return null;
+  const held = g.slots.filter((id) => (g.levels[id] ?? 0) > 0 && (g.levels[id] ?? 0) < ABILITY_MAX);
+  return held.sort((a, b) => (g.levels[b] ?? 0) - (g.levels[a] ?? 0))[0] ?? null;
+}
+
+/** The bots' rule for Quartermaster's golden bomb (kept for when it counts,
+ *  as a player keeps it): in a boss round, half a crowd of threats near the
+ *  ships (GOLD_CROWD / 2 within GOLD_NEAR s of a hit); before that, a whole
+ *  crowd once the run is pressed (half its lives or fewer left, or the
+ *  carrier at half) or late (wave GOLD_LATE on); and any time the last ship
+ *  left has two threats about to land. */
+export const GOLD_CROWD = 6;
+export const GOLD_NEAR = 4;
+export const GOLD_LATE = 8;
+export function goldBombWorth(g: Game): boolean {
+  if (g.phase !== 'wave' || g.bombsLeft <= 0) return false;
+  const near = g.threats.filter((t) => !t.dead && timeToImpact(g, t) < GOLD_NEAR).length;
+  const left = lossLimit(g) - shipsSunk(g);
+  const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
+  if (boss && near >= GOLD_CROWD / 2) return true;
+  const pressed = left <= LIFE_LOW || g.carrierHp <= g.stats.carrierHp / 2;
+  if (near >= GOLD_CROWD && (pressed || g.wave >= GOLD_LATE)) return true;
+  return near >= 2 && left <= 1;
+}
+
+/** Does this draft deal Lifeboats' extra-life card? */
+export function lifeCardDue(g: Game): boolean {
+  return g.stats.lifeCard > 0 && g.wave > 0 && g.wave % g.stats.lifeCard === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -4941,7 +5030,7 @@ function stepSim(g: Game, dt: number): void {
   for (const f of g.fx) f.age += dt;
   g.fx = g.fx.filter((f) => f.age < f.life);
 
-  if (shipsSunk(g) >= g.tempo.lossLimit || g.carrierHp <= 0) {
+  if (shipsSunk(g) >= lossLimit(g) || g.carrierHp <= 0) {
     g.phase = 'lost';
     if (g.event) endEvent(g, true);
     recordWave(g, 'lost');
@@ -4960,7 +5049,10 @@ function stepSim(g: Game, dt: number): void {
     // wave's score).
     if (g.event) endEvent(g, false);
     clearField(g);
-    if (!bonus) recordWave(g, 'cleared');
+    if (!bonus) {
+      recordWave(g, 'cleared');
+      mendHulls(g);
+    }
     const due = bonus ? null : bonusDue(g);
     if (!bonus && !g.endless && g.wave >= lastWave(g)) {
       g.cleared = true;
@@ -4977,7 +5069,41 @@ function stepSim(g: Game, dt: number): void {
 /** Ships sunk that count against the run's limit (all of them, unless the
  *  convoy was restored before the ending: then those since). */
 export function shipsSunk(g: Game): number {
-  return g.lost - g.lossBase - g.lossCredit;
+  return g.lost - g.lossBase;
+}
+
+/** The ships a run can lose before it ends: the tempo's limit, and the
+ *  extra lives Lifeboats has given (Armory). */
+export function lossLimit(g: Game): number {
+  return g.tempo.lossLimit + g.extraLives;
+}
+
+/** Lifeboats (Armory, Hull bay): as a wave is cleared, the carrier (level
+ *  1+) and every ship afloat (level 2+) mend a share of their missing hull,
+ *  rounded to whole points (66%; level 4+: all of it). */
+export function mendHulls(g: Game): void {
+  const { mendCarrier, mendShips } = g.stats;
+  if (!mendCarrier && !mendShips) return;
+  let mended = false;
+  if (mendShips)
+    for (const s of g.ships) {
+      const max = s.vip ? VIP.hp : g.stats.shipHp;
+      const add = Math.min(max - s.hp, Math.round((max - s.hp) * mendShips));
+      if (s.hp <= 0 || add <= 0) continue;
+      s.hp += add;
+      mended = true;
+      if (g.tel) g.tel.heal(g, 's', s.id, add, s.hp, 'lifeboats');
+      addFx(g, 'text', s.x, s.y - 24, { life: 1.2, text: `+${add}` });
+    }
+  const add = Math.min(g.stats.carrierHp - g.carrierHp, Math.round((g.stats.carrierHp - g.carrierHp) * mendCarrier));
+  if (g.carrierHp > 0 && add > 0) {
+    g.carrierHp += add;
+    mended = true;
+    if (g.tel) g.tel.heal(g, 'c', 0, add, g.carrierHp, 'lifeboats');
+    const c = g.map.carrier;
+    addFx(g, 'text', c.x, c.y - CARRIER.halfBeam - 24, { life: 1.4, text: `+${add} HULL` });
+  }
+  if (mended) cue(g, 'repair', g.map.carrier.x, g.map.carrier.y);
 }
 
 /** V2 round 13 ("the next wave starts fresh"): a cleared wave takes
@@ -5038,7 +5164,7 @@ function recordWave(g: Game, outcome: WaveRecord['outcome']): void {
     kills: { ...g.kills },
     sunkBy: { ...g.sunkBy },
     taps: { ...g.taps },
-    ...(g.boatsUsed ? { boats: g.boatsUsed } : {}),
+    ...(g.extraLives ? { lives: g.extraLives } : {}),
   });
 }
 
@@ -5344,18 +5470,7 @@ export function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, dir
   g.sunkBy[by] += 1;
   addFx(g, 'sink', s.x, s.y, { life: 2.2, r: 34 });
   cue(g, 'ship.sunk', s.x, s.y);
-  // Lifeboats (Armory, Hull bay): the first ship sunk in a wave counts as
-  // half a loss, for as many waves a run as the level has boats. The ship
-  // is still sunk (it is in `lost` and the wave's record); only the run's
-  // limit (shipsSunk) counts half of it.
-  const boat = g.boatsUsed < g.stats.lifeboats && g.boatWave !== g.wave;
-  if (boat) {
-    g.boatsUsed += 1;
-    g.boatWave = g.wave;
-    g.lossCredit += loss * (1 - LIFEBOAT_LOSS);
-    addFx(g, 'text', s.x, s.y - 26, { life: 1.4, text: 'LIFEBOATS · ½ LOSS' });
-  }
-  g.events.push({ kind: 'shipLost', lost: g.lost, ...(boat ? { boat: true } : {}) });
+  g.events.push({ kind: 'shipLost', lost: g.lost });
 }
 
 /** Armor Plating (Armory, Hull bay): a hit on a hull may glance off. */

@@ -30,6 +30,7 @@ import {
   abilityName,
   canSwapIn,
   canTake,
+  isSpecialCard,
   type AbilityId,
   type CardId,
 } from '../data/abilities';
@@ -38,7 +39,9 @@ import { equipArmory, isUnlocked, levelUp, loadProgress, recordResult, runLoadou
 import {
   applyFreePlay,
   createGame,
+  freeLevelPick,
   held,
+  lossLimit,
   raidWarning,
   shipsSunk,
   warping,
@@ -322,6 +325,9 @@ export class App {
    *  volley it offers to rate it (see openNote / openRate). */
   private noteBtn = button('', 'v3-note-btn', () => (this.rateable() ? this.openRate('rail') : this.openNote('rail')));
   private noteKey = '';
+  /** Quartermaster 3+ (Armory): the golden bomb, in the left rail from the
+   *  run's start until it is tapped (the Nuke's blast, once a run). */
+  private bombBtn = button('', 'v3-gold-bomb', () => this.tapGoldBomb());
   /** Volleys finished when the note button last pulsed. */
   private volleysSeen = 0;
   private notesOn = !STORE && notesEnabled();
@@ -420,6 +426,7 @@ export class App {
       this.syncFormation();
     },
     pace: (v) => this.rec?.pace(v),
+    goldBomb: () => !!this.rec?.goldBomb(),
   };
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
@@ -990,9 +997,14 @@ export class App {
       flowLabel,
       this.flowSlider.el,
       flowHint,
+      this.bombBtn,
       this.noteBtn,
       this.timers,
     );
+    this.bombBtn.innerHTML = GOLD_BOMB_SVG + '<b>BOMB</b>';
+    this.bombBtn.dataset.goldBomb = '1';
+    this.bombBtn.setAttribute('aria-label', 'Golden bomb: destroy everything attacking, once a run');
+    this.bombBtn.hidden = true;
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
       const opt = button('', 'v2-formation-opt', () => {
@@ -1884,7 +1896,7 @@ export class App {
           // round 7's (restoreConvoy, under ENDING.threeRuns): with it off,
           // the second card reads the losses left as they are.
           if (!ev.bonus && ev.runs && ev.runs > 1 && ev.run) {
-            const left = Math.max(0, Math.ceil(g.tempo.lossLimit - shipsSunk(g)));
+            const left = Math.max(0, Math.ceil(lossLimit(g) - shipsSunk(g)));
             const restored = g.events.some((e) => e.kind === 'restore');
             this.startBossIntro(g, ev.id, bossIntroCards(ev.id, ev.run, ev.runs, left, restored, eventName(ev.id, g.map.id, g.enc?.setup.rev)));
           } else this.showEventCard(ev.id, ev.wave, ev.bonus ? 'bonus' : '', eventName(ev.id, g.map.id, g.enc?.setup.rev));
@@ -1987,6 +1999,9 @@ export class App {
           break;
         case 'carrierHit':
           this.shake = 16;
+          break;
+        case 'goldBomb':
+          this.shake = Math.max(this.shake, 18);
           break;
         case 'bigKill': {
           // Watching fast, the freeze shrinks with the speed.
@@ -2270,16 +2285,33 @@ export class App {
     return waveCount(g.wave, { boss, bonus: !!g.event?.bonus, endless: g.endless || lone });
   }
 
+  /** The golden bomb tapped: the Nuke's blast, logged ('n'). Not while the
+   *  bot has the controls or a replay plays. */
+  private tapGoldBomb(): void {
+    const g = this.game;
+    if (!g || this.paused || this.playback || (this.bot && this.control === 'bot')) return;
+    if (this.rec?.goldBomb()) this.syncGoldBomb(g);
+  }
+
+  /** The golden bomb's button: shown while the run has one left. */
+  private syncGoldBomb(g: Game): void {
+    const show = g.bombsLeft > 0 && (g.phase === 'wave' || g.phase === 'draft');
+    if (this.bombBtn.hidden === show) this.bombBtn.hidden = !show;
+    const off = g.phase !== 'wave' || !!this.playback || (!!this.bot && this.control === 'bot');
+    if (this.bombBtn.disabled !== off) this.bombBtn.disabled = off;
+  }
+
   private renderHud(g: Game): void {
+    this.syncGoldBomb(g);
     if (this.commandBtns.length) this.renderCommands(g);
-    // Lifeboats (Armory): a ship that counted as half a loss fills half a
-    // pip; two halves make a whole one.
+    // Lifeboats (Armory): each extra life is one more pip, drawn as a
+    // lifeboat's (orange), after the run's own.
     const sunk = shipsSunk(g);
-    const whole = Math.floor(sunk + 1e-9);
-    const half = sunk - whole > 0.25;
-    const pips = Array.from({ length: g.tempo.lossLimit }, (_, i) =>
-      i < whole ? '<i class="lost"></i>' : i === whole && half ? `<i class="half${this.danger ? ' next' : ''}"></i>` : i === whole && this.danger ? '<i class="next"></i>' : '<i></i>',
-    ).join('');
+    const base = g.tempo.lossLimit;
+    const pips = Array.from({ length: lossLimit(g) }, (_, i) => {
+      const boat = i >= base ? ' life' : '';
+      return i < sunk ? `<i class="lost${boat}"></i>` : i === sunk && this.danger ? `<i class="next${boat}"></i>` : `<i${boat ? ' class="life"' : ''}></i>`;
+    }).join('');
     // A bonus wave is not one of the map's: the counter says so. A run of
     // the map's ending is a boss round (round 11): "BOSS 1/3".
     // The 2026-11-20 playtest: "Wave 3 of 10" on every map, and a boss
@@ -2293,7 +2325,7 @@ export class App {
       // Scrap so far (the Armory overhaul): a read-out like the score,
       // nothing to tap. Only a run that banks it shows it.
       (scrap !== null ? `<span class="v3-hud-scrap" data-scrap="${scrap}"><b>SCRAP</b>${scrap.toLocaleString()}</span>` : '') +
-      `<span class="v2-hud-lost" data-sunk="${sunk}"><b>SUNK</b><em>${pips}</em></span>` +
+      `<span class="v2-hud-lost" data-sunk="${sunk}" data-limit="${lossLimit(g)}"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
@@ -2452,8 +2484,7 @@ export class App {
    *  quarter of its hull. The screen's edge beats red and the last empty
    *  pip blinks; a banner says so once, on the way in. */
   private syncDanger(g: Game): void {
-    // (Lifeboats: half a ship left is still the last one.)
-    const lastShip = g.tempo.lossLimit - shipsSunk(g) <= 1;
+    const lastShip = lossLimit(g) - shipsSunk(g) <= 1;
     const carrier = g.carrierHp <= Math.ceil(g.stats.carrierHp * 0.25);
     const on = g.phase === 'wave' && !this.beat && (lastShip || carrier);
     // The last ship gets its alert; a critical carrier's klaxon is a loop
@@ -4006,6 +4037,17 @@ export class App {
     const live = () => this.game === g && g.phase === 'draft' && g.wave === wave && this.control === 'bot';
     // The whole hand is dealt before the bot's pick shows, at any speed.
     const dealt = (DEAL_MS + DEAL_STAGGER_MS * (g.offer.length - 1)) * this.dealScale();
+    // Quartermaster 5: the free level-up first, on the weapon it stacks.
+    const free = freeLevelPick(g);
+    if (free) {
+      setTimeout(() => {
+        if (!live() || !this.rec?.freeLevel(free)) return;
+        this.showDraft(g);
+        this.armDraft();
+        this.botDraft(g);
+      }, dealt + 700 / Math.sqrt(this.speed));
+      return;
+    }
     // Quartermaster: a hand with nothing it wants, it deals again.
     if (bot.wantsReroll(g)) {
       setTimeout(() => {
@@ -4020,7 +4062,7 @@ export class App {
     setTimeout(() => {
       if (!live()) return;
       this.overlay.querySelector(`[data-upgrade="${choice.id}"]`)?.classList.add('bot-pick');
-      this.overlay.querySelector('.v2-panel')?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardName(choice.id, (choice.id !== 'resupply' ? (g.levels[choice.id] ?? 0) : 0) + 1)}`));
+      this.overlay.querySelector('.v2-panel')?.append(el('p', 'v2-sub v2-bot-says', `Bot picks ${cardName(choice.id, (!isSpecialCard(choice.id) ? (g.levels[choice.id] ?? 0) : 0) + 1)}`));
     }, dealt);
     setTimeout(
       () => {
@@ -4273,14 +4315,31 @@ export class App {
 
   /** The draft: three weapons. With all slots full a new one can still be
  *  taken: tap it, then tap the held weapon it replaces. */
-  private showDraft(g: Game, swapping: AbilityId | null = null): void {
+  private showDraft(g: Game, swapping: AbilityId | null = null, freeing = false): void {
     const owned = g.slots;
     const full = owned.length >= MAX_SLOTS;
-    const slots = el('div', `v2-slots${swapping ? ' choosing' : ''}`);
+    // Quartermaster 5's free level-up: after its button, the held weapons
+    // below MAX are tapped to take the level (the draft's pick stays).
+    if (freeing && (swapping || g.freeLevelsLeft <= 0)) freeing = false;
+    const slots = el('div', `v2-slots${swapping || freeing ? ' choosing' : ''}`);
     for (let i = 0; i < MAX_SLOTS; i++) {
       const id = owned[i];
       const lv = id ? (g.levels[id] ?? 0) : 0;
       const label = id ? `${abilityName(id, lv)} ${lv >= ABILITY_MAX ? 'MAX' : `LV ${lv}`}` : 'Empty slot';
+      if (freeing && id && lv < ABILITY_MAX) {
+        const chip = button(label, 'v2-slot v3-free-slot', () => {
+          if (!this.rec?.freeLevel(id)) return;
+          this.audio.ui(lv + 1 >= ABILITY_MAX ? 'card.max' : 'card.pick');
+          this.showDraft(g);
+          this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
+        });
+        chip.dataset.sfx = 'card';
+        chip.dataset.free = id;
+        chip.prepend(upgradeIcon(id, 16));
+        chip.append(el('span', 'v3-free-plus', '+1'));
+        slots.append(chip);
+        continue;
+      }
       if (swapping && id) {
         const chip = button(label, 'v2-slot swap', () => {
           this.audio.ui('card.pick');
@@ -4300,19 +4359,20 @@ export class App {
     }
     this.picking = false;
     const cards = g.offer.map((id, i) => {
-      const lvl = id === 'resupply' ? 0 : (g.levels[id] ?? 0);
+      const special = isSpecialCard(id);
+      const lvl = special ? 0 : (g.levels[id] ?? 0);
       const next = lvl + 1;
       const takeable = canTake(g.levels, id);
       const swappable = canSwapIn(g.levels, id);
-      const maxed = id !== 'resupply' && lvl >= ABILITY_MAX;
+      const maxed = !special && lvl >= ABILITY_MAX;
       // The last level is called MAX, not "evolves" (round 7 playtest).
-      const toMax = id !== 'resupply' && next === ABILITY_MAX;
-      const badge = id === 'resupply' ? 'NO SWAP' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : toMax ? 'MAX' : lvl > 0 ? 'LEVEL UP' : 'NEW';
+      const toMax = !special && next === ABILITY_MAX;
+      const badge = id === 'resupply' ? 'NO SWAP' : id === 'lifeboat' ? '+1 LIFE' : maxed ? 'MAXED' : swappable ? 'SWAP IN' : toMax ? 'MAX' : lvl > 0 ? 'LEVEL UP' : 'NEW';
       const chosen = swapping === id;
-      const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}${toMax && !swappable ? ' to-max' : ''}`, () => {
+      const card = button('', `v2-card${takeable || swappable ? '' : ' locked'}${id === 'resupply' ? ' resupply' : ''}${id === 'lifeboat' ? ' v3-lifeboat' : ''}${swappable ? ' swappable' : ''}${chosen ? ' chosen' : ''}${toMax && !swappable ? ' to-max' : ''}`, () => {
         // Ignore taps that land as the cards appear: the player may still be
         // firing at the wave's last threat.
-        if (swapping || this.picking || performance.now() - this.draftShownAt < DRAFT_ARM_MS) return;
+        if (swapping || freeing || this.picking || performance.now() - this.draftShownAt < DRAFT_ARM_MS) return;
         if (takeable) {
           // The pick lands with a beat: the card flashes gold, then the wave starts.
           this.picking = true;
@@ -4323,21 +4383,21 @@ export class App {
             this.picking = false;
             if (this.game === g && g.phase === 'draft' && g.wave === wave) this.rec?.pick(id);
           }, PICK_BEAT_MS);
-        } else if (swappable && id !== 'resupply') {
+        } else if (swappable && !isSpecialCard(id)) {
           this.audio.ui('card.swap');
           this.showDraft(g, id);
           this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
         }
       });
       card.style.setProperty('--deal', `${i * DEAL_STAGGER_MS * this.dealScale()}ms`);
-      card.disabled = (!takeable && !swappable) || (!!swapping && !chosen);
+      card.disabled = (!takeable && !swappable) || (!!swapping && !chosen) || freeing;
       card.dataset.upgrade = id;
       card.dataset.sfx = 'card';
       card.style.setProperty('--card-color', ICON_COLOR[id]);
       const top = el('span', 'v2-card-top', '');
       top.append(
-        el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : `vs ${ABILITIES[id].answers}`),
-        el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : badge === 'MAX' ? 'max' : 'up'}`, badge),
+        el('span', 'v2-card-answers', id === 'resupply' ? 'Repairs' : id === 'lifeboat' ? 'Lifeboats' : `vs ${ABILITIES[id].answers}`),
+        el('span', `v2-badge ${badge === 'SWAP IN' ? 'swap' : badge === 'NEW' ? 'new' : badge === 'MAXED' ? 'off' : badge === 'MAX' ? 'max' : badge === '+1 LIFE' ? 'life' : 'up'}`, badge),
       );
       const art = el('span', 'v2-card-art', '');
       art.innerHTML = cardArtSvg(id);
@@ -4345,11 +4405,11 @@ export class App {
       // across the card's top edge (the 2026-11-20 playtest: "on top of the
       // card and not overlapped on the middle of card").
       const chapter = chapterOf(g.map.id);
-      const debut = id !== 'resupply' && !g.freePlay && newInChapter(chapter).includes(id) ? el('span', 'v3-card-debut', newOnTag(chapter)) : null;
+      const debut = !special && !g.freePlay && newInChapter(chapter).includes(id) ? el('span', 'v3-card-debut', newOnTag(chapter)) : null;
       if (debut) card.dataset.debut = String(chapter);
       // The Test Lab (round 8: "I didn't see the grapple upgrade"): the
       // weapon under test is the first card, and says so.
-      if (id !== 'resupply' && g.lab?.weapon === id) {
+      if (!special && g.lab?.weapon === id) {
         card.dataset.testing = '1';
         art.append(el('span', 'v3-card-testing', 'TESTING'));
       }
@@ -4357,13 +4417,18 @@ export class App {
       let text: string;
       if (id === 'resupply') {
         text = RESUPPLY_TEXT;
+      } else if (id === 'lifeboat') {
+        // Lifeboats (Armory, level 3+): the lives left now and after.
+        const left = Math.max(0, Math.ceil(lossLimit(g) - shipsSunk(g)));
+        level.append(el('span', '', `${left} → ${left + 1} lives`));
+        text = LIFEBOAT_TEXT;
       } else {
         // One pip per level: those already held, the one this card adds, the rest.
         for (let k = 1; k <= ABILITY_MAX; k++) level.append(el('i', k <= lvl ? 'had' : k === next ? 'gain' : ''));
         level.append(el('span', '', maxed ? 'MAX' : `LV ${next}/${ABILITY_MAX}`));
         text = ABILITIES[id].levels[Math.min(lvl, ABILITY_MAX - 1)];
       }
-      const name = id === 'resupply' ? 'Resupply' : abilityName(id, Math.min(next, ABILITY_MAX));
+      const name = cardName(id, next);
       // Only what is particular to this card (round 5: every card said "drops
       // as a pickup, 15 s in the gun", which is how every weapon works).
       // A number keeps its unit on the same line ("1.5 s", not "1.5 / s").
@@ -4375,6 +4440,12 @@ export class App {
     let rule: HTMLElement | null = null;
     if (swapping) {
       rule = el('p', 'v2-sub v2-swap-prompt', `Swap in ${ABILITIES[swapping].name}: tap the one it replaces, above (its levels are lost).`);
+      rule.append(button('Cancel', 'v2-btn v3-cancel', () => {
+        this.showDraft(g);
+        this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
+      }));
+    } else if (freeing) {
+      rule = el('p', 'v2-sub v2-swap-prompt v3-free-prompt', 'Free level-up: tap a weapon above to give it a level. Your pick stays.');
       rule.append(button('Cancel', 'v2-btn v3-cancel', () => {
         this.showDraft(g);
         this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
@@ -4391,7 +4462,7 @@ export class App {
     const title = skipped ? `Wave ${g.wave} skipped` : `Wave ${g.wave} cleared`;
     const more = g.draftsLeft > 1 ? [el('p', 'v2-sub v2-dev-more', `Dev: ${g.draftsLeft} cards to pick before the next wave.`)] : [];
     const head = el('div', 'v2-draft-head');
-    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : 'Choose your weapon'));
+    head.append(el('span', 'v2-draft-eyebrow', title), el('h2', '', swapping ? 'Choose what it replaces' : freeing ? 'Choose a weapon to level' : 'Choose your weapon'));
     // A test's full map run (round 10) has a draft after every wave, and
     // Done works then too: in the draft's own header (pause-menu round; the
     // bar it was on is gone).
@@ -4416,6 +4487,23 @@ export class App {
       reroll.disabled = !left || watching || !!this.playback;
       reroll.setAttribute('aria-label', left ? `Re-roll the cards: ${left} re-roll${left === 1 ? '' : 's'} left this run` : 'No re-rolls left this run');
       head.append(reroll);
+    }
+    // Quartermaster 5: once a run, a held weapon takes a free level here.
+    if (g.stats.freeLevels > 0 && !swapping) {
+      const left = g.freeLevelsLeft;
+      const watching = !!this.bot && this.control === 'bot';
+      const can = owned.some((id) => (g.levels[id] ?? 0) > 0 && (g.levels[id] ?? 0) < ABILITY_MAX);
+      const free = button('', `v2-btn v3-free-level${freeing ? ' on' : ''}`, () => {
+        if (this.picking || g.phase !== 'draft') return;
+        this.audio.ui('card.swap');
+        this.showDraft(g, null, !freeing);
+        this.overlay.querySelector<HTMLElement>('.v2-draft')?.setAttribute('data-armed', '1');
+      });
+      free.innerHTML = `<b>Free level-up</b><span>${left ? 'once a run' : 'used'}</span>`;
+      free.dataset.freeLevel = String(left);
+      free.disabled = !left || !can || watching || !!this.playback;
+      free.setAttribute('aria-label', left ? (can ? 'Free level-up: give a held weapon a level without spending your pick' : 'Free level-up: hold a weapon below MAX to use it') : 'The free level-up is used this run');
+      head.append(free);
     }
     const loadoutRow = el('div', 'v2-loadout');
     loadoutRow.append(el('span', 'v2-loadout-label', 'WEAPONS'), slots);
@@ -4473,7 +4561,7 @@ export class App {
     stats.innerHTML =
       `<span><b>${g.score.toLocaleString()}</b>score${best ? ' · new best!' : ''}</span>` +
       `<span><b>${g.delivered}</b>ships through</span>` +
-      `<span><b>${g.lost}</b>ships sunk${g.boatsUsed ? ` · ${g.boatsUsed} by lifeboat (½)` : ''}</span>` +
+      `<span><b>${g.lost}</b>ships sunk${g.extraLives ? ` · ${g.extraLives} extra ${g.extraLives === 1 ? 'life' : 'lives'}` : ''}</span>` +
       `<span><b>${Object.values(g.kills).reduce((a, b) => a + b, 0)}</b>shot down</span>` +
       // The run's Scrap (the Armory overhaul), banked win or lose.
       (res ? `<span class="v3-scrap-stat" data-scrap="${res.scrap.total}"><b>+${res.scrap.total.toLocaleString()}</b>scrap</span>` : '');
@@ -4987,8 +5075,16 @@ function formationGlyph(id: FormationId): SVGSVGElement {
 
 /** A draft card's name at the level it brings. */
 function cardName(id: CardId, level: number): string {
-  return id === 'resupply' ? 'Resupply' : abilityName(id, Math.min(level, ABILITY_MAX));
+  return id === 'resupply' ? 'Resupply' : id === 'lifeboat' ? 'Lifeboat' : abilityName(id, Math.min(level, ABILITY_MAX));
 }
+
+/** Quartermaster's golden bomb: a round bomb, its fuse lit. */
+const GOLD_BOMB_SVG =
+  '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="14" cy="19" r="9" fill="currentColor"/><rect x="17" y="8" width="6" height="5" rx="1" transform="rotate(40 20 10.5)" fill="currentColor"/>' +
+  '<path d="M22 8 Q25 4 28 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="28.5" cy="5.5" r="2.4" fill="#fff7cc"/><circle cx="11" cy="16" r="2.6" fill="#fff7cc" opacity="0.55"/></svg>';
+
+/** Lifeboats' extra-life card (the Armory's Lifeboats 3+). */
+const LIFEBOAT_TEXT = 'One more ship can be lost this run. Take it in place of a weapon.';
 
 /** V3's speed control: one button that steps through the speeds (it used to
  *  be a full-height slider; the rail's lower half is the weapon loadout). */

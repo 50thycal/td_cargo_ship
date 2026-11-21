@@ -143,22 +143,37 @@ const CONVOY_SPEED = [1, 1.04, 1.08, 1.12, 1.16, 1.2];
 /** Boilers level 5: a Full Steam pickup (the power-up or the boost) lasts
  *  this many times as long. */
 const STEAM_TIME = [1, 1, 1, 1, 1, 2];
-/** Lifeboats: how many waves a run the first ship sunk counts as half a loss
- *  (one a wave at most; LIFEBOATS_ALL: every wave). Every boss round is a
- *  wave of its own; a bonus wave shares the number, and the boat, of the
- *  wave it follows. */
-export const LIFEBOATS_ALL = 99;
-const LIFEBOATS = [0, 2, 4, 6, 8, LIFEBOATS_ALL];
-/** Lifeboats: the share of a loss a ship saved by a boat still counts. */
-export const LIFEBOAT_LOSS = 0.5;
-/** Quartermaster: re-rolls of the weapon draft a run, and the cards a draft
- *  deals. The overhaul's brainstorm said 1 to 3 re-rolls and four cards at
- *  level 5; that leaves a level with nothing new (as Deep Magazine's level 3
- *  was), so the re-rolls go one a level to 4, and level 5 deals the fourth
- *  card. Measured: past two re-rolls a run more change nothing (the bot
- *  spends 1.7 a run; 3, 6 or 10 on hand save the same, new-upgrades.md). */
-const REROLLS = [0, 1, 2, 3, 4, 4];
+/** Lifeboats, reworked (2026-11-21, LOG_VERSION 44; the player on the hub:
+ *  "alternate the repair and extra life options between levels"): repairs
+ *  and extra lives take turns, level by level.
+ *    1  between waves the carrier mends 66% of its missing hull;
+ *    2  the carrier and every ship afloat mend 66%;
+ *    3  level 2, and a Lifeboat card (one more life) in the draft;
+ *    4  every hull mended to full between waves, the card kept;
+ *    5  level 4, and the run starts with one extra life.
+ *  (The first version's half loss, the first ship sunk in a wave counting
+ *  half, is gone.) Shares of the MISSING hull, rounded to whole points (a
+ *  ship has 3: two missing mend one at 66%, one missing mends it). */
+const MEND_CARRIER = [0, 0.66, 0.66, 0.66, 1, 1];
+const MEND_SHIPS = [0, 0, 0.66, 0.66, 1, 1];
+/** Lifeboats: the Lifeboat card is dealt in the draft after every this many
+ *  waves (0: never): after waves 3, 6, 9 and 12, one card a draft at most. */
+export const LIFE_CARD_EVERY = 3;
+const LIFE_CARD = [0, 0, 0, LIFE_CARD_EVERY, LIFE_CARD_EVERY, LIFE_CARD_EVERY];
+/** Lifeboats level 5: extra lives the run starts with. */
+const START_LIVES = [0, 0, 0, 0, 0, 1];
+/** Quartermaster, reworked (2026-11-21, the player's path on the hub): one
+ *  re-roll, two, a golden bomb, three re-rolls, then four cards and a free
+ *  weapon level-up. Measured before: past two re-rolls a run more change
+ *  little for the bot (new-upgrades.md), so level 5 keeps 3. */
+const REROLLS = [0, 1, 2, 2, 3, 3];
 const DRAFT_CARDS = [3, 3, 3, 3, 3, 4];
+/** Quartermaster level 3 and up: a golden bomb a run (the Nuke's blast,
+ *  set off when the player taps it). */
+const GOLD_BOMB = [0, 0, 0, 1, 1, 1];
+/** Quartermaster level 5: free weapon level-ups a run (in a draft, without
+ *  spending its pick). */
+const FREE_LEVELS = [0, 0, 0, 0, 0, 1];
 /** Salvage Crews: Scrap a run earns, × (1 + this). An economy card only. */
 const SALVAGE = [0, 0.1, 0.2, 0.3, 0.4, 0.5];
 
@@ -270,17 +285,26 @@ export const ARMORY: Record<ArmoryId, ArmoryDef> = {
     id: 'lifeboats',
     bay: 'hull',
     name: 'Lifeboats',
-    blurb: 'The first ship sunk in a wave counts as half a loss',
+    blurb: 'Hulls mended between waves; from level 3, extra lives in the draft',
     max: ARMORY_MAX,
-    show: (l) => (!l ? 'none' : LIFEBOATS[l] >= LIFEBOATS_ALL ? 'half a loss, every wave' : `half a loss, ${LIFEBOATS[l]} waves a run`),
+    show: (l) => {
+      if (!l) return 'none';
+      const mend = MEND_CARRIER[l] >= 1 ? 'all hulls mended to full' : MEND_SHIPS[l] ? `carrier and ships mend ${pct(MEND_SHIPS[l])}` : `carrier mends ${pct(MEND_CARRIER[l])}`;
+      const card = LIFE_CARD[l] ? `, a +1 life card every ${LIFE_CARD[l]} waves` : '';
+      const start = START_LIVES[l] ? `, +${START_LIVES[l]} life to start` : '';
+      return `${mend} between waves${card}${start}`;
+    },
   },
   quartermaster: {
     id: 'quartermaster',
     bay: 'supply',
     name: 'Quartermaster',
-    blurb: 'Re-roll the weapon draft; level 5 deals 4 cards',
+    blurb: 'Re-roll the draft; level 3 a golden bomb; level 5 a 4th card and a free level-up',
     max: ARMORY_MAX,
-    show: (l) => (!l ? 'no re-rolls' : `${REROLLS[l]} re-roll${REROLLS[l] === 1 ? '' : 's'} a run${DRAFT_CARDS[l] > 3 ? `, ${DRAFT_CARDS[l]} cards` : ''}`),
+    show: (l) =>
+      !l
+        ? 'no re-rolls'
+        : `${REROLLS[l]} re-roll${REROLLS[l] === 1 ? '' : 's'} a run` + (GOLD_BOMB[l] ? ', a golden bomb' : '') + (DRAFT_CARDS[l] > 3 ? `, ${DRAFT_CARDS[l]} cards` : '') + (FREE_LEVELS[l] ? ', a free level-up' : ''),
   },
   salvage: {
     id: 'salvage',
@@ -340,11 +364,19 @@ export interface ArmoryStats {
    *  length (×). */
   convoySpeed: number;
   steamTime: number;
-  /** Lifeboats: waves a run whose first ship sunk counts as half a loss. */
-  lifeboats: number;
-  /** Quartermaster: draft re-rolls a run, and the cards a draft deals. */
+  /** Lifeboats: the share of a hull's missing points mended between waves
+   *  (the carrier; the ships afloat), the draft's Lifeboat card (dealt
+   *  after every this many waves; 0: never), and extra lives at the start. */
+  mendCarrier: number;
+  mendShips: number;
+  lifeCard: number;
+  startLives: number;
+  /** Quartermaster: draft re-rolls a run, the cards a draft deals, golden
+   *  bombs a run, and free weapon level-ups a run. */
   rerolls: number;
   draftCards: number;
+  goldBombs: number;
+  freeLevels: number;
   /** Salvage Crews: Scrap × (1 + this). Read by the result, not the sim. */
   salvage: number;
 }
@@ -377,9 +409,14 @@ export function armoryStats(a: ArmoryLevels = {}): ArmoryStats {
     powerTime: POWER_TIME[lv('stockpile')],
     convoySpeed: CONVOY_SPEED[lv('boilers')],
     steamTime: STEAM_TIME[lv('boilers')],
-    lifeboats: LIFEBOATS[lv('lifeboats')],
+    mendCarrier: MEND_CARRIER[lv('lifeboats')],
+    mendShips: MEND_SHIPS[lv('lifeboats')],
+    lifeCard: LIFE_CARD[lv('lifeboats')],
+    startLives: START_LIVES[lv('lifeboats')],
     rerolls: REROLLS[lv('quartermaster')],
     draftCards: DRAFT_CARDS[lv('quartermaster')],
+    goldBombs: GOLD_BOMB[lv('quartermaster')],
+    freeLevels: FREE_LEVELS[lv('quartermaster')],
     salvage: SALVAGE[lv('salvage')],
   };
 }

@@ -67,3 +67,35 @@ Lifeboats keeps no ship afloat (the ship still sinks: score, wave records and th
 ### Salvage Crews: Scrap only
 
 Saves no ship by design. +50% of a run's own Scrap at level 5 (waves, boss rounds, the clear, a first clear; a repeat card's 100 is not multiplied): 528 → 792 a run on the player's Armory with the counter kit. A level from 4 to 5 (800 Scrap) takes about one such run instead of one and a half. It takes the Supply slot, so it costs Stockpile's 6 ships while it rides.
+
+## Lifeboats and Quartermaster reworked (2026-11-21, LOG_VERSION 44)
+
+The player's answers on the hub. Lifeboats: "alternate the repair and extra life options between levels". Quartermaster: one re-roll, two re-rolls, a golden bomb ("a use whenever bomb … a golden one that stays there so they can use it when they want"), three re-rolls, then four cards and a free level-up. Branch `claude/v3-armory-rework`; numbers in `src/v3/data/armory.ts`. The half-loss rule above is gone.
+
+| Level | Lifeboats | Quartermaster |
+| --- | --- | --- |
+| 1 | between waves the carrier mends 66% of its missing hull | 1 re-roll a run |
+| 2 | the carrier and every ship afloat mend 66% | 2 re-rolls |
+| 3 | level 2, and a Lifeboat card (+1 life) in the draft after every 3rd wave | 2 re-rolls and a golden bomb (the Nuke, tapped any time, once a run) |
+| 4 | every hull mended to full between waves; the card stays | 3 re-rolls, the bomb |
+| 5 | level 4, and the run starts with +1 life (proposal: the player didn't say) | 3 re-rolls, the bomb, 4 cards a draft, one free weapon level-up a run |
+
+### How it was measured
+
+`new-upgrades.ts` as above (the "you" bot, the five chapter 1 maps, seeds 900–911, 60 runs a config, paired with level 0), self-drafting only (a forced kit replaces the hand: no re-roll, no Lifeboat card, no free level-up), in two modes:
+
+- **self** (tough, every wave played; carrier can't sink): ships saved a run. "Won" here is read off the losses, with the run's extra lives added to the limit.
+- **normal** (new): the real rules, the loss limit and a carrier that sinks. Lifeboats' carrier mend and its lives, and the bots' use of the golden bomb (kept for a pressed or late run), only count here. Read its won share; its "ships lost" stop where the run ends.
+
+Runs: `rework-runs.jsonl`; summary: `rework-results.json` (`new-sum.mjs` now also folds `lives`, `bombs`, `bombWave`, `free`, and `wonGain` ± se, paired against no card).
+
+### Results (level 5 against level 0)
+
+| | Ships saved, alone | Ships saved, player's Armory | Won, alone (normal rules) | Won, player's Armory (normal rules) |
+| --- | --- | --- | --- | --- |
+| Lifeboats 5 | 2.0 ± 0.4 | 0.0 (Damage Control 4 already mends) | 3% → 15% (+12 ± 4) | **50% → 67% (+17 ± 5)** |
+| Quartermaster 5 | 4.7 ± 1.1 | 2.1 ± 0.7 | 3% → 3% | **50% → 67% (+17 ± 8)** |
+
+- **Lifeboats** saves few ships (a mended ship still sinks to a later hit), but wins runs: an extra life is a ship the run can lose. The bot holds 1.4 extra lives a run under the real rules (the start's one, and a Lifeboat card in 4 runs of 10: it takes the card when 3 or fewer lives are left). Old version (half loss) on the player's Armory: 52% → 62%. The other upgrades' 5–8 ships saved is not its measure; by won runs it is with the best.
+- **Quartermaster** almost doubles its old lift (2.5 → 4.7 alone; 0.9 → 2.1 on the player's build). Every run sets the golden bomb off (average wave 9: the bots keep it for a boss round, a pressed run or wave 8 on) and spends the free level-up; re-rolls spent 1.8 of 3. Alone it lifts ships, not wins (the bare gun still loses by wave 10); on the player's build +17 points of wins.
+- Per map, ships saved alone (Lifeboats / Quartermaster): strait 2.3 / 4.9, gauntlet 1.7 / 4.9, harbor 2.1 / 7.7, kesh 0.9 / 4.2, marrow 3.2 / 1.8.

@@ -220,7 +220,7 @@ export type TelEvent = Base &
         form?: FormationId;
         vip?: 1;
       }
-    | { k: 'heal'; vt: TelVictim; vid: number; hp: number; left: number; why: 'repair' | 'damageControl' | 'resupply' | 'tanker' | 'restore' | 'rebuilt' }
+    | { k: 'heal'; vt: TelVictim; vid: number; hp: number; left: number; why: 'repair' | 'damageControl' | 'lifeboats' | 'resupply' | 'tanker' | 'restore' | 'rebuilt' }
     | { k: 'ship+'; id: number; lane: number; slot: number; x: number; y: number; hp: number; vip?: 1; flow: number; form: FormationId; len: number }
     | { k: 'ship-'; id: number; why: 'delivered' | 'sunk'; x: number; y: number; d: number; lane: number; pts?: number; vip?: 1; by?: ThreatKind }
     | { k: 'pk+'; id: number; kind: PickupKind; w?: AbilityId; x: number; y: number; why: 'drop' | 'plane' | 'tanker' | 'lab' | 'event' | 'seen'; from?: number }
@@ -247,7 +247,7 @@ export type TelEvent = Base &
         k: 'in';
         /** `gesture`: a held weapon's shot (the Grapnel's hook, the Laser
          *  Cutter's swipe, a charged Lance): the game counts it as a tap. */
-        what: 'press' | 'move' | 'release' | 'focus' | 'bring' | 'pick' | 'reroll' | 'endless' | 'gesture';
+        what: 'press' | 'move' | 'release' | 'focus' | 'bring' | 'pick' | 'reroll' | 'free' | 'bomb' | 'endless' | 'gesture';
         x?: number;
         y?: number;
         r?: number;
