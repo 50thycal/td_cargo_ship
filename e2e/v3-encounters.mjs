@@ -260,7 +260,7 @@ try {
   check(rg.map === 'rigs' && rg.rev === ENCOUNTER_REV && rg.cmds.length === 0, `the Rig Field's card opens with its encounters and no command (${JSON.stringify(rg)})`);
   await labMenu(page);
   const rgArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
-  check(/Boss rounds: Rig Barrage/.test(rgArc) && /relief rig/.test(rgArc), `the Rig Field's script names its boss, the Rig Barrage, and its relief rigs (${rgArc})`);
+  check(/Boss rounds: Rig Barrage/.test(rgArc) && /The relief tow/.test(rgArc), `the Rig Field's script names its boss, the Rig Barrage, and its first relief tow (${rgArc})`);
   await page.screenshot({ path: `${OUT_DIR}/rigs-script.png` });
   // Skip to the boss, at the phone's own size and one pixel a point (the
   // record shot): the rigs risen again fire their volleys together.

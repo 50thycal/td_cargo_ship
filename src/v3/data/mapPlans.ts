@@ -287,9 +287,22 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch3-rigs.md
   rigs: {
     problem: 'Four enemy oil rigs stand in the sea just above the lane and fire at the ships from point-blank, the shortest flights on the map: each takes forty hits and one brought down stays down (its fire moves to the far shore, a long flight), but every shot at a rig is one not at a missile, and from wave 4 the enemy tows relief rigs in to stand where one fell.',
-    // COUNTERS_NOTE
-    counters: ['railgun', 'flak', 'airstrike'],
-    offCounter: ['tesla', 'scatter', 'fullSteam'],
+    // The fire is point-blank missiles, shells and clusters off the rigs
+    // over the lane, swarms off the two drone rigs, relief rigs on tows (8
+    // hits on the way in) and, in the boss, every rig standing firing its
+    // volley together at one ship. The Railgun's line goes through a tow, a
+    // rig and what it just fired (it is made for big targets), the Flak
+    // Cannon's cloud sits where the rigs' short flights cross the lane, and
+    // the Orbital Strike falls on a rig and what is round it. The Seeker
+    // Pod's long flight is late for a missile off a rig a short way above
+    // the lane, the Gunship Pair and the Frigate Escort sail with the convoy
+    // and meet the fire at the ships, not at the rigs (forced, the combo
+    // sweep's singles at log v49: Railgun 5.5, Flak 5.5, Orbital 5.8
+    // against Seeker 8.3, Gunship Pair 7.8, Frigate Escort 7.6;
+    // docs/design/v3-ch3-rigs.md, The counters). Every weapon is in chapter
+    // 3's draft.
+    counters: ['railgun', 'flak', 'orbital'],
+    offCounter: ['seeker', 'gunships', 'frigate'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane under the four rigs, past the carrier in the middle, delivering in the east; the rigs are answered by shooting, not by sailing.',
     stretches: { danger: 'early', safe: 'late' },
     boss: {
