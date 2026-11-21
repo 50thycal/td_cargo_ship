@@ -1624,8 +1624,9 @@ export class App {
     if (STANDALONE && screen.width > 0 && screen.height > 0) {
       const long = Math.max(screen.width, screen.height);
       const short = Math.min(screen.width, screen.height);
-      w = Math.min(w, w >= h ? long : short);
-      h = Math.min(h, w >= h ? short : long);
+      const wide = w >= h;
+      w = Math.min(w, wide ? long : short);
+      h = Math.min(h, wide ? short : long);
     }
     return { w, h };
   }
