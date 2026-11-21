@@ -6,9 +6,9 @@
 // the air at once, ships lost and the round's seconds. Also the trucks of
 // waves 1-10 (`--waves`).
 //   npx vite-node tools/v3/saltgate/boss.ts -- [--seeds=24] [--from=900]
-//       [--armory=player|latest|none] [--waves]
+//       [--armory=player|latest|none] [--waves] [--rounds=<json>] [--truck=<json>]
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
-import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
+import { SALTGATE_BOSS_ROUNDS, SALTGATE_TRUCK, VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
 import { shipsSunk } from '../../../src/v3/sim/game';
@@ -21,11 +21,18 @@ const from = Number(opt('from') ?? 900);
 const a = opt('armory') ?? 'player';
 const armory = a === 'latest' ? LATEST_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const waves = args.includes('--waves');
+// Tuning (log v45): `--rounds=<json>` puts these columns (BossRound
+// `trucks`, one list a round) in place of the boss's own for this read.
+const tryRounds = opt('rounds');
+const tryTruck = opt('truck');
+if (tryTruck) Object.assign(SALTGATE_TRUCK, JSON.parse(tryTruck));
+if (tryRounds) (JSON.parse(tryRounds) as (typeof SALTGATE_BOSS_ROUNDS)[number]['trucks'][]).forEach((t, k) => (SALTGATE_BOSS_ROUNDS[k].trucks = t));
 
 type Row = { runs: number; trucks: number; early: number; salvos: number; clusters: number; lost: number; secs: number; shot: number; peak: number };
 const rows = new Map<number, Row>();
 const row = (w: number) => rows.get(w) ?? (rows.set(w, { runs: 0, trucks: 0, early: 0, salvos: 0, clusters: 0, lost: 0, secs: 0, shot: 0, peak: 0 }), rows.get(w)!);
 
+let wins = 0;
 for (let seed = from; seed < from + n; seed++) {
   const card = labCard(mapCardId('saltgate', VERSION_DEFAULT))!;
   const plan = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), null);
@@ -90,8 +97,9 @@ for (let seed = from; seed < from + n; seed++) {
     r.peak += peak;
   }
   for (const s of seen.values()) if (s.fired === 0) row(s.wave).early += 1;
+  if (g.phase === 'won') wins += 1;
 }
-console.log(`saltgate armory=${a}, ${n} seeds from ${from}`);
+console.log(`saltgate armory=${a}, ${n} seeds from ${from}: won ${Math.round((wins / n) * 100)}%`);
 console.log('wave runs trucks shot-early salvos/missiles clusters missiles-shot peak-in-air lost secs (means a run)');
 for (const [w, r] of [...rows].sort((x, y) => x[0] - y[0])) {
   const m = (v: number) => (v / Math.max(1, r.runs)).toFixed(2);

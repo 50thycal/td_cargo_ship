@@ -4484,7 +4484,7 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  (Torpedo Subs, a gunship, an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 4, missiles: 1 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, missiles: 1 }],
     swarms: 1,
     size: 5,
     fire: [],
@@ -4492,7 +4492,7 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
     trucks: [
       { at: 0, lock: 0, bank: 'north', count: 5, missiles: 1 },
-      { at: 1.5, lock: 0, bank: 'south', count: 5, missiles: 1 },
+      { at: 1.5, lock: 0, bank: 'south', count: 4, missiles: 1 },
     ],
     swarms: 1,
     size: 5,
@@ -4500,10 +4500,10 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 5, missiles: 1 },
-      { at: 0.8, lock: 1, bank: 'north', count: 5, missiles: 1 },
-      { at: 1.6, lock: 0, bank: 'south', count: 5, missiles: 1 },
-      { at: 2.4, lock: 1, bank: 'south', count: 5, missiles: 1 },
+      { at: 0, lock: 0, bank: 'north', count: 3, missiles: 1 },
+      { at: 0.8, lock: 1, bank: 'north', count: 2, missiles: 1 },
+      { at: 1.6, lock: 0, bank: 'south', count: 3, missiles: 1 },
+      { at: 2.4, lock: 1, bank: 'south', count: 2, missiles: 1 },
     ],
     swarms: 1,
     size: 5,

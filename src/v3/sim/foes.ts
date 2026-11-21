@@ -2097,11 +2097,24 @@ function lockShip(g: Game, th: Threat): Ship | undefined {
   return (held.length ? held : pool).reduce(near);
 }
 
-/** A lock-aimed truck marks the ship its next salvo goes for. */
+/** A lock-aimed truck marks the ship its next salvo goes for. Log v45: a
+ *  Missile Truck spreads its column's volley over the ships held at its
+ *  lock (within `MISSILE_SHARE` px of it): the one fewest other Missile
+ *  Trucks have marked, the nearest of those. */
 function markShip(g: Game, th: Threat, f: FoeData): void {
   if (!f.aim) return;
+  if (th.kind === 'missileTruck') {
+    const held = targetable(g).filter((s) => atLock(g, s) && dist(s.x, s.y, th.x, th.y) <= MISSILE_SHARE);
+    if (held.length) {
+      const marks = (s: Ship) => g.threats.filter((o) => o !== th && !o.dead && o.kind === 'missileTruck' && o.foe?.mark === s.id).length;
+      const score = (s: Ship) => marks(s) * 10000 + dist(s.x, s.y, th.x, th.y);
+      f.mark = held.reduce((a, b) => (score(b) < score(a) ? b : a)).id;
+      return;
+    }
+  }
   f.mark = lockShip(g, th)?.id;
 }
+const MISSILE_SHARE = 360;
 
 /** The ship a truck has marked, while the mark shows (drawn as a red line
  *  from the truck): raising, or up between salvos. */

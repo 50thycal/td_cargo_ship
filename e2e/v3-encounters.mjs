@@ -180,6 +180,29 @@ try {
   check(/Boss rounds: Gatecrashers/.test(arcLine), `Saltgate's script names its boss, the Gatecrashers (${arcLine})`);
   check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
+  // Log v45: Skip to boss. The Gatecrashers are a parade of Missile Trucks
+  // (no Rocket Truck): they drive in, raise their missiles and lob
+  // ballistic missiles at the locks.
+  await page.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+  await page.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+  let parade = { trucks: 0, rockets: 0, lobs: 0, raised: 0 };
+  for (let k = 0; k < 30 && (parade.lobs === 0 || parade.trucks === 0); k++) {
+    await page.evaluate(() => window.__v3.advance(0.5));
+    parade = await page.evaluate(() => {
+      const g = window.__v3.game();
+      const tr = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead);
+      const ids = new Set(tr.map((t) => t.id));
+      return {
+        trucks: tr.length,
+        rockets: g.threats.filter((t) => t.kind === 'rocketTruck').length,
+        lobs: g.threats.filter((t) => t.kind === 'ballistic' && !t.dead && (ids.has(t.from) || (g.event?.sent.missileTruck ?? 0) > 0)).length,
+        raised: tr.filter((t) => t.foe?.state === 1).length,
+      };
+    });
+  }
+  check(parade.trucks > 0 && parade.rockets === 0 && parade.lobs > 0, `the Gatecrashers' parade: Missile Trucks on the banks lobbing ballistic missiles, no Rocket Truck (${JSON.stringify(parade)})`);
+  check(errs.length === 0, `no page errors in the missile parade (${errs[0] ?? 'none'})`);
+  await page.screenshot({ path: `${OUT_DIR}/saltgate-missile-parade.png` });
 
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-battery', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2)'], ['ev-rush', 'an event card']]) {

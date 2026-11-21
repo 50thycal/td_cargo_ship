@@ -5650,8 +5650,15 @@ function aimBallistic(g: Game, th: Threat, lob?: { flight: number; apex: number 
   const least = lob ? lob.flight : BALLISTIC.minFlight / g.waveSpeed;
   let at: Point = t;
   let dur = Math.max(lob ? least : 0, dist(th.sx, th.sy, t.x, t.y) / th.speed);
+  // A Missile Truck's lob reads the gates: a ship held at a shut one is
+  // aimed where it waits (the gate may open while the missile flies).
+  const ahead = (s: Ship, t: number): Point => {
+    if (!lob) return shipAhead(g, s, t);
+    const p = laneAt(g.map.channels[s.channel], Math.min(s.d + laneSpeed(g, s) * t, Math.max(s.d, stopAt(g, s))), s.lat);
+    return { x: p.x, y: p.y };
+  };
   for (let k = 0; k < 2 && ship; k++) {
-    at = shipAhead(g, ship, dur);
+    at = ahead(ship, dur);
     dur = Math.max(lob ? least : 0, dist(th.sx, th.sy, at.x, at.y) / th.speed);
   }
   th.ix = Math.min(VIEW.width - 20, at.x);
