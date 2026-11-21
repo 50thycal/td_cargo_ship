@@ -1,7 +1,7 @@
 // Wave 1 of a map card for a persona over many seeds (rule w-first: no ship
 // lost on wave 1; tests/v3/round12fixes.test.ts plays seeds 11-13 of "you"
 // and "casual"): how often a ship sinks, and to what.
-//   npx vite-node tools/v3/rigs/wave1.ts -- [--map=rigs] [--persona=casual] [--seeds=48] [--from=1]
+//   npx vite-node tools/v3/rigs/wave1.ts -- [--map=rigs] [--persona=casual] [--seeds=48] [--from=1] [--no-enc]
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';
@@ -19,7 +19,9 @@ let lost = 0;
 const bad: number[] = [];
 for (let seed = from; seed < from + n; seed++) {
   const card = labCard(mapCardId(map, VERSION_DEFAULT))!;
-  const p = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), null);
+  const setup = defaultSetup(card, parseLabProgress(null));
+  if (args.includes('--no-enc')) setup.encounters = false;
+  const p = labRunPlan(card, setup, null);
   const run = new BotRun(map, seed, { persona: PERSONAS[persona], lab: p.lab, ...(p.convoy ? { convoy: p.convoy } : {}), ...(p.encounters ? { encounters: p.encounters } : {}) });
   const g = run.game;
   while (!run.done && g.wave === 1) run.advance(1);

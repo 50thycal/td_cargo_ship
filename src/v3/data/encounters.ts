@@ -4517,20 +4517,20 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'Point-blank',
     callout: 'Drones off the rigs',
-    premise: 'The west rig, standing in the sea right above the lane, sends drones at the ships as they come in, and the east rig sends a few at the lead ship.',
+    premise: 'The east rig, standing in the sea right above the lane, sends drones at the lead ship, and the west rig a few more once the ships are past it.',
     decision: 'The first look at the map: the rigs are launchers in the sea a short flight from the ships, and each can be brought down.',
     counters: 'The drones before they reach the ships; a rig when the sky is clear.',
     succeeds: 'Nothing is sunk on wave 1; the rigs read as launchers you can shoot.',
     notes: {
-      sites: 'The west rig (300, 298; drones), the east rig (1440, 270; drones).',
-      target: 'The ships coming in (the west rig); the lead ship (the east rig).',
+      sites: 'The east rig (1440, 270; drones), the west rig (300, 298; drones).',
+      target: 'The lead ship (both): the west rig\'s once the convoy is past it, a short flight but not point-blank on wave 1.',
       usesMap: 'Shows the map on wave 1: the rigs fire from the sea right over the lane, the shortest flights on the map.',
     },
     beats: [
-      { at: 0.15, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'rear' },
-      { at: 0.55, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(3), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'lead' },
     ],
-    replaces: { drones: 6 },
+    replaces: { drones: 5 },
   },
   {
     id: 'rigs-bring-down',
@@ -4550,7 +4550,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.25, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
     ],
     replaces: { drones: 4, ballistic: 2 },
   },
@@ -4721,7 +4721,6 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.35, kind: 'guided', count: 2, gap: 0.3, from: base(2), aim: 'mid' },
       { at: 0.35, kind: 'drone', count: 5, gap: 0.25, from: base(3), aim: 'mid' },
       { at: 0.35, plus: 6, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.6, kind: 'ballistic', count: 2, gap: 0.9, from: base(4), aim: 'rear' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
     ],
     replaces: { ballistic: 13, guided: 2, extras: { cluster: 1 } },
@@ -4836,7 +4835,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold', 'sowers-two-fields'], 0, 2),
   // The Rig Field (log v49): its two drone rigs, the west and the east, the
   // map's only drone launchers, waves 1-6 (a rig brought down sends none).
-  ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 0, 3, [3]),
+  // Wave 1 one late string out of the east rig only: the drone rigs stand a
+  // short flight from the lane, and the wave's own drones already cost the
+  // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
+  ['rigs-point-blank', [fill(0.7, 2, 3)]],
+  ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 3]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -5013,7 +5016,7 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
-const RIGS_CLIMB = [1, 1, 0.92, 0.9, 0.96, 0.88, 0.88, 0.86, 0.92, 0.86];
+const RIGS_CLIMB = [0.9, 0.95, 0.88, 0.94, 0.96, 0.92, 0.94, 0.88, 0.96, 0.88];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
