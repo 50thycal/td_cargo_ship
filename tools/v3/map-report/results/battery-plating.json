@@ -346,15 +346,15 @@
    {
     "kit": "counter",
     "weapons": [
+     "frigate",
      "railgun",
-     "gunships",
-     "thermo"
+     "well"
     ],
     "n": 24,
     "endWave": 12.083,
     "won": 0.625,
-    "lost10": 3.542,
-    "lost10Tough": 4.542,
+    "lost10": 3.375,
+    "lost10Tough": 4.375,
     "curveTough": [
      0,
      0,
@@ -362,14 +362,14 @@
      0.125,
      0.458,
      0.25,
-     0.375,
-     0.75,
-     1.125,
-     1.375
+     0.417,
+     0.708,
+     1.208,
+     1.125
     ],
     "boss": [
      0.4,
-     0.933,
+     0.867,
      1.2
     ],
     "bossReached": [
@@ -382,30 +382,30 @@
     "kit": "off-counter",
     "weapons": [
      "seeker",
-     "droneScreen",
-     "shrapnel"
+     "scatter",
+     "tesla"
     ],
     "n": 24,
     "endWave": 11.917,
     "won": 0.583,
-    "lost10": 3.708,
-    "lost10Tough": 4.708,
+    "lost10": 3.958,
+    "lost10Tough": 4.667,
     "curveTough": [
      0,
      0,
      0.083,
      0.125,
      0.458,
-     0.25,
-     0.417,
-     0.958,
+     0.292,
+     0.625,
+     0.708,
      1.083,
-     1.333
+     1.292
     ],
     "boss": [
      0.286,
-     1.286,
-     1.071
+     1.143,
+     1.143
     ],
     "bossReached": [
      14,
@@ -417,7 +417,7 @@
   "fun": {
    "n": 24,
    "dice": 3,
-   "ms": 156703,
+   "ms": 226881,
    "waves": [
     {
      "wave": 1,
@@ -817,7 +817,7 @@
    {
     "rule": "m-kits",
     "name": "Kits",
-    "value": "counter 4.5 lost 1–10, end 12.1; off-counter 4.7 lost 1–10, end 11.9",
+    "value": "counter 4.4 lost 1–10, end 12.1; off-counter 4.7 lost 1–10, end 11.9",
     "target": "the counter kit clearly better; neither trivial",
     "verdict": "INFO",
     "from": "kits"

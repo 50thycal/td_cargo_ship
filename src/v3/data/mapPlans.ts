@@ -239,17 +239,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   battery: {
     problem: 'Two shore guns of your own on the headland cover the east of the lane, where the ships deliver, while they stand: the enemy\'s shells and heavies go for the guns first, and each one knocked out leaves the ships under it uncovered for twelve seconds, while the middle of the lane, between your carrier and the guns, is covered by neither.',
     // The fire is heavies at the guns (eight hits each, slow), shells at
-    // them and at the ships, siege guns and jets that come in dark. The
+    // them and at the ships, siege guns, and swarms at the middle of the
+    // lane, which neither the carrier nor the guns cover. The Frigate
+    // Escort's frigates sail with the convoy through that middle; the
     // Railgun's line reaches a heavy all the way in and a siege gun on the
-    // shore; the Gunship Pair fights on its own over the convoy while your
-    // hand is on the guns' heavies; the Thermobaric Shell's blast takes a
-    // swarm and what flies with it. The Seeker Pod's long flight is late for
-    // a shell, the Drone Screen fights one drone at a time, and the
-    // Shrapnel Shell's burst does little to a heavy (forced, the combo
-    // sweep's singles: docs/design/v3-ch3-battery.md, The counters).
-    // Every weapon is in chapter 3's draft.
-    counters: ['railgun', 'gunships', 'thermo'],
-    offCounter: ['seeker', 'droneScreen', 'shrapnel'],
+    // shore; the Gravity Well pulls a swarm off the lane before it gets
+    // there. The Seeker Pod's long flight is late for a shell, the
+    // Scattergun and the Tesla Arc fight at short range what comes at the
+    // middle from far (forced, the combo sweep's singles: Frigate Escort
+    // 4.8, Gravity Well 5.6, Railgun 5.8 against Seeker 9.0, Scattergun 9.2,
+    // Tesla 8.3; docs/design/v3-ch3-battery.md, The counters). Every weapon
+    // is in chapter 3's draft.
+    counters: ['frigate', 'railgun', 'well'],
+    offCounter: ['seeker', 'scatter', 'tesla'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane, past the carrier in the west, through the open middle and under the shore guns on the headland to deliver in the east.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
