@@ -129,7 +129,8 @@ describe('the encounter script, in words, for the pause screen', () => {
   });
 
   it('no encounter text mentions a command that is gone', () => {
-    for (const e of ENCOUNTERS) for (const t of [e.decision, e.counters, e.succeeds]) expect(t, e.id).not.toMatch(/\b(Rush|Disperse|Hold)\b/);
+    // (Hold is Sowers' Reach's own command: its encounters may name it, log v48.)
+    for (const e of ENCOUNTERS) for (const t of [e.decision, e.counters, e.succeeds]) expect(t, e.id).not.toMatch(e.map === 'sowers' ? /\b(Rush|Disperse)\b/ : /\b(Rush|Disperse|Hold)\b/);
   });
 });
 
@@ -208,7 +209,9 @@ describe('Test Lab round 11', () => {
   it('the production setups: the reference maps under D with no command and their encounters; Sowers\' Reach under D with Hold', () => {
     expect(mapProduction('strait')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('harbor')).toEqual({ convoy: 'tactical', encounters: true });
-    expect(mapProduction('sowers')).toEqual({ convoy: 'tactical', encounters: false });
+    // Chapter 3's Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48):
+    // D with Hold, and now its encounters.
+    expect(mapProduction('sowers')).toEqual({ convoy: 'tactical', encounters: true });
     // Chapter 1's Kesh and Marrow, rebuilt to the rules (docs/design/v3-ch1-*.md):
     // the map's own convoy, no command, and their encounters.
     expect(mapProduction('kesh')).toEqual({ convoy: 'tactical', encounters: true });
@@ -226,6 +229,6 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('battery')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('rigs')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
-    expect(productionText('sowers')).toBe('Commands: Hold');
+    expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
   });
 });

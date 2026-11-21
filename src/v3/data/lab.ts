@@ -712,7 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'sowers', log: 48, tag: 'New', note: 'Mines drift across the lane; stealth bombers sow them ahead of your ships from wave 4. Hold or shoot?' },
+  { map: 'sowers', log: 48, tag: 'New', note: 'Mines drift across the lane; bombers sow them ahead of your ships. Hold or shoot?' },
   { map: 'saltgate', log: 46, tag: 'Polished', note: 'Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?' },
   { map: 'battery', log: 45, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },

@@ -24,7 +24,7 @@ const REF: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** Every map with authored encounters: the reference maps and (map
  *  rebuild, chapter 1: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md) Kesh
  *  and Marrow, which have the original (v1) only. */
-const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery'];
+const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers'];
 
 /** A map card's run as the app starts it from the hub (no setup given, no
  *  link): the plan labRunPlan makes. */
@@ -196,7 +196,9 @@ describe('a map card is the full production map', () => {
     expect(productionText('harbor')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     // Round 12: a version card says its version.
     expect(productionText('harbor', 'v3')).toBe("The map's own convoy (no commands) · encounters v3 Enemy pairs");
-    expect(productionText('sowers')).toBe('Commands: Hold');
+    // Chapter 3's Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): its
+    // Hold, and now its encounters.
+    expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
     // Chapter 1's Kesh and Marrow: the map's own convoy and their encounters.
     expect(productionText('kesh')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('marrow')).toBe("The map's own convoy (no commands) · encounters v1 Original");
@@ -218,9 +220,9 @@ describe('a map card is the full production map', () => {
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '', sowers: 'hold' };
 
-  it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold; the other 13: today\'s convoy, no encounters', () => {
+  it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold and its encounters (log v48); the other 12: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {
       const plan = fromHub(`map-${id}`);
       if (LAYER.includes(id)) {
@@ -229,17 +231,12 @@ describe('the three reference maps open ready to test', () => {
         expect(plan.lab.config, id).toEqual({ convoy: 'tactical', encounters: ENCOUNTER_REV, production: true });
         const g = new BotRun(id, 1, opts(plan)).game;
         expect(g.convoy!.def.commands.join(), id).toBe(want[id]);
-      } else if (id === 'sowers') {
-        expect(plan.convoy, id).toMatchObject({ policy: 'tactical', obligation: 'natural' });
-        expect(plan.encounters, id).toBeNull();
-        expect(plan.lab.config, id).toEqual({ convoy: 'tactical', encounters: 0, production: true });
-        expect(new BotRun(id, 1, opts(plan)).game.convoy!.def.commands.join(), id).toBe('hold');
       } else {
         expect(plan.convoy, id).toBeNull();
         expect(plan.encounters, id).toBeNull();
         expect(plan.lab.config, id).toEqual({ convoy: 'current', encounters: 0, production: true });
       }
-      expect(mapProduction(id).convoy === 'tactical', id).toBe(LAYER.includes(id) || id === 'sowers');
+      expect(mapProduction(id).convoy === 'tactical', id).toBe(LAYER.includes(id));
     }
   });
 

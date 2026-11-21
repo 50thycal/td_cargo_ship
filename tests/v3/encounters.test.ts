@@ -165,7 +165,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -203,6 +203,11 @@ describe('a campaign run has no encounter layer', () => {
     expect(arc('battery').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'battery-guns', 'battery-ranging', 'battery-gap', 'battery-silence', 'battery-under-headland',
       'battery-both-ends', 'battery-dark-jet', 'battery-counter-battery', 'battery-crossfire', 'battery-last-light',
+    ]);
+    // Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): the same.
+    expect(arc('sowers').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold',
+      'sowers-two-fields', 'sowers-periscope', 'sowers-carpet', 'sowers-whole-reach', 'sowers-last-sowing',
     ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
@@ -268,7 +273,11 @@ describe('every beat is legal on its map at its wave', () => {
           // enemy of the map's chapter or before, from wave 2 (the first a
           // wave sends a new enemy).
           const truck = 'road' in b.from && b.kind === 'rocketTruck' && w >= 2 && foesUpTo(chapterOf(e.map)).includes('rocketTruck');
-          expect(inTable || extra || plane || truck, where).toBe(true);
+          // Log v48 (Sowers' Reach): a stealth bomber from an edge, an enemy
+          // of the map's chapter or before, from its signature's first wave
+          // (the wave's own new enemies come as stealth bombers from then).
+          const sower = 'air' in b.from && b.kind === 'stealthBomber' && foesUpTo(chapterOf(e.map)).includes('stealthBomber') && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
+          expect(inTable || extra || plane || truck || sower, where).toBe(true);
           if ('base' in b.from) {
             const base = m.bases[b.from.base];
             expect(base, where).toBeDefined();
@@ -280,7 +289,7 @@ describe('every beat is legal on its map at its wave', () => {
             expect(w, where).toBeGreaterThanOrEqual(m.vectors.subs);
             expect(['ballistic', 'drone'], where).toContain(b.kind);
             expect(m.subSpots[b.from.sub], where).toBeDefined();
-          } else expect(plane, where).toBe(true);
+          } else expect(plane || sower, where).toBe(true);
           expect(b.count, where).toBeGreaterThan(0);
           expect(b.at, where).toBeGreaterThanOrEqual(0);
           expect(b.at, where).toBeLessThanOrEqual(1);
@@ -701,7 +710,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -1630,9 +1639,11 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
+    // Sowers' Reach (log v48): every one of waves 1-6.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('sowers', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
