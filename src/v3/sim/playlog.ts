@@ -334,11 +334,19 @@ import type { EncounterSetup } from '../data/encounters';
  *      columns nose to tail so each fires as one volley (MAP_BOSS.saltgate
  *      `trucks` with `missiles`), no Rocket Truck in the boss. A new threat
  *      kind, so the counts in every log carry it. A v42 Saltgate card log
- *      no longer replays to the same game; the campaign plays as it did. */
-export const LOG_VERSION = 46;
+ *      no longer replays to the same game; the campaign plays as it did.
+ *  47: busier early waves (docs/design/v3-playtest-fixes.md, "Busier early
+ *      waves"; the player's answer to the chapter 2 playtests: "more drones
+ *      and easy things to kill ... keep it busy"): every rebuilt map's
+ *      encounters in waves 1-6 (the Battery's 1-2) send a short string or
+ *      two of filler drones on top of the wave (encounters.ts BUSY, Beat
+ *      `filler`), tagged `fill` in the telemetry. Lab only: a v46 map card
+ *      log no longer replays to the same game; the campaign plays as it
+ *      did. */
+export const LOG_VERSION = 47;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [46];
+export const LOG_REPLAYS: readonly number[] = [47];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
