@@ -511,8 +511,8 @@ function fireStep(g: Game, ev: EventRun, k: number): void {
 }
 
 /** The Rig Field's Rig Barrage (log v49): the kind each rig station fires in
- *  a volley, the first of its own it carries of these (a drone launch is two
- *  drones). */
+ *  a volley, the first of its own it carries of these (a volley of `size`
+ *  guided missiles, one shell more, or twice that many drones). */
 const BARRAGE_KIND: ThreatKind[] = ['guided', 'ballistic', 'drone'];
 /** The order downed rig stations rise in: the middle two, the west, the
  *  east (as the stations' rank west to east: 1, 2, 0, 3). */
@@ -549,7 +549,7 @@ function rigBarrage(g: Game, ev: EventRun, s: EventStep): void {
   const V = R.barrage!;
   for (const i of live) {
     const kind = BARRAGE_KIND.find((k) => g.map.bases[i].kinds.includes(k)) ?? 'guided';
-    const n = kind === 'drone' ? V.size * 2 : V.size;
+    const n = kind === 'guided' ? V.size : kind === 'ballistic' ? V.size + 1 : 2 * (V.size + 1);
     for (let k = 0; k < n; k++) g.queue.push({ at: g.waveT + k * (kind === 'drone' ? 0.2 : 0.3), kind, base: i, aim: 'mid' });
     sent(ev, kind, n);
   }
