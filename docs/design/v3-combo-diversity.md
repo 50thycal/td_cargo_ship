@@ -245,24 +245,24 @@ npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 
 | Map | #1 | #2 | #3 | #4 | #5 |
 | --- | --- | --- | --- | --- | --- |
-| Battery Point (v43) | **Air Strike + Gunship Pair + Supply Run** 4.9 ±0.7, won 94% | Air Strike + Frigate Escort + Tesla Arc 5.3 | Air Strike + Boomerang + Supply Run 5.3 | Gunship Pair + Supply Run + Dual Wield 5.3 | Air Strike + Thermobaric Shell + Supply Run 5.3 |
+| Battery Point (v43) | **Air Strike + Frigate Escort + Supply Run** 5.1 ±0.6, won 94% | Thermobaric Shell + Flak Cannon + Gravity Well 5.4 | Air Strike + Drone Screen + Supply Run 5.8 | Railgun + Orbital Strike + Supply Run 5.9 | Air Strike + Orbital Strike + Supply Run 6.0 |
 
 | Measure | Result |
 | --- | --- |
-| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0 / 0 / 0 / 0 / **0.11** (Air Strike + Gunship Pair + Supply Run: the Battery's #1, Saltgate's #2) |
-| The same, the Battery against itself (two halves of its seeds) | 0.25 |
-| #1 kit | Saltgate's #2 (in no other map's top 5) |
-| Best weapon alone | **Gunship Pair** 5.3 (Railgun 5.7, Thermobaric Shell 5.8, Air Strike 5.8: fourth, Gravity Well 5.9) |
-| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.68 / 0.67 / 0.61 / 0.58 / 0.32 |
-| Chapter 3's new weapons | Dual Wield in the #4 kit; alone, Orbital Strike 7.2, Bomber Wing 7.3, Grapnel, Focus Fire and Dual Wield 11.7 |
-| The bot drafting for itself; the plain gun | 7.4 lost, won 67%; 10.3, won 25% |
+| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0 / **0.11** / 0 / 0 / 0 (Air Strike + Drone Screen + Supply Run: the Battery's #3, the Behemoth's #1) |
+| The same, the Battery against itself (two halves of its seeds) | 0.43 |
+| #1 kit | its own (in no other map's top 5) |
+| Best weapon alone | **Frigate Escort** 4.8 (Gravity Well 5.6, Railgun 5.8, Drone Screen 5.8, Flak 5.9; Air Strike 6.1: eighth) |
+| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.73 / 0.76 / 0.61 / 0.57 / 0.48 |
+| Chapter 3's new weapons | Orbital Strike in two of the top 5 kits; alone, Orbital Strike 6.4, Bomber Wing 7.6, Focus Fire and Grapnel 10.8, Dual Wield 13.1 |
+| The bot drafting for itself; the plain gun | 6.8 lost, won 67%; 12.8, won 8% |
 
 ### Reading
 
-- **Four of the Battery's five best kits are its own; its #1 is Saltgate's #2** (Air Strike + Gunship Pair + Supply Run). The five are within a standard error of each other (4.9–5.3, ±0.5–0.7), and the halves agree little (0.25), so their order is noise.
-- **Its best weapon alone is the Gunship Pair, as on the Needle of Bosk.** It leads Railgun by 0.4 of a ship on 12 seeds; it is not Air Strike (best alone on three of the five chapter 2 maps).
-- **Air Strike is fourth alone (5.8, against 3.7–6.8 on chapter 2's maps) but in four of the five best kits.** Not the best single, but the most common partner; with Supply Run in four of five, the Battery's best kits lean on the same pair as chapter 2's. A chapter-wide Air Strike look (the Archipelago's open question) would cover it.
-- **The sweep is fragile to small changes:** the build one tweak before this (wave 5 without its cluster and supersonic missile) read 0 / 0 / 0 / 0 / 0, its #1 Frigate Escort + Boomerang + Railgun (5.1) and Air Strike in two of five. Both reads are kept in mind; neither shows the Battery's kits are chapter 2's.
+- **Four of the Battery's five best kits are its own, and its #1 is its own;** its #3 is the Behemoth Run's #1 (Air Strike + Drone Screen + Supply Run). The five are within about a standard error of each other (5.1–6.0, ±0.5–0.9), so their order is noise.
+- **Its best weapon alone is its own: the Frigate Escort** (4.8), the best single on no chapter 2 map (those are Air Strike ×3, the Gunship Pair, the Thermobaric Shell). Its frigates sail with the convoy through the middle, the stretch neither the carrier nor the guns cover.
+- **Air Strike is not over-dominant:** eighth alone (6.1, against 3.7–6.8 on chapter 2's maps), in three of the five best kits (with Supply Run each time, the pair chapter 2 leans on too). A chapter-wide Air Strike look (the Archipelago's open question) would cover it.
+- **The sweep is fragile to small changes:** two builds a wave-5 tweak apart read #1 Frigate Escort + Boomerang + Railgun (Jaccard 0 everywhere, Air Strike in 2 of 5) and Air Strike + Gunship Pair + Supply Run (Saltgate's #2; Air Strike in 4 of 5, Gunship Pair best alone). In all three reads no other map's #1 kit is in the Battery's top 5 and Air Strike is never the best single.
 
 ```
 npm run v3:combo-sweep -- --stage=singles --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3
