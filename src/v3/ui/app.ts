@@ -323,6 +323,9 @@ export class App {
    *  volley it offers to rate it (see openNote / openRate). */
   private noteBtn = button('', 'v3-note-btn', () => (this.rateable() ? this.openRate('rail') : this.openNote('rail')));
   private noteKey = '';
+  /** Quartermaster 3+ (Armory): the golden bomb, in the left rail from the
+   *  run's start until it is tapped (the Nuke's blast, once a run). */
+  private bombBtn = button('', 'v3-gold-bomb', () => this.tapGoldBomb());
   /** Volleys finished when the note button last pulsed. */
   private volleysSeen = 0;
   private notesOn = !STORE && notesEnabled();
@@ -992,9 +995,14 @@ export class App {
       flowLabel,
       this.flowSlider.el,
       flowHint,
+      this.bombBtn,
       this.noteBtn,
       this.timers,
     );
+    this.bombBtn.innerHTML = GOLD_BOMB_SVG + '<b>BOMB</b>';
+    this.bombBtn.dataset.goldBomb = '1';
+    this.bombBtn.setAttribute('aria-label', 'Golden bomb: destroy everything attacking, once a run');
+    this.bombBtn.hidden = true;
     for (const id of FORMATION_ORDER) {
       const f = FORMATIONS[id];
       const opt = button('', 'v2-formation-opt', () => {
@@ -2275,7 +2283,24 @@ export class App {
     return waveCount(g.wave, { boss, bonus: !!g.event?.bonus, endless: g.endless || lone });
   }
 
+  /** The golden bomb tapped: the Nuke's blast, logged ('n'). Not while the
+   *  bot has the controls or a replay plays. */
+  private tapGoldBomb(): void {
+    const g = this.game;
+    if (!g || this.paused || this.playback || (this.bot && this.control === 'bot')) return;
+    if (this.rec?.goldBomb()) this.syncGoldBomb(g);
+  }
+
+  /** The golden bomb's button: shown while the run has one left. */
+  private syncGoldBomb(g: Game): void {
+    const show = g.bombsLeft > 0 && (g.phase === 'wave' || g.phase === 'draft');
+    if (this.bombBtn.hidden === show) this.bombBtn.hidden = !show;
+    const off = g.phase !== 'wave' || !!this.playback || (!!this.bot && this.control === 'bot');
+    if (this.bombBtn.disabled !== off) this.bombBtn.disabled = off;
+  }
+
   private renderHud(g: Game): void {
+    this.syncGoldBomb(g);
     if (this.commandBtns.length) this.renderCommands(g);
     // Lifeboats (Armory): each extra life is one more pip, drawn as a
     // lifeboat's (orange), after the run's own.
@@ -5050,6 +5075,11 @@ function formationGlyph(id: FormationId): SVGSVGElement {
 function cardName(id: CardId, level: number): string {
   return id === 'resupply' ? 'Resupply' : id === 'lifeboat' ? 'Lifeboat' : abilityName(id, Math.min(level, ABILITY_MAX));
 }
+
+/** Quartermaster's golden bomb: a round bomb, its fuse lit. */
+const GOLD_BOMB_SVG =
+  '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="14" cy="19" r="9" fill="currentColor"/><rect x="17" y="8" width="6" height="5" rx="1" transform="rotate(40 20 10.5)" fill="currentColor"/>' +
+  '<path d="M22 8 Q25 4 28 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="28.5" cy="5.5" r="2.4" fill="#fff7cc"/><circle cx="11" cy="16" r="2.6" fill="#fff7cc" opacity="0.55"/></svg>';
 
 /** Lifeboats' extra-life card (the Armory's Lifeboats 3+). */
 const LIFEBOAT_TEXT = 'One more ship can be lost this run. Take it in place of a weapon.';
