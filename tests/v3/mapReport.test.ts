@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { MAPS } from '../../src/v3/data/maps';
-import { CLIFF_FLOOR, cliffOf, digestRun, isLaunch, mapReport, slope, stretchOf, stretchRows, tableLaunches, type RunDigest } from '../../src/v3/sim/mapReport';
+import { BUSY, FILLER_WEIGHT } from '../../src/v3/data/encounters';
+import { BUDGET_BAND, CLIFF_FLOOR, cliffOf, digestRun, isLaunch, mapReport, slope, stretchOf, stretchRows, tableLaunches, type RunDigest } from '../../src/v3/sim/mapReport';
 import { playReportRun } from '../../src/v3/sim/mapReportPlay';
 import type { TelEvent, TelPhase, TelemetrySidecar } from '../../src/v3/sim/telemetry';
 
@@ -184,7 +185,14 @@ describe('a quick real report', () => {
     // Every seed plays every wave when it can't be lost.
     for (const d of tough) expect(d.reached).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(r.tough.launches[0]).toBeGreaterThan(0);
-    expect(r.tough.vsBaseline![0]).toBeCloseTo(1, 1);
+    // Wave 1 is the shared wave launch for launch, plus its easy filler (log
+    // v47) at FILLER_WEIGHT a drone: within the budget's band.
+    const filler = BUSY['strait-ranging-opener'].reduce((n, b) => n + b.count, 0) * FILLER_WEIGHT;
+    expect(r.tough.launches[0] - r.tough.baseline![0]).toBeCloseTo(filler, 5);
+    expect(Math.abs(r.tough.vsBaseline![0] - 1)).toBeLessThanOrEqual(BUDGET_BAND);
+    // The action a wave: threats on the board and kills, on every wave played.
+    expect(r.normal.action.onBoard[0]).toBeGreaterThan(0.3);
+    expect(r.normal.action.killsMin[0]).toBeGreaterThan(5);
     expect(r.checks.map((c) => c.rule)).toEqual(expect.arrayContaining(['w-cliff', 'w-early', 'w-budget', 'm-stretches', 'g-warning', 'w-first', 'w-boss']));
     expect(r.tough.close.slice(2, 10).some((v) => v > 0)).toBe(true);
     expect(Date.now() - t0).toBeLessThan(20_000);

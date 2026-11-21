@@ -4274,19 +4274,24 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['harbor-first-look', 'harbor-wide-water', 'harbor-periscope', 'harbor-south-headland', 'harbor-funnel-tail', 'harbor-both-headlands'], 0, 3, [2]),
   ['harbor-wide-water', [fill(0.75, 2, 3)]],
   // Chapter 2. The Island: the north shore's silo only (the island's own two sit over both lanes).
-  ...busy(['island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes', 'island-behind'], 3, 3, [4]),
+  ...busy(['island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes', 'island-behind'], 3, 3, [1, 4]),
+  // (Its wave 1 one string, after the point-blank swarm.)
+  ['island-point-blank', [fill(0.65, 3, 3)]],
   ...busy(['behemoth-first-tanker', 'behemoth-tanker-shell', 'behemoth-headland', 'behemoth-periscope', 'behemoth-tanker-or-convoy', 'behemoth-both-sides'], 0, 2),
   // The Needle: the north-west silo only (the south one is at the mouth).
   ...busy(['needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands', 'needle-way-out'], 0, 0, [5]),
   // The Archipelago: every drone silo is an islet among the lanes, so waves 1-3 only, from the outer islets.
-  ...busy(['archipelago-west-islet', 'archipelago-gap', 'archipelago-front-back', 'archipelago-islet-chain', 'archipelago-both-ends', 'archipelago-behind'], 0, 2, [4, 5, 6]),
+  // The ships come in past the west islet, so the east islet's, one string a wave.
+  ['archipelago-west-islet', [fill(0.65, 3, 2)]],
+  ['archipelago-gap', [fill(0.75, 3, 2)]],
+  ['archipelago-front-back', [fill(0.15, 3, 2)]],
   // Saltgate Canal: the west shore and the east lock's silo; its wave 1 (a second swarm since log v42) one string only.
   ...busy(['saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates', 'saltgate-periscope'], 0, 3, [1, 2]),
   ['saltgate-first-lock', [fill(0.1, 3, 0)]],
   // (Its wave 2's truck drives in early: the filler comes after it.)
   ['saltgate-chamber', [fill(0.75, 2, 0)]],
   // Chapter 3: the Battery's waves 3-4 already rated 3-4, so waves 1-2 only.
-  ['battery-guns', [fill(0.1, 3, 0)]],
+  ['battery-guns', [fill(0.85, 2, 3)]],
   ['battery-ranging', [fill(0.8, 3, 3)]],
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] && !(globalThis as any).process?.env?.NO_BUSY ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
