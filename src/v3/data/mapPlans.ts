@@ -262,9 +262,21 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch3-sowers.md
   sowers: {
     problem: 'Mines drift down across the lane on the current, from three chutes on the far shore and from stealth bombers that sow them just ahead of the ships: a ship cannot steer round one, and one sinks it, so each must be shot or waited out (Hold), while the shells, clusters and swarms keep coming at the ships about to deliver in the east.',
-    // COUNTERS: filled in from the combo sweep's singles at the final build.
-    counters: ['flak', 'railgun', 'frigate'],
-    offCounter: ['seeker', 'scatter', 'tesla'],
+    // The fire is mines in strings and curtains across the lane (one hit
+    // each, but every one in a ship's way must go), sown by stealth bombers
+    // just ahead of the ships, and swarms and clusters at the lead ship in
+    // the east. The Tesla Arc's chain jumps along a string of mines and the
+    // swarm beside it in one shot, the Flak Cannon's cloud waits where a
+    // curtain crosses the lane, and the Shield takes the hit of the mine
+    // that gets through. The Seeker Pod's long flight is late for a mine
+    // sown just ahead of a ship, the Shrapnel Shell's burst needs a bunch
+    // the drifting strings rarely make, and Full Steam sails the convoy into
+    // the mines faster (forced, the combo sweep's singles at log v48: Tesla
+    // 4.7, Flak 5.8, Shield 5.8 against Seeker 7.7, Shrapnel 7.8, Full Steam
+    // 13.2; docs/design/v3-ch3-sowers.md, The counters). Every weapon is in
+    // chapter 3's draft.
+    counters: ['tesla', 'flak', 'shield'],
+    offCounter: ['seeker', 'shrapnel', 'fullSteam'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, with Hold, the map\'s one command (rule m-convoy: the mines need it): pairs west to east down one lane under the three chutes, delivering in the east under the silos over the east end and the enemy\'s bank in the south-east; Hold stops every ship for up to 6 s so a string of mines can drift through, at the cost of sitting still under the rest of the wave.',
     stretches: { danger: 'late', safe: 'early' },
     boss: {
