@@ -245,23 +245,24 @@ npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 
 | Map | #1 | #2 | #3 | #4 | #5 |
 | --- | --- | --- | --- | --- | --- |
-| Battery Point (v43) | **Frigate Escort + Boomerang + Railgun** 5.1 ±0.8, won 63% | Air Strike + Boomerang + Supply Run 5.2 | Boomerang + Gravity Well + Overdrive 5.5 | Air Strike + Thermobaric Shell + Supply Run 5.7 | Gravity Well + Gunship Pair + Overdrive 5.9 |
+| Battery Point (v43) | **Air Strike + Gunship Pair + Supply Run** 4.9 ±0.7, won 94% | Air Strike + Frigate Escort + Tesla Arc 5.3 | Air Strike + Boomerang + Supply Run 5.3 | Gunship Pair + Supply Run + Dual Wield 5.3 | Air Strike + Thermobaric Shell + Supply Run 5.3 |
 
 | Measure | Result |
 | --- | --- |
-| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | **0 / 0 / 0 / 0 / 0** |
+| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0 / 0 / 0 / 0 / **0.11** (Air Strike + Gunship Pair + Supply Run: the Battery's #1, Saltgate's #2) |
 | The same, the Battery against itself (two halves of its seeds) | 0.25 |
-| #1 kit | its own (in no other map's top 5) |
-| Best weapon alone | **Gunship Pair** 5.3 (Railgun 5.6, Shield 5.8, Thermobaric Shell 5.8, Gravity Well 6.1, Air Strike 6.2: sixth) |
-| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.65 / 0.54 / 0.62 / 0.39 / 0.29 |
-| Chapter 3's new weapons | none in the top 5 kits; alone, Orbital Strike 6.6, Bomber Wing 8.6, Grapnel, Focus Fire and Dual Wield 11–12 |
+| #1 kit | Saltgate's #2 (in no other map's top 5) |
+| Best weapon alone | **Gunship Pair** 5.3 (Railgun 5.7, Thermobaric Shell 5.8, Air Strike 5.8: fourth, Gravity Well 5.9) |
+| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.68 / 0.67 / 0.61 / 0.58 / 0.32 |
+| Chapter 3's new weapons | Dual Wield in the #4 kit; alone, Orbital Strike 7.2, Bomber Wing 7.3, Grapnel, Focus Fire and Dual Wield 11.7 |
+| The bot drafting for itself; the plain gun | 7.4 lost, won 67%; 10.3, won 25% |
 
 ### Reading
 
-- **All five of the Battery's best kits are its own**, and its #1 kit is in no other map's top 5. Boomerang is in three of them; Railgun, the Gunship Pair and Gravity Well recur.
-- **Its best weapon alone is the Gunship Pair, as on the Needle of Bosk.** It leads Railgun by 0.3 of a ship on 12 seeds (inside the noise), so "the Battery's own best single" is not shown either way; it is not Air Strike (best alone on three of the five chapter 2 maps).
-- **Air Strike is not over-dominant here:** sixth alone (6.2, against 3.7–6.8 on chapter 2's maps), in two of the five best kits, never the #1.
-- **The halves agree little** (0.25): the top kits are within a standard error of each other, so their order is noise; that none is another map's is not.
+- **Four of the Battery's five best kits are its own; its #1 is Saltgate's #2** (Air Strike + Gunship Pair + Supply Run). The five are within a standard error of each other (4.9–5.3, ±0.5–0.7), and the halves agree little (0.25), so their order is noise.
+- **Its best weapon alone is the Gunship Pair, as on the Needle of Bosk.** It leads Railgun by 0.4 of a ship on 12 seeds; it is not Air Strike (best alone on three of the five chapter 2 maps).
+- **Air Strike is fourth alone (5.8, against 3.7–6.8 on chapter 2's maps) but in four of the five best kits.** Not the best single, but the most common partner; with Supply Run in four of five, the Battery's best kits lean on the same pair as chapter 2's. A chapter-wide Air Strike look (the Archipelago's open question) would cover it.
+- **The sweep is fragile to small changes:** the build one tweak before this (wave 5 without its cluster and supersonic missile) read 0 / 0 / 0 / 0 / 0, its #1 Frigate Escort + Boomerang + Railgun (5.1) and Air Strike in two of five. Both reads are kept in mind; neither shows the Battery's kits are chapter 2's.
 
 ```
 npm run v3:combo-sweep -- --stage=singles --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3

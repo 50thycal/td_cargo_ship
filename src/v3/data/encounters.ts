@@ -4052,7 +4052,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
       { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
     ],
-    replaces: { drones: 0, ballistic: 9, guided: 1, extras: { heavy: 1, cluster: 1 } },
+    replaces: { drones: 0, ballistic: 9, guided: 1, extras: { heavy: 1 } },
   },
   {
     id: 'battery-under-headland',
@@ -4076,7 +4076,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.7, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
     ],
-    replaces: { drones: 0, ballistic: 9, extras: { heavy: 1, bomber: 1 } },
+    replaces: { drones: 0, ballistic: 9, extras: { heavy: 1, bomber: 1, cluster: 1 } },
   },
   {
     id: 'battery-both-ends',
@@ -4101,10 +4101,10 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.6, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
       { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
-      { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'post' },
-      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'post' },
+      { at: 0.1, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'post' },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'post' },
     ],
-    replaces: { drones: 0, ballistic: 13, guided: 2, extras: { supersonic: 1, mothership: 1 } },
+    replaces: { drones: 0, ballistic: 13, guided: 2, extras: { mothership: 1 } },
   },
   {
     id: 'battery-dark-jet',
@@ -4375,7 +4375,7 @@ const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96]
  *  ships in waves 1-5 and won 8% with the player's Armory): waves 5-10
  *  send a little less, within ±15% of each wave and never more than the
  *  ten. */
-const BATTERY_CLIMB = [1.05, 1.05, 1, 0.92, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
+const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
