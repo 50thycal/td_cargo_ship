@@ -186,8 +186,11 @@ try {
   await page.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
   await page.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
   let parade = { trucks: 0, rockets: 0, lobs: 0, raised: 0 };
-  for (let k = 0; k < 30 && (parade.lobs === 0 || parade.trucks === 0); k++) {
-    await page.evaluate(() => window.__v3.advance(0.5));
+  for (let k = 0; k < 400 && (parade.lobs === 0 || parade.trucks === 0); k++) {
+    // (The boss's intro cards hold the round: small steps, a tap through.)
+    if (await page.evaluate(() => window.__v3.game().phase !== 'wave')) await page.mouse.click(437, 300);
+    await page.evaluate(() => window.__v3.advance(0.1));
+    await page.waitForTimeout(20);
     parade = await page.evaluate(() => {
       const g = window.__v3.game();
       const tr = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead);
