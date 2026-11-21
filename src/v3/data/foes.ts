@@ -14,7 +14,9 @@ export type FoeId =
   // Chapter 3: Dark Water
   | 'stealthJet' | 'stealthBomber' | 'diveBomber' | 'siege' | 'spotter'
   // Chapter 4: Open War
-  | 'tender' | 'bodyguard' | 'lure' | 'cloud';
+  | 'tender' | 'bodyguard' | 'lure' | 'cloud'
+  // Boss only (BOSS_FOES): Saltgate Canal's Gatecrashers (log v46).
+  | 'missileTruck';
 
 export type FoeCat = 'strike' | 'platform' | 'support';
 
@@ -52,9 +54,21 @@ export const FOES: Record<FoeId, FoeDef> = {
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
   lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your own weapons can sink it, not your helpers.' },
   cloud: { id: 'cloud', name: 'Incendiary Missile', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow firebomb. Where it bursts, a fireball burns on the water. Kill it far out.' },
+  missileTruck: { id: 'missileTruck', name: 'Missile Truck', chapter: 2, cat: 'platform', kind: 'missileTruck', from: 'road', blurb: 'A launcher truck with one long ballistic missile: it stops, raises it and lobs it at a ship. Kill the truck, or shoot the missile in the air.' },
 };
 
-export const FOE_ORDER = Object.keys(FOES) as FoeId[];
+/** Log v46: enemies that only a boss sends (the player's review of
+ *  Saltgate Canal's boss: "make it the missile trucks so it is different.
+ *  Should be a parade of them shooting off the ballistic missiles"). No
+ *  wave planner draws them, they have no Test Lab enemy card and Free
+ *  Play doesn't offer them; the boss's map is their debut (`BOSS_FOE_MAP`),
+ *  where they are announced with their chapter, "New on The Narrows". */
+export const BOSS_FOES: FoeId[] = ['missileTruck'];
+export const BOSS_FOE_MAP: Partial<Record<FoeId, string>> = { missileTruck: 'saltgate' };
+
+/** Every enemy the waves can send, in the build's order (the boss-only
+ *  ones are not among them). */
+export const FOE_ORDER = (Object.keys(FOES) as FoeId[]).filter((id) => !BOSS_FOES.includes(id));
 
 /** The foes that fire things no interceptor can stop, all drawn red (Test
  *  Lab round 1: "red projectiles you just cannot intercept"): the briefing
@@ -92,7 +106,7 @@ export const DEBUT_SLOTS: Partial<Record<number, (FoeId | null)[]>> = {
 };
 
 /** The foe a threat kind stands for, if it is one. */
-export const FOE_OF_KIND: Partial<Record<ThreatKind, FoeId>> = Object.fromEntries(FOE_ORDER.map((id) => [FOES[id].kind, id]));
+export const FOE_OF_KIND: Partial<Record<ThreatKind, FoeId>> = Object.fromEntries((Object.keys(FOES) as FoeId[]).map((id) => [FOES[id].kind, id]));
 
 /** Rule m-debut-tag (docs/design/v3-map-wave-rules.md): a new enemy from
  *  chapter 2 on is announced with its chapter, as the chapter's new weapon
@@ -163,6 +177,16 @@ export const FOE = {
   // faster (EV's `drive`), but none drives off faster (it was drive ×
   // back, about 7 ×).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
+  // Log v46 (Saltgate Canal's boss): the Missile Truck, a TEL. It drives
+  // to its spot, raises its one long missile on the erector over `raise` s
+  // (a ring fills round it and a dashed red line marks the ship), holds it
+  // upright `hold` s, and fires it: an ordinary ballistic missile (it can
+  // be shot down, its red landing circle shows), lobbed high (at least
+  // `apex` px over its line) and in the air at least `flight` s. It carries
+  // `missiles` (one unless a boss says), `reload` s apart (the erector
+  // comes down and goes up again), then lowers it (`lower` s) and drives
+  // off at `leave` × its speed.
+  missileTruck: { raise: 2.6, hold: 0.5, missiles: 1, reload: 3.2, flight: 3.0, apex: 150, lower: 0.8, leave: 1 },
   // The 2026-11-20 playtest ("it should just be able to start attacking it
   // doesn't need to go to a specific spot"; log v34): it fires whenever it
   // is `edge` px inside the screen, on the way in too; its first volley

@@ -1,6 +1,25 @@
 # Saltgate Canal: map card (map rebuild, chapter 2)
 
-**Date:** 2026-11-20. Saltgate Canal (`saltgate`, chapter 2 "The Narrows", the 10th map and the chapter's last) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island, the Behemoth Run, the Needle of Bosk and the Archipelago (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`). Encounter rev 4; play log v38, reworked at **log v42** after the player's play (below: "Log v42: the trucks").
+**Date:** 2026-11-20. Saltgate Canal (`saltgate`, chapter 2 "The Narrows", the 10th map and the chapter's last) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island, the Behemoth Run, the Needle of Bosk and the Archipelago (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`). Encounter rev 4; play log v38, reworked at log v42 after the player's play (below: "Log v42: the trucks"), and its boss again at **log v46** after the player's review (below: "Log v46: the missile parade").
+
+## Log v46: the missile parade (the player's review of the Gatecrashers)
+
+The player's verdict on the v42 boss was **Change**: *"i thought this would be the ballistic missile trucks? we already have a rocket truck convoy. make it the missile trucks so it is different. Should be a parade of them shooting off the ballistic missiles."* (Their first idea: *"a shit ton of trucks for one of the boss ones like they all drive in and they can shoot missiles and it could be pretty intense if all the ships are clustered together"*.)
+
+No enemy fired ballistic missiles from a vehicle before: they came from silos and bases (and a sub's salvo, the Dreadnought's broadside). So the boss has a new enemy of its own, and the Rocket Trucks are gone from it. The name stays "the Gatecrashers": the parade still crashes the gates.
+
+**The Missile Truck** (`missileTruck`, boss only; `FOES.missileTruck`, `BOSS_FOES`, `FOE.missileTruck`, `THREATS.missileTruck`):
+- **Looks:** a long olive eight-wheeler (four axles) with a sand cab, and one long white missile with a red nose and dark fins lying on its erector, unlike the Rocket Truck's short brown body and red tube box. As the erector raises, the missile tips up toward the camera: it draws shorter and its shadow falls longer behind the truck, until it stands upright as a red dot over the bed, flashing white. After the launch flash the empty rail comes down and the truck drives off. Its hit pips sit over it as on the other trucks (`drawMissileTruck` in `src/v3/ui/foes.ts`).
+- **The warning** reuses the Rocket Truck's: the red ring filling round the truck while it raises (2.6 s), and the dashed red mark line from the truck to the ship it will fire at, with a ring on that ship. Then it holds the missile upright 0.5 s and fires.
+- **The missile** is an ordinary ballistic missile (`ballistic`: 1 hit to shoot down, 2 damage to its ship and 1 to the hulls round it), lobbed high: in the air at least 3.0 s and climbing at least 150 px over its line (lower only when the top of the screen would cut its arc). The red landing circle shows as on any ballistic. It is aimed where its ship will be when it lands, reading the locks' gates: a ship held at a shut gate is aimed where it waits (`lobBallistic`, `aimBallistic`'s `lob`). A silo's shells still aim as before.
+- **Its ship:** a ship held at the lock nearest it, spread over the column: each truck takes the held ship (within 360 px) fewest other Missile Trucks have marked, so a column's volley lands on several ships in a full chamber.
+- **Hits 4, speed 70 px/s** (the Rocket Truck's 75); in a boss column it drives in at 2.2 × that. It can be shot all the way: on the road, while it raises, and while it holds. A wreck stalls the trucks behind it on its road for 2 s, which breaks up the volley. One missile each (`missiles`; a truck with more raises again after 3.2 s). Done, it drives off at its own speed.
+- **First sight:** "New on The Narrows: Missile truck", with "It stops and raises one long ballistic missile at a ship. Kill the truck while the red ring fills (four hits), or shoot the missile in the air." A boss-only enemy debuts on its boss's map (`BOSS_FOE_MAP`, `mapDebutsFoe`), so the Test Lab card always shows the card on its first sight, as a map's own new enemy does.
+- **Boss only:** no wave planner draws it (`FOE_ORDER` and `FOES_BUILT` leave it out), Free Play doesn't offer it, and it has no enemy card in the Test Lab. The map's waves are as at v42 (Rocket Trucks in the signature).
+
+**The parade:** each column drives in nose to tail (`TruckRun` with `missiles` and no `gap`: the trucks set out 85 px apart at the column's own pace), so it parks together along the bank and up its road, raises together and fires as one volley. See "The boss" below.
+
+Code (log v46): `src/v3/data/config.ts` (the kind); `src/v3/data/foes.ts` (`FOES.missileTruck`, `BOSS_FOES`, `BOSS_FOE_MAP`, `FOE.missileTruck`); `src/v3/data/mapRules.ts` (`mapDebutsFoe`); `src/v3/sim/foes.ts` (`updateMissileTruck`, `erectorUp`, `markShip`, `truckMark`, `foeEta`, `foeHarmed`); `src/v3/sim/game.ts` (`lobBallistic`); `src/v3/sim/events.ts` (`gateTruck`, `columnGap`, `eventFoeDown`); `src/v3/data/encounters.ts` (`SALTGATE_BOSS_ROUNDS`, `SALTGATE_TRUCK`, `TruckRun.missiles`); `src/v3/ui/foes.ts`, `src/v3/ui/app.ts` (the first-sight card, "LAUNCHER DOWN"); `tools/v3/saltgate/boss.ts` (missiles fired and shot down, the most in the air at once; `--rounds` and `--truck` to try columns).
 
 ## Log v42: the trucks (the player's answer)
 
@@ -159,7 +178,7 @@ The player's rule for this rebuild: Saltgate's best kits and its best weapon alo
 
 ## The debut
 
-None of its own. Saltgate's slot is the Torpedo Sub (`mapDebut`): the planner draws one on wave 3 here, which comes as a Rocket Truck since log v42 (`MAP_FOE_SWAP`), but every chapter 2 enemy already comes in on the Island, one a wave from wave 2 with a light debut wave each (see the Island's card), so no "NEW · The Narrows" banner is due here (the Needle's and the Archipelago's cards say the same). Nothing from a later chapter: the encounters send only drones, shells, guided missiles, clusters, a strafer and (log v42) Rocket Trucks, a chapter 1 enemy, from wave 2 (`tests/v3/encounters.test.ts`).
+None of its own. Saltgate's slot is the Torpedo Sub (`mapDebut`): the planner draws one on wave 3 here, which comes as a Rocket Truck since log v42 (`MAP_FOE_SWAP`), but every chapter 2 enemy already comes in on the Island, one a wave from wave 2 with a light debut wave each (see the Island's card), so no wave debut is due here (the Needle's and the Archipelago's cards say the same). Log v46: the boss brings one, the **Missile Truck**, a boss-only chapter 2 enemy announced "New on The Narrows: Missile truck" at its first sight (see "Log v46"). Nothing from a later chapter: the encounters send only drones, shells, guided missiles, clusters, a strafer and (log v42) Rocket Trucks, a chapter 1 enemy, from wave 2 (`tests/v3/encounters.test.ts`).
 
 ## The ten waves (v1, encounter rev 4)
 
@@ -180,25 +199,51 @@ One encounter a wave, none repeated. Every shell the shared wave would send from
 
 Wave 1 loses no ship (all three reports). Log v42: the wave's own budget moves a little from waves 6–10 to waves 1–5 (`SALTGATE_CLIMB`: ×1.08, 1.1, 1.1, 1.06, 1.04, then 0.88, 0.9, 0.94, 0.88, 0.96; ten in all), and a truck an encounter sends stands in for a swarm of the wave's own (it takes 4 hits and fires 2–3 salvos).
 
-## The boss: the Gatecrashers (log v42)
+## The boss: the Gatecrashers, a missile parade (log v46)
 
-The map's event under the encounter layer is a truck assault on the canal (`SALTGATE_BOSS_ROUNDS`, `SALTGATE_TRUCK`; the event's id stays `run-the-canal`, its name on every card is "Gatecrashers"; the campaign and a rev 3 log play Run the Canal as it was). Rocket Trucks set out in columns: on the enemy's bank (`north`) down the pop-up road by a lock's exit, then west along the bank 29 px from the lock's water; on your own bank (`south`) up from the bottom of the screen and along the bank the same way. Each parks 58 px behind the one ahead, so a column lines the chamber. A truck takes 4 hits, drives in at 2.2 × a truck's speed (about 3.7 s down the road), raises its launcher (2.4 s, the red ring) and marks its ship (the dashed red line) before each salvo; each salvo is a ripple of five rockets at the ship held at the lock nearest the truck, one hit to the hull. A truck killed stalls the ones behind it on its road for 2 s. A drone swarm of 5 comes 11 s in.
+The map's event under the encounter layer is a parade of Missile Trucks (`SALTGATE_BOSS_ROUNDS`, `SALTGATE_TRUCK`; the event's id stays `run-the-canal`, its name on every card is "Gatecrashers"; the campaign and a rev 3 log play Run the Canal as it was). Columns set out on the enemy's bank (`north`) down the pop-up road by a lock's exit, then west along the bank 29 px from the lock's water; on your own bank (`south`) up from the bottom of the screen and along the bank the same way. Nose to tail, 85 px apart: the first parks just short of the entry gate, the rest behind it along the bank and up the road, all at once, so the column raises its missiles together (2.6 s, the rings and the mark lines) and fires one volley, each missile at a held ship of its own. A drone swarm of 5 comes 11 s in. No Rocket Truck, no cluster.
 
-| Round | Columns | Trucks | Salvos each | Clusters |
+| Round | Columns | Missile Trucks | Missiles | Most in the air at once (bot) |
 | --- | --- | --- | --- | --- |
-| 1: a column | the west lock, enemy bank, 1.25 s apart | 8 | 2 | 0 |
-| 2: both banks | the west lock: 4 on the enemy bank, then 4 on your bank from 3 s | 8 | 2 | 0 |
-| 3: the charge | west lock enemy bank 4 (0 s), east lock enemy bank 4 (2 s), west lock your bank 3 (5 s), east lock your bank 2 (8 s), 0.9 s apart | 13 | 1 | the last truck of each enemy-bank column fires a cluster over its chamber in place of its salvo (2) |
+| 1: a short column | the west lock, enemy bank | 8 | 8 | 4.3 |
+| 2: both banks | the west lock: 5 on the enemy bank, then 4 on your bank from 1.5 s | 9 | 9 | 6.4 |
+| 3: the big parade | west lock enemy bank 3 (0 s), east lock enemy bank 2 (0.8 s), west lock your bank 3 (1.6 s), east lock your bank 2 (2.4 s) | 10 | 10 | 7.4 |
 
-- **Rising:** round 2 sends as many trucks as round 1 but splits them over both banks of the lock (two columns at once); round 3 is a charge at both locks, more trucks with fewer rockets each, and the clusters. On the bot (the player's Armory, the record report): **0.64 / 1.82 / 2.00** ships a round (normal, runs that reached it), 0.71 / 1.83 / 2.42 tough; 0.99 / 1.61 / 1.81 on 96 seeds (`quick.ts`, 900–995).
-- **Under the asked 1.5 / 2 / 2.5**, on purpose: the three rounds' losses count against one loss limit (the convoy is restored before round 1, not between rounds). Tuned to 1.51 / 2.12 / 2.49 (log v40 build), the bot won 19% of 48 runs, and the win rate is asked to be 50–70%. The record build trades round 1 for the win rate. See "Questions for the player".
-- **Each round lasts 15–30 s** (the test: seed 208, the tryhard bot with no weapon).
+- **The volleys:** each column fires as one; in round 3 the four columns' volleys come within about 2.5 s of each other, so with every truck up 10 missiles are in the air together (7.4 on average on the bot, which kills some on the road). The bot shoots 2.1–3.0 trucks a round before they fire and 2.5–3.1 missiles in the air (`tools/v3/saltgate/boss.ts`, 48 seeds, the player's Armory).
+- **Ships lost a round** (the player's Armory, runs that reached it): **0.70 / 1.52 / 2.03** on 96 seeds (`quick.ts`, 900–995); 0.50 / 1.91 / 1.95 on the record's 24 (0.58 / 1.83 / 2.04 tough). v42's Rocket Trucks: 0.99 / 1.61 / 1.81 (96 seeds).
+- **Under the asked 1.5 / 2 / 2.5 (most in round 1), on purpose,** as at v42: the three rounds share one loss limit, and the win rate asked is 50–70%. The tries: 6 / 9 / 12 trucks of 5 hits read 1.38 / 2.41 / 2.56 and won 21%; 7 / 9 / 11 at 58 px won 49%; this build wins 60% on 96 seeds. Round 1 is the one that falls short: the bot kills 3 of its 8 trucks on the road and 3 of the 5 missiles in the air.
+- **85 px apart, not 58:** at 58 px a column was close enough for the latest Armory's Wide Warhead to blast several trucks at once (it killed 6.4 of 7 before they fired; the bot lost 0 / 0.05 / 0.37 a round and won 79%). At 85: 0.37 / 0.89 / 2.06, won 63%.
+- **Each round lasts 15–30 s** (the bot: 23, 20 and 19 s; the test: seed 204, the tryhard bot with no weapon).
 - The intro cards are the shared ones: "Boss round", "Convoy restored", "The boss: Gatecrashers", "Boss 1/3".
-- Tuning reads: `npx vite-node tools/v3/saltgate/boss.ts -- --seeds=48` (trucks a round, shot before their first salvo, salvos and clusters fired, ships lost, seconds).
+- Tuning reads: `npx vite-node tools/v3/saltgate/boss.ts -- --seeds=48 [--armory=latest] [--rounds=<json>] [--truck=<json>]`.
+
+### Log v42–v45: columns of Rocket Trucks
+
+Columns of Rocket Trucks down to the banks by the locks, 58 px apart: round 1 eight on the enemy bank by the west lock (2 salvos each), round 2 four and four from both banks, round 3 a charge of 13 at both locks, the last truck of each enemy-bank column firing a cluster missile over the chamber. Each salvo a ripple of five red rockets (not shootable) at the ship held at the lock nearest it. On the bot: 0.64 / 1.82 / 2.00 (24 seeds), 0.99 / 1.61 / 1.81 (96). The player's review: "we already have a rocket truck convoy. make it the missile trucks".
 
 ### Log v38–v41: Run the Canal, rising
 
 Torpedo Subs as the round opens (3 a round), an attack helicopter over the far bank by a lock (1, 1, then 2), a block of armored drones (4, 6, 6), drone swarms of 5 (2, 3, 3), clusters off the lock silos (1, 1, 2) and a guided missile from the east shore (rounds 1 and 2). On the bot at v38: 0.95 / 1.54 / 1.78 (96 seeds); the subs were most of its teeth.
+
+## Bot results, log v46 (the missile parade)
+
+Waves 1–10 play the same game as at v42 (every change is the boss's), so only the boss and the win rate move. Reports: `tools/v3/map-report/results/saltgate-player.md`, `saltgate-latest.md`, `saltgate.md` (24 seeds, 900–923); v42's are kept as `saltgate-v42*.md`. The quick reads are `quick.ts` on 96 seeds (900–995) for the player's Armory, 48 (900–947) for the others.
+
+| | v42 (Rocket Trucks) | v46 (Missile Trucks) |
+| --- | --- | --- |
+| **The player's Armory: won** | 67% (24 seeds); 62% (96) | 46% (24 seeds); **60%** (96: 52% and 69% on the halves) |
+| Boss r1 / r2 / r3 (normal, reached), 96 seeds | 0.99 / 1.61 / 1.81 | **0.70 / 1.52 / 2.03** |
+| Boss r1 / r2 / r3, the record's 24 seeds (tough) | 0.64 / 1.82 / 2.00 (0.71 / 1.83 / 2.42) | 0.50 / 1.91 / 1.95 (0.58 / 1.83 / 2.04) |
+| **The latest Armory: won** | 75% (24); 79% (48, at v46 with the trucks 58 px apart) | 63% (24 and 48) |
+| Boss r1 / r2 / r3 (normal, reached) | 0.37 / 1.32 / 0.74 (24) | 0.32 / 1.05 / 2.00 (24); 0.37 / 0.89 / 2.06 (48) |
+| **No Armory: won** | 8% (24) | 13% (24); 17% (48) |
+| Boss r1 / r2 / r3 (tough) | 2.13 / 2.33 / 3.08 | 1.25 / 2.38 / 2.25 |
+| Checks | as at v42 | as at v42 (waves 1–10 unchanged): with the player's Armory `w-budget` FLAG on its line (w10 ×0.85), the fun check's saves FLAG; the rest PASS |
+
+- **The win rate is inside 50–70% on 96 seeds** (60%), at the bottom of it on the record's 24 (46%: 24 seeds is ±10%).
+- **The boss rises** 0.7 → 1.5 → 2.0 with the player's Armory, and now with the latest one too (it was 0.37 / 1.32 / 0.74).
+- **The latest Armory's boss is no longer the easiest:** Wide Warhead still thins a column, but it can't take it in a few blasts.
+- **No Armory** wins a little more (13–17% against 8%): fewer, slower threats than v42's 13-truck charge with its clusters.
 
 ## Bot results, log v42 (24 seeds, 900–923)
 
@@ -258,6 +303,15 @@ From `saltgate-player.md` (log v42):
 
 ## What is not satisfied, or uncertain
 
+Log v46 (the missile parade):
+- **The boss is under the asked 1.5 / 2 / 2.5 in round 1** (0.7 / 1.5 / 2.0 on 96 seeds), traded for the win rate (60%), as at v42: at about 1.3 / 2.6 / 2.5 the bot won 21%. The bot kills a short column on the road; whether a person does is a play question.
+- **The record report's 24 seeds read 46% won** (under 50%), the 96-seed read 60%. 24 seeds is about ±10%.
+- **A column longer than the bank parks up its road:** with the trucks 85 px apart, three park along the chamber and the rest up the road, the eighth of round 1 near the top of the screen. They lob from there (their arcs a little lower, to stay on screen).
+- **The boss-only enemy has no Test Lab enemy card** and isn't in Free Play's Enemies list (it needs the canal's locks and banks to mean anything).
+- **The signature in waves 4–10 is still the Rocket Truck** (unchanged: the review was of the boss). `mixwaves.ts`'s boss column above counts the v42 boss.
+- **A Missile Truck's ballistic reads the lock gates** (a ship held at a shut gate is aimed where it waits); a silo's ballistic still aims as if the ship sails on, as before (unchanged, so waves 1–10 play as they did).
+
+Log v42:
 - **The boss is under the asked 1.5 / 2 / 2.5 in rounds 1 and 3** (0.64 / 1.82 / 2.00 on the record's 24 seeds, 0.99 / 1.61 / 1.81 on 96). The three rounds share one loss limit: at 1.51 / 2.12 / 2.49 the bot won 19% (asked 50–70%). Round 2 sends as many trucks as round 1, split over both banks (it reads harder on the bot), not more.
 - **Waves 1–5 lose 0.23–0.29 for the bot**, under the asked 0.4–0.8 (v38: 0.50; v41: 0.65): the subs' torpedoes were the early losses, and the bot shoots the early trucks before they fire. The action added (a swarm, three trucks, a missile) is visible; it does not sink ships for the bot. A harder early truck (faster, or firing sooner) is the lever if you want more.
 - **`w-budget` is on its line:** wave 10 sends ×0.85 of the no-encounter wave with the player's Armory (the band is ×0.85–1.15), wave 6 ×0.83–0.84 with the latest Armory and none. The climb takes 4–12% off waves 6–10 and the encounters take a little more; a truck stands in for a swarm, so the count of launches falls while the threat does not.
@@ -265,13 +319,16 @@ From `saltgate-player.md` (log v42):
 - **The latest Armory's cliff at wave 8** (0.33 → 0.83, tough) stays, as at v38; it now wins 75% (25% at v38).
 - **Diversity was read against the other maps' v37 sweep**, not re-swept at v41.
 - **Lab only:** the campaign's Saltgate still plays Run the Canal and the planner's subs (as every rebuild: the encounter layer is lab only). Making the Gatecrashers the campaign's boss would change the campaign's game (a new event or a changed one).
-- **No new sprite:** the boss uses the Rocket Truck as it is drawn (a red-roofed truck, the raise ring), with the new dashed red mark line.
 - **The safe stretch** (the West Sea, early third) takes 22% of the hull damage (under the 25% line), the danger stretch is the middle (lock A's chamber and the lake, 43%), as at v38; the danger stretch is the carrier's own third against rule `m-carrier`'s letter.
 - **The convoy sails the campaign's schedule (flow 1)**, as at v38.
 - **Wave 7 aims nothing at a lock**, as at v38.
 - **Waves 6 and 9 keep their periscopes** (a sub lobbing shells from the West or East Sea): they are launch subs, not Torpedo Subs, and stay; say if you want them out too.
 
-## The play log (v42)
+## The play log (v46)
+
+`LOG_VERSION` 46, `LOG_REPLAYS` `[46]` (`src/v3/sim/playlog.ts`); after 44 (the Armory rework, #209) and 45 (the Battery rebuild, #210), both merged into this branch first; the bot numbers above were read on the merged build too (the same to the run). The change is lab only, under the encounter layer, but it adds a threat kind (`missileTruck`), so every log's counts carry it: the map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and state hashes (the same runs, the same numbers), was rewritten with `--write`, and replays exactly with telemetry on and off. The version pins moved to 46 (`tools/v3/playtest-fixes/pins.py`). "Ready to test" lists Saltgate Canal at v46 ("Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?").
+
+Log v42:
 
 `LOG_VERSION` 42, `LOG_REPLAYS` `[42]` (`src/v3/sim/playlog.ts`); 41 is the chapter 2 notes batch (#204), merged into this branch first. The change is lab only, under the encounter layer: the campaign plays as it did, and a v41 Saltgate card log no longer replays to the same game. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 42 (`tools/v3/playtest-fixes/pins.py`). The Test Lab's "Ready to test" lists Saltgate Canal at v42 ("Trucks come to the locks: shoot them on the road. Boss: a truck assault. Intense?"). The other four chapter 2 maps play the same game at v42 as at v41 (every change is keyed to Saltgate's data).
 
@@ -279,10 +336,11 @@ From `saltgate-player.md` (log v42):
 
 ## Questions for the player
 
-- **The boss is rising but under 1.5 / 2 / 2.5 on the bot (about 0.6–1.0 / 1.6–1.8 / 1.8–2.0), so the bot wins 60–67%. Raise it and accept fewer wins?** At 1.5 / 2.1 / 2.5 the bot won 19%. Recommended: play it first; the bot read chapter 1's bosses 1.4–2.5× as hard as you did.
+- **The missile parade is rising but under 1.5 / 2 / 2.5 on the bot (0.7 / 1.5 / 2.0, log v46), so the bot wins 60%. Raise it and accept fewer wins?** At about 1.4 / 2.4 / 2.6 the bot won 21% (v42's trucks: 1.5 / 2.1 / 2.5 won 19%). Recommended: play it first; the bot read chapter 1's bosses 1.4–2.5× as hard as you did.
 - **Waves 1–5 lose few ships for the bot (0.2–0.3); the trucks are there to be shot on the road. Busier enough, or should an early truck be faster and harder to stop?** Recommended: judge from your play; the bot shoots trucks better than a person on a phone.
 - **The periscopes on waves 6 and 9 (shells from a sub in the sea): keep, or take out with the torpedo subs?** Recommended: keep; they are the seas' only fire and are not the torpedo subs you named.
-- **Make the Gatecrashers the campaign's boss on Saltgate too?** Recommended: yes once you have played it on the card; it changes the campaign (and its logs).
+- **Make the Gatecrashers (the missile parade) the campaign's boss on Saltgate too?** Recommended: yes once you have played it on the card; it changes the campaign (and its logs).
+- **The Missile Truck is boss only. Should it also come in waves (on Saltgate's signature, or later maps)?** Recommended: keep it the boss's own for now, so the parade is the first time you see it.
 - **Saltgate's convoy sails the campaign's schedule (flow 1), the other chapter 2 maps' flow 2. Keep it?** Recommended: keep.
 
 ## Tests
@@ -290,16 +348,17 @@ From `saltgate-player.md` (log v42):
 - `tests/v3/encounters.test.ts`:
   - the ten listed, rev 4, v1 only; the budget, legality (a Rocket Truck down a pop-up road from wave 2, a chapter 1 enemy), warning (a road truck comes, tagged) and replay checks cover the map;
   - the `'lock'` aim: each launch goes for a ship held at the lock nearest its launcher; every wave but wave 7 aims at a lock;
-  - the Gatecrashers: a rev 3 log and the campaign play Run the Canal; under the layer its name is "Gatecrashers" (the intro card says so); each round sends its trucks, no sub, gunship or block, its swarm; round 2 both banks, round 3 both locks with clusters and the most trucks; 15–30 s a round;
-  - a truck can be shot on the way in (a wreck stalls the one behind it), marks its ship, mostly a ship held at a lock, and fires;
+  - the Gatecrashers (log v46): a rev 3 log and the campaign play Run the Canal; under the layer its name is "Gatecrashers" (the intro card says so); each round sends its Missile Trucks (no Rocket Truck, cluster, sub, gunship or block) and its swarm; every column nose to tail with missiles; more trucks each round, round 2 both banks, round 3 both locks and both banks; 15–30 s a round (seed 204);
+  - a Missile Truck can be shot on the way in (a wreck stalls the one behind it) and while it raises, marks a ship mostly held at a lock, and lobs a ballistic missile (at least 3 s in the air, most at least 150 px high) that can be shot down;
+  - the Missile Truck is a boss-only chapter 2 enemy: not in `FOE_ORDER` or `FOES_BUILT`, "New on The Narrows", Saltgate its debut map;
   - the signature: from wave 4 at least half the wave's new enemies are Rocket Trucks aimed at the locks, its clusters too; no Torpedo Sub on any wave 1–10 (`swapFoe`: lab only, waves 1–10, Saltgate only); within the wave budget; the campaign's and the shared wave's trucks and clusters keep no aim.
 - `tests/v3/round12fixes.test.ts`: wave 1 opens with the map's own encounter (Saltgate's has a second swarm).
-- `tests/v3/scorecard.test.ts`: the log is v42 and only 42 replays.
+- `tests/v3/scorecard.test.ts`: the log is v46 and only 46 replays.
 - `tests/v3/mapRules.test.ts`, `mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`, `saltgateLocks.test.ts`, `readyToTest.test.ts`: unchanged rules, still passing.
-- `e2e/v3-encounters.mjs`: Saltgate's card opens with its encounters, and its pause-screen script names the Gatecrashers and sends no torpedo sub.
+- `e2e/v3-encounters.mjs`: Saltgate's card opens with its encounters, and its pause-screen script names the Gatecrashers and sends no torpedo sub; Skip to boss: Missile Trucks on the banks lobbing ballistic missiles, no Rocket Truck (screenshot `saltgate-missile-parade.png`).
 
 ## What to look for when you play
 
-Watch the roads down to the locks. From wave 2 a rocket truck drives down the road by the west lock and stops on the bank beside the chamber: a red ring fills round it as it raises its launcher, and a dashed red line points at the ship it is about to hit. Shoot it on the road and it never fires. From wave 4 trucks come every wave, to whichever lock is nearer their road, with cluster missiles over the chambers. The ships still sit in the locks while they fill (the gate light and the countdown say how long). The boss is the Gatecrashers: round 1 a column of eight trucks down to the west lock; round 2 trucks on both banks of it, yours too; round 3 a charge at both locks from both banks, with a cluster over each chamber. A truck you kill on the road holds up the ones behind it. The question to answer: did the trucks make the early waves feel like something was happening, and was the truck assault intense in a good way, with time to thin the column before it set up?
+Watch the roads down to the locks. From wave 2 a rocket truck drives down the road by the west lock and stops on the bank beside the chamber: a red ring fills round it as it raises its launcher, and a dashed red line points at the ship it is about to hit. Shoot it on the road and it never fires. From wave 4 trucks come every wave, to whichever lock is nearer their road, with cluster missiles over the chambers. The ships still sit in the locks while they fill (the gate light and the countdown say how long). The boss is the Gatecrashers, a parade of missile trucks (new: long olive launchers, each with one white missile): round 1 a column of eight down to the west lock; round 2 a parade on both banks of it, yours too; round 3 the big parade at both locks from both banks. Each column parks nose to tail, raises its missiles together (the red rings fill, dashed red lines point at the ships in the chamber) and lobs them all at once; the red circles show where they land. Kill trucks on the road or while they raise (a wreck holds up the ones behind it), or shoot the missiles in the air. The question to answer: did the trucks make the early waves feel like something was happening, and was the missile parade intense in a good way, with time to thin a column before its volley?
 
 (This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)

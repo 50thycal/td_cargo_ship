@@ -4595,9 +4595,16 @@ export interface TruckRun {
   lock: number;
   bank: 'north' | 'south';
   count: number;
-  gap: number;
-  salvos: number;
+  /** Seconds between trucks setting out; absent (log v46), nose to tail,
+   *  so the column parks together and fires as one volley. */
+  gap?: number;
+  salvos?: number;
   clusters?: number;
+  /** Log v46 (the player's review: "make it the missile trucks"): the
+   *  column is Missile Trucks, each with this many ballistic missiles
+   *  (lobbed at the ship held at the lock nearest it; they can be shot
+   *  down). `salvos` and `clusters` are a Rocket Truck column's. */
+  missiles?: number;
 }
 
 export interface BossRound {
@@ -4758,31 +4765,33 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
   { swarms: 6, size: 9, cargoWeapons: [1, 0], fire: [{ kind: 'mothership', at: 1, count: 3, gap: 1.5, base: 0 }, { kind: 'ballistic', at: 3, count: 5, gap: 1.75, base: 3, aim: 'rear' }, { kind: 'cluster', at: 4, count: 1, base: 0, aim: 'rear' }, { kind: 'guided', at: 6, count: 1, base: 2, aim: 'lead' }] },
 ];
 
-/** Saltgate Canal's Gatecrashers (log v42, docs/design/v3-ch2-saltgate.md;
- *  the player's answer to the v38 card: "a shit ton of trucks for one of the
- *  boss ones, like they all drive in and they can shoot missiles, and it
- *  could be pretty intense if all the ships are clustered together"): Rocket
- *  Trucks drive down to the banks by the locks and fire at the ships held
- *  there. Round 1 a column of 8 on the enemy's bank by the west lock;
- *  round 2 4 + 4, from both banks; round 3 a charge of 13 at both locks,
- *  the last truck of each north column firing a cluster missile over the
- *  full chamber (one salvo each, so the charge is many trucks, not many
- *  rockets). A
- *  truck can be shot on the way in (a wreck stalls the trucks behind it),
- *  raises its launcher (a ring fills round it) and marks its ship before
- *  each salvo. Log v38-v41: Run the Canal, rising (Torpedo Subs, a gunship,
- *  an armored block). */
+/** Saltgate Canal's Gatecrashers (docs/design/v3-ch2-saltgate.md). Log
+ *  v46, the player's review of the v42 boss ("i thought this would be the
+ *  ballistic missile trucks? we already have a rocket truck convoy. make it
+ *  the missile trucks so it is different. Should be a parade of them
+ *  shooting off the ballistic missiles"): a parade of Missile Trucks (data/
+ *  foes.ts, boss only) drives down to the banks by the locks, nose to tail,
+ *  parks along the chamber, raises its missiles together and lobs them at
+ *  the ships held there, a volley a column. Round 1 a short column on the
+ *  enemy's bank by the west lock; round 2 a longer parade on both banks of
+ *  it; round 3 the big parade at both locks from both banks, the columns'
+ *  volleys close together so several missiles are in the air at once. A
+ *  truck can be shot on the way in and while it raises (a wreck stalls
+ *  the ones behind it, breaking up the volley); a missile can be shot in
+ *  the air. Log v42-v45: columns of Rocket Trucks (8; 4 + 4 from both banks;
+ *  a charge of 13 with two clusters). Log v38-v41: Run the Canal, rising
+ *  (Torpedo Subs, a gunship, an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 8, gap: 1.25, salvos: 2 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 8, missiles: 1 }],
     swarms: 1,
     size: 5,
     fire: [],
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 4, gap: 1, salvos: 2 },
-      { at: 3, lock: 0, bank: 'south', count: 4, gap: 1, salvos: 2 },
+      { at: 0, lock: 0, bank: 'north', count: 5, missiles: 1 },
+      { at: 1.5, lock: 0, bank: 'south', count: 4, missiles: 1 },
     ],
     swarms: 1,
     size: 5,
@@ -4790,10 +4799,10 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
   {
     trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
-      { at: 2, lock: 1, bank: 'north', count: 4, gap: 0.9, salvos: 1, clusters: 1 },
-      { at: 5, lock: 0, bank: 'south', count: 3, gap: 0.9, salvos: 1 },
-      { at: 8, lock: 1, bank: 'south', count: 2, gap: 0.9, salvos: 1 },
+      { at: 0, lock: 0, bank: 'north', count: 3, missiles: 1 },
+      { at: 0.8, lock: 1, bank: 'north', count: 2, missiles: 1 },
+      { at: 1.6, lock: 0, bank: 'south', count: 3, missiles: 1 },
+      { at: 2.4, lock: 1, bank: 'south', count: 2, missiles: 1 },
     ],
     swarms: 1,
     size: 5,
@@ -4801,11 +4810,13 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
-/** The Gatecrashers' trucks: 4 hits each (as a wave's truck), in at 2.2 ×
- *  a truck's speed, parked 58 px apart, a wreck stalling the ones behind it
- *  2 s. Each marks its next salvo's ship from the moment it starts raising
- *  its launcher (2.4 s, a ring filling round it) and between salvos (1.5 s). */
-export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2 };
+/** The Gatecrashers' trucks: 4 hits each, in at 2.2 × a truck's speed,
+ *  85 px apart nose to tail (log v46; 58 at v42: so close that the latest
+ *  Armory's Wide Warhead took most of a column with a few blasts, the bot
+ *  losing 0 / 0.05 / 0.4 a round), a wreck stalling the ones behind it 2 s. A Missile
+ *  Truck marks its ship (the dashed red line) and fills its ring while it
+ *  raises its missile (FOE.missileTruck: 2.6 s, held up 0.5 s). */
+export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 85, stall: 2 };
 
 /** Battery Point's Blackout (log v45, docs/design/v3-ch3-battery.md): night,
  *  and stealth strafers from alternate sides (before: 8, 2.4 s apart, and a

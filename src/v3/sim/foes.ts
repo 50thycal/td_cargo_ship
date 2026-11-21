@@ -36,6 +36,7 @@ import {
   type Threat,
   aimBeat,
   atLock,
+  lobBallistic,
 } from './game';
 
 /** Something a foe fires that no interceptor can stop (en-unstoppable: the
@@ -319,7 +320,7 @@ export function isFoe(kind: ThreatKind): boolean {
 /** Foes whose movement is their own (the missiles among them fly the shared
  *  steering code in game.ts). */
 const OWN_MOVES = new Set<ThreatKind>([
-  'sprinter', 'rocketTruck',
+  'sprinter', 'rocketTruck', 'missileTruck',
   'attackHeli', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'diveBomber', 'siege', 'spotter',
   'tender', 'guard', 'lure', 'cloud',
@@ -816,6 +817,9 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
     }
     case 'rocketTruck':
       updateTruck(g, th, f, dt);
+      return;
+    case 'missileTruck':
+      updateMissileTruck(g, th, f, dt);
       return;
     case 'attackHeli':
       updateHeli(g, th, f, dt);
@@ -2000,6 +2004,88 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   th.heading = p.heading + (f.state === 4 ? Math.PI : 0);
 }
 
+/** Log v46 (Saltgate Canal's Gatecrashers): the Missile Truck, a TEL.
+ *  Drive to its spot; raise the long missile on its erector (`raise` s, the
+ *  ring and the mark line), hold it up (`hold`), fire it (an ordinary
+ *  ballistic missile, lobbed high, that can be shot down); with another
+ *  missile, raise again; then lower the erector and drive off. `n`: the
+ *  missiles it still has. */
+function updateMissileTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
+  const M = FOE.missileTruck;
+  const path = f.path!;
+  const length = pathLength(path);
+  const end = Math.min(length, f.stop ?? length);
+  if (f.state === 0) {
+    // Stands while a wreck ahead blocks the road.
+    if ((f.stall ?? 0) > 0) f.stall = Math.max(0, f.stall! - dt);
+    else f.along = Math.min(end, (f.along ?? 0) + th.speed * (f.drive ?? 1) * dt);
+    if (f.along! >= end) {
+      f.state = 1;
+      f.t = 0;
+      if (!f.wait) {
+        cue(g, 'truck.raise', th.x, th.y);
+        markShip(g, th, f);
+      }
+    }
+  } else if (f.state === 1) {
+    if ((f.wait ?? 0) > 0) {
+      // Waits its turn in the volley before it raises.
+      f.wait = Math.max(0, f.wait! - dt);
+      f.t = 0;
+      if (f.wait === 0) {
+        cue(g, 'truck.raise', th.x, th.y);
+        markShip(g, th, f);
+      }
+    } else if (f.t >= M.raise + M.hold) {
+      // Away: at the ship it marked (still afloat), else the one held at
+      // the lock nearest it now.
+      const s = targetable(g).find((o) => o.id === f.mark) ?? lockShip(g, th);
+      const b = spawnThreat(g, 'ballistic', th.x + Math.cos(th.heading) * 14, th.y + Math.sin(th.heading) * 14, 'truck');
+      b.from = th.id;
+      if (th.enc) b.enc = th.enc;
+      if (s) lobBallistic(g, b, s.id, { flight: M.flight, apex: M.apex });
+      else lobBallistic(g, b, b.target, { flight: M.flight, apex: M.apex });
+      cue(g, 'truck.fire', th.x, th.y);
+      addFx(g, 'launch', th.x, th.y, { life: 0.7, r: 18 });
+      f.n -= 1;
+      f.mark = undefined;
+      f.state = 2;
+      f.t = 0;
+    }
+  } else if (f.state === 2) {
+    // The empty rail comes down; another missile goes up, or it is done.
+    if (f.t >= M.lower) {
+      if (f.n > 0 && f.t >= M.reload) {
+        f.state = 1;
+        f.t = 0;
+        cue(g, 'truck.raise', th.x, th.y);
+        markShip(g, th, f);
+      } else if (f.n <= 0) {
+        f.state = 4;
+        f.t = 0;
+      }
+    }
+  } else {
+    f.along = Math.max(0, (f.along ?? 0) - th.speed * M.leave * dt);
+    if (f.along <= 0) th.dead = true;
+  }
+  const p = alongPath(path, f.along ?? 0);
+  th.x = p.x;
+  th.y = p.y;
+  th.heading = p.heading + (f.state === 4 ? Math.PI : 0);
+}
+
+/** How far a Missile Truck's erector is up (0 flat, 1 upright), for the
+ *  drawing and the bots. */
+export function erectorUp(th: Threat): number {
+  const f = th.foe;
+  if (th.kind !== 'missileTruck' || !f) return 0;
+  const M = FOE.missileTruck;
+  if (f.state === 1) return (f.wait ?? 0) > 0 ? 0 : Math.min(1, f.t / M.raise);
+  if (f.state === 2) return Math.max(0, 1 - f.t / M.lower);
+  return 0;
+}
+
 /** The ship a lock-aimed truck goes for (log v42, Saltgate Canal): one
  *  held at the lock nearest it (in its chamber or queued at its gate), else
  *  the ship nearest it. */
@@ -2011,16 +2097,34 @@ function lockShip(g: Game, th: Threat): Ship | undefined {
   return (held.length ? held : pool).reduce(near);
 }
 
-/** A lock-aimed truck marks the ship its next salvo goes for. */
+/** A lock-aimed truck marks the ship its next salvo goes for. Log v46: a
+ *  Missile Truck spreads its column's volley over the ships held at its
+ *  lock (within `MISSILE_SHARE` px of it): the one fewest other Missile
+ *  Trucks have marked, the nearest of those. */
 function markShip(g: Game, th: Threat, f: FoeData): void {
   if (!f.aim) return;
+  if (th.kind === 'missileTruck') {
+    const held = targetable(g).filter((s) => atLock(g, s) && dist(s.x, s.y, th.x, th.y) <= MISSILE_SHARE);
+    if (held.length) {
+      const marks = (s: Ship) => g.threats.filter((o) => o !== th && !o.dead && o.kind === 'missileTruck' && o.foe?.mark === s.id).length;
+      const score = (s: Ship) => marks(s) * 10000 + dist(s.x, s.y, th.x, th.y);
+      f.mark = held.reduce((a, b) => (score(b) < score(a) ? b : a)).id;
+      return;
+    }
+  }
   f.mark = lockShip(g, th)?.id;
 }
+const MISSILE_SHARE = 360;
 
 /** The ship a truck has marked, while the mark shows (drawn as a red line
  *  from the truck): raising, or up between salvos. */
 export function truckMark(g: Game, th: Threat): Ship | undefined {
   const f = th.foe;
+  // Log v46: a Missile Truck's, while it raises its missile.
+  if (th.kind === 'missileTruck') {
+    if (!f?.aim || f.mark === undefined || f.state !== 1 || (f.wait ?? 0) > 0 || f.n <= 0) return undefined;
+    return g.ships.find((s) => s.id === f.mark);
+  }
   if (th.kind !== 'rocketTruck' || !f?.aim || f.mark === undefined || (f.state !== 1 && f.state !== 2) || (f.wait ?? 0) > 0 || f.n <= 0) return undefined;
   return g.ships.find((s) => s.id === f.mark);
 }
@@ -2194,6 +2298,13 @@ export function foeEta(g: Game, th: Threat): number | null {
       if (f.state === 1) return Math.max(0.2, R.raise - f.t + (f.wait ?? 0));
       return f.state === 2 ? 0.4 : 30;
     }
+    case 'missileTruck': {
+      if (!f) return null;
+      const M = FOE.missileTruck;
+      if (f.state === 0) return (Math.min(pathLength(f.path!), f.stop ?? Infinity) - (f.along ?? 0)) / (th.speed * (f.drive ?? 1)) + M.raise + M.hold + (f.stall ?? 0) + (f.wait ?? 0);
+      if (f.state === 1) return Math.max(0.2, M.raise + M.hold - f.t + (f.wait ?? 0));
+      return f.state === 2 && f.n > 0 ? Math.max(0.2, M.reload - f.t + M.raise + M.hold) : 30;
+    }
     case 'siege': {
       if (!f) return null;
       const S = FOE.siege;
@@ -2273,6 +2384,8 @@ export function foeHarmed(th: Threat): boolean {
   switch (th.kind) {
     case 'rocketTruck':
       return f.n < (f.full ?? FOE.rocketTruck.salvos);
+    case 'missileTruck':
+      return f.n < (f.full ?? FOE.missileTruck.missiles);
     case 'diveBomber':
     case 'torpedoSub':
       return f.state >= 1;

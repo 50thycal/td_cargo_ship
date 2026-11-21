@@ -6,7 +6,7 @@ import { THREATS, VIEW } from '../data/config';
 import { FOE } from '../data/foes';
 import { CARRIER_TARGET, type Game, type Threat } from '../sim/game';
 import type { Point } from '../data/maps';
-import { shellAt, siegeUp, truckMark, type FoeMark } from '../sim/foes';
+import { erectorUp, shellAt, siegeUp, truckMark, type FoeMark } from '../sim/foes';
 import { C, deltaWing, hpPips, missile } from './render';
 
 /** Draw a new enemy; false if `th` isn't one of them. */
@@ -30,6 +30,9 @@ export function drawFoe(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boo
       return true;
     case 'rocketTruck':
       drawRocketTruck(ctx, g, th);
+      return true;
+    case 'missileTruck':
+      drawMissileTruck(ctx, g, th);
       return true;
     case 'heliRocket':
       trail(ctx, th.x, th.y, heading, 30, 'rgba(255,200,170,0.45)', 2.5);
@@ -408,35 +411,8 @@ function drawRocketTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   // Log v42 (Saltgate Canal): a lock-aimed truck marks the ship its next
   // salvo goes for, a dashed red line from the truck, while it raises and
   // between its salvos.
-  const marked = truckMark(g, th);
-  if (marked) {
-    ctx.save();
-    ctx.strokeStyle = Math.floor(g.t * 6) % 2 ? 'rgba(255,77,61,0.9)' : 'rgba(255,77,61,0.5)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([7, 6]);
-    ctx.beginPath();
-    ctx.moveTo(th.x, th.y);
-    ctx.lineTo(marked.x, marked.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(marked.x, marked.y, 22, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-  if (st === 1) {
-    const k = elev;
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, 38, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = k > 0.75 && Math.floor(g.t * 8) % 2 ? '#ffffff' : '#ff4d3d';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, 38, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2);
-    ctx.stroke();
-  }
+  drawTruckMark(ctx, g, th);
+  if (st === 1) drawRaiseRing(ctx, g, th, elev);
   ctx.save();
   ctx.translate(th.x, th.y);
   ctx.rotate(th.heading);
@@ -473,6 +449,131 @@ function drawRocketTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): vo
   for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(-18 + c * 6 + len * (1 - elev * 0.35) - 22, -5 + r * 6, 4, 4);
   ctx.restore();
   hpPips(ctx, th.x, th.y - 40, th.hp, th.maxHp ?? THREATS.rocketTruck.hp);
+}
+
+/** Log v42: a lock-aimed truck's mark, a dashed red line from the truck
+ *  to the ship it is about to fire at, and a ring on the ship. */
+function drawTruckMark(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  const marked = truckMark(g, th);
+  if (!marked) return;
+  ctx.save();
+  ctx.strokeStyle = Math.floor(g.t * 6) % 2 ? 'rgba(255,77,61,0.9)' : 'rgba(255,77,61,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([7, 6]);
+  ctx.beginPath();
+  ctx.moveTo(th.x, th.y);
+  ctx.lineTo(marked.x, marked.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.arc(marked.x, marked.y, 22, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** The raise: a red ring filling round the truck (`k` of the way), white
+ *  flashing near the end. */
+function drawRaiseRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat, k: number, r = 38): void {
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = k > 0.75 && Math.floor(g.t * 8) % 2 ? '#ffffff' : '#ff4d3d';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(th.x, th.y, r, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2);
+  ctx.stroke();
+}
+
+/** Log v46: the Missile Truck (a TEL), unlike the Rocket Truck's short
+ *  brown body and red-roofed tube box: a long olive eight-wheeler with a
+ *  sand cab and one long white missile, red-nosed, lying on its erector.
+ *  As the erector raises (the red ring filling, the mark line out to the
+ *  ship) the missile tips up toward us: it draws shorter, its shadow
+ *  longer, until it stands upright, its nose a red dot over the bed. Then
+ *  it is gone in a flash, the empty rail comes down, and the truck drives
+ *  off. */
+function drawMissileTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  const f = th.foe;
+  const st = f?.state ?? 0;
+  const up = erectorUp(th);
+  const loaded = (f?.n ?? 0) > 0 && st !== 2;
+  drawTruckMark(ctx, g, th);
+  if (st === 1 && !((f?.wait ?? 0) > 0)) drawRaiseRing(ctx, g, th, Math.min(1, (f?.t ?? 0) / FOE.missileTruck.raise), 44);
+  ctx.save();
+  ctx.translate(th.x, th.y);
+  ctx.rotate(th.heading);
+  ctx.scale(1.25, 1.25);
+  // Shadow and the hit outline.
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(-28, -6, 62, 18);
+  ctx.strokeStyle = 'rgba(255,120,100,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(-33, -13, 68, 26, 5);
+  ctx.stroke();
+  // Four axles.
+  ctx.fillStyle = '#141210';
+  for (const wx of [-24, -13, 8, 19]) {
+    ctx.fillRect(wx - 3, -12, 7, 3);
+    ctx.fillRect(wx - 3, 9, 7, 3);
+  }
+  // The bed (olive) and the cab (sand), with a dark windscreen.
+  ctx.fillStyle = '#4d5a32';
+  ctx.strokeStyle = '#1b1a14';
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(-30, -9, 50, 18);
+  ctx.strokeRect(-30, -9, 50, 18);
+  ctx.fillStyle = '#b5a06a';
+  ctx.beginPath();
+  ctx.roundRect(20, -9, 13, 18, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#20262b';
+  ctx.fillRect(28, -6, 3, 12);
+  // The erector's hinge at the back of the bed.
+  ctx.fillStyle = '#2a2f22';
+  ctx.fillRect(-31, -5, 5, 10);
+  if (loaded || up > 0) {
+    // The missile (or, fired, the empty rail coming down) seen from above:
+    // pivoting on the hinge, it shortens as it tips up toward us.
+    const L = 52 * (1 - 0.8 * up);
+    if (up > 0) {
+      // Its shadow falls long behind the truck.
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(-28 - 26 * up, 9, 4 + 26 * up, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#2f3524';
+    ctx.fillRect(-28, -3, L, 6);
+    if (loaded) {
+      ctx.fillStyle = '#eef0ea';
+      ctx.strokeStyle = '#4a4a44';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(-30, -4, L + 2, 8, 3);
+      ctx.fill();
+      ctx.stroke();
+      // Fins at its tail, the red nose at its tip (upright: a red dot).
+      ctx.fillStyle = '#4a4a44';
+      ctx.fillRect(-32, -6, 4, 12);
+      ctx.fillStyle = '#d93b2b';
+      ctx.beginPath();
+      ctx.arc(-28 + L, 0, up > 0.85 ? 5 : 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (up >= 1 && Math.floor(g.t * 8) % 2) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(-28 + L, 0, 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+  hpPips(ctx, th.x, th.y - 44, th.hp, th.maxHp ?? THREATS.missileTruck.hp);
 }
 
 /** A hostile helicopter from above: a dark red body, a tail boom, and a
