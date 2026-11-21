@@ -66,8 +66,14 @@ export type AbilityId =
   | 'overdrive'
   | 'shield'
   | 'fullSteam';
-/** A draft card: a weapon, or Resupply (keeps your build, takes no slot). */
-export type CardId = AbilityId | 'resupply';
+/** A draft card: a weapon, Resupply (keeps your build, takes no slot), or
+ *  Lifeboats' extra life (the Armory's Lifeboats 3+: one more ship can be
+ *  lost; takes no slot). */
+export type CardId = AbilityId | 'resupply' | 'lifeboat';
+/** A draft card that is not a weapon. */
+export function isSpecialCard(id: CardId): id is 'resupply' | 'lifeboat' {
+  return id === 'resupply' || id === 'lifeboat';
+}
 
 export interface AbilityDef {
   id: AbilityId;
@@ -707,7 +713,7 @@ export function loadout(levels: Levels): AbilityId[] {
 /** Can this card be taken now? A held weapon can level up until it has
  *  evolved; a new one needs a free slot. */
 export function canTake(levels: Levels, id: CardId): boolean {
-  if (id === 'resupply') return true;
+  if (isSpecialCard(id)) return true;
   const lv = levels[id] ?? 0;
   if (lv >= ABILITY_MAX) return false;
   return lv > 0 || loadout(levels).length < MAX_SLOTS;
@@ -716,6 +722,6 @@ export function canTake(levels: Levels, id: CardId): boolean {
 /** Can this new weapon come in by replacing one you hold? Only when every
  *  slot is full — the replaced weapon and its levels are given up. */
 export function canSwapIn(levels: Levels, id: CardId): boolean {
-  if (id === 'resupply' || (levels[id] ?? 0) > 0) return false;
+  if (isSpecialCard(id) || (levels[id] ?? 0) > 0) return false;
   return loadout(levels).length >= MAX_SLOTS;
 }

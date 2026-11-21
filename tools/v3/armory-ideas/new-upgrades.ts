@@ -20,20 +20,31 @@
 //   self    the bot drafts for itself (and re-rolls a hand with nothing it
 //           wants: mimic.ts `wantsReroll`).
 //
-// Prints one JSON line a run: {cfg, base, mode, map, seed, lost, boats,
-// rerolls, normal}: ships lost each wave 1-13; the waves whose first ship
-// went to a lifeboat; re-rolls used; and how the run ends under the normal
-// loss limit with the lifeboats' half losses counted (won, endWave, and the
-// Scrap it banks without and with Salvage Crews 5).
+//   normal  (log 44, the reworked Lifeboats and Quartermaster) the bot drafts
+//           for itself under the REAL rules: the normal loss limit and a
+//           carrier that can sink, so a run ends where the game ends it.
+//           Lifeboats' carrier mend and extra lives, and Quartermaster's
+//           golden bomb, only show here (a tough run has no limit to save
+//           a life against and a carrier that can't sink). Its `lost` is
+//           the ships lost up to the end, not a whole run's: read `won` and
+//           `endWave`, not ships saved.
+//
+// Prints one JSON line a run: {cfg, base, mode, map, seed, lost, rerolls,
+// lives, bomb, free, normal}: ships lost each wave 1-13; re-rolls used; the
+// extra lives taken (Lifeboats: the start's and the draft's cards); the wave
+// the golden bomb went off (0: never); free level-ups used; and how the run
+// ends under the normal loss limit (a tough run's read off its losses, with
+// its extra lives; a normal run's as played): won, endWave, and the Scrap it
+// banks without and with Salvage Crews 5.
 
 import type { AbilityId } from '../../../src/v3/data/abilities';
 import { ABILITY_ORDER } from '../../../src/v3/data/abilities';
-import { LIFEBOAT_LOSS, scrapFor, type ArmoryLevels } from '../../../src/v3/data/armory';
+import { scrapFor, type ArmoryLevels } from '../../../src/v3/data/armory';
 import type { MapId } from '../../../src/v3/data/maps';
 import { mapPlan } from '../../../src/v3/data/mapPlans';
 import { RULES } from '../../../src/v3/data/config';
 import type { Game } from '../../../src/v3/sim/game';
-import { BOSS_FROM, WAVES, playCombo } from '../combo-sweep/play';
+import { WAVES, normalOf, playCombo } from '../combo-sweep/play';
 import { PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
@@ -42,7 +53,7 @@ const MAPS = (opt('maps')?.split(',') ?? ['strait', 'gauntlet', 'harbor', 'kesh'
 const seeds = Array.from({ length: Number(opt('seeds') ?? 12) }, (_, k) => Number(opt('from') ?? 900) + k);
 const [part, parts] = (opt('part') ?? '0/1').split('/').map(Number);
 const only = opt('only')?.split(',');
-const modes = (opt('modes')?.split(',') ?? ['kit', 'self']) as ('kit' | 'self')[];
+const modes = (opt('modes')?.split(',') ?? ['kit', 'self']) as ('kit' | 'self' | 'normal')[];
 const bases = (opt('bases')?.split(',') ?? ['alone', 'player']) as ('alone' | 'player')[];
 const lv = Number(opt('level') ?? 5);
 /** Extra what-ifs: a card's numbers set after the run is made (a tuning
@@ -65,17 +76,6 @@ const CARDS: [string, ArmoryLevels, ((g: Game) => void)?][] = [
 ];
 const BASE: Record<string, ArmoryLevels> = { alone: {}, player: PLAYER_ARMORY };
 
-/** The run under the normal loss limit, lifeboats' half losses counted:
- *  6 ships in waves 1-10, 6 more in the boss rounds (the convoy restored). */
-function normal(lost: number[], boatWaves: Set<number>): { won: boolean; endWave: number } {
-  let count = 0;
-  for (let w = 1; w <= WAVES; w++) {
-    if (w === BOSS_FROM) count = 0;
-    count += lost[w - 1] - (boatWaves.has(w) && lost[w - 1] > 0 ? 1 - LIFEBOAT_LOSS : 0);
-    if (count >= RULES.shipLossLimit) return { won: false, endWave: w };
-  }
-  return { won: true, endWave: 14 };
-}
 
 /** The Scrap a run banks (no first clear, no repeat cards): the waves and
  *  boss rounds it cleared under the normal limit, and the clear. */
@@ -97,18 +97,16 @@ for (const base of bases)
           const armory = { ...BASE[base], ...card };
           const loadout = mode === 'kit' ? canon(mapPlan(map)!.counters) : undefined;
           let game: Game | null = null;
-          const r = playCombo({ map, seed, armory, persona: 'you', ...(loadout ? { loadout } : {}) }, (g) => {
+          let bomb = 0;
+          const r = playCombo({ map, seed, armory, persona: 'you', ...(loadout ? { loadout } : {}), ...(mode === 'normal' ? { normal: true } : {}) }, (g) => {
             if (!game && tweak) tweak(g);
             game = g;
+            if (!bomb && g.bombsLeft < g.stats.goldBombs) bomb = g.wave;
           });
           const g = game as unknown as Game;
-          const boatWaves = new Set<number>();
-          let prev = 0;
-          for (const h of g.history) {
-            if ((h.boats ?? 0) > prev) boatWaves.add(h.wave);
-            prev = h.boats ?? 0;
-          }
-          const n = normal(r.lost, boatWaves);
+          // A tough run's ending under the normal limit, its extra lives
+          // added to the limit; a normal run's as it was played.
+          const n = mode === 'normal' ? { won: !!r.won, endWave: r.endWave ?? 14 } : normalOf(r.lost, RULES.shipLossLimit + g.extraLives);
           console.log(
             JSON.stringify({
               cfg,
@@ -117,9 +115,11 @@ for (const base of bases)
               map,
               seed,
               lost: r.lost,
-              boats: [...boatWaves],
               rerolls: g.stats.rerolls - g.rerolls,
-              normal: { ...n, scrap: scrapOf(n.endWave, n.won, 0), scrap5: scrapOf(n.endWave, n.won, 5) },
+              lives: g.extraLives,
+              bomb,
+              free: g.stats.freeLevels - g.freeLevelsLeft,
+              normal: { won: n.won, endWave: n.endWave, scrap: scrapOf(n.endWave, n.won, 0), scrap5: scrapOf(n.endWave, n.won, 5) },
             }),
           );
         }

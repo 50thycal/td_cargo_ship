@@ -5,7 +5,7 @@
 // are in boosts.test.ts; the text audit's numbers in v3.test.ts.
 
 import { describe, expect, it } from 'vitest';
-import { AB, ABILITIES, ABILITY_MAX, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
+import { AB, ABILITIES, ABILITY_MAX, WEAPON, isSpecialCard, type AbilityId } from '../../src/v3/data/abilities';
 import { LAB_CARDS, LAB_START_WAVE, labCard } from '../../src/v3/data/lab';
 import { ROSTER } from '../../src/v3/data/roster';
 import { Recorder, replay } from '../../src/v3/sim/playlog';
@@ -254,7 +254,7 @@ describe('the Test Lab: every draft of a weapon test deals the tested weapon fir
           for (let d = 0; d < 3; d++) {
             expect(toDraft(g), `${c.id} wave ${wave} seed ${seed} draft ${d}`).toBe(true);
             expect(g.offer[0], `${c.id} wave ${wave} seed ${seed} draft ${d}: ${g.offer.join()}`).toBe(c.weapon);
-            const other = g.offer.find((o) => o !== c.weapon && o !== 'resupply' && (g.levels[o] ?? 0) > 0) ?? 'resupply';
+            const other = g.offer.find((o) => o !== c.weapon && !isSpecialCard(o) && (g.levels[o] ?? 0) > 0) ?? 'resupply';
             if (!g.offer.includes(other)) g.offer.push(other);
             pickUpgrade(g, other);
           }

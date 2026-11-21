@@ -124,7 +124,7 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
     const field = {
       reload: 'reload', warhead: 'blast', motor: 'interceptorSpeed', magazine: 'rack', fuse: 'contact',
       plating: 'glance', pointdef: 'pdRange', repair: 'repairEvery', longload: 'weaponTime', drops: 'dropShare', stockpile: 'powerShare',
-      boilers: 'convoySpeed', lifeboats: 'lifeboats', quartermaster: 'rerolls', salvage: 'salvage',
+      boilers: 'convoySpeed', lifeboats: 'mendCarrier', quartermaster: 'rerolls', salvage: 'salvage',
     } as const;
     const fields = Object.values(field);
     for (const id of ARMORY_ORDER) {
@@ -137,8 +137,9 @@ describe('the Armory (gun, hull and supply bays, set before a run)', () => {
         else expect(v).toBeGreaterThanOrEqual(prev);
         prev = v;
         // Deck Guns also set their gap, Long Loads the rack refill.
-        const also: Partial<Record<string, string>> = { pointdef: 'pdGap', drops: 'dropPity', stockpile: 'powerTime', longload: 'refill', boilers: 'steamTime', quartermaster: 'draftCards' };
-        for (const f of fields) if (f !== field[id] && also[id] !== f) expect(s[f]).toBe(base[f]);
+        // (Lifeboats and Quartermaster, reworked in log 44, set several.)
+        const also: Partial<Record<string, string[]>> = { pointdef: ['pdGap'], drops: ['dropPity'], stockpile: ['powerTime'], longload: ['refill'], boilers: ['steamTime'], quartermaster: ['draftCards', 'goldBombs', 'freeLevels'], lifeboats: ['mendShips', 'lifeCard', 'startLives'] };
+        for (const f of fields) if (f !== field[id] && !also[id]?.includes(f)) expect(s[f]).toBe(base[f]);
       }
     }
   });

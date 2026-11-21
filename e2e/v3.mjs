@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 43 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 44 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -1079,16 +1079,17 @@ try {
     await lp.close();
   }
 
-  // ---- The four new Armory upgrades: Quartermaster's re-roll, Lifeboats' half pips ----
+  // ---- The four new Armory upgrades; Lifeboats and Quartermaster as reworked (log 44):
+  // ---- the extra-life pip and card, the golden bomb, the re-roll, the free level-up ----
   {
-    const qp = await browser.newPage({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true });
+    const qp = await browser.newPage({ viewport: { width: 874, height: 402 }, deviceScaleFactor: 2, hasTouch: true });
     const errs = [];
     qp.on('pageerror', (e) => errs.push(e.message));
     await qp.goto(`${BASE_URL}/v3.html?seed=5`, { waitUntil: 'networkidle' });
     await qp.evaluate(() => {
       localStorage.clear();
-      // A save from before the new upgrades, with them added by hand: they
-      // load like any card.
+      // A save from before the rework, holding both cards at level 5: they
+      // load like any card, the levels meaning the new effects.
       localStorage.setItem('straitwatch.v3.progress', JSON.stringify({ unlocked: 1, best: {}, cards: 3, armory: { warhead: 1, lifeboats: 5, quartermaster: 5 }, equipped: { gun: 'warhead', hull: 'lifeboats', supply: 'quartermaster' }, cleared: [], armoryV: 3, scrap: 0, scrapEarned: 0, open: [], mapsV: 2 }));
     });
     await qp.reload({ waitUntil: 'networkidle' });
@@ -1107,34 +1108,60 @@ try {
     await qp.waitForSelector('[data-start]');
     await qp.click('[data-start]');
     await qp.waitForSelector('.playing');
-    const st = await qp.evaluate(() => { const g = window.__v3.game(); return { rerolls: g.rerolls, cards: g.stats.draftCards, boats: g.stats.lifeboats }; });
-    check(st.rerolls === 4 && st.cards === 4 && st.boats > 6, `the run has Quartermaster 5 (4 re-rolls, 4 cards) and Lifeboats 5 (${JSON.stringify(st)})`);
-    // Lifeboats: a ship that counted half fills half a pip (set by hand: the
-    // sim's own half loss is in the unit tests).
-    await qp.evaluate(() => { const g = window.__v3.game(); g.lost = 1; g.lossCredit = 0.5; });
-    await qp.waitForFunction(() => document.querySelector('.v2-hud-lost')?.dataset.sunk === '0.5');
-    check((await qp.locator('.v2-hud-lost i.half').count()) === 1 && (await qp.locator('.v2-hud-lost i.lost').count()) === 0, 'the HUD shows a half loss as half a pip');
-    await qp.evaluate(() => { const g = window.__v3.game(); g.lost = 0; g.lossCredit = 0; g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
+    const st = await qp.evaluate(() => { const g = window.__v3.game(); return { rerolls: g.rerolls, cards: g.stats.draftCards, lives: g.extraLives, bombs: g.bombsLeft, free: g.freeLevelsLeft, mend: g.stats.mendShips }; });
+    check(st.rerolls === 3 && st.cards === 4 && st.lives === 1 && st.bombs === 1 && st.free === 1 && st.mend === 1, `the run has Quartermaster 5 (3 re-rolls, 4 cards, a golden bomb, a free level-up) and Lifeboats 5 (a life to start, hulls mended to full) (${JSON.stringify(st)})`);
+    // Lifeboats: the extra life is a seventh pip, lifeboat orange.
+    await qp.waitForSelector('.v2-hud-lost[data-limit="7"]');
+    check((await qp.locator('.v2-hud-lost i').count()) === 7 && (await qp.locator('.v2-hud-lost i.life').count()) === 1, 'the HUD shows seven pips, the extra life in orange');
+    // The golden bomb: in the left rail, gold, on the screen, clear of the
+    // other controls.
+    const bombBox = await qp.evaluate(() => {
+      const b = document.querySelector('.v3-gold-bomb');
+      if (!b || b.hidden) return null;
+      const r = b.getBoundingClientRect();
+      const others = [...document.querySelectorAll('.v2-rail button, .v2-rail .v2-hud, .v2-rail input')].filter((o) => o !== b && o.offsetParent).map((o) => o.getBoundingClientRect());
+      const clash = others.some((o) => o.left < r.right && o.right > r.left && o.top < r.bottom && o.bottom > r.top);
+      return { l: r.left, t: r.top, r: r.right, b: r.bottom, clash, gold: getComputedStyle(b).backgroundImage.includes('gradient') };
+    });
+    check(!!bombBox && bombBox.l >= 0 && bombBox.t >= 0 && bombBox.r <= 874 && bombBox.b <= 402 && !bombBox.clash && bombBox.gold, `the golden bomb sits in the left rail, on screen and clear of the other controls (${JSON.stringify(bombBox)})`);
+    await qp.waitForFunction(() => window.__v3.game().threats.some((t) => !t.dead), null, { timeout: 20000 });
+    await qp.screenshot({ path: `${SHOT_DIR}/10a-golden-bomb.png` });
+    await qp.locator('.v3-gold-bomb').tap();
+    await qp.waitForTimeout(300);
+    const boom = await qp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { left: g.bombsLeft, n: l.commands.filter((c) => c[1] === 'n').length, hidden: document.querySelector('.v3-gold-bomb').hidden }; });
+    check(boom.left === 0 && boom.n === 1 && boom.hidden, `a tap sets the golden bomb off, logged ('n'), and it is gone (${JSON.stringify(boom)})`);
+    // Into the draft after wave 3 (set by hand), holding one weapon: the
+    // Lifeboat card is dealt, the Re-roll and the Free level-up are there.
+    await qp.evaluate(() => { const g = window.__v3.game(); g.wave = 3; g.levels = { flak: 1 }; g.slots = ['flak']; g.queue = []; g.threats = []; g.raiderQueue = []; g.raiders = []; });
     await qp.waitForSelector('.v2-card, [data-rate-skip]', { timeout: 15000 });
     if (await qp.$('[data-rate-skip]')) await qp.click('[data-rate-skip]');
     await qp.waitForSelector('.v2-card', { timeout: 15000 });
     await qp.waitForTimeout(700);
-    const hand = () => qp.evaluate(() => [...document.querySelectorAll('.v2-card-row .v2-card')].map((c) => c.dataset.upgrade).filter((id) => id !== 'resupply'));
+    const hand = () => qp.evaluate(() => [...document.querySelectorAll('.v2-card-row .v2-card')].map((c) => c.dataset.upgrade).filter((id) => id !== 'resupply' && id !== 'lifeboat'));
     const before = await hand();
     const btn = qp.locator('.v2-draft [data-reroll]');
-    check(before.length === 4 && (await btn.getAttribute('data-reroll')) === '4' && /4 left/.test(await btn.textContent()), `the draft deals four cards and offers a Re-roll with 4 left (${before.join()})`);
+    check(before.length === 4 && (await btn.getAttribute('data-reroll')) === '3' && /3 left/.test(await btn.textContent()), `the draft deals four weapons and offers a Re-roll with 3 left (${before.join()})`);
+    check((await qp.locator('.v2-card[data-upgrade="lifeboat"]').count()) === 1 && /\+1 LIFE/.test(await qp.locator('.v2-card[data-upgrade="lifeboat"]').textContent()), 'after wave 3 the draft deals the Lifeboat card (+1 life)');
+    const draftFit = await qp.evaluate(() => [...document.querySelectorAll('.v2-draft button')].every((c) => { const b = c.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 0.5 && b.bottom <= innerHeight + 0.5; }) && document.documentElement.scrollWidth <= innerWidth);
+    check(draftFit, 'five cards, the Re-roll and the Free level-up fit an iPhone held sideways');
     await qp.screenshot({ path: `${SHOT_DIR}/10b-draft-reroll.png` });
+    // The free level-up: its button, then the held weapon; the pick stays.
+    await qp.locator('.v2-draft .v3-free-level').tap();
+    await qp.locator('.v2-draft [data-free="flak"]').tap();
+    await qp.waitForTimeout(300);
+    const freed = await qp.evaluate(() => { const g = window.__v3.game(); const l = window.__v3.log(); return { flak: g.levels.flak, phase: g.phase, left: g.freeLevelsLeft, l: l.commands.filter((c) => c[1] === 'l').length, btn: document.querySelector('.v2-draft .v3-free-level')?.disabled }; });
+    check(freed.flak === 2 && freed.phase === 'draft' && freed.left === 0 && freed.l === 1 && freed.btn === true, `the free level-up gives Flak a level, logged ('l'), the draft still open, the button spent (${JSON.stringify(freed)})`);
     await btn.tap();
     await qp.waitForTimeout(700);
     const after = await hand();
     const log = await qp.evaluate(() => { const l = window.__v3.log(); return { x: l.commands.filter((c) => c[1] === 'x').length, v: l.v, left: window.__v3.game().rerolls }; });
-    check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 3 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '3', `a re-roll deals a new hand, logged, 3 left (${after.join()}; ${JSON.stringify(log)})`);
-    // The new hand takes a tap once dealt (its replay is in the unit tests:
-    // this run's wave was cleared by hand, which no log holds).
-    await qp.locator('.v2-card:not([disabled])').first().tap();
+    check(after.length === 4 && after.join() !== before.join() && log.x === 1 && log.left === 2 && (await qp.locator('.v2-draft [data-reroll]').getAttribute('data-reroll')) === '2' && (await qp.locator('.v2-card[data-upgrade="lifeboat"]').count()) === 1, `a re-roll deals a new hand (the Lifeboat card still in it), logged, 2 left (${after.join()}; ${JSON.stringify(log)})`);
+    // The Lifeboat card taken: +1 life, an eighth pip, no weapon.
+    await qp.locator('.v2-card[data-upgrade="lifeboat"]').tap();
     await qp.waitForFunction(() => window.__v3.game()?.phase === 'wave', null, { timeout: 5000 });
-    const took = await qp.evaluate(() => Object.keys(window.__v3.game().levels));
-    check(took.length === 1 && after.includes(took[0]), `a card from the re-rolled hand is taken (${took.join()})`);
+    const took = await qp.evaluate(() => ({ lives: window.__v3.game().extraLives, levels: window.__v3.game().levels }));
+    await qp.waitForSelector('.v2-hud-lost[data-limit="8"]');
+    check(took.lives === 2 && JSON.stringify(took.levels) === '{"flak":2}', `the Lifeboat card is an extra life in place of a weapon (${JSON.stringify(took)})`);
     check(!errs.length, `no page errors (${errs.join(' | ')})`);
     await qp.close();
   }
@@ -1238,7 +1265,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 43 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 44 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

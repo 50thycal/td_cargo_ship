@@ -314,6 +314,14 @@ const SCENES: Record<CardId, Scene> = {
     `<path d="M40 28 H80" stroke="${c}" stroke-width="1.2" opacity="0.6"/>` +
     `<path d="M60 31 V47 M52 39 H68" stroke="${c}" stroke-width="4" stroke-linecap="round"/>` +
     `<g transform="translate(78 16) rotate(40)"><rect x="-2" y="0" width="4" height="16" rx="1.5" fill="${INK}"/><path d="M-5 0 A5 5 0 1 1 5 0 L2 -3 H-2 Z" fill="${INK}"/></g>`,
+  // Lifeboats' extra life (a draft card, the Armory's Lifeboats 3+): an
+  // orange lifeboat, its crew aboard, under "+1".
+  lifeboat: (c) =>
+    sea(60) +
+    `<path d="M34 54 Q38 66 60 66 Q82 66 86 54 Z" fill="${c}"/>` +
+    [46, 56, 66, 76].map((x) => `<circle cx="${x}" cy="50" r="3" fill="${INK}"/>`).join('') +
+    `<path d="M36 58 L26 68 M84 58 L94 68" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<text x="60" y="34" font-size="22" font-weight="800" fill="${c}" font-family="system-ui" text-anchor="middle">+1</text>`,
 };
 
 /** The card's illustration as an SVG string. */
@@ -408,14 +416,15 @@ const ARMORY_SCENES: Record<ArmoryId, Scene> = {
     [[56, 28, 5], [48, 20, 6.5], [37, 13, 8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#9aa7b0" opacity="0.55"/>`).join('') +
     `<path d="M90 60 Q100 56 108 60 M88 64 Q102 60 114 64" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/>` +
     [16, 24].map((x) => `<path d="M${x} 50 H${x + 14}" stroke="${c}" stroke-width="1.4" opacity="0.6" stroke-linecap="round"/>`).join(''),
-  // A sinking ship's crew rowing clear in a lifeboat: ½.
+  // A sinking ship's crew rowing clear in a lifeboat, a wrench over it:
+  // mended hulls and lives (reworked, log 44: it was "½").
   lifeboats: (c) =>
     sea(60) +
     `<g transform="translate(36 52) rotate(-24)"><path d="M-22 0 H18 L22 -5 H-18 Z" fill="#5b6b78"/><path d="M-22 0 H18 L14 5 H-21 Z" fill="${HULL}"/></g>` +
     `<path d="M64 60 Q66 66 84 66 Q98 66 100 60 Z" fill="${c}"/>` +
     [72, 80, 88].map((x) => `<circle cx="${x}" cy="56" r="2.6" fill="${INK}"/>`).join('') +
     `<path d="M64 62 L56 70 M100 62 L108 70" stroke="${INK}" stroke-width="1.4" stroke-linecap="round"/>` +
-    `<text x="80" y="34" font-size="20" font-weight="800" fill="${c}" font-family="system-ui" text-anchor="middle">½</text>`,
+    `<text x="80" y="34" font-size="18" font-weight="800" fill="${c}" font-family="system-ui" text-anchor="middle">+1</text>`,
   // Three draft cards fanned out, a circular arrow: deal again.
   quartermaster: (c) =>
     [-14, 0, 14].map((deg, k) => `<g transform="translate(${46 + k * 14} 40) rotate(${deg})"><rect x="-11" y="-17" width="22" height="32" rx="3" fill="#10202b" stroke="${k === 1 ? INK : c}" stroke-width="1.8"/></g>`).join('') +

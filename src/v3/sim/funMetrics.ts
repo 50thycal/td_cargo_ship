@@ -47,6 +47,7 @@ import type { PickupKind } from '../data/config';
 import { EVENT_WAVE } from '../data/events';
 import type { AbilityId } from '../data/abilities';
 import {
+  lossLimit,
   pickUpgrade,
   setFlow,
   setFormation,
@@ -794,7 +795,7 @@ export function forkAction(base: Game, cmd: LogCommand, a: Action, persona: stri
   else if (swapCost !== undefined && swapCost >= FUN.minSaved) kind = 'cover';
   else if (a.margin < FUN.lastSecond) kind = 'lastSecond';
   else kind = 'kill';
-  const left = base.tempo.lossLimit - (base.lost - base.lossBase);
+  const left = lossLimit(base) - (base.lost - base.lossBase);
   const stakes: Stake[] = [];
   if (mean(runLost) >= 0.5) stakes.push('run');
   if (mean(lastLost) >= 0.5) stakes.push('last');
