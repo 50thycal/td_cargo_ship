@@ -4325,14 +4325,14 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'The bomber is shot down in some runs, its mines cleared in most; no ship lost in most runs.',
     notes: {
       sites: 'A stealth bomber from the east edge, along the up-current edge of the lane; the west chute (430, 170; mines), the west silo (220, 100) and the east-middle silo (1100, 95; swarms).',
-      target: 'The water just ahead of each ship the bomber passes; the ships coming in; the ship halfway along; any ship.',
+      target: 'The water just ahead of each ship the bomber passes; the ships coming in; the ship halfway along; the lead ship.',
       usesMap: 'The signature\'s first wave: mines sown right in front of the ships, with the shortest warning on the map, in place of the wave\'s own mines and its shells.',
     },
     beats: [
       { at: 0.35, kind: 'stealthBomber', count: 1, from: { air: -1 } },
       { at: 0.15, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(2) },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
     ],
     replaces: { ballistic: 7, extras: { mine: 2 } },
   },

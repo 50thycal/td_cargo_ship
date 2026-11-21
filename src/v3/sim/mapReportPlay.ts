@@ -13,6 +13,7 @@ import { MAPS, type MapId } from '../data/maps';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../ui/lab';
 import { ThreatWatch, digestRun, type RunDigest } from './mapReport';
 import { BotRun, PERSONAS } from './mimic';
+import type { PilotSkill } from './convoyPilot';
 import { LOG_VERSION, logTelemetry, type PlayLog } from './playlog';
 
 export interface ReportPlayOpts {
@@ -30,6 +31,9 @@ export interface ReportPlayOpts {
   version?: EncounterVersion;
   /** Keep the play log (for the heat map). */
   keepLog?: boolean;
+  /** Who gives the convoy's command (Sowers' Reach's Hold; sim/convoyPilot.ts):
+   *  absent, no one (the bot report's own runs). */
+  pilot?: PilotSkill;
 }
 
 export interface ReportPlay {
@@ -51,6 +55,7 @@ export function playReportRun(map: MapId, seed: number, o: ReportPlayOpts = {}):
     lab: plan.lab,
     ...(plan.convoy ? { convoy: plan.convoy } : {}),
     ...(plan.encounters ? { encounters: plan.encounters } : {}),
+    ...(o.pilot ? { pilot: o.pilot } : {}),
   });
   const g = run.game;
   if (o.tough) {
