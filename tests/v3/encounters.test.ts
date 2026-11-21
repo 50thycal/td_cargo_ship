@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { PLANE, RAID, SUB, VIEW } from '../../src/v3/data/config';
+import { PLANE, RAID, SOW, SUB, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -799,6 +799,12 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     // Battery Point (log v45): its shore guns are the target in every wave
     // from the first shell (wave 2) to the climax.
     expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // Sowers' Reach (log v48): its mines are in every wave, off the chutes
+    // or sown by a stealth bomber (the signature, from wave 4).
+    const mines = (kind: string) => arc('sowers').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && b.kind === kind))).map((a) => a.wave);
+    expect(mines('mine')).toEqual([1, 2, 3, 4, 5, 6, 7, 9, 10]);
+    expect(mines('stealthBomber')).toEqual([4, 8, 10]);
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'sowers')) for (const b of e.beats.filter((x) => x.kind === 'mine')) expect(MAPS.sowers.bases[(b.from as { base: number }).base].chute, e.id).toBe(true);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
   });
@@ -1300,6 +1306,50 @@ describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the 
   }, 90_000);
 });
 
+describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows and rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('more vees of stealth bombers each round, closer together, each sowing mines ahead of the convoy, with mines off the chutes and fire at the lead ship', () => {
+    const off = playMimic('sowers', 218, opts);
+    const old = playMimic('sowers', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own two vees of three, and nothing else.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('carpet-run');
+      expect(e.sent.stealthBomber).toBe(6);
+      expect((e.sent.mine ?? 0) + (e.sent.ballistic ?? 0) + (e.sent.guided ?? 0)).toBe(0);
+    }
+    const on = playMimic('sowers', 218, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.sowers!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['carpet-run', 1], ['carpet-run', 2], ['carpet-run', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.stealthBomber)).toEqual(done.map((e) => 3 * rounds[e.run! - 1].vees!));
+    for (const kind of ['mine', 'ballistic', 'guided'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(done.map((e) => fired(rounds[e.run! - 1], kind)));
+    for (const r of rounds) {
+      // Every bomber sows; the chutes drop mines; the rest goes for the lead ship.
+      expect(r.sow!).toBeGreaterThanOrEqual(2);
+      expect(fired(r, 'mine'), 'mines off the chutes').toBeGreaterThanOrEqual(3);
+      for (const f of r.fire ?? []) {
+        expect(MAPS.sowers.bases[f.base!].kinds).toContain(f.kind);
+        if (f.kind === 'mine') expect(MAPS.sowers.bases[f.base!].chute).toBe(true);
+        else expect(f.aim).toBe('lead');
+      }
+    }
+    // More each round (a vee of three, each its hits and its mines), and the
+    // vees no further apart.
+    const weight = rounds.map((r) => 3 * r.vees! * (r.veeHp! + r.sow!) + fired(r, 'mine') + 2 * (fired(r, 'ballistic') + fired(r, 'guided') + fired(r, 'cluster')));
+    for (let k = 1; k < weight.length; k++) {
+      expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+      expect(rounds[k].veeGap!, `round ${k + 1}`).toBeLessThanOrEqual(rounds[k - 1].veeGap!);
+    }
+    roundLengths(done);
+    // The boss keeps the event's name, and the shared intro cards.
+    expect(eventName('carpet-run', 'sowers', ENCOUNTER_REV)).toBe('Carpet Run');
+  }, 90_000);
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -1547,6 +1597,81 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(truckHeavies.length).toBeGreaterThan(0);
     expect(signatureOf('battery', 3, { rev: 4 })).toBeUndefined();
     expect(signatureOf('battery', 4, { rev: 3 })).toBeUndefined();
+  });
+
+  it('Sowers\' Reach (log v48): from wave 4 the wave\'s new enemies are stealth bombers that sow mines; the campaign and the shared wave keep the planner\'s own', () => {
+    expect(MAP_SIGNATURE.sowers).toMatchObject({ from: 4, foe: 'stealthBomber', foeShare: 1, sow: 3 });
+    let sowers = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('sowers', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('sowers', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('sowers', seed, w);
+        const bombers = kinds(on, 'stealthBomber');
+        if (w < 4) {
+          for (const l of bombers) expect(l.sow, `wave ${w}`).toBeUndefined();
+        } else {
+          // Every new enemy the wave sends is a sowing stealth bomber (but
+          // those the wave's encounter sends in its place).
+          const drawn = on.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && !l.enc);
+          for (const l of drawn) expect([l.kind, l.sow], `wave ${w}`).toEqual(['stealthBomber', 3]);
+          for (const l of bombers) expect(l.sow, `wave ${w}`).toBe(3);
+          sowers += bombers.length;
+        }
+        for (const l of [...kinds(camp, 'stealthBomber'), ...kinds(shared, 'stealthBomber')]) expect(l.sow).toBeUndefined();
+      }
+    expect(sowers).toBeGreaterThan(20);
+    expect(signatureOf('sowers', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('sowers', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('sowers', 4, { rev: 4, only: [] })).toBeUndefined();
+  });
+
+  it('a sowing bomber lays its mines in the water just ahead of a ship, and fires no missile', () => {
+    const g = createGame('sowers', 5, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    const ch = MAPS.sowers.channels[0];
+    const sown: { x: number; y: number; ahead: number }[] = [];
+    const seen = new Set<number>();
+    let missiles = 0;
+    for (let i = 0; i < 90 / DT && g.wave === 4; i++) {
+      step(g, DT);
+      for (const t of g.threats) {
+        if (seen.has(t.id)) continue;
+        seen.add(t.id);
+        if (t.parent === 'stealthBomber' && t.kind === 'guided') missiles++;
+        if (t.kind !== 'mine' || t.parent !== 'stealthBomber') continue;
+        // The ship it is laid ahead of: the nearest one behind it along the lane.
+        const ahead = Math.min(...g.ships.map((s) => t.x - s.x).filter((d) => d > 0));
+        sown.push({ x: t.x, y: t.y, ahead });
+      }
+    }
+    expect(sown.length).toBeGreaterThan(0);
+    expect(missiles).toBe(0);
+    for (const m of sown) {
+      // Off the up-current edge of the lane (SOW.line of its half-width),
+      // SOW.near to SOW.far ahead of a ship.
+      expect(Math.abs(m.y - (ch.y - SOW.line * ch.halfWidth)), JSON.stringify(m)).toBeLessThan(40);
+      expect(m.ahead, JSON.stringify(m)).toBeGreaterThanOrEqual(SOW.near - 30);
+      expect(m.ahead, JSON.stringify(m)).toBeLessThanOrEqual(SOW.far + 30);
+    }
+    // The campaign's stealth bombers drop their missiles as ever.
+    const c = createGame('sowers', 5, 6);
+    c.tempo = { ...c.tempo, lossLimit: 999 };
+    c.carrierHp = 999;
+    let campMines = 0;
+    const cSeen = new Set<number>();
+    for (let i = 0; i < 90 / DT && c.wave === 6; i++) {
+      step(c, DT);
+      for (const t of c.threats) if (!cSeen.has(t.id)) {
+        cSeen.add(t.id);
+        if (t.kind === 'mine' && t.parent === 'stealthBomber') campMines++;
+      }
+    }
+    expect(campMines).toBe(0);
   });
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
