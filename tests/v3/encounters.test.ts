@@ -1073,7 +1073,11 @@ describe('Saltgate Canal\'s boss rounds (log v45, MAP_BOSS): the Gatecrashers, a
     // Missile Trucks and a swarm.
     expect(done.map((e) => e.sent.missileTruck)).toEqual(rounds.map(trucks));
     for (const kind of ['torpedoSub', 'attackHeli', 'armored', 'rocketTruck', 'cluster'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual([0, 0, 0]);
-    expect(done.map((e) => e.sent.drone)).toEqual(rounds.map((r) => r.swarms! * r.size!));
+    // The swarm comes 11 s in: a round the convoy lost before then (round
+    // 3 on this seed, the tryhard bot with no weapon) never sent it.
+    const clean = done.filter((e) => e.outcome !== 'broken');
+    expect(clean.length).toBeGreaterThanOrEqual(2);
+    expect(clean.map((e) => e.sent.drone)).toEqual(clean.map((e) => rounds[e.run! - 1].swarms! * rounds[e.run! - 1].size!));
     for (const r of rounds) for (const c of r.trucks!) {
       expect(c.missiles, 'a missile column').toBeGreaterThanOrEqual(1);
       expect(c.salvos ?? 0).toBe(0);
@@ -1089,7 +1093,7 @@ describe('Saltgate Canal\'s boss rounds (log v45, MAP_BOSS): the Gatecrashers, a
     expect(new Set(rounds[1].trucks!.map((c) => c.bank))).toEqual(new Set(['north', 'south']));
     expect(new Set(rounds[2].trucks!.map((c) => c.lock))).toEqual(new Set([0, 1]));
     expect(new Set(rounds[2].trucks!.map((c) => c.bank))).toEqual(new Set(['north', 'south']));
-    roundLengths(done);
+    roundLengths(clean);
   }, 90_000);
 
   it('a Missile Truck can be shot on its way in and while it raises, marks a ship held at a lock and lobs a ballistic missile at it that can be shot down; a wreck stalls the truck behind it', () => {
