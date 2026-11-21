@@ -4212,6 +4212,11 @@ export class App {
     this.syncFormation();
     this.syncConvoy();
     this.hideOverlay();
+    // The HUD drew the run before until the next frame: the overlay is gone
+    // now, so the counter must already be the new run's (a Test Lab "Skip
+    // to boss" showed "WAVE 1 of 10" over boss round 1 for a frame, and the
+    // e2e read it whenever no frame fell between the tap and the check).
+    this.renderHud(this.game);
   }
 
   /** The Map & Convoy Lab: the left rail for the run's convoy policy.

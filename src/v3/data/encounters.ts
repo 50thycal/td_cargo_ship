@@ -120,7 +120,21 @@ export interface Beat {
    *  own (absent: its own). */
   salvos?: number;
   drive?: number;
+  /** Busier early waves (log v47, the player's answer to the chapter 2
+   *  playtests: "just add in more drones and easy things to kill so it
+   *  doesn't increase the difficulty but keep it busy"): easy filler on top
+   *  of the wave, taken out of nothing. Only drones from a base, and only
+   *  in waves 1-6. One shot down drops nothing (no pickup, no weapon:
+   *  the run's loot comes as it would without it). The wave budget counts
+   *  each filler launch as
+   *  FILLER_WEIGHT of one (rule w-budget: a lone one-hit drone with a long
+   *  flight is not a fraction of a raid). */
+  filler?: boolean;
 }
+
+/** What one filler launch counts for in a wave's budget (Beat `filler`,
+ *  log v47): four easy drones weigh one launch. */
+export const FILLER_WEIGHT = 0.25;
 
 /** An enemy pair placed by an encounter (v3): one set of the pair (data/
  *  pairs.ts), or `count` sets `every` s apart, its members launched on the
@@ -4218,6 +4232,84 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Busier early waves (log v47, docs/design/v3-playtest-fixes.md "Busier
+ *  early waves"). The player's chapter 2 playtests rated waves 1-6 fun 1-2,
+ *  intensity 1 on every map, and wave 1 the weakest every time; their
+ *  answer: "just add in more drones and easy things to kill so it doesn't
+ *  increase the difficulty but keep it busy ... less is more". Each rebuilt
+ *  map's encounters in waves 1-6 get a short string or two of filler drones
+ *  (Beat `filler`), on top of the wave: spaced out (`FILL_GAP`), aimed at
+ *  any ship, out of the map's far drone silos (the back shore, not an
+ *  islet or a silo over the lane), so each is one easy tap with a long
+ *  flight; one shot down drops nothing. Most in waves 1-3 (two strings on
+ *  waves 1-2, one on wave 3), two drones on waves 4-6. Tuned on the "you"
+ *  bot with the player's Armory over 384 seeds, encounters on, filler on
+ *  against off: left out where the wave's budget had no room (Kesh 4,
+ *  Marrow 6, Harbor 2, the second string of Saltgate 1), and where the
+ *  bots lost more or won less with it (the Strait and the Behemoth 4-6,
+ *  the Island 2 and 4-6, Marrow 5, the Needle 5, the Archipelago 4-6,
+ *  Saltgate 2's first string and 5). The Battery, whose waves 3-4 rated
+ *  well and whose wave 1 is the busiest of any map, wave 2 only. The encounters themselves (their beats, what they
+ *  take out of the wave) are unchanged. */
+const FILL_GAP = 0.9;
+const fill = (at: number, count: number, from: number): Beat => ({ at, kind: 'drone', count, gap: FILL_GAP, from: base(from), filler: true });
+/** A map's filler, waves 1-6 in order (its encounter in each), out of its
+ *  far drone silos `a` and `b`; `skip` the waves left as they were. */
+const busy = (ids: string[], a: number, b: number, skip: number[] = []): [string, Beat[]][] => {
+  const waves: Beat[][] = [
+    [fill(0.1, 3, a), fill(0.7, 2, b)],
+    [fill(0.1, 3, b), fill(0.75, 2, a)],
+    [fill(0.15, 3, a)],
+    [fill(0.15, 2, b)],
+    [fill(0.8, 2, a)],
+    [fill(0.2, 2, b)],
+  ];
+  return ids.map((id, k): [string, Beat[]] => [id, waves[k]]).filter((_, k) => !skip.includes(k + 1));
+};
+export const BUSY: Record<string, Beat[]> = Object.fromEntries([
+  // Chapter 1. The Strait: the west and east silos.
+  ...busy(['strait-ranging-opener', 'strait-far-silo', 'strait-silo-to-silo', 'strait-periscope', 'strait-swarm-screen', 'strait-both-ways'], 0, 2, [4, 5, 6]),
+  // Kesh: the far east silo only (the south silo's flight to the apex is the shortest on the map).
+  ...busy(['kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks', 'kesh-bunch'], 1, 1, [4]),
+  ...busy(['marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship', 'marrow-both-shores'], 0, 1, [5, 6]),
+  // The Gauntlet: the north-west and south-west silos, one shore then the other.
+  ...busy(['gauntlet-north-south-opener', 'gauntlet-p4-shell-each-shore', 'gauntlet-p4-way-in', 'gauntlet-p4-periscope', 'gauntlet-p4-overlap', 'gauntlet-p4-crossing'], 0, 2),
+  // Harbor Mouth: the north-west silo and the south headland's; none on its
+  // wave 2 (its budget is already at ×1.11 of the shared wave).
+  ...busy(['harbor-first-look', 'harbor-wide-water', 'harbor-periscope', 'harbor-south-headland', 'harbor-funnel-tail', 'harbor-both-headlands'], 0, 3, [2]),
+  // Chapter 2. The Island: the north shore's silo only (the island's own two sit over both lanes).
+  // Even that silo's flight to the north lane is short: a string of two on
+  // waves 1 and 3 only, the first after the point-blank swarm (more cost the
+  // bots up to 0.2 of a ship in waves 1-5 on 288-384 seeds).
+  ['island-point-blank', [fill(0.65, 2, 3)]],
+  ['island-quiet-water', [fill(0.15, 2, 3)]],
+  // The Behemoth Run: its waves are the biggest of chapter 2 already, so one
+  // string a wave, waves 1-3, out of the west and east silos.
+  ['behemoth-first-tanker', [fill(0.1, 3, 0)]],
+  ['behemoth-tanker-shell', [fill(0.75, 3, 2)]],
+  ['behemoth-headland', [fill(0.15, 3, 0)]],
+  // The Needle: the north-west silo only (the south one is at the mouth).
+  ...busy(['needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands', 'needle-way-out'], 0, 0, [5]),
+  // The Archipelago: every drone silo is an islet among the lanes, so waves
+  // 1-3 only, one string a wave, out of the east islet (the ships come in
+  // past the west one).
+  ['archipelago-west-islet', [fill(0.65, 3, 2)]],
+  ['archipelago-gap', [fill(0.75, 3, 2)]],
+  ['archipelago-front-back', [fill(0.15, 3, 2)]],
+  // Saltgate Canal: the west shore and the east lock's silo; its wave 1 (a second swarm since log v42) one string only.
+  ...busy(['saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates', 'saltgate-periscope'], 0, 3, [1, 2, 5]),
+  ['saltgate-first-lock', [fill(0.1, 3, 0)]],
+  // (Its wave 2's truck drives in early: the filler comes after it.)
+  ['saltgate-chamber', [fill(0.75, 2, 0)]],
+  // Chapter 3: the Battery's waves 3-4 already rated 3-4, so waves 1-2 only.
+  // Its wave 1 is the busiest first wave of any map already (two threats on
+  // the board at a moment, twice the others), and any filler on it lost
+  // wave-1 ships for the no-Armory bots: wave 2 only, early, out of the east
+  // silo (late, the waves ran on and its wave 7 rose).
+  ['battery-ranging', [fill(0.1, 3, 3)]],
+]);
+const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
+
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
   ...STRAIT_R4.map((e) => ({ ...e, version: 'v1' as const })),
@@ -4237,7 +4329,7 @@ export const ENCOUNTERS: Encounter[] = [
   ...SALTGATE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 3, Dark Water (docs/design/v3-ch3-battery.md).
   ...BATTERY_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
-];
+].map(busier);
 
 /** The rev an encounter came in. */
 export function encounterRev(e: Encounter): number {

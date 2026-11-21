@@ -4,7 +4,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { MAPS } from '../../src/v3/data/maps';
-import { CLIFF_FLOOR, cliffOf, digestRun, isLaunch, mapReport, slope, stretchOf, stretchRows, tableLaunches, type RunDigest } from '../../src/v3/sim/mapReport';
+import { BUSY, FILLER_WEIGHT } from '../../src/v3/data/encounters';
+import { BUDGET_BAND, CLIFF_FLOOR, cliffOf, digestRun, isLaunch, mapReport, slope, stretchOf, stretchRows, tableLaunches, type RunDigest } from '../../src/v3/sim/mapReport';
 import { playReportRun } from '../../src/v3/sim/mapReportPlay';
 import type { TelEvent, TelPhase, TelemetrySidecar } from '../../src/v3/sim/telemetry';
 
@@ -122,11 +123,21 @@ function fake(launches: number[], lost: number[] = []): RunDigest {
   return {
     seed: 0, won: false, endWave: 10, reached: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     lost: pad(lost), lostBonus: 0, launches: pad(launches), close: z().map(() => 1), warnSum: z().map((_, k) => 10 - k), warnN: z().map(() => 1),
+    waveSec: z().map(() => 60), boardSec: z().map((_, k) => 60 * (k + 1)), kills: z().map(() => 20),
     stretch: { core: { hp: [[1, 4, 5]], sunk: g() }, all: { hp: [[1, 4, 5]], sunk: g() } },
   };
 }
 
 describe('the report', () => {
+  it('reads the action a wave: threats on the board at a moment, kills a minute', () => {
+    const r = mapReport({ map: MAPS.strait, seeds: [0, 1], normal: [fake([]), fake([])], tough: [fake([])] });
+    expect(r.normal.action.onBoard[0]).toBeCloseTo(1);
+    expect(r.normal.action.onBoard[2]).toBeCloseTo(3);
+    expect(r.normal.action.killsMin[0]).toBeCloseTo(20);
+    // A wave no run reached reads NaN.
+    expect(r.normal.action.onBoard[10]).toBeNaN();
+  });
+
   it('sets the table × scale and the budget ratio to the encounters-off wave', () => {
     expect(tableLaunches(strait, 1)).toBe(Math.round(16 * strait.threatScale));
     const card = fake([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
@@ -174,7 +185,14 @@ describe('a quick real report', () => {
     // Every seed plays every wave when it can't be lost.
     for (const d of tough) expect(d.reached).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
     expect(r.tough.launches[0]).toBeGreaterThan(0);
-    expect(r.tough.vsBaseline![0]).toBeCloseTo(1, 1);
+    // Wave 1 is the shared wave launch for launch, plus its easy filler (log
+    // v47) at FILLER_WEIGHT a drone: within the budget's band.
+    const filler = BUSY['strait-ranging-opener'].reduce((n, b) => n + b.count, 0) * FILLER_WEIGHT;
+    expect(r.tough.launches[0] - r.tough.baseline![0]).toBeCloseTo(filler, 5);
+    expect(Math.abs(r.tough.vsBaseline![0] - 1)).toBeLessThanOrEqual(BUDGET_BAND);
+    // The action a wave: threats on the board and kills, on every wave played.
+    expect(r.normal.action.onBoard[0]).toBeGreaterThan(0.3);
+    expect(r.normal.action.killsMin[0]).toBeGreaterThan(5);
     expect(r.checks.map((c) => c.rule)).toEqual(expect.arrayContaining(['w-cliff', 'w-early', 'w-budget', 'm-stretches', 'g-warning', 'w-first', 'w-boss']));
     expect(r.tough.close.slice(2, 10).some((v) => v > 0)).toBe(true);
     expect(Date.now() - t0).toBeLessThan(20_000);

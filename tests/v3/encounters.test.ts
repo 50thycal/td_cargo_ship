@@ -14,8 +14,10 @@
 import { describe, expect, it } from 'vitest';
 import { PLANE, RAID, SUB, VIEW } from '../../src/v3/data/config';
 import {
+  BUSY,
   ENCOUNTERS,
   ENCOUNTER_MAPS,
+  FILLER_WEIGHT,
   ENCOUNTER_REV,
   ENCOUNTER_VERSIONS,
   LAYER_MAPS,
@@ -86,8 +88,10 @@ function pairCost(id: string, swarm: number): number {
 /** What a freshly planned wave will send: its queue, its launchers' loads,
  *  and its enemy pairs' sets. `weighed`: a pair's new enemies by the
  *  game's accounting (pairCost) rather than one launch each. */
+// An encounter's easy filler (log v47, Beat `filler`) weighs FILLER_WEIGHT
+// of a launch, as the bot report's wave budget counts it.
 const planned = (g: Game, weighed = false) =>
-  g.queue.filter((l) => l.at < 1e8).length +
+  g.queue.filter((l) => l.at < 1e8).reduce((a, l) => a + (l.filler ? FILLER_WEIGHT : 1), 0) +
   g.raiderQueue.reduce((a, r) => a + r.units.reduce((b, u) => b + u.size, 0), 0) +
   (g.enc?.sets ?? []).reduce(
     (a, s) =>
@@ -342,7 +346,9 @@ describe('every beat is legal on its map at its wave', () => {
           // pair's new enemies as the game's own new enemies do.
           const spec = waveSpec(w, MAPS[map].threatScale);
           for (const e of list) {
-            const sent = e.beats.reduce((a, b) => a + ('air' in b.from ? Math.min(5, spec.swarm - 1) * b.count : b.count), 0) + (e.pairs ?? []).reduce((a, p) => a + (p.count ?? 1) * pairCost(p.pair, spec.swarm), 0);
+            // (Its easy filler, log v47, is on top of the wave by design: it
+            // is held to the wave as planned below, at its weight.)
+            const sent = e.beats.filter((b) => !b.filler).reduce((a, b) => a + ('air' in b.from ? Math.min(5, spec.swarm - 1) * b.count : b.count), 0) + (e.pairs ?? []).reduce((a, p) => a + (p.count ?? 1) * pairCost(p.pair, spec.swarm), 0);
             const asked = (e.replaces.drones ?? 0) + (e.replaces.ballistic ?? 0) + (e.replaces.guided ?? 0);
             // Phase 4 (The Strait, docs/design/v3-p4-strait.md): an encounter
             // that takes every shell of its wave also takes the shells the
@@ -622,8 +628,9 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     const out: { th: Game['threats'][number]; ships: Game['ships'] }[] = [];
     for (let i = 0; i < 90 / DT && g.phase === 'wave' && g.wave === n; i++) {
       step(g, DT);
+      // (Its easy filler, log v47, is aimed at no one in particular.)
       for (const th of g.threats)
-        if (th.enc === id && !seen.has(th.id)) {
+        if (th.enc === id && !th.filler && !seen.has(th.id)) {
           seen.add(th.id);
           out.push({ th: { ...th }, ships: g.ships.map((s) => ({ ...s })) });
         }
@@ -1599,3 +1606,45 @@ describe('the same thing every time', () => {
 
 // Kept for the type: every version is a map's.
 void MAP_VERSIONS;
+
+describe('busier early waves (log v47): easy filler on top of waves 1-6', () => {
+  it('every filler beat belongs to a rebuilt map\'s v1 encounter of waves 1-6, and is a spaced string of drones out of a drone silo', () => {
+    const ids = Object.keys(BUSY);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      const e = ENCOUNTERS.find((x) => x.id === id);
+      expect(e, id).toBeDefined();
+      expect(e!.version, id).toBe('v1');
+      expect(playsAt(e!), `${id} plays now`).toBe(true);
+      expect(Math.max(...e!.waves), id).toBeLessThanOrEqual(6);
+      for (const b of BUSY[id]) {
+        expect(e!.beats, id).toContain(b);
+        expect(b.filler && b.kind === 'drone' && 'base' in b.from, id).toBe(true);
+        expect(b.count, id).toBeLessThanOrEqual(4);
+        expect(b.gap ?? 0, id).toBeGreaterThanOrEqual(0.8);
+        const base = MAPS[e!.map].bases[(b.from as { base: number }).base];
+        expect(base.kinds ?? ['drone'], `${id}: a drone silo`).toContain('drone');
+      }
+    }
+    // Every rebuilt map has it: on wave 1, and on at least two of waves 1-3;
+    // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
+    // map) on wave 2 only.
+    const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'strait']);
+    const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
+    for (const map of [...maps].filter((m) => m !== 'battery')) {
+      expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
+      expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
+    }
+    // Nothing past wave 6, and no other version or map gets any.
+    for (const e of ENCOUNTERS) if (e.beats.some((b) => b.filler)) expect(BUSY[e.id], e.id).toBeDefined();
+  });
+
+  it('a filler drone is a plain drone, tagged in the telemetry as filler', () => {
+    const { sc } = wave('strait', 1, true, 9, 60, 'v1', ENCOUNTER_REV);
+    const fill = sc.events.filter((e): e is Extract<TelEvent, { k: 'thr+' }> => e.k === 'thr+' && !!e.fill);
+    expect(fill.length).toBe(BUSY['strait-ranging-opener'].reduce((a, b) => a + b.count, 0));
+    for (const e of fill) expect(e.kind === 'drone' && e.enc === 'strait-ranging-opener').toBe(true);
+  });
+});

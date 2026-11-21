@@ -16,11 +16,13 @@
 // Pure: no DOM, no Node. The tool that plays the runs is
 // tools/v3/map-report/report.ts (and `mapReportPlay.ts` here).
 
-import { VIP } from '../data/config';
+import { VIP, isStructure } from '../data/config';
+import { FILLER_WEIGHT } from '../data/encounters';
 import type { MapDef } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { timeToImpact, type Game } from './game';
 import { laneLength } from './lanes';
+import { SIM_DT } from './playlog';
 import type { TelEvent, TelemetrySidecar } from './telemetry';
 import { funSummary, funVerdict, FUN_TARGET, type FunDigest, type FunVerdict, type FunWaveSummary } from './funMetrics';
 
@@ -57,6 +59,12 @@ export const THIN_LANE_HP = 1;
 export interface ThreatWatchData {
   first: Record<number, number>;
   min: Record<number, number>;
+  /** Action (log v47, busier early waves): each wave's seconds of play
+   *  (index 0 = wave 1, the boss rounds 11-13, outside a bonus event) and its threat-seconds on
+   *  the board (structures left out): their ratio is the threats on the
+   *  board at a moment. */
+  waveSec?: number[];
+  boardSec?: number[];
 }
 
 /** Call `observe(g)` after every sim step: it reads each live threat's
@@ -64,8 +72,19 @@ export interface ThreatWatchData {
 export class ThreatWatch {
   readonly first: Record<number, number> = {};
   readonly min: Record<number, number> = {};
+  readonly waveSec = zeros();
+  readonly boardSec = zeros();
 
   observe(g: Game): void {
+    // As waveOfPhase: a wave or a map event (the boss rounds), not a bonus
+    // or a lab event.
+    const ev = g.event;
+    if (g.phase === 'wave' && !(ev && (ev.bonus || (g.lab && !g.lab.full))) && g.wave >= 1 && g.wave <= REPORT_WAVES) {
+      this.waveSec[g.wave - 1] += SIM_DT;
+      let on = 0;
+      for (const t of g.threats) if (!t.dead && !isStructure(t.kind)) on++;
+      this.boardSec[g.wave - 1] += on * SIM_DT;
+    }
     for (const t of g.threats) {
       if (t.dead) continue;
       const tti = timeToImpact(g, t);
@@ -77,7 +96,7 @@ export class ThreatWatch {
   }
 
   data(): ThreatWatchData {
-    return { first: this.first, min: this.min };
+    return { first: this.first, min: this.min, waveSec: this.waveSec.map((v) => round(v, 2)), boardSec: this.boardSec.map((v) => round(v, 2)) };
   }
 }
 
@@ -109,6 +128,14 @@ export interface RunDigest {
    *  impact as they appeared (under WARN_CAP). */
   warnSum: number[];
   warnN: number[];
+  /** Action (log v47, busier early waves): seconds of the wave played, the
+   *  threats on the board over it (threat-seconds, structures left out),
+   *  and the threats shot down in it (kills, children too). Busyness a
+   *  wave: boardSec / waveSec (threats on the board at a moment) and
+   *  kills / waveSec × 60 (kills a minute). */
+  waveSec: number[];
+  boardSec: number[];
+  kills: number[];
   /** Ship hull points lost and ships sunk, by lane and stretch (0 early,
    *  1 middle, 2 late, by distance along the lane): over waves 1-9 (`core`,
    *  outside wave 10 and the boss rounds) and over every wave (`all`). */
@@ -160,6 +187,9 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     close: zeros(),
     warnSum: zeros(),
     warnN: zeros(),
+    waveSec: watch?.waveSec ? [...watch.waveSec] : zeros(),
+    boardSec: watch?.boardSec ? [...watch.boardSec] : zeros(),
+    kills: zeros(),
     stretch: { core: { hp: grid(lanes), sunk: grid(lanes) }, all: { hp: grid(lanes), sunk: grid(lanes) } },
     ...(map.posts?.some((p) => p.kind === 'radar') ? { towerLost: 0 } : {}),
   };
@@ -185,7 +215,8 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     if (e.k === 'thr+') {
       if (e.tg === -1) atCarrier.add(e.id);
       if (!w || !isLaunch(e)) continue;
-      d.launches[w - 1] += 1;
+      // An encounter's easy filler (log v47) weighs a share of a launch.
+      d.launches[w - 1] += e.fill ? FILLER_WEIGHT : 1;
       const first = watch?.first[e.id];
       if (first !== undefined && first < WARN_CAP && e.tg !== -2) {
         d.warnSum[w - 1] += first;
@@ -193,6 +224,7 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
       }
     } else if (e.k === 'thr-') {
       if (!w || e.why !== 'kill') continue;
+      d.kills[w - 1] += 1;
       const min = watch?.min[e.id];
       if (min !== undefined && min <= CLOSE_SECONDS && !atCarrier.has(e.id)) d.close[w - 1] += 1;
     } else if (e.k === 'hit') {
@@ -328,6 +360,28 @@ export function tableLaunches(map: MapDef, wave: number): number {
   return s.drones + s.ballistic + s.guided;
 }
 
+/** Busyness a wave (log v47, busier early waves; index 0 = wave 1), pooled
+ *  over the runs that played it: the threats on the board at a moment
+ *  (threat-seconds over seconds of play, structures left out) and the
+ *  threats shot down a minute. */
+export interface Action {
+  onBoard: number[];
+  killsMin: number[];
+}
+
+export function actionOf(digests: RunDigest[]): Action {
+  const on = (k: number) => digests.filter((d) => d.reached.includes(k + 1) && (d.waveSec?.[k] ?? 0) > 0);
+  const pooled = (k: number, pick: (d: RunDigest) => number) => {
+    const ds = on(k);
+    const secs = sum(ds.map((d) => d.waveSec[k]));
+    return secs > 0 ? sum(ds.map(pick)) / secs : NaN;
+  };
+  return {
+    onBoard: zeros().map((_, k) => pooled(k, (d) => d.boardSec[k])),
+    killsMin: zeros().map((_, k) => pooled(k, (d) => d.kills[k]) * 60),
+  };
+}
+
 export interface Curve {
   n: number;
   /** Mean over every run (a run that ended before a wave counts 0). */
@@ -396,6 +450,8 @@ export interface MapReport {
     lost10: number;
     lost15: number;
     lostBonus: number;
+    /** Busyness a wave (log v47), pooled over the runs that reached it. */
+    action: Action;
   };
   /** Tough runs (no loss limit, the carrier can't sink): every seed plays
    *  every wave. The per-wave curve, close calls, budgets, stretches and
@@ -492,6 +548,7 @@ export function mapReport(input: ReportInput): MapReport {
       lost10: sum(nc.mean.slice(0, 10)),
       lost15: sum(nc.mean.slice(0, 5)),
       lostBonus: avg(normal.map((d) => d.lostBonus)),
+      action: actionOf(normal),
     },
     tough: {
       n: tough.length,

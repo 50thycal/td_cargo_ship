@@ -3,10 +3,12 @@
 //       [--armory=player|latest|plating|none] [--no-enc] [--tough] [--taste=a+b+c]
 //       [--from=900] (the first seed: --from=948 reads the next 48)
 // Prints won %, ships lost per wave (over the runs that reached it) and the
-// boss rounds, in a few lines. For tuning only: the bot report (report.ts)
+// boss rounds, and the action a wave (threats on the board at a moment,
+// kills a minute: log v47), in a few lines. For tuning only: the bot report (report.ts)
 // is the record.
 import { MAPS, type MapId } from '../../../src/v3/data/maps';
 import type { AbilityId } from '../../../src/v3/data/abilities';
+import { actionOf } from '../../../src/v3/sim/mapReport';
 import { playReportRun } from '../../../src/v3/sim/mapReportPlay';
 import { LATEST_ARMORY, PLATING_ARMORY, PLAYER_ARMORY } from '../bot-fit/measure';
 
@@ -34,3 +36,6 @@ console.log(
 );
 console.log('  per wave ' + lost.map((v, k) => `${k < 10 ? k + 1 : 'B' + (k - 9)}:${Number.isFinite(v) ? v.toFixed(2) : '-'}`).join(' '));
 console.log('  reached  ' + Array.from({ length: W }, (_, w) => reached(w).length).join(' '));
+const act = actionOf(ds);
+console.log('  on board ' + act.onBoard.map((v, k) => `${k < 10 ? k + 1 : 'B' + (k - 9)}:${Number.isFinite(v) ? v.toFixed(1) : '-'}`).join(' '));
+console.log('  kills/m  ' + act.killsMin.map((v, k) => `${k < 10 ? k + 1 : 'B' + (k - 9)}:${Number.isFinite(v) ? v.toFixed(0) : '-'}`).join(' '));
