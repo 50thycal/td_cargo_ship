@@ -4571,7 +4571,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Two rigs at once over the way in, the shortest warning on the map, in place of the wave\'s own guided missile and most of its shells.',
     },
     beats: [
-      { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
       { at: 0.3, plus: 4, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
     ],
@@ -5016,7 +5016,7 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
-const RIGS_CLIMB = [0.9, 0.95, 0.88, 0.94, 0.96, 0.92, 0.94, 0.88, 0.96, 0.88];
+const RIGS_CLIMB = [0.9, 0.95, 0.85, 0.92, 0.9, 0.9, 0.92, 0.88, 0.92, 0.85];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -5539,8 +5539,8 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  fires no more. Rising: more rigs, more volleys, bigger ones. */
 export const RIGS_BOSS_ROUNDS: BossRound[] = [
   { rigs: 2, rigHp: 8, barrage: { first: 3, every: 5, count: 4, size: 1, warn: 1.5 } },
-  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 6, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
