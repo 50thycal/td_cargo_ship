@@ -242,6 +242,7 @@ From `sowers-player.md` (the usual Armory):
 - **The record's counter kit wins no more than the off-counter with the usual Armory** (58% against 63% on 24 seeds), though it loses fewer ships; with the latest set it wins 58% against 33%.
 - **Waves 1–5 for the latest set: 0.90** (192 seeds), over the 0.8 asked; the usual Armory's 0.72.
 - **Its #1 kit is the Strait's #1 of the chapter 1 sweep** (Air Strike + Gravity Well + Supply Run, v31, another chapter's draft); against chapters 2 and 3 all five of its best kits are its own.
+- **The Stealth Bomber's card says "three missiles"**: on a device that has not met it (the Test Lab's Sowers card played before the Battery's), its "New on Dark Water" card reads "No warning: a flying wing with three missiles. Six hits, or shoot what it drops", while here it drops mines (and the boss's take three hits). The card is the enemy's own, shared with the Battery and the campaign; this build leaves it.
 - **No light debut waves**, as on the Battery: nothing debuts here.
 - **Mines and Hold are the bot's blind spots:** the bot sees every mine from the moment it drops and never misses an easy shot, so mines sink fewer ships for it than they will for a player (before the rebuild 0.02–0.04 a wave; now 0.1–0.5 on waves 4–10, mostly the sown ones); a player's waves 1–5 may well read harder than the bot's.
 
@@ -256,6 +257,11 @@ From `sowers-player.md` (the usual Armory):
 - **The signature at 19% of the work, not 25%: raise it?** Recommended: keep it; raising it costs win rate one for one, and the boss rounds are almost all sowing (79%).
 - **The danger stretch is under the carrier (the middle).** Recommended: keep: the middle chute's curtains and a held convoy make the middle the place to watch, and the carrier helps there; moving the danger east took two cliffs with it.
 - **The boss's name: Carpet Run (the event's own), or a name of its own like Saltgate's Gatecrashers ("The Sowing")?** Recommended: keep Carpet Run: it is literally a carpet of mines now.
+- **The Stealth Bomber's "New on Dark Water" card says "three missiles"; on Sowers it sows mines.** Recommended: a line of its own on this map's card ("sows mines ahead of your ships") in the next pass, if you meet it here first.
+
+## Checks run
+
+`tsc`; `vitest --exclude '.claude/**'` (79 files, 1875 tests, all pass); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass); the map-lab baseline replays exactly.
 
 ## Tests
 
