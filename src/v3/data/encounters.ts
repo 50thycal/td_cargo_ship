@@ -120,7 +120,19 @@ export interface Beat {
    *  own (absent: its own). */
   salvos?: number;
   drive?: number;
+  /** Busier early waves (log v47, the player's answer to the chapter 2
+   *  playtests: "just add in more drones and easy things to kill so it
+   *  doesn't increase the difficulty but keep it busy"): easy filler on top
+   *  of the wave, taken out of nothing. Only drones from a base, and only
+   *  in waves 1-6. The wave budget counts each filler launch as
+   *  FILLER_WEIGHT of one (rule w-budget: a lone one-hit drone with a long
+   *  flight is not a fraction of a raid). */
+  filler?: boolean;
 }
+
+/** What one filler launch counts for in a wave's budget (Beat `filler`,
+ *  log v47): four easy drones weigh one launch. */
+export const FILLER_WEIGHT = 0.25;
 
 /** An enemy pair placed by an encounter (v3): one set of the pair (data/
  *  pairs.ts), or `count` sets `every` s apart, its members launched on the

@@ -165,6 +165,9 @@ export type TelEvent = Base &
         cargo?: 1;
         /** The authored encounter that sent it (data/encounters.ts). */
         enc?: string;
+        /** An encounter's easy filler (log v47): weighs FILLER_WEIGHT of a
+         *  launch in the bot report's wave budget. */
+        fill?: 1;
         /** The same threat back on the board (a siege gun up from its
          *  hatch, a Spotter back for its next turn). */
         back?: 1;
@@ -580,6 +583,7 @@ export class Telemetry {
       if (th.paired) e.paired = 1;
       if (th.cargo) e.cargo = 1;
       if (th.enc) e.enc = th.enc;
+      if (th.filler) e.fill = 1;
       if (th.kind === 'ballistic') {
         e.ix = r1(th.ix);
         e.iy = r1(th.iy);

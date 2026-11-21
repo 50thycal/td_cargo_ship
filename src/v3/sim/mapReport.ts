@@ -17,6 +17,7 @@
 // tools/v3/map-report/report.ts (and `mapReportPlay.ts` here).
 
 import { VIP, isStructure } from '../data/config';
+import { FILLER_WEIGHT } from '../data/encounters';
 import type { MapDef } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { timeToImpact, type Game } from './game';
@@ -214,7 +215,8 @@ export function digestRun(map: MapDef, seed: number, sc: TelemetrySidecar, watch
     if (e.k === 'thr+') {
       if (e.tg === -1) atCarrier.add(e.id);
       if (!w || !isLaunch(e)) continue;
-      d.launches[w - 1] += 1;
+      // An encounter's easy filler (log v47) weighs a share of a launch.
+      d.launches[w - 1] += e.fill ? FILLER_WEIGHT : 1;
       const first = watch?.first[e.id];
       if (first !== undefined && first < WARN_CAP && e.tg !== -2) {
         d.warnSum[w - 1] += first;

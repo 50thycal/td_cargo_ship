@@ -242,6 +242,8 @@ export interface Threat {
   /** Telemetry only: the authored encounter (data/encounters.ts) that
    *  sent it. */
   enc?: string;
+  /** Telemetry only: an encounter's easy filler (Beat `filler`, log v47). */
+  filler?: boolean;
   /** Telemetry only (nothing in the sim reads it): what launched it when
    *  that is not a base, a sub or a truck: the bomber or helicopter that
    *  dropped it, the threat it split off, the warning mark it came up from. */
@@ -417,6 +419,8 @@ export interface Launch {
    *  it is aimed at as it leaves. */
   enc?: string;
   aim?: BeatAim;
+  /** An encounter's easy filler (Beat `filler`, log v47). */
+  filler?: boolean;
   /** A Rocket Truck (log v42, Saltgate Canal): the pop-up road it takes
    *  (its index; absent, one at random), its salvos (absent, its own) and
    *  its speed driving in (× its own). */
@@ -1444,7 +1448,7 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
       const aim = b.aim && b.aim !== 'any' ? { aim: b.aim } : {};
       if ('base' in b.from) {
         const gap = b.gap ?? 0.35;
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
         start = Math.min(start, at - RAID.warn);
       } else if ('road' in b.from) {
@@ -5583,6 +5587,7 @@ function launch(g: Game, l: Launch): void {
   else {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
     if (l.enc) th.enc = l.enc;
+    if (l.filler) th.filler = true;
     if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
