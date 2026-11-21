@@ -27,6 +27,11 @@ export const PLAYER_ARMORY: ArmoryLevels = { reload: 5, repair: 4, stockpile: 5 
  *  2.5× power-ups), and Wide Warhead 5, Deck Guns 4 (`pointdef`, renamed),
  *  Supply Lines 3 (unchanged numbers). Each is still one card a bay. */
 export const LATEST_ARMORY: ArmoryLevels = { warhead: 5, pointdef: 4, drops: 3 };
+/** The player's other Armory on the Battery (2026-11-20, the third of three
+ *  fresh runs, the one that reached wave 10: Quick Reload 5, Armor Plating
+ *  5, Big Magazine 4): a third "good player" yardstick (`--armory=plating`),
+ *  read beside `latest` (the first two runs) from chapter 3 on. */
+export const PLATING_ARMORY: ArmoryLevels = { reload: 5, plating: 5, magazine: 4 };
 
 /** Taps under this many real seconds apart are one burst. */
 export const BURST_GAP = 0.3;

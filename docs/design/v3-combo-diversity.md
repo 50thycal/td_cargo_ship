@@ -239,6 +239,39 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## Battery Point: chapter 3's first map (game version 43)
+
+> 2026-11-21. Battery Point rebuilt to the map rules (docs/design/v3-ch3-battery.md): its signature is "silence the battery" (the wave's heavy cruise missiles at your two shore guns, the wave's strike jets as Stealth Strafers) from wave 4, and most of its shells go for the guns. The question, as for each chapter 2 map: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 43, with chapter 3's draft (25 weapons: chapter 2's and Grapnel, Bomber Wing, Orbital Strike, Dual Wield, Focus Fire): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`; the build changes nothing of theirs). Results: `tools/v3/combo-sweep/results/v43-ch3`; the comparison: `python3 tools/v3/battery/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Battery Point (v43) | **Air Strike + Frigate Escort + Supply Run** 5.1 ±0.6, won 94% | Thermobaric Shell + Flak Cannon + Gravity Well 5.4 | Air Strike + Drone Screen + Supply Run 5.8 | Railgun + Orbital Strike + Supply Run 5.9 | Air Strike + Orbital Strike + Supply Run 6.0 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0 / **0.11** / 0 / 0 / 0 (Air Strike + Drone Screen + Supply Run: the Battery's #3, the Behemoth's #1) |
+| The same, the Battery against itself (two halves of its seeds) | 0.43 |
+| #1 kit | its own (in no other map's top 5) |
+| Best weapon alone | **Frigate Escort** 4.8 (Gravity Well 5.6, Railgun 5.8, Drone Screen 5.8, Flak 5.9; Air Strike 6.1: eighth) |
+| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.73 / 0.76 / 0.61 / 0.57 / 0.48 |
+| Chapter 3's new weapons | Orbital Strike in two of the top 5 kits; alone, Orbital Strike 6.4, Bomber Wing 7.6, Focus Fire and Grapnel 10.8, Dual Wield 13.1 |
+| The bot drafting for itself; the plain gun | 6.8 lost, won 67%; 12.8, won 8% |
+
+### Reading
+
+- **Four of the Battery's five best kits are its own, and its #1 is its own;** its #3 is the Behemoth Run's #1 (Air Strike + Drone Screen + Supply Run). The five are within about a standard error of each other (5.1–6.0, ±0.5–0.9), so their order is noise.
+- **Its best weapon alone is its own: the Frigate Escort** (4.8), the best single on no chapter 2 map (those are Air Strike ×3, the Gunship Pair, the Thermobaric Shell). Its frigates sail with the convoy through the middle, the stretch neither the carrier nor the guns cover.
+- **Air Strike is not over-dominant:** eighth alone (6.1, against 3.7–6.8 on chapter 2's maps), in three of the five best kits (with Supply Run each time, the pair chapter 2 leans on too). A chapter-wide Air Strike look (the Archipelago's open question) would cover it.
+- **The sweep is fragile to small changes:** two builds a wave-5 tweak apart read #1 Frigate Escort + Boomerang + Railgun (Jaccard 0 everywhere, Air Strike in 2 of 5) and Air Strike + Gunship Pair + Supply Run (Saltgate's #2; Air Strike in 4 of 5, Gunship Pair best alone). In all three reads no other map's #1 kit is in the Battery's top 5 and Air Strike is never the best single.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v43-ch3 --maps=battery --json=tools/v3/combo-sweep/results/v43-ch3/diversity.json
+python3 tools/v3/battery/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=battery --seeds=4
+```
+
 ## Saltgate Canal at game version 42: the trucks
 
 > 2026-11-20. The player's answer to the v38 card made Saltgate's boss a truck assault (the Gatecrashers) and its signature "the trucks come to the locks" (Rocket Trucks for half the wave's new enemies from wave 4, the wave's clusters at the locks; no Torpedo Sub on the map; docs/design/v3-ch2-saltgate.md, "Log v42"). Swept again the same way at version 42 (on top of v41's cluster climb and sub sites): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16. The other four maps are read from `results/v37-ch2` as at v38 (not re-swept at v41). Results: `tools/v3/combo-sweep/results/v42-ch2`; the comparison: `python3 tools/v3/saltgate/compare.py`.

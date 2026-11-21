@@ -299,7 +299,16 @@ import type { EncounterSetup } from '../data/encounters';
  *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
  *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
  *      longer replays to the same game; the campaign plays as it did.
- *  43: (unused: the Battery rebuild took 45.)
+ *  43: chapter 3's first map, Battery Point, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-battery.md; lab, under the encounter
+ *      layer): ten encounters (BATTERY_R4), a climb (BATTERY_CLIMB), the
+ *      signature (MAP_SIGNATURE.battery: the wave's heavies at the shore
+ *      guns, off a truck as off a silo, and its strike jets as Stealth
+ *      Strafers), a launch at a knocked-out gun goes for the other gun,
+ *      and the Blackout's rounds rise (MAP_BOSS.battery: `jets`, `jetAt`,
+ *      `jetGap`, `fire`). A v42 Battery card log played the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
  *  44: the Armory's Lifeboats and Quartermaster reworked (docs/design/
  *      v3-armory-overhaul.md, "Lifeboats and Quartermaster reworked"; the
  *      player's answers on the hub). Lifeboats: the half loss is gone;
@@ -312,7 +321,10 @@ import type { EncounterSetup } from '../data/encounters';
  *      5 four cards and a free weapon level-up in a draft (a new command,
  *      'l'). A v42 log without either card plays the same game (the map-lab
  *      baseline replays unchanged); one with either needs this build.
- *  45: (taken: the Battery rebuild, claude/v3-ch3-battery.)
+ *  45: the Battery rebuild (43 above) on top of the Armory rework (44):
+ *      the base took 44 while the Battery was built as 43, so it moved
+ *      here. The campaign plays as at 44; a 44 Battery card log played the
+ *      shared waves and no longer replays to the same game.
  *  46: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
  *      Trucks (docs/design/v3-ch2-saltgate.md; lab, under the encounter
  *      layer; the player's review of the v42 boss: "make it the missile

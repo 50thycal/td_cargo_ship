@@ -1266,6 +1266,9 @@ function startWave(g: Game): void {
   // their places), launch for launch, so the wave is no bigger for them.
   const trickled = swarms.slice(0, trickle);
   if (authored.length) makeRoom(units, trickled, authored);
+  // Battery Point (log v45, MAP_SIGNATURE `stealth`): the wave's own strike
+  // jets come in dark, as Stealth Strafers, one for one.
+  if (sig?.stealth) for (const u of units) if (u.kind === 'strafer') u.kind = 'stealthJet';
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -1459,7 +1462,10 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
       } else {
         // Log v33 (round 9): a jet aimed 'vip' flies down the supertanker's
         // own lane (vipRoute), the Behemoth Run's strike on the tanker.
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind: b.kind, base: -1, side: b.from.air, enc: e.id, ...(b.aim === 'vip' ? { aim: 'vip' as const } : {}) });
+        // Log v43 (Battery Point, MAP_SIGNATURE `stealth`): a jet comes in
+        // dark from the signature's first wave, as the wave's own do.
+        const kind = b.kind === 'strafer' && signatureOf(g.map.id, g.wave, enc.setup)?.stealth ? 'stealthJet' : b.kind;
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind, base: -1, side: b.from.air, enc: e.id, ...(b.aim === 'vip' ? { aim: 'vip' as const } : {}) });
         start = Math.min(start, at - PLANE.warn);
       }
     }
@@ -5561,8 +5567,9 @@ function launch(g: Game, l: Launch): void {
     return;
   }
   // The stealth aircraft: no warning, so their line is picked now.
+  // (An encounter's own comes from the side its beat names: log v45.)
   if (isPlaneKind(l.kind)) {
-    launchPlane(g, { ...l, side: g.rng.foes.chance(0.5) ? 1 : -1 });
+    launchPlane(g, { ...l, side: l.enc && l.side ? l.side : g.rng.foes.chance(0.5) ? 1 : -1 });
     return;
   }
   if (isFoe(l.kind) && !fromBase(l.kind)) {
@@ -5826,6 +5833,17 @@ function targetPos(g: Game, th: Threat): Point {
 function ensureTarget(g: Game, th: Threat): void {
   if (th.target === CARRIER_TARGET || th.target === NO_TARGET) return;
   if (isPostTarget(th.target) ? postUp(g, postIndex(th.target)) : g.ships.some((s) => s.id === th.target)) return;
+  // Log v43 (Battery Point, lab only under the encounter layer): a launch
+  // at a shore gun that is knocked out on its way goes for the other gun
+  // while that one stands, not the nearest ship (the map's signature: the
+  // guns are the target). The campaign retargets as it always has.
+  if (isPostTarget(th.target) && g.enc && g.enc.setup.rev >= 4 && g.map.posts) {
+    const up = g.map.posts.map((_, i) => i).filter((i) => postUp(g, i));
+    if (up.length) {
+      th.target = POST_TARGET - up[0];
+      return;
+    }
+  }
   let best: Ship | null = null;
   let bd = Infinity;
   for (const s of targetable(g, VIEW.width + 40)) {
@@ -6538,6 +6556,14 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
       else if (th.kind === 'cluster') {
         const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
         if (sig?.clusters) aimBeat(g, th, sig.clusters);
+      }
+      // Battery Point (log v45, MAP_SIGNATURE `heavies`): the wave's own
+      // heavy cruise missiles, off a truck as off a silo, go for the shore
+      // guns. (Only at the guns: the Behemoth Run's truck heavies pick their
+      // target as they did.)
+      else if (th.kind === 'heavy') {
+        const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
+        if (sig?.heavies === 'post') aimBeat(g, th, sig.heavies);
       }
       r.fireT = gap;
     }
