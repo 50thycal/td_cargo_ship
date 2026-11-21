@@ -140,9 +140,11 @@ export const STATUS = {
     { n: 208, title: 'Hub update', state: 'merged' },
     { n: 209, title: 'Armory: Lifeboats and Quartermaster reworked, golden bomb (log v44)', state: 'merged' },
     { n: 210, title: 'Chapter 3: The Battery rebuilt (log v45)', state: 'merged' },
+    { n: 211, title: 'Saltgate: the Gatecrashers as a Missile Truck parade (log v46)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-21', what: 'Merged #211 (log v46): Saltgate’s Gatecrashers are now a parade of a new Missile Truck, as you asked. A long olive eight-wheeler with one big white missile on an erector: it drives in, raises the missile (the red ring fills and a dashed line marks its ship), and lobs a ballistic missile at the ships waiting at the lock gates. Kill the truck while it drives or raises, or shoot the missile in the air. Round 1: a column of 8; round 2: 9 on both banks; round 3: the big parade, 10 trucks at both locks, up to 7 missiles in the air at once. No rocket trucks in the boss any more. Bot with your Armory: wins 60%, boss rounds 0.7 / 1.5 / 2.0.' },
     { date: '2026-11-21', what: 'Merged #210 (log v45): chapter 3 starts with The Battery rebuilt (Test Lab). The problem: two allied shore guns cover the east of the lane; enemy shells and heavies go for the guns first, and a gun knocked out leaves the east open for 12 s. Wave 3’s shell cliff is gone (bot losses in wave 3 down to about 0.1). Signature from wave 4: heavies at the guns and dark Stealth Strafer jets. Boss: the Blackout, rising (dark jets 7 / 8 / 9 plus shells and heavies at the guns). Chapter 3’s five new enemies debut on waves 2–6 with “New on Dark Water”. Bot wins: your usual Armory 28% → 60%, the plating set (your run 3) 23% → 72%, the latest set 5% → 28%. Watch for: waves 4–9 now send more drones and fewer shells than before; tell me if the climb lost what made run 3 a 5 / 5 / 5.' },
     { date: '2026-11-21', what: 'Merged #209 (log v44): Lifeboats and Quartermaster reworked as you asked. Lifeboats: L1 the carrier mends 66% of its damage between waves; L2 the carrier and every ship afloat mend 66%; L3 an orange “+1 LIFE” Lifeboat card joins the draft after waves 3, 6, 9 and 12 (take it instead of a weapon); L4 everything mended to full between waves; L5 (my proposal) you also start with one extra life. Extra lives show as orange pips on the SUNK row. Quartermaster: re-rolls 1 / 2 / 2 / 3 / 3; from L3 a glowing gold BOMB button in the left rail fires a Nuke once a run whenever you tap it (even in boss rounds); L5 deals 4 cards and gives one free weapon level-up a run (the gold button top-right of the draft). Bot with your Armory: each card at L5 lifts wins from 50% to 67%.' },
     { date: '2026-11-21', what: 'Your answers read. Being built now: the Lifeboats rework (repair and extra life alternating by level) and Quartermaster’s path with the golden bomb that waits until you use it (log v44); Saltgate’s boss as a parade of ballistic-missile trucks instead of rocket trucks (log v45). The Battery rebuild (log v43) was interrupted by a server restart and has resumed. After those: a few more drones and easy kills in waves 1–6.' },
@@ -204,6 +206,12 @@ export const NEEDS = [
     kind: 'item',
     title: 'Play the rebuilt Battery (Test Lab → Ready to test)',
     text: 'Two allied shore guns cover the east of the lane; the enemy goes for the guns first, and a knocked-out gun leaves the east open for 12 s. Wave 3’s shell spike is gone. From wave 4 heavies go for the guns and dark jets come in; the boss is the Blackout. The big question: waves 4–9 now send more drones and fewer shells (shells were most of the fire before). Does the climb still feel like your 5 / 5 / 5 run? If it feels lighter, say so and I’ll put shells back on waves 6–9. Also try the new golden bomb (Quartermaster level 3+) and Lifeboats if you have them.',
+  },
+  {
+    id: 'r14-play-missiles',
+    kind: 'item',
+    title: 'Play Saltgate’s new boss: the Missile Truck parade',
+    text: 'Test Lab → Ready to test → Saltgate Canal, then Skip to boss from the pause menu to get straight there. Missile trucks drive in nose to tail, raise their missiles (red ring and a dashed line to the ship), and lob ballistic missiles at the ships held at the lock gates; round 3 has up to 7 missiles in the air at once. Kill the trucks as they raise, or shoot the missiles. Is it intense and different enough from the rocket trucks?',
   },
 ];
 
