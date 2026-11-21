@@ -24,7 +24,7 @@ const REF: MapId[] = ['strait', 'gauntlet', 'harbor'];
 /** Every map with authored encounters: the reference maps and (map
  *  rebuild, chapter 1: docs/design/v3-ch1-kesh.md, v3-ch1-marrow.md) Kesh
  *  and Marrow, which have the original (v1) only. */
-const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers'];
+const LAYER: MapId[] = [...REF, 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'lantern'];
 
 /** A map card's run as the app starts it from the hub (no setup given, no
  *  link): the plan labRunPlan makes. */
@@ -213,6 +213,8 @@ describe('a map card is the full production map', () => {
     expect(productionText('saltgate')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
     expect(productionText('battery')).toBe("The map's own convoy (no commands) · encounters v1 Original");
+    // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): the same.
+    expect(productionText('lantern')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('rigs')).toMatch(/^Today's convoy controls/);
   });
 });
@@ -220,7 +222,7 @@ describe('a map card is the full production map', () => {
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '', sowers: 'hold' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '', sowers: 'hold', lantern: '' };
 
   it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold and its encounters (log v48); the other 12: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {

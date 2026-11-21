@@ -284,6 +284,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch3-lantern.md
+  lantern: {
+    problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
+    // COUNTERS: provisional until the combo sweep at log v50.
+    counters: ['railgun', 'lance', 'frigate'],
+    offCounter: ['seeker', 'scatter', 'fullSteam'],
+    convoy: 'The map\'s own convoy at flow 2 (as most of chapter 2\'s maps), no commands: pairs west to east down one lane under the lighthouse beam, past the carrier\'s lamp in the middle, delivering in the east with the enemy\'s dark bank right behind them.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Bombardment along the shore: a line of siege guns rising out of their hatches along the far shore one after another, west to east (3, 3, then 4; 2.2 s apart; two salvos each), from round 2 more on the enemy\'s dark bank behind the ships (1, then 2), with shells, a guided missile and a cluster out of the dark bank at the lead ship and four supply swarms a round (the event sends 3 guns 3 s apart and 4 supply swarms, every round; encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery and Sowers\' Reach, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

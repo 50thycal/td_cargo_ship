@@ -153,9 +153,12 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
   // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
-  // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): the
-  // campaign's own schedule (step 1) and Pairs, as the Battery's; no
-  // command. The night is read and shot, not sailed round.
+  // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): flow 2 and
+  // Pairs, as most of chapter 2's maps; no command (the night is read and
+  // shot, not sailed round). At the campaign's step 1 its shared waves were
+  // the hardest of any rebuilt map for the bot (won 9% with the usual
+  // Armory on the map's own convoy, no encounters); step 2 spreads the
+  // same fire over more hulls.
   lantern: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
 };
 

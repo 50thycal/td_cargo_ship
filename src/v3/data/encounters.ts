@@ -4598,7 +4598,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'lead' },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 5, extras: { cluster: 1, strafer: 1 } },
+    replaces: { ballistic: 7, extras: { cluster: 1, strafer: 1 } },
   },
   {
     id: 'lantern-periscope',
@@ -4623,7 +4623,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(5), aim: 'lead' },
     ],
-    replaces: { ballistic: 6, guided: 1 },
+    replaces: { ballistic: 7, guided: 1 },
   },
   {
     id: 'lantern-front-and-back',
@@ -4755,7 +4755,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 8, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.5, kind: 'drone', count: 8, gap: 0.35, from: base(3) },
     ],
-    replaces: { ballistic: 15, guided: 1, extras: { cluster: 2, mothership: 2 } },
+    replaces: { ballistic: 16, guided: 1, extras: { cluster: 2, mothership: 2 } },
     calm: 6,
   },
 ];

@@ -1430,11 +1430,12 @@ describe('the Black Strait\'s boss rounds (log v50, MAP_BOSS): the Bombardment w
     g.carrierHp = 999;
     const r = MAP_BOSS.lantern!.rounds![2];
     const hatches: { x: number; y: number; dur: number }[] = [];
-    for (let i = 0; i < 400 && !hatches.length; i++) {
+    for (let i = 0; i < 40 / DT && !hatches.length; i++) {
       step(g, DT);
       if (g.event) for (const m of g.foe.marks) if (m.kind === 'hatch' && m.spawn) hatches.push({ x: m.x, y: m.y, dur: m.dur });
     }
-    if (!g.event) return;
+    expect(g.event?.id).toBe('bombardment');
+    expect(g.event?.run).toBe(3);
     expect(hatches.length).toBe(r.guns! + r.dark!);
     const far = hatches.filter((h) => h.y < 450);
     const near = hatches.filter((h) => h.y > 450);
@@ -1906,11 +1907,14 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('sowers', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // The Black Strait (log v50): the same, out of the far shore's drone
+    // silos under the beam.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
