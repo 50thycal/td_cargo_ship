@@ -4549,7 +4549,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The map\'s question on wave 2: what a rig fires comes from point-blank, and the rig itself can be brought down for good.',
     },
     beats: [
-      { at: 0.25, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.25, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
       { at: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
     ],
     replaces: { drones: 4, ballistic: 2 },
@@ -4560,22 +4560,21 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [3],
     role: 'teach',
     name: 'Under the rigs',
-    callout: 'Missiles from point-blank',
-    premise: 'A guided missile off the west rig and shells off the west-middle rig come at the ships coming in, a few seconds apart, and a swarm comes off the east rig at the lead ship.',
-    decision: 'The first stakes: two rigs firing at the way in from point-blank; the missile first, or the shells?',
-    counters: 'The missile as it leaves the rig, the shells as they climb, the swarm last.',
+    callout: 'A missile from point-blank',
+    premise: 'A guided missile off the west rig comes at the ship halfway along, a short flight from the sea right over the lane, and a swarm comes off the east rig at the lead ship.',
+    decision: 'The first stakes: a missile from a rig with hardly any warning; the missile first, or the swarm?',
+    counters: 'The missile as it leaves the rig, the swarm last; the west rig when the sky is clear.',
     succeeds: 'A close call on the way in in most runs; a good player loses under half a ship.',
     notes: {
-      sites: 'The west rig (a guided missile), the west-middle rig (shells), the east rig (a swarm).',
-      target: 'The ships coming in (the missile, the shells); the lead ship (the swarm).',
-      usesMap: 'Two rigs at once over the way in, the shortest warning on the map, in place of the wave\'s own guided missile and most of its shells.',
+      sites: 'The west rig (a guided missile), the east rig (a swarm).',
+      target: 'The ship halfway along (the missile); the lead ship (the swarm).',
+      usesMap: 'A rig\'s shortest flight, a missile with hardly any warning, in place of the wave\'s own guided missile and most of its shells (a rig brought down on wave 2 sends none).',
     },
     beats: [
       { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
-      { at: 0.3, plus: 4, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 2, ballistic: 6, guided: 1 },
+    replaces: { ballistic: 4, guided: 1 },
   },
   {
     id: 'rigs-relief',
@@ -4599,7 +4598,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 4, ballistic: 7, extras: { cluster: 1, rig: 1 } },
+    replaces: { drones: 1, ballistic: 7, extras: { cluster: 1, rig: 1 } },
   },
   {
     id: 'rigs-rig-or-volley',
@@ -4608,19 +4607,18 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Rig or volley',
     callout: 'Clusters from the rig',
-    premise: 'The west-middle rig fires a cluster missile at the ships coming in, then another a few seconds later; a guided missile comes off the east-middle rig at the ship halfway along and swarms off both drone rigs.',
+    premise: 'The west-middle rig fires a cluster missile at the ships coming in, then another a few seconds later, while swarms come off both drone rigs.',
     decision: 'Bring the cluster rig down before its second, or shoot each cluster before it splits?',
-    counters: 'Each cluster before it splits, the missile, the swarms; the rig if there is time.',
+    counters: 'Each cluster before it splits, the swarms; the rig if there is time.',
     succeeds: 'A close call on the way in in most runs; a run that brought the rig down earlier sends no clusters.',
     notes: {
-      sites: 'The west-middle rig (690, 270; clusters), the east-middle rig (1080, 298; a guided missile), the west and east rigs (swarms).',
-      target: 'The ships coming in (the clusters, a swarm); the ship halfway along (the missile); the lead ship (a swarm).',
+      sites: 'The west-middle rig (690, 270; clusters), the west and east rigs (swarms).',
+      target: 'The ships coming in (the clusters, a swarm); the lead ship (a swarm).',
       usesMap: 'A rig that fires twice: knocked out before its second, it is quiet for the rest of the run, in place of the wave\'s own cluster, a guided missile and most of its shells.',
     },
     beats: [
       { at: 0.25, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
       { at: 0.25, plus: 7, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.5, kind: 'guided', count: 1, from: base(2), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
     ],
@@ -4750,7 +4748,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 4, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 4, ballistic: 15, guided: 2, extras: { cluster: 1, rig: 2 } },
+    replaces: { ballistic: 11, guided: 2, extras: { cluster: 1, rig: 2 } },
     calm: 6,
   },
 ];
@@ -5016,7 +5014,7 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
-const RIGS_CLIMB = [0.9, 0.95, 0.85, 0.92, 0.9, 0.9, 0.92, 0.88, 0.92, 0.85];
+const RIGS_CLIMB = [0.9, 0.95, 0.9, 0.92, 0.92, 0.9, 0.96, 0.86, 0.92, 0.88];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {

@@ -284,6 +284,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch3-rigs.md
+  rigs: {
+    problem: 'Four enemy oil rigs stand in the sea just above the lane and fire at the ships from point-blank, the shortest flights on the map: each takes forty hits and one brought down stays down (its fire moves to the far shore, a long flight), but every shot at a rig is one not at a missile, and from wave 4 the enemy tows relief rigs in to stand where one fell.',
+    // COUNTERS_NOTE
+    counters: ['railgun', 'flak', 'airstrike'],
+    offCounter: ['tesla', 'scatter', 'fullSteam'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane under the four rigs, past the carrier in the middle, delivering in the east; the rigs are answered by shooting, not by sailing.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'The Rig Barrage (in place of the Dive Circus: the Dive Bomber is a regular of the Battery\'s waves by now): as each round opens, the downed rigs rise again (the middle two first, then the west and the east) until 2, 3, then 4 stand, 8 hits each (a rig still standing keeps its own), and every rig standing fires its volley together at the ship halfway along, its deck lit 1.5 s first: a guided missile off each missile rig, two shells off the west-middle rig, four drones off the east rig, converging on the convoy; 4, 3, then 3 volleys, 5, 6.5 and 6.5 s apart. A rig brought down fires no more (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Dive Circus). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery and the Sowers, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {
