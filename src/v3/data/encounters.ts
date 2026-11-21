@@ -5544,7 +5544,7 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
 export const LANTERN_BOSS_ROUNDS: BossRound[] = [
   { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 0, supply: 4, fire: [{ kind: 'ballistic', at: 8, count: 1, base: 4, aim: 'lead' }] },
   { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 1, supply: 4, fire: [{ kind: 'guided', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 10, count: 2, gap: 1, base: 4, aim: 'lead' }] },
-  { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 4, fire: [{ kind: 'ballistic', at: 9, count: 1, base: 4, aim: 'lead' }] },
+  { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 5, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
