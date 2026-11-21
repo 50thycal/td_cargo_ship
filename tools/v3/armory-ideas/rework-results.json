@@ -1,0 +1,294 @@
+{
+ "alone/self": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 12,
+    "lost": 22.2,
+    "saved": 0,
+    "se": 0,
+    "won": 3,
+    "endWave": 9.4,
+    "scrap": 347,
+    "scrapGain": 0,
+    "wonGain": 0,
+    "wonSe": 0,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    }
+   },
+   "lifeboats": {
+    "seeds": 12,
+    "lost": 20.1,
+    "saved": 2,
+    "se": 0.4,
+    "won": 12,
+    "endWave": 10.2,
+    "scrap": 391,
+    "scrapGain": 44,
+    "lives": 1.2,
+    "wonGain": 8,
+    "wonSe": 4,
+    "perMap": {
+     "strait": 2.3,
+     "gauntlet": 1.7,
+     "harbor": 2.1,
+     "kesh": 0.9,
+     "marrow": 3.2
+    }
+   },
+   "quartermaster": {
+    "seeds": 12,
+    "lost": 17.5,
+    "saved": 4.7,
+    "se": 1.1,
+    "won": 5,
+    "endWave": 10.4,
+    "scrap": 391,
+    "scrapGain": 44,
+    "bombs": 1,
+    "bombWave": 9.4,
+    "free": 1,
+    "wonGain": 2,
+    "wonSe": 4,
+    "rerolls": 1.8,
+    "perMap": {
+     "strait": 4.9,
+     "gauntlet": 4.9,
+     "harbor": 7.7,
+     "kesh": 4.2,
+     "marrow": 1.8
+    }
+   }
+  }
+ },
+ "alone/normal": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 12,
+    "lost": 6.3,
+    "saved": 0,
+    "se": 0,
+    "won": 3,
+    "endWave": 9.2,
+    "scrap": 337,
+    "scrapGain": 0,
+    "wonGain": 0,
+    "wonSe": 0,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    }
+   },
+   "lifeboats": {
+    "seeds": 12,
+    "lost": 8.4,
+    "saved": -2.1,
+    "se": 0.4,
+    "won": 15,
+    "endWave": 10.3,
+    "scrap": 402,
+    "scrapGain": 64,
+    "lives": 1.4,
+    "wonGain": 12,
+    "wonSe": 4,
+    "perMap": {
+     "strait": -1.9,
+     "gauntlet": -2.7,
+     "harbor": -1.5,
+     "kesh": -2.7,
+     "marrow": -1.6
+    }
+   },
+   "quartermaster": {
+    "seeds": 12,
+    "lost": 6.9,
+    "saved": -0.6,
+    "se": 0.3,
+    "won": 3,
+    "endWave": 10.3,
+    "scrap": 382,
+    "scrapGain": 44,
+    "bombs": 1,
+    "bombWave": 8.4,
+    "free": 1,
+    "wonGain": 0,
+    "wonSe": 3,
+    "rerolls": 1.7,
+    "perMap": {
+     "strait": 0.5,
+     "gauntlet": -1,
+     "harbor": 0.3,
+     "kesh": -2.1,
+     "marrow": -0.7
+    }
+   }
+  }
+ },
+ "player/self": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 12,
+    "lost": 8.9,
+    "saved": 0,
+    "se": 0,
+    "won": 50,
+    "endWave": 12.3,
+    "scrap": 544,
+    "scrapGain": 0,
+    "wonGain": 0,
+    "wonSe": 0,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    }
+   },
+   "lifeboats": {
+    "seeds": 12,
+    "lost": 8.9,
+    "saved": 0,
+    "se": 0,
+    "won": 58,
+    "endWave": 12.6,
+    "scrap": 573,
+    "scrapGain": 29,
+    "lives": 1.2,
+    "wonGain": 8,
+    "wonSe": 4,
+    "perMap": {
+     "strait": -0.1,
+     "gauntlet": 0,
+     "harbor": -0.1,
+     "kesh": 0,
+     "marrow": -0.1
+    }
+   },
+   "quartermaster": {
+    "seeds": 12,
+    "lost": 6.8,
+    "saved": 2.1,
+    "se": 0.7,
+    "won": 67,
+    "endWave": 13.1,
+    "scrap": 606,
+    "scrapGain": 61,
+    "bombs": 1,
+    "bombWave": 9.3,
+    "free": 1,
+    "wonGain": 17,
+    "wonSe": 8,
+    "rerolls": 1.8,
+    "perMap": {
+     "strait": -0.2,
+     "gauntlet": 0.8,
+     "harbor": 2.5,
+     "kesh": 5.2,
+     "marrow": 2.4
+    }
+   }
+  }
+ },
+ "player/normal": {
+  "maps": [
+   "strait",
+   "gauntlet",
+   "harbor",
+   "kesh",
+   "marrow"
+  ],
+  "configs": {
+   "none": {
+    "seeds": 12,
+    "lost": 6.1,
+    "saved": 0,
+    "se": 0,
+    "won": 50,
+    "endWave": 12.3,
+    "scrap": 544,
+    "scrapGain": 0,
+    "wonGain": 0,
+    "wonSe": 0,
+    "perMap": {
+     "strait": 0,
+     "gauntlet": 0,
+     "harbor": 0,
+     "kesh": 0,
+     "marrow": 0
+    }
+   },
+   "lifeboats": {
+    "seeds": 12,
+    "lost": 7.2,
+    "saved": -1.1,
+    "se": 0.2,
+    "won": 67,
+    "endWave": 12.9,
+    "scrap": 598,
+    "scrapGain": 54,
+    "lives": 1.4,
+    "wonGain": 17,
+    "wonSe": 5,
+    "perMap": {
+     "strait": -1.2,
+     "gauntlet": -0.7,
+     "harbor": -2.2,
+     "kesh": -0.7,
+     "marrow": -0.6
+    }
+   },
+   "quartermaster": {
+    "seeds": 12,
+    "lost": 5.4,
+    "saved": 0.7,
+    "se": 0.4,
+    "won": 67,
+    "endWave": 13.1,
+    "scrap": 605,
+    "scrapGain": 61,
+    "bombs": 1,
+    "bombWave": 9,
+    "free": 1,
+    "wonGain": 17,
+    "wonSe": 8,
+    "rerolls": 1.8,
+    "perMap": {
+     "strait": 0.4,
+     "gauntlet": 0.1,
+     "harbor": -0.2,
+     "kesh": 2.3,
+     "marrow": 1
+    }
+   }
+  }
+ }
+}

@@ -98,8 +98,8 @@ The player on the review page: "Do life boat, salvage crew, boiler and quarter m
 | Upgrade | Bay | Level 1 → 5 | Ships saved at level 5 (alone; on the player's Armory) |
 | --- | --- | --- | --- |
 | Boilers | Hull | the convoy sails 104% → 120%; level 5 doubles Full Steam (the power-up and the boost) | 2.5 kit / 1.5 own draft; −0.6 (nothing) |
-| Lifeboats | Hull | the first ship sunk in a wave counts as half a loss, in 2 / 4 / 6 / 8 waves a run, every wave at level 5 | no ship saved; 3.6 off the loss tally; the player's build wins 62% of runs, not 45% |
-| Quartermaster | Supply | re-roll the weapon draft 1 / 2 / 3 / 4 / 4 times a run; level 5 deals four cards | 2.5 own draft; 0.9 |
+| Lifeboats | Hull | *(reworked in log 44, below)* ~~the first ship sunk in a wave counts as half a loss, in 2 / 4 / 6 / 8 waves a run, every wave at level 5~~ | was: no ship saved; 3.6 off the loss tally; the player's build wins 62% of runs, not 45% |
+| Quartermaster | Supply | *(reworked in log 44, below)* ~~re-roll the weapon draft 1 / 2 / 3 / 4 / 4 times a run; level 5 deals four cards~~ | was: 2.5 own draft; 0.9 |
 | Salvage Crews | Supply | +10% Scrap a level (+50%) | none, by design; 528 → 792 Scrap a run |
 
 - **Boilers and Quartermaster land under the 5–8 band**, and their own numbers can't lift them: 130% and 150% speed save 4.3 and 4.7 alone and nothing on the player's build; 4, 6 or 10 re-rolls save the same (the bot spends 1.8). Kept at the brainstorm's numbers (Quartermaster's re-rolls spread so every level counts); a second job for Boilers is the player's call.
@@ -112,6 +112,34 @@ The player on the review page: "Do life boat, salvage crew, boiler and quarter m
 ![The Supply bay with Quartermaster and Salvage Crews](img/armory/phone-supply.png)
 
 Checks: `npx tsc --noEmit`; `npx vitest run` (new `tests/v3/armoryNew.test.ts`: each upgrade's numbers, Boilers' speed and Full Steam and Saltgate's lock clocks, Lifeboats' half loss and the run's end, the boats a level and the restore, Quartermaster's four cards, the re-roll's determinism, its log replay and the bots' rule, Salvage's Scrap, an old save); `npm run v3:map-lab -- baseline`; `e2e/v3.mjs` (Hull 5 / Supply 6 cards fit a phone, the half pip, the Re-roll button deals a new hand, logged, and the run replays); `e2e/v3-armory-shots.mjs` (the screenshots here, with Boilers and Quartermaster held).
+
+## Lifeboats and Quartermaster reworked (2026-11-21, LOG_VERSION 44)
+
+The player's answers on the hub. Lifeboats: "alternate the repair and extra life options between levels. level 1 - repair carrier between rounds by 66%, Level 2 - 66% of carrier and all ships, level three can draft a life as an option and skip your upgrade. level four all ships and carriers restored to 100% after each wave". Quartermaster: one re-roll · two · a free bomb ("a use whenever bomb … a golden one that stays there so they can use it when they want") · three re-rolls · four cards and a free weapon level-up. Branch `claude/v3-armory-rework`. Measured in `tools/v3/armory-ideas/new-upgrades.md` ("reworked").
+
+| Level | Lifeboats (Hull) | Quartermaster (Supply) |
+| --- | --- | --- |
+| 1 | between waves the carrier mends 66% of its missing hull | 1 re-roll a run |
+| 2 | the carrier and every ship afloat mend 66% | 2 re-rolls |
+| 3 | level 2, and a **Lifeboat card** (+1 life) in the draft after every 3rd wave | 2 re-rolls and a **golden bomb** |
+| 4 | every hull mended to full between waves; the card stays | 3 re-rolls, the bomb |
+| 5 | level 4, and **the run starts with +1 life** (a proposal: see below) | 3 re-rolls, the bomb, **4 cards** a draft, a **free level-up** once a run |
+
+Measured at level 5 against none (60 runs each, the "you" bot drafting for itself): **Lifeboats** saves 2.0 ships alone and none on the player's Armory (Damage Control 4 already mends), but wins runs: 50% → 67% on the player's build under the real rules (3% → 15% alone). **Quartermaster** saves 4.7 ships alone (was 2.5) and 2.1 on the player's build (was 0.9), and wins 50% → 67% there.
+
+- **What "repair the ships" means.** A ship has 3 hull points and the carrier 12; ships sail through and new ones come, so the ones mended are the ships afloat as a wave is cleared. 66% of the missing points, rounded to whole points: a ship one point down is mended, two down gets one back; the carrier at 6 of 12 gets 4. From level 4 every hull is full. A "+1", "+4 HULL" floats over each mended hull, with the repair sound. The mend comes as a regular wave is cleared (not after a bonus wave, nor after the last).
+- **The Lifeboat card.** Dealt in the draft after waves 3, 6, 9 and 12 (and every 3rd endless wave), one a draft, added to the hand (four cards, five with Quartermaster 5: the hand's weapons are the ones it would have dealt; no dice are drawn for it, so a run without it plays as before and a re-roll deals it again). Taking it is +1 life in place of a weapon or level: one more ship can be lost (`lossLimit` = the tempo's limit + `extraLives`). The convoy restored before the boss rounds keeps the lives. It is orange, badged "+1 LIFE", and says the lives left now and after ("6 → 7 lives"). Each life is one more pip on the HUD's SUNK row, outlined in lifeboat orange (a second row past seven). The bots take it when 3 or fewer of their lives are left, or when no weapon in the hand can be taken.
+- **Lifeboats level 5 (the player didn't say).** In the spirit of "alternate repair and life" (1 repair, 2 repair, 3 life, 4 repair, 5 life), level 5 starts the run with one extra life (a seventh pip from wave 1). The other option, the life card every other wave, was set aside: a life you can count on from the start reads more clearly on the card, and the draft's choice stays a choice. **A decision for the player.**
+- **The golden bomb.** From Quartermaster 3, a round gold button marked BOMB sits in the left rail under the ships slider from the run's start, glowing, until it is tapped; then it is gone for the run. It sets off the Nuke (every enemy and munition on the map; structures and the Dreadnought take its 3 hits), in any wave, boss rounds and special events included, with the Nuke's blast sound, a shake and "GOLDEN BOMB" over the carrier. It is greyed during a replay or while the bot has the controls. A new log command, `'n'`. Placement at 874×402: the left rail is the left thumb's and has room under the slider; the right rail is full (HUD, pause, speed, three weapon buttons). The bots keep it for when it counts: in a boss round with 3 threats about to hit, before that with 6 once the run is pressed (half its lives or fewer, or the carrier at half) or from wave 8, and any time the last ship has two about to land (they set it off in every run, on average in wave 9).
+- **The free level-up (Quartermaster 5).** A gold **Free level-up** button in the draft's top-right corner (Re-roll is top-left), once a run. Tapping it turns the held weapons (above the cards) into "+1" chips; tapping one gives it a level and the draft stays open for its pick (Cancel goes back). Chosen over an automatic level-up of the lowest weapon at the first draft: the player picks which weapon, at the draft they want, and the button says what it does. Greyed when used, or when nothing held is below MAX. A new log command, `'l'`. The bots spend it at the first draft they hold a weapon, on the one they stack.
+- **Re-rolls at level 5 stay at 3.** The earlier measure found the bot spends under two a run and more on hand change nothing; the level adds the fourth card and the free level-up instead.
+- **Saves and logs.** The ids stay `lifeboats` and `quartermaster`: a save holding them loads its levels, which now mean the new effects. LOG_VERSION 44 (43 is the Battery rebuild's): the half loss gone, the mend, the Lifeboat card (a pick, `'u' 'lifeboat'`), the golden bomb (`'n'`), the free level-up (`'l'`), the new re-roll counts. Only 44 replays (`LOG_REPLAYS = [44]`); a run without either card plays as at 42 (the map-lab baseline replays unchanged but for its version). The result screen says "N ships sunk · k extra lives".
+
+![The golden bomb and an extra-life pip at 874×402](img/armory/iphone-hud-gold-bomb.png)
+![The draft after wave 3: Re-roll, Free level-up, four weapons and the Lifeboat card](img/armory/iphone-draft-lifeboat.png)
+![Lifeboats in the Hull bay](img/armory/iphone-hull-lifeboats.png) ![Quartermaster in the Supply bay](img/armory/iphone-supply-quartermaster.png)
+
+Checks: `tests/v3/armoryNew.test.ts` (each level's numbers; the mend at levels 1, 2, 4 and as a wave clears; the Lifeboat card's waves, its determinism and the re-roll; a life taken, the limit and the restore; level 5's start life; the bots' rule; the golden bomb: none below 3, stays until used, fires once, logged and replayed, the bots' use; the free level-up: once, held weapons only, logged and replayed; an old save); `e2e/v3.mjs` (at 874×402: the orange pip, the bomb on screen and clear of the rail's controls, tapped and logged, the Lifeboat card, the free level-up, the re-roll, the card taken); `e2e/v3-armory-shots.mjs` (the `iphone-*` shots).
 
 ## The short version
 
