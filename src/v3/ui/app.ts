@@ -174,6 +174,11 @@ const DEAL_STAGGER_MS = 70;
 const RAIL_W = 72;
 /** Margin kept on the landscape side WITHOUT the Dynamic Island (rounded corners only). */
 const CORNER_INSET = 16;
+/** Launched from the home screen (iOS's standalone web app): the page has
+ *  the whole screen, with no browser toolbar to come and go. */
+const STANDALONE =
+  (typeof navigator !== 'undefined' && (navigator as Navigator & { standalone?: boolean }).standalone === true) ||
+  (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
 
 /** Weapon feedback is about what the player just did (round 14's rule):
  *  shown at once, one card that each new message replaces. */
@@ -434,6 +439,10 @@ export class App {
   /** Reads env(safe-area-inset-*) as pixels (notch / Dynamic Island / corners). */
   private safeProbe = el('div', 'v2-safe-probe');
   private layoutKey = '';
+  /** When the per-frame check last read the safe-area insets, and until when
+   *  it reads them every frame (see settle). */
+  private insetCheck = 0;
+  private settleUntil = 0;
   private acc = 0;
   private last = 0;
   private lastPhase: Phase | null = null;
@@ -477,8 +486,16 @@ export class App {
     // resize event has already fired — so layout is also re-checked every frame
     // (see `frame`) and on every signal that the viewport may have changed.
     window.addEventListener('resize', () => this.resize());
-    window.addEventListener('orientationchange', () => this.resize());
+    window.addEventListener('orientationchange', () => this.settle());
     window.visualViewport?.addEventListener('resize', () => this.resize());
+    // A home-screen launch (or a return to one) can settle its size and its
+    // safe-area insets a moment after the first paint, with no resize event
+    // (see `settle`): measure again once things have had time to land.
+    window.addEventListener('load', () => this.settle());
+    window.addEventListener('pageshow', () => this.settle());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.settle();
+    });
     // Typing in a dialog (a note, a verdict): the phone's keyboard covers
     // most of a landscape screen (the player: "it blocks me … make sure I can
     // see the text box"). While a text box has the focus, the dialog is fitted
@@ -509,7 +526,7 @@ export class App {
         this.togglePause();
       }
     });
-    this.resize();
+    this.settle();
   }
 
   /** Seal the current run's log and send it wherever this build can. Safe to
@@ -1598,9 +1615,37 @@ export class App {
    *  per-frame check, reading the same stale box, never noticed. */
   private viewport(): { w: number; h: number } {
     const vv = window.visualViewport;
-    const w = Math.round(Math.max(window.innerWidth, vv?.width ?? 0)) || this.root.clientWidth;
-    const h = Math.round(Math.max(window.innerHeight, vv?.height ?? 0)) || this.root.clientHeight;
+    let w = Math.round(Math.max(window.innerWidth, vv?.width ?? 0)) || this.root.clientWidth;
+    let h = Math.round(Math.max(window.innerHeight, vv?.height ?? 0)) || this.root.clientHeight;
+    // A home-screen app fills the screen and never more. Right after an iOS
+    // launch one of the two readings can still be stale, and taking the
+    // larger of them then makes the game taller than the screen (its bottom
+    // cut off): no reading past the screen itself is believed.
+    if (STANDALONE && screen.width > 0 && screen.height > 0) {
+      const long = Math.max(screen.width, screen.height);
+      const short = Math.min(screen.width, screen.height);
+      const wide = w >= h;
+      w = Math.min(w, wide ? long : short);
+      h = Math.min(h, wide ? short : long);
+    }
     return { w, h };
+  }
+
+  private static layoutKey(w: number, h: number, sa: { l: number; r: number; t: number; b: number }): string {
+    return `${w}x${h}:${sa.l},${sa.r},${sa.t},${sa.b}`;
+  }
+
+  /** Lay out now, and again over the next second and a half. The player
+   *  (iPhone home-screen app, landscape): "when I first load … it's just not
+   *  scaled properly and rotating it back-and-forth seems to reset it". iOS
+   *  hands a freshly launched standalone page its safe-area insets (and at
+   *  times its final size) only after the first paint, and nothing fires
+   *  when they arrive; only a rotation used to make the game measure again. */
+  private settle(): void {
+    this.resize();
+    requestAnimationFrame(() => requestAnimationFrame(() => this.resize()));
+    for (const ms of [100, 300, 700, 1500]) setTimeout(() => this.resize(), ms);
+    this.settleUntil = performance.now() + 2000;
   }
 
   private resize(): void {
@@ -1609,7 +1654,8 @@ export class App {
     this.root.style.width = `${w}px`;
     this.root.style.height = `${h}px`;
     const sa = this.safeInsets();
-    this.layoutKey = `${w}x${h}:${sa.l},${sa.r},${sa.t},${sa.b}`;
+    this.layoutKey = App.layoutKey(w, h, sa);
+    this.insetCheck = performance.now();
     this.portrait = h > w;
     this.root.classList.toggle('portrait', this.portrait);
     this.dpr = Math.min(this.pixelCap, window.devicePixelRatio || 1);
@@ -1631,10 +1677,21 @@ export class App {
     this.placeBanner();
   }
 
-  /** Cheap per-frame check that catches a late size report with no event. */
-  private checkLayout(): void {
+  /** Cheap per-frame check that catches a late size report with no event.
+   *  The safe-area insets can change with no size change and no event too
+   *  (an iOS home-screen launch: they arrive after the first paint), so they
+   *  are read as well: every frame while the page settles, then four times a
+   *  second (reading them costs a style lookup). */
+  private checkLayout(now: number): void {
     const { w, h } = this.viewport();
-    if (!this.layoutKey.startsWith(`${w}x${h}:`)) this.resize();
+    if (!this.layoutKey.startsWith(`${w}x${h}:`)) {
+      this.resize();
+      return;
+    }
+    if (now < this.settleUntil || now - this.insetCheck >= 250) {
+      this.insetCheck = now;
+      if (App.layoutKey(w, h, this.safeInsets()) !== this.layoutKey) this.resize();
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1644,7 +1701,7 @@ export class App {
     const raw = now - (this.last || now);
     const real = Math.min(0.1, raw / 1000);
     this.last = now;
-    this.checkLayout();
+    this.checkLayout(now);
     const g = this.game;
     this.adaptResolution(now, raw);
     if (this.hitStop > 0) this.hitStop -= real;
