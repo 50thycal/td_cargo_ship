@@ -1,7 +1,7 @@
 # A tuning read on four processes at once (tools/v3/lantern/seeds.ts), pooled:
 # won %, ships lost in waves 1-5 and 1-10, and each wave's and boss round's
 # losses over the runs that reached it (normal) or every run (--tough).
-#   python3 tools/v3/lantern/read.py [--map=sowers] [--armory=player] [--seeds=192]
+#   python3 tools/v3/lantern/read.py [--map=lantern] [--armory=player] [--seeds=192]
 #       [--from=900] [--tough] [--no-enc] [--pilot=sharp] [--procs=4]
 import json
 import subprocess

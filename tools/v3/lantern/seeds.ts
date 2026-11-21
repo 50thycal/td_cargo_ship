@@ -1,7 +1,7 @@
 // One line of JSON a seed (won, ships lost per wave, the waves reached), as
 // the bot report's "you" bot plays a map card; `read.py` runs four of these
-// at once and pools them (the tuning reads in docs/design/v3-ch3-sowers.md).
-//   npx vite-node tools/v3/lantern/seeds.ts -- [--map=sowers] [--seeds=48]
+// at once and pools them (the tuning reads in docs/design/v3-ch3-lantern.md).
+//   npx vite-node tools/v3/lantern/seeds.ts -- [--map=lantern] [--seeds=48]
 //       [--from=900] [--armory=player|latest|plating|none] [--tough] [--no-enc]
 //       [--pilot=sharp|random|spam] (who presses Hold: sim/convoyPilot.ts)
 import type { MapId } from '../../../src/v3/data/maps';

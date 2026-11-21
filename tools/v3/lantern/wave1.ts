@@ -1,7 +1,7 @@
 // Wave 1 of a map card for a persona over many seeds (rule w-first: no ship
 // lost on wave 1; tests/v3/round12fixes.test.ts plays seeds 11-13 of "you"
 // and "casual"): how often a ship sinks, and to what.
-//   npx vite-node tools/v3/lantern/wave1.ts -- [--map=sowers] [--persona=casual] [--seeds=48] [--from=1]
+//   npx vite-node tools/v3/lantern/wave1.ts -- [--map=lantern] [--persona=casual] [--seeds=48] [--from=1]
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';

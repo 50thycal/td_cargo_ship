@@ -2,7 +2,7 @@
 // same dice (the encounter test's rule w-budget yardstick), by kind; as
 // tools/v3/battery/budget.ts, with each filler drone (log v47) weighed as
 // FILLER_WEIGHT of a launch, as the encounter test weighs it:
-//   npx vite-node tools/v3/lantern/budget.ts -- [--map=sowers]
+//   npx vite-node tools/v3/lantern/budget.ts -- [--map=lantern]
 import { FILLER_WEIGHT } from '../../../src/v3/data/encounters';
 import type { MapId } from '../../../src/v3/data/maps';
 import { applyEncounters, createGame, type Game } from '../../../src/v3/sim/game';

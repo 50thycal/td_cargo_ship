@@ -287,9 +287,20 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch3-lantern.md
   lantern: {
     problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
-    // COUNTERS: provisional until the combo sweep at log v50.
-    counters: ['railgun', 'lance', 'frigate'],
-    offCounter: ['seeker', 'scatter', 'fullSteam'],
+    // The fire comes out of the dark bank behind the ships on the shortest
+    // flights on the map (shells, missiles, clusters, swarms), with siege
+    // guns rising there whose shells no interceptor can stop. The
+    // Scattergun's burst catches what arrives close to the ships, the
+    // Gunship Pair covers the lane on its own, and the Shield takes the hit
+    // of a siege shell that can't be shot down. The Seeker Pod's long
+    // flight is late for a shell from the dark bank, the Tesla Arc's chain
+    // needs strings the scattered fire rarely makes, and Full Steam sails
+    // the convoy into the guns' circles (forced, the combo sweep's singles
+    // at log v50: Scattergun 3.8, Gunship Pair 4.6, Shield 4.7 against
+    // Seeker 11.3, Tesla 13.3, Full Steam 16.1; docs/design/
+    // v3-ch3-lantern.md, The counters). Every weapon is in chapter 3's draft.
+    counters: ['scatter', 'gunships', 'shield'],
+    offCounter: ['seeker', 'tesla', 'fullSteam'],
     convoy: 'The map\'s own convoy at flow 2 (as most of chapter 2\'s maps), no commands: pairs west to east down one lane under the lighthouse beam, past the carrier\'s lamp in the middle, delivering in the east with the enemy\'s dark bank right behind them.',
     stretches: { danger: 'late', safe: 'early' },
     boss: {

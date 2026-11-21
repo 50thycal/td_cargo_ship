@@ -1,7 +1,7 @@
-// The Carpet Run's rounds as the encounter test's bot plays them (the
+// The Bombardment's rounds as the encounter test's bot plays them (the
 // tryhard bot from wave 11 with a little Armory), seed by seed: each round's
 // outcome and what it sent (tests/v3/encounters.test.ts picks its seed here).
-//   npx vite-node tools/v3/lantern/probe-boss.ts -- [--from=218] [--seeds=12]
+//   npx vite-node tools/v3/lantern/probe-boss.ts -- [--from=225] [--seeds=12]
 import { PERSONAS, playMimic } from '../../../src/v3/sim/mimic';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
