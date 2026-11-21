@@ -209,7 +209,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), rigs: t('map-rigs'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -228,6 +228,8 @@ try {
   check(hub.saltgate === enc1, `Saltgate Canal says it opens with its encounters (${hub.saltgate})`);
   // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
   check(hub.battery === enc1, `Battery Point says it opens with its encounters (${hub.battery})`);
+  // Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): its Hold, and now its encounters.
+  check(hub.sowers === "Full map: waves 1–10 and 3 boss rounds · Commands: Hold · encounters v1 Original", `Sowers' Reach says it opens with Hold and its encounters (${hub.sowers})`);
   check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.rigs ?? ''), `a map with no commands or encounters yet says so ("${hub.rigs}")`);
   await shot(page, 'hub-card');
 
@@ -485,7 +487,8 @@ try {
   await page.waitForSelector('.playing.lab-on');
   await page.waitForFunction(() => document.querySelectorAll('.v3-command').length > 0, null, { timeout: 8000 });
   const s6 = await runState(page);
-  check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === 'hold' && s6.enc === null, `the bare link v3.html?lab=map-sowers opens the full map with Hold (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
+  // Log v48 (docs/design/v3-ch3-sowers.md): and its encounters.
+  check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === 'hold' && s6.enc === 4, `the bare link v3.html?lab=map-sowers opens the full map with Hold and its encounters (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
   // Round 8: a map card always gives its own new enemies their debut card
   // ("New on The Narrows: …"), even on a device that has met them (say in the
   // Test Lab's enemy cards), at Call-outs: Essential too. Another map's card
