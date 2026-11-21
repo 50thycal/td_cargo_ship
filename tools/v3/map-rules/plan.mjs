@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-20',
-  headline: 'Chapter 3 has started: The Battery is being rebuilt from your three campaign runs, and the iPhone first-load sizing is being fixed. Still open for you: play the Gatecrashers, and three questions (early waves, Lifeboats, Quartermaster).',
+  headline: 'Building from your answers: the Lifeboats and Quartermaster rework, Saltgate’s missile-truck parade, and the Battery (chapter 3). Then busier early waves. Nothing needs you right now.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -140,6 +140,7 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-21', what: 'Your answers read. Being built now: the Lifeboats rework (repair and extra life alternating by level) and Quartermaster’s path with the golden bomb that waits until you use it (log v44); Saltgate’s boss as a parade of ballistic-missile trucks instead of rocket trucks (log v45). The Battery rebuild (log v43) was interrupted by a server restart and has resumed. After those: a few more drones and easy kills in waves 1–6.' },
     { date: '2026-11-21', what: 'Merged #207: the iPhone first-load sizing fix. Cause: the game measured the notch and home-bar margins once at launch, before iOS had filled them in on a home-screen launch, and never looked again (rotating the phone made it re-measure). It now keeps re-checking for the first seconds after a launch or return, and can’t size itself taller than the screen. Tested on an emulated iPhone 874×402; please check on yours: open from the home screen in landscape without rotating.' },
     { date: '2026-11-21', what: 'Your three Battery runs read (production campaign, v40). Runs 1–2 (Warhead / Point Defense / Drops Armory) lost at waves 7 and 6, mostly to shells; run 2 lost 4 ships in wave 3. Run 3 (Reload / Plating / Magazine, Orbital and Aegis) reached wave 10, waves 6–9 rated 5 / 5 / 5, “one of the best rounds”, so the “too hard” note is set aside as you said. Started: chapter 3, with The Battery rebuilt to the rules (keep the climb, smooth the wave 3 shell spike, check wave 10 isn’t a wall), and a fix for the iPhone home-screen app not sizing itself right until you rotate the phone.' },
     { date: '2026-11-20', what: 'Merged #205 (log v42): Saltgate’s new boss, the Gatecrashers (your idea). Columns of Rocket Trucks drive in along both banks and fire at the ships held in the locks; each truck takes 4 hits, raises its launcher for 2.4 s with a dashed red line to the ship it will hit, and a wreck stalls the trucks behind it. Round 1: 8 trucks down the enemy bank; round 2: 8 over both banks; round 3: a charge of 13 at both locks, the last of each column firing a cluster into the chamber. No torpedo subs on Saltgate any more: the signature is Rocket Trucks at the locks from wave 4. Early waves have more going on (a second drone swarm in wave 1, a truck in waves 2 and 5, a second missile in wave 3). Bot with your Armory: won 62–67%, boss rounds about 1.0 / 1.6 / 1.8; waves 1–5 lose 0.23–0.29 (the bot kills every early truck before it fires). Saltgate’s best kits now share nothing with the other four maps. It runs in the Test Lab; the campaign still plays the old boss until you OK it.' },
@@ -186,38 +187,47 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
 
-  {
-    id: 'r13-early-waves',
-    kind: 'question',
-    title: 'Waves 1–6 feel flat on every map. Add action?',
-    text: 'On all five chapter 2 runs you rated waves 1–6 fun 1–2 and intensity 1, and wave 1 was the weakest every time; the climb from wave 7 to the boss scored 3–5. The rules keep early losses low (0.4–0.8 ships in waves 1–5), which is what the bots get, so this is about how much happens, not how hard it is.',
-    options: ['More action, same losses: more and weaker targets in waves 1–6, easy kills, an early pickup (recommended)', 'Shorter start: fewer quiet waves (e.g. 8 waves before the boss)', 'Leave it: a calm start is fine'],
-  },
-  {
-    id: 'r13-lifeboats',
-    kind: 'question',
-    title: 'Lifeboats rework: which one?',
-    text: 'Your idea: an extra life, maybe from the draft, or health restored to the ships or the carrier. Each option gives every level something new.',
-    options: ['Lifeboat card in the draft: pick it between waves for one extra life; levels make it show up more often and let you take it more times (recommended)', 'Reserve ships: one extra life at levels 1–2, two at 3–4, three at 5', 'Repair crews: between waves damaged ships and the carrier get health back, more each level', 'Mix: repair between waves at levels 1–4, plus one extra life at level 5'],
-  },
-  {
-    id: 'r13-quartermaster',
-    kind: 'question',
-    title: 'Quartermaster: something new at every level. This path?',
-    text: 'Your ideas: re-rolls, a free bomb, an automatic weapon level-up.',
-    options: ['L1 one re-roll · L2 two re-rolls · L3 a free bomb at the start of the boss · L4 three re-rolls · L5 four cards in the draft and one free weapon level-up a run (recommended)', 'Re-rolls only, one more each level (1 to 5)', 'L1–L4 re-rolls 1–4, L5 a free weapon level-up instead of the 4th card'],
-  },
-  {
-    id: 'r13-saltgate-trucks',
-    kind: 'item',
-    title: 'Play Saltgate Canal’s new boss, the Gatecrashers',
-    text: 'Test Lab → Ready to test → Saltgate Canal (or Skip to boss from the pause menu). Columns of Rocket Trucks drive in along both banks toward the ships waiting in the locks: shoot them on the way in. A dashed red line shows which ship a truck is about to hit. No subs on Saltgate now. Also try the new Retry wave and Skip to boss buttons, and check the wave-note field stays visible while you type. Approve (with a note) or Change; say if the Gatecrashers should replace the old boss in the campaign too.',
-  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r13-early-waves',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "More action, same difficulty: “just add in more drones and easy things to kill… doesn’t need to be super significant.” Being built after the Battery and Saltgate land.",
+    at: '2026-11-21',
+    title: "Waves 1–6 feel flat: add action?",
+    text: '',
+  },
+  {
+    id: 'r13-lifeboats',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "Alternate repair and extra life: L1 the carrier repairs 66% between waves; L2 66% for the carrier and every ship; L3 a Lifeboat (extra life) card can show up in the draft instead of an upgrade; L4 everything restored to 100% after each wave. Level 5 is proposed in the build. Being built.",
+    at: '2026-11-21',
+    title: "Lifeboats rework: which one?",
+    text: '',
+  },
+  {
+    id: 'r13-quartermaster',
+    kind: 'question',
+    verdict: 'Answered',
+    note: "The recommended path, with a golden bomb at L3 that stays on screen until you choose to use it: L1 one re-roll · L2 two · L3 golden bomb · L4 three re-rolls · L5 four cards and a free weapon level-up. Being built.",
+    at: '2026-11-21',
+    title: "Quartermaster: something new at every level?",
+    text: '',
+  },
+  {
+    id: 'r13-saltgate-trucks',
+    kind: 'item',
+    verdict: 'change',
+    note: "“I thought this would be the ballistic missile trucks? We already have a rocket truck convoy… a parade of them shooting off the ballistic missiles.” Being rebuilt as a parade of missile-launcher trucks.",
+    at: '2026-11-21',
+    title: "Play Saltgate’s Gatecrashers",
+    text: '',
+  },
   {
     id: 'r11-airstrike',
     kind: 'question',
