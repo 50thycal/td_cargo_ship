@@ -45,6 +45,7 @@ import {
   FASTBOAT,
   LOCK,
   MINE,
+  SOW,
   POST,
   VIP,
   isStructure,
@@ -237,6 +238,10 @@ export interface Threat {
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
   dropT?: number;
+  /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`): a stealth bomber that
+   *  sows mines ahead of the ships in place of its missiles (`bombs` is the
+   *  mines it still carries). */
+  sow?: boolean;
   /** The sub or truck that fired it. */
   from?: number;
   /** Telemetry only: the authored encounter (data/encounters.ts) that
@@ -428,6 +433,9 @@ export interface Launch {
   road?: number;
   salvos?: number;
   drive?: number;
+  /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`): a stealth bomber that
+   *  sows this many mines ahead of the ships in place of its missiles. */
+  sow?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1319,7 +1327,9 @@ function startWave(g: Game): void {
       if (isFoe(u.kind) && !fromBase(u.kind)) {
         // Saltgate Canal (log v42, MAP_SIGNATURE `trucks`): the wave's
         // Rocket Trucks fire at the ships held at the locks.
-        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}) });
+        // Sowers' Reach (log v48, MAP_SIGNATURE `sow`): its stealth bombers
+        // sow mines ahead of the ships in place of their missiles.
+        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1469,8 +1479,12 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // own lane (vipRoute), the Behemoth Run's strike on the tanker.
         // Log v43 (Battery Point, MAP_SIGNATURE `stealth`): a jet comes in
         // dark from the signature's first wave, as the wave's own do.
-        const kind = b.kind === 'strafer' && signatureOf(g.map.id, g.wave, enc.setup)?.stealth ? 'stealthJet' : b.kind;
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind, base: -1, side: b.from.air, enc: e.id, ...(b.aim === 'vip' ? { aim: 'vip' as const } : {}) });
+        // Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`): a stealth bomber
+        // sows mines from the signature's first wave, as the wave's own do.
+        const esig = signatureOf(g.map.id, g.wave, enc.setup);
+        const kind = b.kind === 'strafer' && esig?.stealth ? 'stealthJet' : b.kind;
+        const sow = kind === 'stealthBomber' && esig?.sow ? { sow: esig.sow } : {};
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 1.5), kind, base: -1, side: b.from.air, enc: e.id, ...(b.aim === 'vip' ? { aim: 'vip' as const } : {}), ...sow });
         start = Math.min(start, at - PLANE.warn);
       }
     }
@@ -5738,7 +5752,7 @@ export function routePose(g: Game, r: { lane: number; s: number; dir: number; la
 
 export function launchPlane(g: Game, l: Launch): void {
   const side = l.side ?? 1;
-  const route = l.y === undefined ? (l.aim === 'vip' && vipRoute(g)) || planeRoute(g, l.kind, g.rng.threats) : { y: l.y, lane: l.lane, lat: l.lat };
+  const route = l.y === undefined ? (l.sow ? sowRoute(g) : (l.aim === 'vip' && vipRoute(g)) || planeRoute(g, l.kind, g.rng.threats)) : { y: l.y, lane: l.lane, lat: l.lat };
   const y = route.y;
   let x = side > 0 ? -60 : VIEW.width + 60;
   let sy = y;
@@ -5767,6 +5781,48 @@ export function launchPlane(g: Game, l: Launch): void {
   th.hits = [];
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : l.kind === 'stealthBomber' ? FOE.stealthBomber.bombs : 0;
   th.dropT = 99;
+  if (l.sow) sowMines(th, l.sow);
+}
+
+/** Log v48 (Sowers' Reach): a bomber that sows `n` mines in place of its
+ *  missiles. */
+export function sowMines(th: Threat, n: number): void {
+  th.sow = true;
+  th.bombs = n;
+}
+
+/** A sowing bomber's line (log v48): along the first lane, SOW.line of its
+ *  half-width up-current of its middle, so the mines it lays drift across
+ *  the whole lane. A straight lane only (Sowers' Reach's); a bent one, the
+ *  bombers' own route. */
+function sowRoute(g: Game): { y: number; lane?: number; lat?: number } {
+  const ch = g.map.channels[0];
+  if (laneBends(ch)) return planeRoute(g, 'stealthBomber', g.rng.threats);
+  const up = (g.map.current?.y ?? 1) >= 0 ? -1 : 1;
+  return { y: ch.y + up * SOW.line * ch.halfWidth };
+}
+
+/** The ship a sowing bomber lays its next mine ahead of (log v48): one it
+ *  is SOW.near to SOW.far px ahead of along the ship's course, within
+ *  SOW.across of its line; the nearest such. */
+function sowAhead(g: Game, th: Threat): Ship | undefined {
+  let best: Ship | undefined;
+  let bd = Infinity;
+  for (const s of g.ships) {
+    const p = shipAhead(g, s, 1);
+    const hx = p.x - s.x;
+    const hy = p.y - s.y;
+    const L = Math.hypot(hx, hy);
+    if (L < 1e-6) continue;
+    const along = ((th.x - s.x) * hx + (th.y - s.y) * hy) / L;
+    const across = Math.abs((th.y - s.y) * hx - (th.x - s.x) * hy) / L;
+    if (along < SOW.near || along > SOW.far || across > SOW.across) continue;
+    if (along < bd) {
+      bd = along;
+      best = s;
+    }
+  }
+  return best;
 }
 
 /** Ballistics commit at launch to the point their ship will have reached.
@@ -6101,7 +6157,22 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
     }
   } else {
     th.dropT = (th.dropT ?? 99) + dt;
-    const ahead = inside < (th.kind === 'stealthBomber' ? FOE.stealthBomber.runIn : PLANE.bomberRunIn) ? undefined : g.ships
+    // Log v48 (Sowers' Reach): a sowing bomber lays a mine in the water a
+    // ship is about to sail through, in place of a missile at it.
+    if (th.sow) {
+      const runIn = th.kind === 'stealthBomber' ? FOE.stealthBomber.runIn : PLANE.bomberRunIn;
+      if ((th.bombs ?? 0) > 0 && th.dropT >= SOW.every && inside >= runIn && sowAhead(g, th)) {
+        th.bombs! -= 1;
+        th.dropT = 0;
+        const m = spawnThreat(g, 'mine', th.x, th.y, 'air');
+        m.parent = th.kind;
+        m.src = th.id;
+        cue(g, 'mine.drop', th.x, th.y);
+        g.origins.air -= 1;
+        g.origins.child += 1;
+      }
+    }
+    const ahead = th.sow ? undefined : inside < (th.kind === 'stealthBomber' ? FOE.stealthBomber.runIn : PLANE.bomberRunIn) ? undefined : g.ships
       .filter((s) => {
         const d = r ? planeFrame(g, th, s, th.x, th.y, tx, ty, r.s).along : (s.x - th.x) * side;
         return d > 0 && d < PLANE.dropReach;

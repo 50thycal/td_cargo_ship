@@ -4232,6 +4232,265 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 3's Sowers' Reach (log v48, docs/design/v3-ch3-sowers.md): the
+ *  map's three mine chutes on the far shore drop mines that drift down
+ *  across the lane on the current; a ship that touches one is sunk (three
+ *  hits), and a ship cannot steer round one, only stop (Hold). Each mine is
+ *  one easy shot, but the waves send them while the shells and missiles
+ *  come, so every shot at a mine is one not at a missile. The east of the
+ *  lane, where the ships deliver, is the danger: the east chute and the
+ *  silos over it, and the enemy's bank in the south-east a short flight
+ *  from the lane. Bases counted from 0 here: 0 the west silo (220, 100), 1
+ *  the west-middle (650, 95), 2 the east-middle (1100, 95), 3 the east
+ *  (1480, 100), 4 the south-east bank (1450, 805), 5-7 the chutes (west
+ *  430, middle 880, east 1270). */
+const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'sowers-current',
+    map: 'sowers',
+    waves: [1],
+    role: 'teach',
+    name: 'Mines on the current',
+    callout: 'Mines in the lane',
+    premise: 'The east chute drops a string of mines that drift down across the lane in front of the lead ship, and a few drones come off the east-middle silo at it.',
+    decision: 'The first look at the map\'s problem: a mine sinks a ship that sails into it, and one tap clears it.',
+    counters: 'Tap each mine before the lead ship reaches it, then the drones.',
+    succeeds: 'Nothing is sunk on wave 1; every mine is cleared or drifts past.',
+    notes: {
+      sites: 'The east chute (1270, 170; mines), the east-middle silo (1100, 95; drones).',
+      target: 'The water the lead ship sails into in the east; the drones at the lead ship.',
+      usesMap: 'Shows the map\'s mechanic on wave 1: mines drift down across the lane on the current, and the ships cannot steer round them.',
+    },
+    beats: [
+      { at: 0.2, kind: 'mine', count: 3, gap: 1.4, from: base(7) },
+      { at: 0.45, kind: 'drone', count: 3, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { drones: 3, extras: { mine: 2 } },
+  },
+  {
+    id: 'sowers-gap',
+    map: 'sowers',
+    waves: [2],
+    role: 'teach',
+    name: 'Clear a gap',
+    callout: 'Mines and shells',
+    premise: 'The middle chute drops a curtain of mines across the lane under the carrier, then the east silo lobs two shells at the lead ship.',
+    decision: 'Clear a gap in the curtain for the ships, or Hold them; then the shells.',
+    counters: 'The mines in the ships\' way first, then the shells as they climb.',
+    succeeds: 'No ship lost on wave 2; the ships pass the curtain through a gap or after it.',
+    notes: {
+      sites: 'The middle chute (880, 172; mines), the east silo (1480, 100; shells).',
+      target: 'The middle of the lane, under the carrier; the shells at the lead ship.',
+      usesMap: 'The mines as a curtain the convoy must pass, in place of the wave\'s own mines and shells.',
+    },
+    beats: [
+      { at: 0.25, kind: 'mine', count: 4, gap: 1.2, from: base(6) },
+      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 2, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-crossing',
+    map: 'sowers',
+    waves: [3],
+    role: 'teach',
+    name: 'While they cross',
+    callout: 'Shells in the minefield',
+    premise: 'Mines drift down from the east chute across the lead ship\'s water, and while they cross the east silo lobs shells at the lead ship and a swarm comes off the east-middle silo.',
+    decision: 'The first stakes: the mines and the shells at once, in the east where the ships deliver.',
+    counters: 'The shells as they climb, the mines in the lead ship\'s way, the swarm last.',
+    succeeds: 'A close call in the east in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The east chute (mines), the east silo (shells), the east-middle silo (a swarm).',
+      target: 'The lead ship and the water it sails into, in the east.',
+      usesMap: 'The shot split: a mine and a shell in the same seconds, in place of the wave\'s own mines and most of its shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, plus: 7, kind: 'ballistic', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { drones: 1, ballistic: 6, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-sown',
+    map: 'sowers',
+    waves: [4],
+    role: 'combine',
+    name: 'Sown',
+    callout: 'A bomber sowing mines',
+    premise: 'A stealth bomber runs in from the east along the top of the lane and sows mines in the water just ahead of the ships; the west chute drops mines on the ships coming in, and a swarm comes off the west silo at the middle.',
+    decision: 'The bomber (six hits) before it sows, or the mines it sows, one by one?',
+    counters: 'The bomber as it runs in, the mines in the ships\' way, the swarm.',
+    succeeds: 'The bomber is shot down in some runs, its mines cleared in most; no ship lost in most runs.',
+    notes: {
+      sites: 'A stealth bomber from the east edge, along the up-current edge of the lane; the west chute (430, 170; mines), the west silo (220, 100; a swarm).',
+      target: 'The water just ahead of each ship the bomber passes; the ships coming in; the ship halfway along.',
+      usesMap: 'The signature\'s first wave: mines sown right in front of the ships, with the shortest warning on the map, in place of the wave\'s own mines, its shells and a drone swarm.',
+    },
+    beats: [
+      { at: 0.35, kind: 'stealthBomber', count: 1, from: { air: -1 } },
+      { at: 0.15, kind: 'mine', count: 3, gap: 1.2, from: base(5) },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 6, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-hold',
+    map: 'sowers',
+    waves: [5],
+    role: 'combine',
+    name: 'Hold or sail',
+    callout: 'Mines ahead, shells overhead',
+    premise: 'The middle chute drops a curtain of mines across the lane; shells from the west silo follow at the ships halfway along, where a held convoy sits, and a guided missile comes off the enemy\'s bank in the south-east at the lead ship.',
+    decision: 'Hold the convoy for the curtain and sit under the shells, or clear a gap and sail on?',
+    counters: 'A gap in the curtain, the shells as they climb, the missile before it reaches the lead ship.',
+    succeeds: 'A close call in the middle or the east in most runs; the losses are not all at the curtain.',
+    notes: {
+      sites: 'The middle chute (mines), the west silo (shells), the south-east bank (1450, 805; a guided missile), the east-middle silo (a swarm).',
+      target: 'The middle of the lane (the curtain and the shells at the ship halfway along); the missile and the swarm at the lead ship.',
+      usesMap: 'Hold\'s cost: the ships stopped for the mines are still for the shells, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'mine', count: 4, gap: 1.1, from: base(6) },
+      { at: 0.3, plus: 8, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 6, guided: 1, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-two-fields',
+    map: 'sowers',
+    waves: [6],
+    role: 'combine',
+    name: 'Two fields',
+    callout: 'Mines at both ends',
+    premise: 'The west and east chutes drop mines at once, over the ships coming in and the lead ship; a cluster comes off the east silo at the lead ship and a swarm off the west silo at the ships coming in.',
+    decision: 'Both ends of the lane at once: which field first?',
+    counters: 'The cluster before it splits, the east mines, then the west.',
+    succeeds: 'A close call at one end in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The west and east chutes (mines), the east silo (a cluster, shells), the west silo (a swarm).',
+      target: 'The ships coming in (west mines, the swarm) and the lead ship (east mines, the cluster, the shells).',
+      usesMap: 'Both ends at once, in place of the wave\'s own mines, its cluster and most of its shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(5) },
+      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.75, kind: 'ballistic', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
+      { at: 0.12, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 12, extras: { mine: 5, cluster: 1 } },
+  },
+  {
+    id: 'sowers-periscope',
+    map: 'sowers',
+    waves: [7],
+    role: 'escalate',
+    name: 'Periscope in the field',
+    callout: 'A periscope by the mines',
+    premise: 'A periscope rises off the far shore in the east and fires at the lead ship while mines from the east chute cross its water; a guided missile comes off the enemy\'s bank and swarms come at the middle and the ships coming in.',
+    decision: 'The salvo or the mines in the lead ship\'s way: there is time for one first.',
+    counters: 'The shells as they climb, the mines in the lead ship\'s way, the missile, the swarms last.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A submarine off the far shore in the east (1500, 262), the east chute (mines), the south-east bank (a guided missile), the west and east-middle silos (swarms).',
+      target: 'The salvo, the mines and the missile at the lead ship; the swarms at the ship halfway along and the ships coming in.',
+      usesMap: 'Short warning in the danger stretch while the field crosses it, in place of the wave\'s own mines, most of its shells, two guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, plus: 6, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'mid' },
+      { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+    ],
+    replaces: { drones: 3, ballistic: 12, guided: 1, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-carpet',
+    map: 'sowers',
+    waves: [8],
+    role: 'escalate',
+    name: 'Carpet',
+    callout: 'Bombers sowing',
+    premise: 'Two stealth bombers sow mines ahead of the convoy, one from each side, while the east silo lobs shells at the lead ship and swarms come off both drone silos.',
+    decision: 'Two bombers at once: shoot one down and clear the other\'s mines, or Hold and let them drift?',
+    counters: 'A bomber as it runs in, the mines in the ships\' way, the shells as they climb.',
+    succeeds: 'One bomber is shot down in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Stealth bombers from the west and east edges along the up-current edge of the lane, the east silo (shells), the west and east-middle silos (swarms).',
+      target: 'The water just ahead of each ship the bombers pass; the shells at the lead ship; the swarms at the ship halfway along and the lead ship.',
+      usesMap: 'The signature twice over, a preview of the boss, in place of the wave\'s own mines, most of its shells and two drone swarms.',
+    },
+    beats: [
+      { at: 0.3, kind: 'stealthBomber', count: 1, from: { air: 1 } },
+      { at: 0.3, plus: 10, kind: 'stealthBomber', count: 1, from: { air: -1 } },
+      { at: 0.65, kind: 'ballistic', count: 2, gap: 0.75, from: base(3), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(2), aim: 'lead' },
+    ],
+    replaces: { ballistic: 15, extras: { mine: 3 } },
+  },
+  {
+    id: 'sowers-whole-reach',
+    map: 'sowers',
+    waves: [9],
+    role: 'escalate',
+    name: 'The whole reach',
+    callout: 'Mines everywhere',
+    premise: 'All three chutes drop mines at once across the whole lane, a cluster comes off the enemy\'s bank at the lead ship, and a guided missile and swarms come at the middle.',
+    decision: 'Mines across the whole lane and fire on top: where does the convoy need a gap most?',
+    counters: 'The cluster before it splits, the mines in the lead ship\'s way, the missile, the swarms.',
+    succeeds: 'Most mines are cleared or passed; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The three chutes (mines), the south-east bank (a cluster), the west-middle silo (a guided missile), the west and east-middle silos (swarms).',
+      target: 'The whole lane (the mines), the lead ship (the cluster), the ship halfway along (the missile, a swarm), any ship.',
+      usesMap: 'The mechanic across the whole lane at once, in place of the wave\'s own mines, most of its shells, two guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(6) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(7) },
+      { at: 0.3, plus: 7, kind: 'cluster', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(2) },
+    ],
+    replaces: { ballistic: 15, guided: 1, extras: { mine: 6, cluster: 1 } },
+  },
+  {
+    id: 'sowers-last-sowing',
+    map: 'sowers',
+    waves: [10],
+    role: 'climax',
+    name: 'The last sowing',
+    callout: 'The field and the fire',
+    premise: 'Once the wave\'s own fire is spent, a breath, then a stealth bomber sows mines ahead of the lead ship, the east chute drops more, a cluster and shells come at the lead ship and a swarm at the ships coming in.',
+    decision: 'Everything at once in the east: the map\'s question at its hardest.',
+    counters: 'The bomber as it runs in, the cluster and the shells, then the mines in the lead ship\'s way.',
+    succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'A stealth bomber from the east edge, the east chute (mines), the east silo (a cluster, shells), the west silo (a swarm), after the wave\'s own fire and a calm.',
+      target: 'The water ahead of the lead ship; the cluster and the shells at the lead ship; the swarm at the ships coming in.',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own mines, most of its shells and a cluster; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'stealthBomber', count: 1, from: { air: -1 } },
+      { at: 1, plus: 2, kind: 'mine', count: 3, gap: 1.1, from: base(7) },
+      { at: 1, plus: 4, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
+      { at: 1, plus: 6, kind: 'ballistic', count: 2, gap: 0.75, from: base(3), aim: 'lead' },
+      { at: 1, plus: 5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'mid' },
+    ],
+    replaces: { ballistic: 15, extras: { mine: 3, cluster: 1 } },
+    calm: 6,
+  },
+];
+
 /** Busier early waves (log v47, docs/design/v3-playtest-fixes.md "Busier
  *  early waves"). The player's chapter 2 playtests rated waves 1-6 fun 1-2,
  *  intensity 1 on every map, and wave 1 the weakest every time; their
@@ -4307,6 +4566,9 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // wave-1 ships for the no-Armory bots: wave 2 only, early, out of the east
   // silo (late, the waves ran on and its wave 7 rose).
   ['battery-ranging', [fill(0.1, 3, 3)]],
+  // Sowers' Reach (log v48): the west silo and the east-middle one, the
+  // map's two drone silos on the far shore, waves 1-6.
+  ...busy(['sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold', 'sowers-two-fields'], 0, 2),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -4329,6 +4591,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...SALTGATE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 3, Dark Water (docs/design/v3-ch3-battery.md).
   ...BATTERY_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch3-sowers.md)
+  ...SOWERS_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
 
 /** The rev an encounter came in. */
@@ -4375,9 +4639,10 @@ export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap | ChapterThreeMap;
 export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | 'saltgate';
 export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 /** Chapter 3, Dark Water, a map at a time as chapter 2's were: so far Battery
- *  Point (log v45, docs/design/v3-ch3-battery.md). */
-export type ChapterThreeMap = 'battery';
-export const CHAPTER_THREE_MAPS: MapId[] = ['battery'];
+ *  Point (log v45, docs/design/v3-ch3-battery.md) and Sowers' Reach (log
+ *  v48, docs/design/v3-ch3-sowers.md). */
+export type ChapterThreeMap = 'battery' | 'sowers';
+export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -4468,6 +4733,11 @@ const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96]
  *  send a little less, within ±15% of each wave and never more than the
  *  ten. */
 const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
+/** Sowers' Reach (log v48): its shared waves are among the heaviest of any
+ *  map (threat scale 1.45: the bot won 0-8% with the player's Armories), so
+ *  waves 4-10 send a little less, within ±15% of each wave and never more
+ *  than the ten. */
+const SOWERS_CLIMB = [1, 1, 1, 0.95, 0.92, 0.9, 0.88, 0.88, 0.88, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4481,6 +4751,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; rocket trucks drive down to the locks from wave 4.', callouts: false, scale: SALTGATE_CLIMB } },
   // Chapter 3.
   battery: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two allied shore guns on the headland: they cover the ships about to deliver while they stand, and the enemy\'s shells and heavies go for them first; jets come in dark from wave 4.', callouts: false, scale: BATTERY_CLIMB } },
+  sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
 };
 
 /** A map's version (none for a map with no authored layer, or a version a
@@ -4572,6 +4843,11 @@ export interface MapSignature {
    *  Stealth Strafers (the Blackout's own: no warning arrow, only their
    *  short run-in), one for one, so the wave sends no more (rule w-budget). */
   stealth?: boolean;
+  /** Sowers' Reach (log v48): the wave's stealth bombers (the Carpet Run's
+   *  own) sow this many mines each, in place of their missiles, in the
+   *  water just ahead of the ships, from a line along the up-current edge
+   *  of the lane (data/config.ts SOW). */
+  sow?: number;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -4614,6 +4890,13 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // Strafers, the Blackout's own (the boss rounds' night raiders), with no
   // warning arrow. Chapter 3's new enemies keep their debut waves (2-6).
   battery: { from: 4, heavies: 'post', stealth: true },
+  // Sowers' Reach (log v48, docs/design/v3-ch3-sowers.md): "sown", from
+  // wave 4. Half the wave's new enemies (rounded up) are Stealth Bombers,
+  // the Carpet Run's own, and every stealth bomber sows mines in the water
+  // just ahead of the ships in place of its missiles, from a line along the
+  // up-current edge of the lane: a mine with the shortest warning on the
+  // map, from a bomber that takes six hits to stop.
+  sowers: { from: 4, foe: 'stealthBomber', foeShare: 0.5, sow: 3 },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -4749,6 +5032,16 @@ export interface BossRound {
   jets?: number;
   jetAt?: number;
   jetGap?: number;
+  /** Sowers' Reach's Carpet Run (log v48): `vees` vees of three stealth
+   *  bombers (the event's own: 2), the first `veeAt` s into the round,
+   *  `veeGap` s apart (the event's: 11), `veeHp` hits each (the event's: 3),
+   *  each sowing `sow` mines ahead of the convoy in place of its missiles
+   *  (absent: its missiles, as the event's). */
+  vees?: number;
+  veeAt?: number;
+  veeGap?: number;
+  veeHp?: number;
+  sow?: number;
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -4760,7 +5053,7 @@ export interface BossRound {
 export interface BossFire {
   /** A strike jet (log v33) comes in from the edges in turn, not a base,
    *  and with aim 'vip' flies down the supertanker's lane. */
-  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic' | 'strafer' | 'cluster' | 'mothership';
+  kind: 'drone' | 'ballistic' | 'guided' | 'heavy' | 'supersonic' | 'strafer' | 'cluster' | 'mothership' | 'mine';
   at: number;
   count?: number;
   gap?: number;
@@ -4923,6 +5216,19 @@ export const BATTERY_BOSS_ROUNDS: BossRound[] = [
   { jets: 9, jetAt: 2, jetGap: 2.2, fire: [{ kind: 'ballistic', at: 1, count: 3, gap: 1, base: 2, aim: 'post' }, { kind: 'heavy', at: 3, count: 1, base: 1, aim: 'post' }, { kind: 'heavy', at: 7, count: 1, base: 3, aim: 'post' }] },
 ];
 
+/** Sowers' Reach's Carpet Run (log v48, docs/design/v3-ch3-sowers.md): vees
+ *  of three stealth bombers across the lane (before: 2 vees of 3, 11 s
+ *  apart, 3 hits each, each dropping its 3 guided missiles at the ships,
+ *  every round), with the map's signature in it: each bomber sows a carpet
+ *  of mines just ahead of the convoy in place of its missiles, while the
+ *  chutes drop more and the silos fire at the lead ship. Rising: more vees,
+ *  closer together, more mines and more fire each round. */
+export const SOWERS_BOSS_ROUNDS: BossRound[] = [
+  { vees: 2, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 6 }, { kind: 'ballistic', at: 6, count: 2, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'ballistic', at: 6, count: 2, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 12, count: 1, base: 4, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 7, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 10, count: 1, base: 4, aim: 'lead' }] },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -4964,6 +5270,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   saltgate: { rounds: SALTGATE_BOSS_ROUNDS, name: 'Gatecrashers', truck: SALTGATE_TRUCK },
   // Chapter 3 (BATTERY_BOSS_ROUNDS above).
   battery: { rounds: BATTERY_BOSS_ROUNDS },
+  sowers: { rounds: SOWERS_BOSS_ROUNDS },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or
@@ -5003,6 +5310,9 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   bomber: ['bomber', 'bombers'],
   supersonic: ['supersonic missile', 'supersonic missiles'],
   rocketTruck: ['rocket truck', 'rocket trucks'],
+  cluster: ['cluster missile', 'cluster missiles'],
+  mine: ['drifting mine', 'drifting mines'],
+  stealthBomber: ['stealth bomber', 'stealth bombers'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
