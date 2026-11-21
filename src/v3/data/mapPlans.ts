@@ -238,12 +238,22 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // ---- Chapter 3, Dark Water (docs/design/v3-ch3-battery.md) ----
   battery: {
     problem: 'Two shore guns of your own on the headland cover the east of the lane, where the ships deliver, while they stand: the enemy\'s shells and heavies go for the guns first, and each one knocked out leaves the ships under it uncovered for twelve seconds, while the middle of the lane, between your carrier and the guns, is covered by neither.',
-    counters: ['aegis', 'orbital', 'railgun'],
-    offCounter: ['seeker', 'droneScreen', 'well'],
+    // The fire is heavies at the guns (eight hits each, slow), shells at
+    // them and at the ships, siege guns and jets that come in dark. The
+    // Railgun's line reaches a heavy all the way in and a siege gun on the
+    // shore; the Gunship Pair fights on its own over the convoy while your
+    // hand is on the guns' heavies; the Thermobaric Shell's blast takes a
+    // swarm and what flies with it. The Seeker Pod's long flight is late for
+    // a shell, the Drone Screen fights one drone at a time, and the
+    // Shrapnel Shell's burst does little to a heavy (forced, the combo
+    // sweep's singles: docs/design/v3-ch3-battery.md, The counters).
+    // Every weapon is in chapter 3's draft.
+    counters: ['railgun', 'gunships', 'thermo'],
+    offCounter: ['seeker', 'droneScreen', 'shrapnel'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane, past the carrier in the west, through the open middle and under the shore guns on the headland to deliver in the east.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
-      plan: 'The Blackout at the guns: night, stealth strafers from alternate sides (6, 7, then 8, closer together each round; the event sends 8 every round), with shells from the silo across from the headland at your shore guns each round and, from round 2, a heavy cruise missile at them, round 3 a cluster over the ships coming in too (encounters rev 4, MAP_BOSS; lab only).',
+      plan: 'The Blackout at the guns: night, stealth strafers from alternate sides (7, 8, then 9, 2.4, 2.3 and 2.2 s apart; the event sends 8, 2.4 s apart, every round), with shells from the silo across from the headland (2, 2, then 3) and a heavy cruise missile (1, 1, then 2) at your shore guns each round, so the guns that shoot at the jets are the first target (encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on chapter 2\'s maps, to keep the win rate up.',
       botTarget: 2,
     },
   },
