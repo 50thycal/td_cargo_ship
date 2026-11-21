@@ -4285,7 +4285,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.25, kind: 'mine', count: 4, gap: 1.2, from: base(6) },
-      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
+      { at: 0.7, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
     ],
     replaces: { ballistic: 2, extras: { mine: 3 } },
   },
@@ -4330,10 +4330,10 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'stealthBomber', count: 1, from: { air: -1 } },
-      { at: 0.15, kind: 'mine', count: 3, gap: 1.2, from: base(5) },
+      { at: 0.15, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 6, extras: { mine: 3 } },
+    replaces: { ballistic: 5, extras: { mine: 3 } },
   },
   {
     id: 'sowers-hold',
@@ -4352,12 +4352,12 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Hold\'s cost: the ships stopped for the mines are still for the shells, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 4, gap: 1.1, from: base(6) },
-      { at: 0.3, plus: 8, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
-      { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.3, kind: 'mine', count: 3, gap: 1.3, from: base(6) },
+      { at: 0.3, plus: 8, kind: 'ballistic', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 6, guided: 1, extras: { mine: 3 } },
+    replaces: { ballistic: 4, guided: 1, extras: { mine: 3, cluster: 1 } },
   },
   {
     id: 'sowers-two-fields',
@@ -4380,10 +4380,10 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
       { at: 0.3, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 0.75, kind: 'ballistic', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
+      { at: 0.75, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
       { at: 0.12, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
     ],
-    replaces: { ballistic: 12, extras: { mine: 5, cluster: 1 } },
+    replaces: { ballistic: 11, extras: { mine: 5, cluster: 1 } },
   },
   {
     id: 'sowers-periscope',
@@ -4405,10 +4405,10 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
       { at: 0.3, plus: 6, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'mid' },
-      { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+      { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 3, ballistic: 12, guided: 1, extras: { mine: 3 } },
+    replaces: { drones: 3, ballistic: 10, guided: 1, extras: { mine: 3 } },
   },
   {
     id: 'sowers-carpet',
@@ -4429,11 +4429,11 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'stealthBomber', count: 1, from: { air: 1 } },
       { at: 0.3, plus: 10, kind: 'stealthBomber', count: 1, from: { air: -1 } },
-      { at: 0.65, kind: 'ballistic', count: 2, gap: 0.75, from: base(3), aim: 'lead' },
-      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 15, extras: { mine: 3 } },
+    replaces: { ballistic: 14, extras: { mine: 3, stealthBomber: 1 } },
   },
   {
     id: 'sowers-whole-reach',
@@ -4455,7 +4455,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
       { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(6) },
       { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(7) },
-      { at: 0.3, plus: 7, kind: 'cluster', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.3, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(2) },
@@ -4484,9 +4484,9 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 4, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 1, plus: 6, kind: 'ballistic', count: 2, gap: 0.75, from: base(3), aim: 'lead' },
       { at: 1, plus: 5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'mid' },
+      { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 15, extras: { mine: 3, cluster: 1 } },
+    replaces: { ballistic: 14, extras: { mine: 3, cluster: 1, stealthBomber: 1 } },
     calm: 6,
   },
 ];
@@ -4737,7 +4737,7 @@ const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  map (threat scale 1.45: the bot won 0-8% with the player's Armories), so
  *  waves 4-10 send a little less, within ±15% of each wave and never more
  *  than the ten. */
-const SOWERS_CLIMB = [1, 1, 1, 0.95, 0.92, 0.9, 0.88, 0.88, 0.88, 0.9];
+const SOWERS_CLIMB = [1, 0.9, 0.88, 0.86, 0.86, 0.88, 0.88, 0.88, 0.88, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4896,7 +4896,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // just ahead of the ships in place of its missiles, from a line along the
   // up-current edge of the lane: a mine with the shortest warning on the
   // map, from a bomber that takes six hits to stop.
-  sowers: { from: 4, foe: 'stealthBomber', foeShare: 0.5, sow: 3 },
+  sowers: { from: 4, foe: 'stealthBomber', foeShare: 1, sow: 3 },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
