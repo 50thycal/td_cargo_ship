@@ -4343,15 +4343,15 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [5],
     role: 'combine',
     name: 'Hold or sail',
-    callout: 'Mines ahead, a shell overhead',
-    premise: 'The middle chute drops a curtain of mines across the lane; a shell from the west silo follows at the ship halfway along, where a held convoy sits, a guided missile comes off the west-middle silo at the lead ship, and swarms come off both drone silos.',
+    callout: 'Mines ahead, shells overhead',
+    premise: 'The middle chute drops a curtain of mines across the lane; shells from the west silo follow at the ship halfway along, where a held convoy sits, a guided missile comes off the west-middle silo at the lead ship, and swarms come off both drone silos.',
     decision: 'Hold the convoy for the curtain and sit under the shells, or clear a gap and sail on?',
-    counters: 'A gap in the curtain, the shell as it climbs, the missile before it reaches the lead ship.',
+    counters: 'A gap in the curtain, the shells as they climb, the missile before it reaches the lead ship.',
     succeeds: 'A close call in the middle or the east in most runs; the losses are not all at the curtain.',
     notes: {
-      sites: 'The middle chute (mines), the west silo (a shell, a swarm), the west-middle silo (650, 95; a guided missile), the east-middle silo (a swarm).',
-      target: 'The middle of the lane (the curtain and the shell at the ship halfway along); the missile at the lead ship; the swarms at any ship.',
-      usesMap: 'Hold\'s cost: the ships stopped for the mines sit still for the shell, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
+      sites: 'The middle chute (mines), the west silo (shells, a swarm), the west-middle silo (650, 95; a guided missile), the east-middle silo (a swarm).',
+      target: 'The middle of the lane (the curtain and the shells at the ship halfway along); the missile at the lead ship; the swarms at any ship.',
+      usesMap: 'Hold\'s cost: the ships stopped for the mines sit still for the shells, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
     },
     beats: [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.3, from: base(6) },
@@ -4395,14 +4395,14 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Periscope in the field',
     callout: 'A periscope by the mines',
-    premise: 'A periscope rises off the far shore in the east and fires at the lead ship while mines from the east chute cross its water; a guided missile comes off the west-middle silo at it and swarms come off both drone silos.',
+    premise: 'A periscope rises off the far shore in the east and fires at the lead ship while mines from the east chute cross its water; a guided missile comes off the west-middle silo at the middle and swarms come off both drone silos.',
     decision: 'The salvo or the mines in the lead ship\'s way: there is time for one first.',
-    counters: 'The shells as they climb, the mines in the lead ship\'s way, the missile, the swarms last.',
+    counters: 'The shells as they climb, the mines in the lead ship\'s way, then the missile and the swarms.',
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
     notes: {
       sites: 'A submarine off the far shore in the east (1500, 262), the east chute (mines), the west-middle silo (a guided missile), the west and east-middle silos (swarms).',
-      target: 'The salvo, the mines and the missile at the lead ship; the swarms at any ship.',
-      usesMap: 'Short warning in the danger stretch while the field crosses it, in place of the wave\'s own mines, most of its shells, two guided missiles and a cluster.',
+      target: 'The salvo and the mines at the lead ship; the missile at the ship halfway along; the swarms at any ship.',
+      usesMap: 'Short warning in the danger stretch while the field crosses it, in place of the wave\'s own mines, its shells, a guided missile and its two clusters.',
     },
     beats: [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
@@ -4427,7 +4427,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'A stealth bomber from the west edge, then one from the east edge, each along the up-current edge of the lane; the west and east-middle silos (swarms).',
       target: 'The water just ahead of each ship the bombers pass; a swarm at the lead ship, the others at any ship.',
-      usesMap: 'The signature twice over, a preview of the boss, in place of the wave\'s own mines, its shells, a guided missile, a cluster and one of its own stealth bombers.',
+      usesMap: 'The signature twice over, a preview of the boss, in place of the wave\'s own mines, its shells, a guided missile, a cluster and its own two stealth bombers.',
     },
     beats: [
       { at: 0.3, kind: 'stealthBomber', count: 1, from: { air: 1 } },
@@ -4445,13 +4445,13 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'The whole reach',
     callout: 'Mines everywhere',
-    premise: 'All three chutes drop mines at once across the whole lane, a cluster comes off the east silo at the lead ship, and a guided missile and swarms come at the middle.',
+    premise: 'All three chutes drop mines at once across the whole lane, while a cluster off the east silo, a guided missile and swarms come at the middle.',
     decision: 'Mines across the whole lane and fire on top: where does the convoy need a gap most?',
-    counters: 'The cluster before it splits, the mines in the lead ship\'s way, the missile, the swarms.',
+    counters: 'The cluster before it splits, the mines in the ships\' way, the missile, the swarms.',
     succeeds: 'Most mines are cleared or passed; the wave hurts but does not end the run.',
     notes: {
       sites: 'The three chutes (mines), the east silo (1480, 100; a cluster), the west-middle silo (a guided missile), the west and east-middle silos (swarms).',
-      target: 'The whole lane (the mines), the lead ship (the cluster), the ship halfway along (the missile, a swarm), any ship.',
+      target: 'The whole lane (the mines); the ship halfway along (the cluster, the missile, a swarm); any ship.',
       usesMap: 'The mechanic across the whole lane at once, in place of the wave\'s own mines, most of its shells, two guided missiles and a cluster.',
     },
     beats: [
@@ -4472,13 +4472,13 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'The last sowing',
     callout: 'The field and the fire',
-    premise: 'Once the wave\'s own fire is spent, a breath, then a stealth bomber sows mines ahead of the lead ship, the east chute drops more, a cluster and shells come at the lead ship and swarms at the ships coming in and anywhere.',
+    premise: 'Once the wave\'s own fire is spent, a breath, then a stealth bomber sows mines ahead of the lead ship, the east chute drops more, a cluster and a shell come at the lead ship and swarms at the ships coming in and anywhere.',
     decision: 'Everything at once in the east: the map\'s question at its hardest.',
-    counters: 'The bomber as it runs in, the cluster and the shells, then the mines in the lead ship\'s way.',
+    counters: 'The bomber as it runs in, the cluster and the shell, then the mines in the lead ship\'s way.',
     succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
     notes: {
-      sites: 'A stealth bomber from the east edge, the east chute (mines), the east silo (a cluster, shells), the west and east-middle silos (swarms), after the wave\'s own fire and a calm.',
-      target: 'The water ahead of the lead ship; the cluster and the shells at the lead ship; a swarm at the ships coming in, the other at any ship.',
+      sites: 'A stealth bomber from the east edge, the east chute (mines), the east silo (a cluster, a shell), the west and east-middle silos (swarms), after the wave\'s own fire and a calm.',
+      target: 'The water ahead of the lead ship; the cluster and the shell at the lead ship; a swarm at the ships coming in, the other at any ship.',
       usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own mines, its shells, a cluster and two of its own stealth bombers; the climax may reach the safe stretch.',
     },
     beats: [
@@ -5227,9 +5227,9 @@ export const BATTERY_BOSS_ROUNDS: BossRound[] = [
  *  chutes drop more and the silos fire at the lead ship. Rising: more vees,
  *  closer together, more mines and more fire each round. */
 export const SOWERS_BOSS_ROUNDS: BossRound[] = [
-  { vees: 2, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 6 }, { kind: 'ballistic', at: 6, count: 2, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
-  { vees: 3, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'ballistic', at: 6, count: 2, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 12, count: 1, base: 4, aim: 'lead' }] },
-  { vees: 3, veeAt: 1, veeGap: 7, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 10, count: 1, base: 4, aim: 'lead' }] },
+  { vees: 2, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 6 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 7, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 9, count: 2, gap: 3, base: 4, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

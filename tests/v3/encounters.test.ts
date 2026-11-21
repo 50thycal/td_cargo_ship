@@ -1310,8 +1310,9 @@ describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more vees of stealth bombers each round, closer together, each sowing mines ahead of the convoy, with mines off the chutes and fire at the lead ship', () => {
-    const off = playMimic('sowers', 218, opts);
-    const old = playMimic('sowers', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // (Seed 220: the tryhard bot plays all three rounds there; tools/v3/sowers/probe-boss.ts.)
+    const off = playMimic('sowers', 220, opts);
+    const old = playMimic('sowers', 220, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own two vees of three, and nothing else.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
     expect(old.log.commands).toEqual(off.log.commands);
@@ -1320,7 +1321,7 @@ describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows
       expect(e.sent.stealthBomber).toBe(6);
       expect((e.sent.mine ?? 0) + (e.sent.ballistic ?? 0) + (e.sent.guided ?? 0)).toBe(0);
     }
-    const on = playMimic('sowers', 218, { ...opts, encounters: VER('v1') });
+    const on = playMimic('sowers', 220, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.sowers!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['carpet-run', 1], ['carpet-run', 2], ['carpet-run', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);

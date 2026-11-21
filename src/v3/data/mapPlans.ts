@@ -280,7 +280,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     convoy: 'The map\'s own convoy at the campaign\'s schedule, with Hold, the map\'s one command (rule m-convoy: the mines need it): pairs west to east down one lane under the three chutes, delivering in the east under the silos over the east end and the enemy\'s bank in the south-east; Hold stops every ship for up to 6 s so a string of mines can drift through, at the cost of sitting still under the rest of the wave.',
     stretches: { danger: 'late', safe: 'early' },
     boss: {
-      plan: 'The Carpet Run sowing: vees of three stealth bombers across the lane (2, 3, then 3; 8, 8 and 7 s apart; 3 hits each), each sowing a carpet of 3 mines just ahead of the convoy in place of its missiles (the event sends 2 vees, 11 s apart, dropping guided missiles, every round), with mines off the chutes (3, 3, then 6) and shells and a guided missile at the lead ship each round (encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery, to keep the win rate up.',
+      plan: 'The Carpet Run sowing: vees of three stealth bombers across the lane (2, 3, then 3; 8, 8 and 7 s apart; 3 hits each), each sowing 3 mines just ahead of the convoy in place of its missiles (the event sends 2 vees, 11 s apart, dropping guided missiles, every round), with mines off the chutes (3, 3, then 6), 3 shells from the east silo and guided missiles from the enemy\'s bank in the south-east (1, 1, then 2) at the lead ship (encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery, to keep the win rate up.',
       botTarget: 2,
     },
   },
