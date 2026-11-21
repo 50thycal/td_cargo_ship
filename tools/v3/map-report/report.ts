@@ -3,7 +3,7 @@
 // to design the map's waves.
 //
 //   npx vite-node tools/v3/map-report/report.ts -- --map=strait [--seeds=24]
-//       [--kits=aimed,self | --kits=name:id+id+id,... | --kits=plan] [--armory=player|latest]
+//       [--kits=aimed,self | --kits=name:id+id+id,... | --kits=plan] [--armory=player|latest|plating]
 //       [--persona=you] [--no-heat] [--out=tools/v3/map-report/results]
 //       [--no-fun] [--fun-dice=3] [--fun-placebo]
 //
@@ -30,7 +30,7 @@ import { REPORT_WAVES, STRETCH_NAMES, kitSummary, lookAt, mapReport, type KitSum
 import { playReportRun, type ReportPlayOpts } from '../../../src/v3/sim/mapReportPlay';
 import { FUN, SAVE_NAMES, SHAPE_NAMES, funDigest, funOfLog, waveName, type FunDigest, type SaveKind } from '../../../src/v3/sim/funMetrics';
 import type { PlayLog } from '../../../src/v3/sim/playlog';
-import { LATEST_ARMORY, PLAYER_ARMORY } from '../bot-fit/measure';
+import { LATEST_ARMORY, PLATING_ARMORY, PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
@@ -261,7 +261,9 @@ async function main(): Promise<void> {
   const armoryOpt = opt('armory');
   const latestArmory = armoryOpt === 'latest';
   const playerArmory = armoryOpt === 'player';
-  const armory = latestArmory ? LATEST_ARMORY : playerArmory ? PLAYER_ARMORY : {};
+  // --armory=plating: the player's other Armory on the Battery (PLATING_ARMORY).
+  const platingArmory = armoryOpt === 'plating';
+  const armory = latestArmory ? LATEST_ARMORY : playerArmory ? PLAYER_ARMORY : platingArmory ? PLATING_ARMORY : {};
   const outDir = opt('out') ?? 'tools/v3/map-report/results';
   const kits = await kitList(opt('kits'), map);
   const heat = !args.includes('--no-heat');
@@ -270,7 +272,7 @@ async function main(): Promise<void> {
   const t0 = Date.now();
   const base: ReportPlayOpts = { persona, armory };
   const logs: PlayLog[] = [];
-  console.log(`${MAPS[map].name}: ${seeds.length} seeds, persona ${persona}, Armory ${latestArmory ? 'latest' : playerArmory ? 'player' : 'none'}`);
+  console.log(`${MAPS[map].name}: ${seeds.length} seeds, persona ${persona}, Armory ${latestArmory ? 'latest' : playerArmory ? 'player' : platingArmory ? 'plating' : 'none'}`);
   const normal = pass(map, seeds, base, heat || fun ? logs : undefined);
   console.log(`  normal   ${((Date.now() - t0) / 1000).toFixed(0)} s`);
   const funIn = fun ? funPass(logs, funDice, args.includes('--fun-placebo')) : undefined;
@@ -289,7 +291,7 @@ async function main(): Promise<void> {
   const date = new Date().toISOString().slice(0, 10);
   const command = `npx vite-node tools/v3/map-report/report.ts -- ${args.join(' ')}`;
   // --armory=player writes beside the baseline's files, not over them.
-  const name = `${map}${playerArmory ? '-player' : latestArmory ? '-latest' : ''}${persona !== 'you' ? `-${persona}` : ''}`;
+  const name = `${map}${playerArmory ? '-player' : latestArmory ? '-latest' : platingArmory ? '-plating' : ''}${persona !== 'you' ? `-${persona}` : ''}`;
   const heatPath = `${outDir}/${name}-heat.html`;
   const heatOk = heat && (await heatMap(logs, heatPath, `${MAPS[map].name}: bot heat map`));
   if (report.fun) {
@@ -303,7 +305,7 @@ async function main(): Promise<void> {
     console.log(`  shape       ${W.map((w) => (w.n ? SHAPE_NAMES[w.shape].split(' ').map((x) => x[0]).join('') : '-').padStart(6)).join('')}`);
     if (report.fun.placebo) console.log(`  placebo     ${report.fun.placebo.map((v) => f(v, 2).padStart(6)).join('')}`);
   }
-  const meta = { persona, armory: playerArmory ? `the player's (${JSON.stringify(PLAYER_ARMORY)})` : latestArmory ? `the player's latest (${JSON.stringify(LATEST_ARMORY)})` : 'none (baseline)', date, command, heat: heatOk ? heatPath : null };
+  const meta = { persona, armory: playerArmory ? `the player's (${JSON.stringify(PLAYER_ARMORY)})` : latestArmory ? `the player's latest (${JSON.stringify(LATEST_ARMORY)})` : platingArmory ? `the player's plating set (${JSON.stringify(PLATING_ARMORY)})` : 'none (baseline)', date, command, heat: heatOk ? heatPath : null };
   writeFileSync(`${outDir}/${name}.json`, `${JSON.stringify({ about: 'Bot report (docs/design/v3-map-report.md). Made by tools/v3/map-report/report.ts.', ...meta, waves: REPORT_WAVES, report }, tidy, 1)}\n`);
   writeFileSync(`${outDir}/${name}.md`, markdown(report, meta));
   console.log(`\n${row(['Rule', 'Check', 'Value', 'Target', 'Result'])}`);

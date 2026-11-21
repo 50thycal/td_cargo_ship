@@ -1,6 +1,6 @@
 // A quick bot read while tuning a map (no fun pass, no heat map, no kits):
 //   npx vite-node tools/v3/map-report/quick.ts -- --map=island [--seeds=24]
-//       [--armory=player|latest|none] [--no-enc] [--tough] [--taste=a+b+c]
+//       [--armory=player|latest|plating|none] [--no-enc] [--tough] [--taste=a+b+c]
 //       [--from=900] (the first seed: --from=948 reads the next 48)
 // Prints won %, ships lost per wave (over the runs that reached it) and the
 // boss rounds, in a few lines. For tuning only: the bot report (report.ts)
@@ -8,7 +8,7 @@
 import { MAPS, type MapId } from '../../../src/v3/data/maps';
 import type { AbilityId } from '../../../src/v3/data/abilities';
 import { playReportRun } from '../../../src/v3/sim/mapReportPlay';
-import { LATEST_ARMORY, PLAYER_ARMORY } from '../bot-fit/measure';
+import { LATEST_ARMORY, PLATING_ARMORY, PLAYER_ARMORY } from '../bot-fit/measure';
 
 const args = process.argv.slice(2).filter((a) => a !== '--');
 const opt = (k: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=').slice(1).join('=');
@@ -16,7 +16,7 @@ const map = opt('map') as MapId;
 if (!MAPS[map]) throw new Error('--map=<id> is required');
 const n = Number(opt('seeds') ?? 24);
 const a = opt('armory') ?? 'player';
-const armory = a === 'latest' ? LATEST_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
+const armory = a === 'latest' ? LATEST_ARMORY : a === 'plating' ? PLATING_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const taste = opt('taste')?.split('+') as AbilityId[] | undefined;
 const tough = args.includes('--tough');
 const from = Number(opt('from') ?? 900);
