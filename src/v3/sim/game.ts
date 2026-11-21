@@ -2393,17 +2393,24 @@ export function freeLevelPick(g: Game): AbilityId | null {
   return held.sort((a, b) => (g.levels[b] ?? 0) - (g.levels[a] ?? 0))[0] ?? null;
 }
 
-/** The bots' rule for Quartermaster's golden bomb: a crowd of threats near
- *  the ships (GOLD_CROWD within GOLD_NEAR s of a hit), or in a boss round
- *  half that crowd, or the last ship left with anything about to land. */
+/** The bots' rule for Quartermaster's golden bomb (kept for when it counts,
+ *  as a player keeps it): in a boss round, half a crowd of threats near the
+ *  ships (GOLD_CROWD / 2 within GOLD_NEAR s of a hit); before that, a whole
+ *  crowd once the run is pressed (half its lives or fewer left, or the
+ *  carrier at half) or late (wave GOLD_LATE on); and any time the last ship
+ *  left has two threats about to land. */
 export const GOLD_CROWD = 6;
 export const GOLD_NEAR = 4;
+export const GOLD_LATE = 8;
 export function goldBombWorth(g: Game): boolean {
   if (g.phase !== 'wave' || g.bombsLeft <= 0) return false;
   const near = g.threats.filter((t) => !t.dead && timeToImpact(g, t) < GOLD_NEAR).length;
+  const left = lossLimit(g) - shipsSunk(g);
   const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
-  if (near >= (boss ? GOLD_CROWD / 2 : GOLD_CROWD)) return true;
-  return near >= 2 && lossLimit(g) - shipsSunk(g) <= 1;
+  if (boss && near >= GOLD_CROWD / 2) return true;
+  const pressed = left <= LIFE_LOW || g.carrierHp <= g.stats.carrierHp / 2;
+  if (near >= GOLD_CROWD && (pressed || g.wave >= GOLD_LATE)) return true;
+  return near >= 2 && left <= 1;
 }
 
 /** Does this draft deal Lifeboats' extra-life card? */
