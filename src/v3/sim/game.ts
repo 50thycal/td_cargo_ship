@@ -46,6 +46,7 @@ import {
   LOCK,
   MINE,
   SOW,
+  TOW,
   POST,
   VIP,
   isStructure,
@@ -256,6 +257,12 @@ export interface Threat {
   src?: number;
   /** A structure: the base it stands on (rigs, generators, the Citadel). */
   base?: number;
+  /** Log v49 (The Rig Field, MAP_SIGNATURE `kind: 'rig'`): a relief rig on
+   *  its way in, towed along the rig line to this station (a base's index);
+   *  it stands there once it docks (towRig). */
+  tow?: number;
+  /** Log v49: a missile off a docked relief rig's rack (the signature's). */
+  rack?: boolean;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
@@ -436,6 +443,8 @@ export interface Launch {
   /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`): a stealth bomber that
    *  sows this many mines ahead of the ships in place of its missiles. */
   sow?: number;
+  /** Log v49 (The Rig Field): a docked relief rig's rack. */
+  tow?: boolean;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1321,6 +1330,12 @@ function startWave(g: Game): void {
       const at = raid.at + rng.range(0, RAID.window);
       if (u.kind === 'strafer' || u.kind === 'bomber') {
         queue.push({ at, kind: u.kind, base: -1, side: rng.chance(0.5) ? 1 : -1, ...(u.kind === 'strafer' && sig?.jets ? { aim: sig.jets } : {}) });
+        continue;
+      }
+      // The Rig Field (log v49, MAP_SIGNATURE `kind: 'rig'`): a relief rig
+      // towed in from an edge, not out of a base.
+      if (u.kind === 'rig') {
+        queue.push({ at, kind: 'rig', base: -1 });
         continue;
       }
       // A new enemy that doesn't come out of a base comes on its own.
@@ -5581,6 +5596,12 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
 };
 
 function launch(g: Game, l: Launch): void {
+  // The Rig Field (log v49): a relief rig is towed in (an encounter's from
+  // the edge its beat names).
+  if (l.kind === 'rig') {
+    towRig(g, l.enc ? l.side : undefined, l.enc);
+    return;
+  }
   if (l.kind === 'strafer' || l.kind === 'bomber') {
     launchPlane(g, l);
     return;
@@ -5604,6 +5625,7 @@ function launch(g: Game, l: Launch): void {
     const th = spawnThreat(g, l.kind, base.x, base.y, 'base');
     if (l.enc) th.enc = l.enc;
     if (l.filler) th.filler = true;
+    if (l.tow) th.rack = true;
     if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
@@ -5782,6 +5804,96 @@ export function launchPlane(g: Game, l: Launch): void {
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : l.kind === 'stealthBomber' ? FOE.stealthBomber.bombs : 0;
   th.dropT = 99;
   if (l.sow) sowMines(th, l.sow);
+}
+
+/** The Rig Field's rig stations (its bases with a rig), west to east. */
+export function rigStations(g: Game): number[] {
+  return g.map.bases.map((b, i) => (b.rig ? i : -1)).filter((i) => i >= 0);
+}
+
+/** The rig standing on station `i` (not one still on its tow). */
+export function rigAt(g: Game, i: number): Threat | undefined {
+  return g.threats.find((t) => !t.dead && t.kind === 'rig' && t.base === i && t.tow === undefined);
+}
+
+/** Log v49 (The Rig Field, MAP_SIGNATURE `kind: 'rig'`, lab only): a relief
+ *  rig is towed in along the rig line (TOW). It makes for a downed station
+ *  (one no other tow is making for), the one nearest the lead ship; with
+ *  none down, for the most damaged rig standing (the one nearest the lead
+ *  ship if none is). It comes from the edge `side` names (+1 the left,
+ *  sailing right), else the edge nearer its station. */
+export function towRig(g: Game, side?: number, enc?: string): void {
+  const st = rigStations(g);
+  if (!st.length) return;
+  const lead = g.ships.reduce<Ship | undefined>((a, s) => (!a || s.d > a.d ? s : a), undefined);
+  const lx = lead ? lead.x : VIEW.width / 2;
+  const coming = new Set(g.threats.filter((t) => !t.dead && t.tow !== undefined).map((t) => t.tow));
+  const near = (a: number, b: number) => Math.abs(g.map.bases[a].x - lx) - Math.abs(g.map.bases[b].x - lx);
+  const down = st.filter((i) => g.baseDown[i] && !coming.has(i)).sort(near);
+  const up = st.filter((i) => !g.baseDown[i]).sort((a, b) => (rigAt(g, a)?.hp ?? 0) - (rigAt(g, b)?.hp ?? 0) || near(a, b));
+  const to = down[0] ?? up[0] ?? st[0];
+  const b = g.map.bases[to];
+  const from = side ?? (b.x < VIEW.width / 2 ? 1 : -1);
+  const th = structure(g, 'rig', from > 0 ? -60 : VIEW.width + 60, b.y, TOW.hp);
+  th.maxHp = TOW.hp;
+  th.tow = to;
+  th.heading = from > 0 ? 0 : Math.PI;
+  if (enc) th.enc = enc;
+  g.threats.push(th);
+}
+
+/** Log v49 (The Rig Field's Rig Barrage): a rig rises again on downed
+ *  station `i`, `hp` hits, and the station launches again. */
+export function raiseRig(g: Game, i: number, hp: number): void {
+  const b = g.map.bases[i];
+  g.baseDown[i] = false;
+  const th = structure(g, 'rig', b.x, b.y, hp, i);
+  th.maxHp = b.rig?.hp ?? THREATS.rig.hp;
+  g.threats.push(th);
+  addFx(g, 'splash', b.x, b.y + 30, { life: 1.2, r: 60 });
+  g.events.push({ kind: 'bigKill', label: 'RIG RAISED', x: b.x, y: b.y });
+}
+
+/** A relief rig on its tow: on along the rig line to its station, and in. */
+function updateTow(g: Game, th: Threat, dt: number): void {
+  const b = g.map.bases[th.tow!];
+  const dx = b.x - th.x;
+  const step = TOW.speed * dt;
+  th.vx = Math.sign(dx) * TOW.speed;
+  if (Math.abs(dx) > step) {
+    th.x += Math.sign(dx) * step;
+    return;
+  }
+  dockRig(g, th);
+}
+
+/** A relief rig docks at its station: it stands there, `TOW.dock` hits,
+ *  and the station launches again; or, with a rig already standing there,
+ *  it mends that one by as much and goes. Either way its rack of guided
+ *  missiles goes off at the lead ship, lit first. */
+function dockRig(g: Game, th: Threat): void {
+  const i = th.tow!;
+  const b = g.map.bases[i];
+  const full = b.rig?.hp ?? THREATS.rig.hp;
+  const rig = rigAt(g, i);
+  th.vx = 0;
+  if (!rig) {
+    g.baseDown[i] = false;
+    th.tow = undefined;
+    th.base = i;
+    th.x = b.x;
+    th.y = b.y;
+    th.hp = TOW.dock;
+    th.maxHp = full;
+    g.events.push({ kind: 'bigKill', label: 'RIG RAISED', x: b.x, y: b.y });
+  } else {
+    rig.hp = Math.min(full, rig.hp + TOW.dock);
+    th.dead = true;
+    g.events.push({ kind: 'bigKill', label: 'RIG MENDED', x: b.x, y: b.y });
+  }
+  addFx(g, 'launch', b.x, b.y, { life: TOW.fire, r: 46 });
+  for (let k = 0; k < TOW.rack; k++) g.queue.push({ at: g.waveT + TOW.fire + k * TOW.gap, kind: 'guided', base: i, aim: 'lead', ...(th.enc ? { enc: th.enc } : {}), tow: true });
+  g.queue.sort((x, y) => x.at - y.at);
 }
 
 /** Log v48 (Sowers' Reach): a bomber that sows `n` mines in place of its
@@ -5964,6 +6076,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   th.age += dt;
   if (isStructure(th.kind)) {
     if (th.kind === 'dreadnought') updateBoss(g, th, dt);
+    else if (th.tow !== undefined) updateTow(g, th, dt);
   } else if (th.kind === 'mine') {
     updateMine(g, th, dt);
   } else if (isPlaneKind(th.kind)) {
@@ -6415,7 +6528,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   // moves no pity clock, so the run's pickups and weapons come as they would
   // without it (with drops, the Island's extra early kills brought weapons
   // on at other moments, and the bots lost more on its wave 4).
-  if (!drops || th.filler) return;
+  if (!drops || th.filler || th.tow !== undefined) return;
   // A special event's supply drone always drops (the Bombardment's).
   if (th.cargo && g.event) {
     const c = eventCargo(g);
@@ -7003,9 +7116,11 @@ export function hittable(g: Game, th: Threat): boolean {
  *  a Railgun is loaded, made for big targets). */
 export function worthShooting(g: Game, list: Threat[]): Threat[] {
   const live = list.filter((t) => released(t) && (!isFoe(t.kind) || foeWorthShooting(g, t)));
-  const strikers = live.filter((t) => !isStructure(t.kind));
+  // A relief rig on its tow (log v49) is worth a look as any threat is:
+  // a few hits on the way in, before it stands.
+  const strikers = live.filter((t) => !isStructure(t.kind) || t.tow !== undefined);
   const rail = !!held(g, 'railgun');
-  const structures = live.filter((t) => isStructure(t.kind) && hittable(g, t));
+  const structures = live.filter((t) => isStructure(t.kind) && t.tow === undefined && hittable(g, t));
   if (rail) return [...strikers, ...structures];
   if (strikers.length) return strikers;
   return g.overdriveT > 0 || g.ammo >= g.stats.rack - 1 ? structures : [];
@@ -7047,7 +7162,7 @@ function structureDown(g: Game, th: Threat): void {
   addFx(g, 'boom', th.x, th.y, { life: 1.2, r: 70 });
   addFx(g, th.kind === 'dreadnought' ? 'sink' : 'burst', th.x, th.y, { life: 1.4, r: 60 });
   const shieldFalls = th.kind === 'generator' && !shieldUp(g) && !!g.map.shield;
-  const label = shieldFalls ? 'SHIELD DOWN' : STRUCTURE_DOWN[th.kind] ?? 'DESTROYED';
+  const label = shieldFalls ? 'SHIELD DOWN' : th.tow !== undefined ? 'TOW SUNK' : STRUCTURE_DOWN[th.kind] ?? 'DESTROYED';
   cue(g, 'structure.down', th.x, th.y);
   if (shieldFalls) cue(g, 'shield.down', th.x, th.y);
   g.events.push({ kind: 'bigKill', label, x: th.x, y: th.y });

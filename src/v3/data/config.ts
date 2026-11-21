@@ -249,6 +249,16 @@ export const MINE = { hitRadius: 30, wobble: 6 } as const;
  *  across the whole lane. */
 export const SOW = { near: 110, far: 340, across: 190, every: 0.55, line: 0.6 } as const;
 
+/** Log v49 (The Rig Field, MAP_SIGNATURE `tow`, lab only): a relief rig
+ *  towed in along the rig line from the edge nearer its station, at `speed`
+ *  px/s, `hp` hits to sink on the way. Docked, it stands at a downed rig's
+ *  station with `dock` hits (that station launches again), or, with none
+ *  down, adds `dock` hits to the most damaged rig standing (never over a
+ *  rig's own); either way it comes loaded: `rack` guided missiles off the
+ *  station at the lead ship, `gap` s apart, `fire` s after it docks (its
+ *  rack lit as the warning). */
+export const TOW = { hp: 8, speed: 48, dock: 20, rack: 2, gap: 0.5, fire: 1.2 } as const;
+
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
 
