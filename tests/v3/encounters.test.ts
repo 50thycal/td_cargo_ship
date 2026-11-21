@@ -729,7 +729,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(LAYER_MAPS.filter((m) => m !== 'saltgate').some((m) => ENCOUNTERS.some((e) => e.map === m && e.beats.some((b) => b.aim === 'lock')))).toBe(false);
   });
 
-  // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md, log v43):
+  // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md, log v45):
   // 'post', the shore guns: the first that stands; a launch whose gun is
   // knocked out on its way goes for the other (lab only).
   it('Battery Point: a shot at the shore guns goes for the first that stands, then the other; with both down, the ship nearest them', () => {
@@ -779,7 +779,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
   it('the mechanic is in the waves: Marrow\'s tower is the target in at least three waves; Kesh has no mechanic to aim at', () => {
     const at = (map: Encounter['map']) => arc(map).filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'post'))).map((a) => a.wave);
     expect(at('marrow')).toEqual([2, 5, 8, 10]);
-    // Battery Point (log v43): its shore guns are the target in every wave
+    // Battery Point (log v45): its shore guns are the target in every wave
     // from the first shell (wave 2) to the climax.
     expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(at('kesh')).toEqual([]);
@@ -1194,7 +1194,7 @@ describe('Saltgate Canal\'s boss rounds (log v42, MAP_BOSS): the Gatecrashers, r
 
 const trucksIn = (r: BossRound) => (r.trucks ?? []).reduce((a, c) => a + c.count, 0);
 
-describe('Battery Point\'s boss rounds (log v43, MAP_BOSS): the Blackout at the guns rises; a rev 3 log and the campaign play it as it was', () => {
+describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the guns rises; a rev 3 log and the campaign play it as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more stealth strafers each round, closer together, with shells and heavies at the shore guns', () => {
@@ -1437,7 +1437,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     for (const m of ['island', 'behemoth', 'needle', 'archipelago'] as const) expect(MAP_SIGNATURE[m]!.clusters, m).toBeUndefined();
   });
 
-  it('Battery Point (log v43): from wave 4 the wave\'s heavies go for the shore guns, off a silo or a truck, and its strike jets come in dark; chapter 3\'s debut waves are as they were', () => {
+  it('Battery Point (log v45): from wave 4 the wave\'s heavies go for the shore guns, off a silo or a truck, and its strike jets come in dark; chapter 3\'s debut waves are as they were', () => {
     expect(MAP_SIGNATURE.battery).toMatchObject({ from: 4, heavies: 'post', stealth: true });
     let heavies = 0;
     let dark = 0;

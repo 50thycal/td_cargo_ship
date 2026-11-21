@@ -3951,7 +3951,7 @@ const SALTGATE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Battery Point (log v43, docs/design/v3-ch3-battery.md): chapter 3's first
+/** Battery Point (log v45, docs/design/v3-ch3-battery.md): chapter 3's first
  *  map. Two allied shore guns on the headland (posts 0 at (1085, 652) and 1
  *  at (1210, 646), reach 330) fire on their own at anything over the east of
  *  the lane, where the ships deliver; a hit knocks one out for 12 s. The
@@ -4283,7 +4283,7 @@ export type RebuiltMap = 'kesh' | 'marrow' | ChapterTwoMap | ChapterThreeMap;
 export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | 'saltgate';
 export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 /** Chapter 3, Dark Water, a map at a time as chapter 2's were: so far Battery
- *  Point (log v43, docs/design/v3-ch3-battery.md). */
+ *  Point (log v45, docs/design/v3-ch3-battery.md). */
 export type ChapterThreeMap = 'battery';
 export const CHAPTER_THREE_MAPS: MapId[] = ['battery'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS];
@@ -4371,7 +4371,7 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
 const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96];
-/** Battery Point (log v43; the player's three v40 runs: the bot lost two
+/** Battery Point (log v45; the player's three v40 runs: the bot lost two
  *  ships in waves 1-5 and won 8% with the player's Armory): waves 5-10
  *  send a little less, within ±15% of each wave and never more than the
  *  ten. */
@@ -4476,7 +4476,7 @@ export interface MapSignature {
   /** Saltgate Canal (log v42): the wave's Rocket Trucks fire their salvos
    *  at this ('lock': the ships held at the lock nearest the truck). */
   trucks?: BeatAim;
-  /** Battery Point (log v43): the wave's own strike jets come in dark, as
+  /** Battery Point (log v45): the wave's own strike jets come in dark, as
    *  Stealth Strafers (the Blackout's own: no warning arrow, only their
    *  short run-in), one for one, so the wave sends no more (rule w-budget). */
   stealth?: boolean;
@@ -4513,7 +4513,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // boss rounds' clusters do the same). Log v38-v41: Torpedo Subs in place
   // of the trucks (the player: put the subs on a more open map).
   saltgate: { from: 4, foe: 'rocketTruck', foeShare: 0.5, clusters: 'lock', trucks: 'lock' },
-  // Battery Point (log v43, docs/design/v3-ch3-battery.md): "silence the
+  // Battery Point (log v45, docs/design/v3-ch3-battery.md): "silence the
   // battery", from wave 4. The wave's heavy cruise missiles go for your two
   // shore guns on the headland while one stands (aim 'post'; with both
   // knocked out, the ship nearest them), so each is a choice: eight hits to
@@ -4644,7 +4644,7 @@ export interface BossRound {
   /** Saltgate Canal's Gatecrashers (log v42): its truck columns, in place
    *  of Run the Canal's subs, gunships and block. */
   trucks?: TruckRun[];
-  /** Battery Point's Blackout (log v43): `jets` stealth strafers (the
+  /** Battery Point's Blackout (log v45): `jets` stealth strafers (the
    *  event's own: 8), the first `jetAt` s into the round, `jetGap` s apart
    *  (the event's: 2.4), from alternate sides. */
   jets?: number;
@@ -4807,7 +4807,7 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
  *  its launcher (2.4 s, a ring filling round it) and between salvos (1.5 s). */
 export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2 };
 
-/** Battery Point's Blackout (log v43, docs/design/v3-ch3-battery.md): night,
+/** Battery Point's Blackout (log v45, docs/design/v3-ch3-battery.md): night,
  *  and stealth strafers from alternate sides (before: 8, 2.4 s apart, and a
  *  star shell at 6 s, every round), with the map's signature in it: shells
  *  from the silo across from the headland and heavies at your shore guns

@@ -1,6 +1,6 @@
 # Battery Point: map card (map rebuild, chapter 3)
 
-**Date:** 2026-11-21. Battery Point (`battery`, chapter 3 "Dark Water", the 11th map and the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way chapter 2's five maps were (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`, `v3-ch2-saltgate.md`). Encounter rev 4; play log **v43**.
+**Date:** 2026-11-21. Battery Point (`battery`, chapter 3 "Dark Water", the 11th map and the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way chapter 2's five maps were (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`, `v3-ch2-saltgate.md`). Encounter rev 4; play log **v45** (built as 43; the Armory rework took 44 on the base first, so it moved to 45).
 
 The starting point was the player's three fresh runs of the campaign's Battery (log v40, iPhone; `tools/v3/bot-fit/logs/v3-20261120221506-94564.json`, `-222140-94565`, `-222804-94566`):
 
@@ -17,7 +17,7 @@ Code:
 - `src/v3/data/mapPlans.ts`: `MAP_PLANS.battery`; `src/v3/data/convoy.ts`: `MAP_CONVOY.battery` (the campaign's own schedule, no command);
 - `src/v3/sim/game.ts`: the signature's `stealth` (the wave's strike jets, and an encounter's from wave 4, come as Stealth Strafers); the signature's `heavies: 'post'` aims a truck's heavy too (`updateRaider`); under the layer a launch at a shore gun knocked out on its way goes for the other gun (`ensureTarget`); an encounter's stealth jet keeps the side its beat names;
 - `src/v3/sim/events.ts`: the Blackout reads its rounds from `MAP_BOSS` (jets, their start and gap, and the round's own launches, `fire`); with no boss tuning it plays as it did;
-- `src/v3/sim/playlog.ts`: `LOG_VERSION` 43; `src/v3/data/lab.ts`: "Ready to test" lists Battery Point at v43;
+- `src/v3/sim/playlog.ts`: `LOG_VERSION` 45; `src/v3/data/lab.ts`: "Ready to test" lists Battery Point at v45;
 - tools: `tools/v3/battery/sunk.ts` (what sinks the ships, wave by wave, and how often the guns fall), `budget.ts` (each wave against the shared wave and against no layer), `compare.py` (the diversity check against chapter 2); a third Armory yardstick, `--armory=plating` (`PLATING_ARMORY`, the player's run 3), in `tools/v3/map-report/quick.ts` and `report.ts`; `tools/v3/combo-sweep/mixwaves.ts` counts the Battery's signature.
 
 Bot reports: `tools/v3/map-report/results/battery-player.md` (the player's usual Armory, Quick Reload 5, Damage Control 4, Stockpile 5), `battery-latest.md` (Wide Warhead 5, Deck Guns 4, Supply Lines 3: runs 1 and 2), `battery-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4: run 3), `battery.md` (no Armory); each with a heat map; the map as it was: `battery-before*.md`. Tuning reads: the record report's bot on 192 seeds (900–1091), four processes at a time.
@@ -183,7 +183,7 @@ Rising with every Armory, under the asked 1.5 / 2 / 2.5 with the usual and plati
 
 ## Bot results, before and after
 
-"Before" is the map card as it was (log v42): today's convoy controls, no encounters, the Blackout as it is (`tools/v3/map-report/results/battery-before*.md`, 24 seeds). "After" is this build (log v43). The record reports are 24 seeds (900–923; `npx vite-node tools/v3/map-report/report.ts -- --map=battery --seeds=24 [--armory=player|latest|plating] --kits=plan`); the tuning reads below them are 192 seeds (900–1091), the same bot and setup.
+"Before" is the map card as it was (log v42): today's convoy controls, no encounters, the Blackout as it is (`tools/v3/map-report/results/battery-before*.md`, 24 seeds). "After" is this build (measured at log 43, the same game at 45). The record reports are 24 seeds (900–923; `npx vite-node tools/v3/map-report/report.ts -- --map=battery --seeds=24 [--armory=player|latest|plating] --kits=plan`); the tuning reads below them are 192 seeds (900–1091), the same bot and setup.
 
 ### The headline (192 seeds, normal runs)
 
@@ -247,9 +247,9 @@ From `battery-player.md` (the usual Armory):
 - **The diversity read moves with small builds** (see above); its best single and its kits are its own at the final build but for one kit.
 - **The bot's bias here is unknown:** the player's own early waves were worse than the bot's (3 and 5 ships lost in waves 1–5 in runs 1–2, the bot 2.0 with the same Armory), the later ones better (run 3 reached wave 10).
 
-## The play log (v43)
+## The play log (v45)
 
-`LOG_VERSION` 43, `LOG_REPLAYS` `[43]` (`src/v3/sim/playlog.ts`). The base branch was at v42 (#205). The change is lab only, under the encounter layer: the campaign plays as it did, and a v42 Battery card log played the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 43 (`python3 tools/v3/playtest-fixes/pins.py 42 43`, and `tests/v3/scorecard.test.ts`). The Test Lab's "Ready to test" lists Battery Point at v43.
+`LOG_VERSION` 45, `LOG_REPLAYS` `[45]` (`src/v3/sim/playlog.ts`). The base branch was at v42 (#205) when this started and the Battery was built and measured as 43; the Armory rework (Lifeboats and Quartermaster, #209) then landed on the base as 44, so the Battery was merged on top of it and moved to 45 (playlog entries 43 and 45). The rework changes nothing for the Armories measured here (none of them holds Lifeboats or Quartermaster: a log without them plays the same game), so every number on this card, measured at 43, stands at 45. The change is lab only, under the encounter layer: the campaign plays as at 44, and a 44 Battery card log played the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write` at 43 and again at 45; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 45 (`python3 tools/v3/playtest-fixes/pins.py 44 45`, and `tests/v3/scorecard.test.ts`). The Test Lab's "Ready to test" lists Battery Point at v45. The combo sweep's results are in `results/v43-ch3` (run at 43).
 
 ## Questions for the player
 
@@ -270,7 +270,7 @@ From `battery-player.md` (the usual Armory):
   - the signature: from wave 4 every heavy goes for the guns and no jet comes with an arrow; a truck's heavy goes for the guns; the new enemies drawn are the shared wave's; the campaign keeps its arrows and its heavies' aim; none before wave 4, before rev 4 or past wave 10.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command, at the campaign's schedule; the Rigs is now the next map with neither.
-- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 43.
+- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 45.
 - `e2e/v3-map-cards.mjs`: the hub card says so; `?lab=map-battery` opens the full map with encounters rev 4 and no command. `e2e/v3-encounters.mjs`: the card opens with its encounters and its two guns, and the pause screen's script names the Blackout.
 
 ## What to look for when you play

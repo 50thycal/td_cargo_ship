@@ -1266,7 +1266,7 @@ function startWave(g: Game): void {
   // their places), launch for launch, so the wave is no bigger for them.
   const trickled = swarms.slice(0, trickle);
   if (authored.length) makeRoom(units, trickled, authored);
-  // Battery Point (log v43, MAP_SIGNATURE `stealth`): the wave's own strike
+  // Battery Point (log v45, MAP_SIGNATURE `stealth`): the wave's own strike
   // jets come in dark, as Stealth Strafers, one for one.
   if (sig?.stealth) for (const u of units) if (u.kind === 'strafer') u.kind = 'stealthJet';
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
@@ -5566,7 +5566,7 @@ function launch(g: Game, l: Launch): void {
     return;
   }
   // The stealth aircraft: no warning, so their line is picked now.
-  // (An encounter's own comes from the side its beat names: log v43.)
+  // (An encounter's own comes from the side its beat names: log v45.)
   if (isPlaneKind(l.kind)) {
     launchPlane(g, { ...l, side: l.enc && l.side ? l.side : g.rng.foes.chance(0.5) ? 1 : -1 });
     return;
@@ -6537,7 +6537,7 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
         const sig = g.enc ? signatureOf(g.map.id, g.wave, g.enc.setup) : undefined;
         if (sig?.clusters) aimBeat(g, th, sig.clusters);
       }
-      // Battery Point (log v43, MAP_SIGNATURE `heavies`): the wave's own
+      // Battery Point (log v45, MAP_SIGNATURE `heavies`): the wave's own
       // heavy cruise missiles, off a truck as off a silo, go for the shore
       // guns. (Only at the guns: the Behemoth Run's truck heavies pick their
       // target as they did.)

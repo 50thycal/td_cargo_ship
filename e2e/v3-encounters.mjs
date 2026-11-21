@@ -181,7 +181,7 @@ try {
   check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
 
-  // ---- Battery Point (log v43): chapter 3's first map, the Blackout at
+  // ---- Battery Point (log v45): chapter 3's first map, the Blackout at
   // the guns ----
   await open(page, 'lab=map-battery&seed=7');
   const bp = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, posts: window.__v3.game().posts.length }));
