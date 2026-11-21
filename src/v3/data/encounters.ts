@@ -4245,11 +4245,11 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  waves 1-2, one on wave 3), two drones on waves 4-6. Tuned on the "you"
  *  bot with the player's Armory over 384 seeds, encounters on, filler on
  *  against off: left out where the wave's budget had no room (Kesh 4,
- *  Marrow 6, the second string of Harbor 2 and Saltgate 1), and where the
+ *  Marrow 6, Harbor 2, the second string of Saltgate 1), and where the
  *  bots lost more or won less with it (the Strait and the Behemoth 4-6,
  *  the Island 2 and 4-6, Marrow 5, the Needle 5, the Archipelago 4-6,
  *  Saltgate 2's first string and 5). The Battery, whose waves 3-4 rated
- *  well, waves 1-2 only. The encounters themselves (their beats, what they
+ *  well and whose wave 1 is the busiest of any map, wave 2 only. The encounters themselves (their beats, what they
  *  take out of the wave) are unchanged. */
 const FILL_GAP = 0.9;
 const fill = (at: number, count: number, from: number): Beat => ({ at, kind: 'drone', count, gap: FILL_GAP, from: base(from), filler: true });
@@ -4274,9 +4274,9 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship', 'marrow-both-shores'], 0, 1, [5, 6]),
   // The Gauntlet: the north-west and south-west silos, one shore then the other.
   ...busy(['gauntlet-north-south-opener', 'gauntlet-p4-shell-each-shore', 'gauntlet-p4-way-in', 'gauntlet-p4-periscope', 'gauntlet-p4-overlap', 'gauntlet-p4-crossing'], 0, 2),
-  // Harbor Mouth: the north-west silo and the south headland's; its wave 2 (the smallest wave of all) one string only.
+  // Harbor Mouth: the north-west silo and the south headland's; none on its
+  // wave 2 (its budget is already at ×1.11 of the shared wave).
   ...busy(['harbor-first-look', 'harbor-wide-water', 'harbor-periscope', 'harbor-south-headland', 'harbor-funnel-tail', 'harbor-both-headlands'], 0, 3, [2]),
-  ['harbor-wide-water', [fill(0.75, 2, 3)]],
   // Chapter 2. The Island: the north shore's silo only (the island's own two sit over both lanes).
   // Even that silo's flight to the north lane is short: a string of two on
   // waves 1 and 3 only, the first after the point-blank swarm (more cost the
@@ -4302,10 +4302,13 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // (Its wave 2's truck drives in early: the filler comes after it.)
   ['saltgate-chamber', [fill(0.75, 2, 0)]],
   // Chapter 3: the Battery's waves 3-4 already rated 3-4, so waves 1-2 only.
-  ['battery-guns', [fill(0.85, 2, 3)]],
-  ['battery-ranging', [fill(0.8, 3, 3)]],
+  // Its wave 1 is the busiest first wave of any map already (two threats on
+  // the board at a moment, twice the others), and any filler on it lost
+  // wave-1 ships for the no-Armory bots: wave 2 only, early, out of the east
+  // silo (late, the waves ran on and its wave 7 rose).
+  ['battery-ranging', [fill(0.1, 3, 3)]],
 ]);
-const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] && !(globalThis as any).process?.env?.NO_BUSY ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
+const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
 export const ENCOUNTERS: Encounter[] = [
   ...V1.map((e) => ({ ...e, version: 'v1' as const, callout: V1_CALLOUT[e.id] ?? e.name })),
