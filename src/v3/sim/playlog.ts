@@ -353,11 +353,24 @@ import type { EncounterSetup } from '../data/encounters';
  *      rounds rise (MAP_BOSS.sowers: `vees`, `veeAt`, `veeGap`, `veeHp`,
  *      `sow`, `fire`, a boss round's mines off the chutes). A v47 Sowers
  *      card log played the shared waves and no longer replays to the same
- *      game; the campaign plays as it did. */
-export const LOG_VERSION = 48;
+ *      game; the campaign plays as it did.
+ *  50: chapter 3's fourth map, the Black Strait (the Lantern), rebuilt to
+ *      the map and wave rules (docs/design/v3-ch3-lantern.md; lab, under
+ *      the encounter layer): ten encounters (LANTERN_R4) with their filler,
+ *      a climb (LANTERN_CLIMB), the map's own convoy at flow 2
+ *      (MAP_CONVOY.lantern), the signature (MAP_SIGNATURE.lantern: the
+ *      wave's new enemies are Siege Batteries from wave 4, rising beside
+ *      the enemy's dark bank, `beside`, one salvo each, `salvos`; a Launch
+ *      naming a base puts its siege gun there, an encounter's on the
+ *      other side), and the Bombardment's rounds rise (MAP_BOSS.lantern:
+ *      `guns`, `gunGap`, `gunSalvos`, `dark`, `supply`, `fire`). A v48
+ *      Black Strait card log played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did. */
+export const LOG_VERSION = 50;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [48];
+export const LOG_REPLAYS: readonly number[] = [50];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
