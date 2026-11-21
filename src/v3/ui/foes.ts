@@ -486,7 +486,7 @@ function drawRaiseRing(ctx: CanvasRenderingContext2D, g: Game, th: Threat, k: nu
   ctx.stroke();
 }
 
-/** Log v45: the Missile Truck (a TEL), unlike the Rocket Truck's short
+/** Log v46: the Missile Truck (a TEL), unlike the Rocket Truck's short
  *  brown body and red-roofed tube box: a long olive eight-wheeler with a
  *  sand cab and one long white missile, red-nosed, lying on its erector.
  *  As the erector raises (the red ring filling, the mark line out to the

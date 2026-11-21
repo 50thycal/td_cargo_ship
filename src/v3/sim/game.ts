@@ -5642,7 +5642,7 @@ export function launchPlane(g: Game, l: Launch): void {
 }
 
 /** Ballistics commit at launch to the point their ship will have reached.
- *  Log v45: a Missile Truck's lob is in the air at least `lob.flight` s and
+ *  Log v46: a Missile Truck's lob is in the air at least `lob.flight` s and
  *  climbs at least `lob.apex` px (still under the ceiling). */
 function aimBallistic(g: Game, th: Threat, lob?: { flight: number; apex: number }): void {
   const t = targetPos(g, th);
@@ -5678,7 +5678,7 @@ function aimBallistic(g: Game, th: Threat, lob?: { flight: number; apex: number 
   th.apex = hi;
 }
 
-/** Log v45 (the Missile Truck): a ballistic at ship `target` (or, gone,
+/** Log v46 (the Missile Truck): a ballistic at ship `target` (or, gone,
  *  wherever it was aimed), lobbed high and slow. */
 export function lobBallistic(g: Game, th: Threat, target: number, lob: { flight: number; apex: number }): void {
   th.target = target;

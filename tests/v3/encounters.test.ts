@@ -1040,7 +1040,7 @@ describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid fr
   }, 90_000);
 });
 
-describe('Saltgate Canal\'s boss rounds (log v45, MAP_BOSS): the Gatecrashers, a parade of Missile Trucks, rising; a rev 3 log and the campaign play Run the Canal as it was', () => {
+describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a parade of Missile Trucks, rising; a rev 3 log and the campaign play Run the Canal as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const trucks = trucksIn;
   it('more Missile Trucks each round, down to the banks by the locks (round 2 from both banks, round 3 at both locks from both banks), no Rocket Truck', () => {
@@ -1062,13 +1062,13 @@ describe('Saltgate Canal\'s boss rounds (log v45, MAP_BOSS): the Gatecrashers, a
     expect(eventName('run-the-canal', 'saltgate', 4)).toBe('Gatecrashers');
     expect(bossIntroCards('run-the-canal', 1, 3, 6, true, eventName('run-the-canal', 'saltgate', 4)).find((c) => c.key === 'name')!.title).toBe('Gatecrashers');
     for (const m of ['island', 'behemoth', 'needle', 'archipelago'] as const) expect(MAP_BOSS[m]!.name, m).toBeUndefined();
-    // Seed 208: the tryhard bot, starting at the boss with no weapon, sees
-    // all three rounds through.
-    const on = playMimic('saltgate', 208, { ...opts, encounters: VER('v1') });
+    // Seed 204 (208 before log v46): the tryhard bot, starting at the boss
+    // with no weapon, sees all three rounds through.
+    const on = playMimic('saltgate', 204, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.saltgate!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['run-the-canal', 1], ['run-the-canal', 2], ['run-the-canal', 3]]);
     const done = on.game.eventLog;
-    // No sub, gunship, block or Rocket Truck (log v45, the player's review:
+    // No sub, gunship, block or Rocket Truck (log v46, the player's review:
     // "we already have a rocket truck convoy. make it the missile trucks"):
     // Missile Trucks and a swarm.
     expect(done.map((e) => e.sent.missileTruck)).toEqual(rounds.map(trucks));
@@ -1159,11 +1159,10 @@ describe('Saltgate Canal\'s boss rounds (log v45, MAP_BOSS): the Gatecrashers, a
     expect(atLock / marked).toBeGreaterThan(0.5);
     expect(lobs.size).toBeGreaterThan(0);
     expect(shotDown).toBe(true);
-    // Lobbed: long in the air, and high.
-    for (const l of lobs.values()) {
-      expect(l.dur).toBeGreaterThanOrEqual(FOE.missileTruck.flight - 1e-9);
-      expect(l.apex).toBeGreaterThanOrEqual(FOE.missileTruck.apex - 1e-9);
-    }
+    // Lobbed: long in the air, and high (a truck parked far up its road
+    // lobs a little lower, its arc kept under the top of the screen).
+    for (const l of lobs.values()) expect(l.dur).toBeGreaterThanOrEqual(FOE.missileTruck.flight - 1e-9);
+    expect([...lobs.values()].filter((l) => l.apex >= FOE.missileTruck.apex - 1e-9).length / lobs.size).toBeGreaterThan(0.5);
     expect([...lobs.values()].filter((l) => l.near).length / lobs.size).toBeGreaterThan(0.5);
   }, 60_000);
 

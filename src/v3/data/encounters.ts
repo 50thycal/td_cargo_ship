@@ -4302,12 +4302,12 @@ export interface TruckRun {
   lock: number;
   bank: 'north' | 'south';
   count: number;
-  /** Seconds between trucks setting out; absent (log v45), nose to tail,
+  /** Seconds between trucks setting out; absent (log v46), nose to tail,
    *  so the column parks together and fires as one volley. */
   gap?: number;
   salvos?: number;
   clusters?: number;
-  /** Log v45 (the player's review: "make it the missile trucks"): the
+  /** Log v46 (the player's review: "make it the missile trucks"): the
    *  column is Missile Trucks, each with this many ballistic missiles
    *  (lobbed at the ship held at the lock nearest it; they can be shot
    *  down). `salvos` and `clusters` are a Rocket Truck column's. */
@@ -4467,7 +4467,7 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
 ];
 
 /** Saltgate Canal's Gatecrashers (docs/design/v3-ch2-saltgate.md). Log
- *  v45, the player's review of the v42 boss ("i thought this would be the
+ *  v46, the player's review of the v42 boss ("i thought this would be the
  *  ballistic missile trucks? we already have a rocket truck convoy. make it
  *  the missile trucks so it is different. Should be a parade of them
  *  shooting off the ballistic missiles"): a parade of Missile Trucks (data/
@@ -4479,12 +4479,12 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
  *  volleys close together so several missiles are in the air at once. A
  *  truck can be shot on the way in and while it raises (a wreck stalls
  *  the ones behind it, breaking up the volley); a missile can be shot in
- *  the air. Log v42-v44: columns of Rocket Trucks (8; 4 + 4 from both banks;
+ *  the air. Log v42-v45: columns of Rocket Trucks (8; 4 + 4 from both banks;
  *  a charge of 13 with two clusters). Log v38-v41: Run the Canal, rising
  *  (Torpedo Subs, a gunship, an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 7, missiles: 1 }],
+    trucks: [{ at: 0, lock: 0, bank: 'north', count: 8, missiles: 1 }],
     swarms: 1,
     size: 5,
     fire: [],
@@ -4512,10 +4512,12 @@ export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
 ];
 
 /** The Gatecrashers' trucks: 4 hits each, in at 2.2 × a truck's speed,
- *  parked 58 px apart, a wreck stalling the ones behind it 2 s. A Missile
+ *  85 px apart nose to tail (log v46; 58 at v42: so close that the latest
+ *  Armory's Wide Warhead took most of a column with a few blasts, the bot
+ *  losing 0 / 0.05 / 0.4 a round), a wreck stalling the ones behind it 2 s. A Missile
  *  Truck marks its ship (the dashed red line) and fills its ring while it
  *  raises its missile (FOE.missileTruck: 2.6 s, held up 0.5 s). */
-export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 58, stall: 2 };
+export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 85, stall: 2 };
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost

@@ -2,7 +2,7 @@
  "about": "Bot report (docs/design/v3-map-report.md). Made by tools/v3/map-report/report.ts.",
  "persona": "you",
  "armory": "the player's latest ({\"warhead\":5,\"pointdef\":4,\"drops\":3})",
- "date": "2026-11-20",
+ "date": "2026-11-21",
  "command": "npx vite-node tools/v3/map-report/report.ts -- --map=saltgate --seeds=24 --kits=plan --armory=latest --no-fun",
  "heat": "tools/v3/map-report/results/saltgate-latest-heat.html",
  "waves": 13,
@@ -38,8 +38,8 @@
   ],
   "normal": {
    "n": 24,
-   "won": 0.75,
-   "endWave": 13,
+   "won": 0.792,
+   "endWave": 13.042,
    "lost": {
     "n": 24,
     "mean": [
@@ -53,9 +53,9 @@
      0.708,
      0.583,
      0.792,
-     0.292,
-     1.042,
-     0.583
+     0,
+     0.042,
+     0.167
     ],
     "reachedMean": [
      0,
@@ -68,9 +68,9 @@
      0.708,
      0.609,
      0.864,
-     0.368,
-     1.316,
-     0.737
+     0,
+     0.053,
+     0.211
     ],
     "reached": [
      24,
@@ -105,9 +105,9 @@
     0.833,
     0.833,
     1.042,
-    0.458,
-    1.292,
-    1.167
+    0,
+    0.042,
+    0.167
    ],
    "lost10": 3.875,
    "cliff": {
@@ -134,9 +134,9 @@
     4.417,
     4.417,
     6.292,
+    0.167,
     0.542,
-    0.458,
-    1.458
+    0.708
    ],
    "closeAny": [
     0.083,
@@ -149,9 +149,9 @@
     1,
     0.917,
     1,
-    0.417,
-    0.375,
-    0.625
+    0.167,
+    0.292,
+    0.417
    ],
    "launches": [
     15,
@@ -164,9 +164,9 @@
     33.167,
     37,
     39.542,
-    13,
-    13,
-    19.25
+    12.458,
+    15,
+    16.833
    ],
    "table": [
     14,
@@ -227,9 +227,9 @@
     5.833,
     5.541,
     5.229,
-    5.039,
-    5.91,
-    5.413
+    5.779,
+    5.982,
+    5.952
    ],
    "warningN": [
     360,
@@ -242,9 +242,9 @@
     792,
     887,
     943,
-    311,
-    312,
-    461
+    297,
+    359,
+    401
    ],
    "warningSlope": -0.239,
    "stretchCore": [
@@ -289,17 +289,17 @@
     {
      "lane": 0,
      "hpShare": [
-      0.201,
-      0.465,
-      0.334
+      0.204,
+      0.438,
+      0.358
      ],
      "sunkShare": [
-      0.11,
-      0.528,
-      0.362
+      0.071,
+      0.459,
+      0.469
      ],
-     "hp": 75.75,
-     "sunk": 6.792,
+     "hp": 60.917,
+     "sunk": 4.083,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -307,17 +307,17 @@
     {
      "lane": -1,
      "hpShare": [
-      0.201,
-      0.465,
-      0.334
+      0.204,
+      0.438,
+      0.358
      ],
      "sunkShare": [
-      0.11,
-      0.528,
-      0.362
+      0.071,
+      0.459,
+      0.469
      ],
-     "hp": 75.75,
-     "sunk": 6.792,
+     "hp": 60.917,
+     "sunk": 4.083,
      "hot": 1,
      "cold": 0,
      "thin": false
@@ -326,9 +326,9 @@
   },
   "boss": {
    "reachedMean": [
-    0.368,
-    1.316,
-    0.737
+    0,
+    0.053,
+    0.211
    ],
    "reached": [
     19,
@@ -336,9 +336,9 @@
     19
    ],
    "tough": [
-    0.458,
-    1.292,
-    1.167
+    0,
+    0.042,
+    0.167
    ]
   },
   "tower": null,
@@ -351,8 +351,8 @@
      "supplyRun"
     ],
     "n": 24,
-    "endWave": 13.542,
-    "won": 0.833,
+    "endWave": 13.625,
+    "won": 0.917,
     "lost10": 2.583,
     "lost10Tough": 2.625,
     "curveTough": [
@@ -368,9 +368,9 @@
      0.625
     ],
     "boss": [
-     0.818,
-     0.682,
-     1.5
+     0,
+     0.091,
+     0.5
     ],
     "bossReached": [
      22,
@@ -386,8 +386,8 @@
      "fullSteam"
     ],
     "n": 24,
-    "endWave": 12.792,
-    "won": 0.708,
+    "endWave": 12.875,
+    "won": 0.792,
     "lost10": 3.083,
     "lost10Tough": 4.083,
     "curveTough": [
@@ -403,9 +403,9 @@
      0.458
     ],
     "boss": [
-     0.895,
-     0.632,
-     0.737
+     0,
+     0,
+     0.316
     ],
     "bossReached": [
      19,
@@ -475,7 +475,7 @@
    {
     "rule": "w-boss",
     "name": "Boss rounds",
-    "value": "normal (runs that reached it): r1 0.37 (19), r2 1.32 (19), r3 0.74 (19); tough (every run): 0.46, 1.29, 1.17",
+    "value": "normal (runs that reached it): r1 0.00 (19), r2 0.05 (19), r3 0.21 (19); tough (every run): 0.00, 0.04, 0.17",
     "target": "about 2 a round on the bot's scale, rising",
     "verdict": "INFO",
     "from": "normal"
@@ -483,7 +483,7 @@
    {
     "rule": "m-kits",
     "name": "Kits",
-    "value": "counter 2.6 lost 1–10, end 13.5; off-counter 4.1 lost 1–10, end 12.8",
+    "value": "counter 2.6 lost 1–10, end 13.6; off-counter 4.1 lost 1–10, end 12.9",
     "target": "the counter kit clearly better; neither trivial",
     "verdict": "INFO",
     "from": "kits"

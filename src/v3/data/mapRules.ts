@@ -115,7 +115,7 @@ export interface Debut {
 export function mapDebutsFoe(map: MapId, kind: ThreatKind): boolean {
   const foe = FOE_OF_KIND[kind];
   if (!foe) return false;
-  // Log v45: a boss-only enemy debuts on its boss's map.
+  // Log v46: a boss-only enemy debuts on its boss's map.
   const boss = BOSS_FOE_MAP[foe];
   if (boss) return boss === map;
   DEBUT_MAPS ??= new Map(debuts().map((d) => [d.kind, d.map]));

@@ -2004,7 +2004,7 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   th.heading = p.heading + (f.state === 4 ? Math.PI : 0);
 }
 
-/** Log v45 (Saltgate Canal's Gatecrashers): the Missile Truck, a TEL.
+/** Log v46 (Saltgate Canal's Gatecrashers): the Missile Truck, a TEL.
  *  Drive to its spot; raise the long missile on its erector (`raise` s, the
  *  ring and the mark line), hold it up (`hold`), fire it (an ordinary
  *  ballistic missile, lobbed high, that can be shot down); with another
@@ -2097,7 +2097,7 @@ function lockShip(g: Game, th: Threat): Ship | undefined {
   return (held.length ? held : pool).reduce(near);
 }
 
-/** A lock-aimed truck marks the ship its next salvo goes for. Log v45: a
+/** A lock-aimed truck marks the ship its next salvo goes for. Log v46: a
  *  Missile Truck spreads its column's volley over the ships held at its
  *  lock (within `MISSILE_SHARE` px of it): the one fewest other Missile
  *  Trucks have marked, the nearest of those. */
@@ -2120,7 +2120,7 @@ const MISSILE_SHARE = 360;
  *  from the truck): raising, or up between salvos. */
 export function truckMark(g: Game, th: Threat): Ship | undefined {
   const f = th.foe;
-  // Log v45: a Missile Truck's, while it raises its missile.
+  // Log v46: a Missile Truck's, while it raises its missile.
   if (th.kind === 'missileTruck') {
     if (!f?.aim || f.mark === undefined || f.state !== 1 || (f.wait ?? 0) > 0 || f.n <= 0) return undefined;
     return g.ships.find((s) => s.id === f.mark);

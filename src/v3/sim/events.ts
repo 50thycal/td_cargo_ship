@@ -1190,7 +1190,7 @@ function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
   if (!tune?.truck || !c || !path) return;
   const T = tune.truck;
   const L = pathLength(path);
-  // Log v45: a missile column is Missile Trucks (one ballistic missile
+  // Log v46: a missile column is Missile Trucks (one ballistic missile
   // each, or `missiles`), the rest Rocket Trucks as at v42.
   const kind = c.missiles !== undefined ? 'missileTruck' : 'rocketTruck';
   const th = spawnThreat(g, kind, path[0].x, path[0].y, 'truck');
@@ -1202,7 +1202,7 @@ function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
   sent(ev, kind);
 }
 
-/** Log v45: seconds between a column's trucks setting out (TruckRun `gap`;
+/** Log v46: seconds between a column's trucks setting out (TruckRun `gap`;
  *  absent, nose to tail at the parade's own pace, `spacing` apart, so the
  *  column parks together and raises and fires as one volley). */
 export function columnGap(g: Game, c: TruckRun): number {

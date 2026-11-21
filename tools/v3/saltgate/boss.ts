@@ -1,6 +1,6 @@
 // Saltgate Canal's Gatecrashers, round by round, as the report's bot plays
 // the map card (docs/design/v3-ch2-saltgate.md): trucks sent (Rocket
-// Trucks and, log v45, Missile Trucks), shot before their first salvo or
+// Trucks and, log v46, Missile Trucks), shot before their first salvo or
 // missile (or gone without firing), salvos (a Missile Truck's missiles)
 // and clusters fired, missiles shot down in the air, the most missiles in
 // the air at once, ships lost and the round's seconds. Also the trucks of
@@ -21,7 +21,7 @@ const from = Number(opt('from') ?? 900);
 const a = opt('armory') ?? 'player';
 const armory = a === 'latest' ? LATEST_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const waves = args.includes('--waves');
-// Tuning (log v45): `--rounds=<json>` puts these columns (BossRound
+// Tuning (log v46): `--rounds=<json>` puts these columns (BossRound
 // `trucks`, one list a round) in place of the boss's own for this read.
 const tryRounds = opt('rounds');
 const tryTruck = opt('truck');

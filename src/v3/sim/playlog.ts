@@ -297,9 +297,9 @@ import type { EncounterSetup } from '../data/encounters';
  *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
  *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
  *      longer replays to the same game; the campaign plays as it did.
- *  43, 44: kept for the parallel builds (the Battery rebuild, the Armory
- *      rework).
- *  45: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
+ *  43-45: kept for the parallel builds (the Armory rework is 44, the
+ *      Battery rebuild 45).
+ *  46: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
  *      Trucks (docs/design/v3-ch2-saltgate.md; lab, under the encounter
  *      layer; the player's review of the v42 boss: "make it the missile
  *      trucks so it is different"): a new boss-only enemy, the Missile
@@ -309,10 +309,10 @@ import type { EncounterSetup } from '../data/encounters';
  *      `trucks` with `missiles`), no Rocket Truck in the boss. A new threat
  *      kind, so the counts in every log carry it. A v42 Saltgate card log
  *      no longer replays to the same game; the campaign plays as it did. */
-export const LOG_VERSION = 45;
+export const LOG_VERSION = 46;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [45];
+export const LOG_REPLAYS: readonly number[] = [46];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

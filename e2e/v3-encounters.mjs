@@ -180,7 +180,7 @@ try {
   check(/Boss rounds: Gatecrashers/.test(arcLine), `Saltgate's script names its boss, the Gatecrashers (${arcLine})`);
   check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
-  // Log v45: Skip to boss. The Gatecrashers are a parade of Missile Trucks
+  // Log v46: Skip to boss. The Gatecrashers are a parade of Missile Trucks
   // (no Rocket Truck): they drive in, raise their missiles and lob
   // ballistic missiles at the locks.
   await page.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());

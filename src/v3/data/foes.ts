@@ -15,7 +15,7 @@ export type FoeId =
   | 'stealthJet' | 'stealthBomber' | 'diveBomber' | 'siege' | 'spotter'
   // Chapter 4: Open War
   | 'tender' | 'bodyguard' | 'lure' | 'cloud'
-  // Boss only (BOSS_FOES): Saltgate Canal's Gatecrashers (log v45).
+  // Boss only (BOSS_FOES): Saltgate Canal's Gatecrashers (log v46).
   | 'missileTruck';
 
 export type FoeCat = 'strike' | 'platform' | 'support';
@@ -57,7 +57,7 @@ export const FOES: Record<FoeId, FoeDef> = {
   missileTruck: { id: 'missileTruck', name: 'Missile Truck', chapter: 2, cat: 'platform', kind: 'missileTruck', from: 'road', blurb: 'A launcher truck with one long ballistic missile: it stops, raises it and lobs it at a ship. Kill the truck, or shoot the missile in the air.' },
 };
 
-/** Log v45: enemies that only a boss sends (the player's review of
+/** Log v46: enemies that only a boss sends (the player's review of
  *  Saltgate Canal's boss: "make it the missile trucks so it is different.
  *  Should be a parade of them shooting off the ballistic missiles"). No
  *  wave planner draws them, they have no Test Lab enemy card and Free
@@ -177,7 +177,7 @@ export const FOE = {
   // faster (EV's `drive`), but none drives off faster (it was drive ×
   // back, about 7 ×).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
-  // Log v45 (Saltgate Canal's boss): the Missile Truck, a TEL. It drives
+  // Log v46 (Saltgate Canal's boss): the Missile Truck, a TEL. It drives
   // to its spot, raises its one long missile on the erector over `raise` s
   // (a ring fills round it and a dashed red line marks the ship), holds it
   // upright `hold` s, and fires it: an ordinary ballistic missile (it can
