@@ -4380,7 +4380,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(5) },
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
-      { at: 0.3, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.3, plus: 6, kind: 'drone', count: 3, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.75, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
       { at: 0.12, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
@@ -4407,10 +4407,10 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
       { at: 0.3, plus: 6, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
-      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(2) },
       { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 3, ballistic: 9, guided: 1, extras: { mine: 3 } },
+    replaces: { drones: 3, ballistic: 9, guided: 1, extras: { mine: 3, cluster: 1 } },
   },
   {
     id: 'sowers-carpet',
@@ -4431,11 +4431,11 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'stealthBomber', count: 1, from: { air: 1 } },
       { at: 0.3, plus: 10, kind: 'stealthBomber', count: 1, from: { air: -1 } },
-      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 14, extras: { mine: 3, stealthBomber: 1 } },
+    replaces: { ballistic: 14, guided: 1, extras: { mine: 3, stealthBomber: 1, cluster: 1 } },
   },
   {
     id: 'sowers-whole-reach',
@@ -4460,9 +4460,9 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(2) },
+      { at: 0.75, kind: 'drone', count: 8, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 15, guided: 1, extras: { mine: 6, cluster: 1 } },
+    replaces: { ballistic: 15, guided: 2, extras: { mine: 6, cluster: 1 } },
   },
   {
     id: 'sowers-last-sowing',
@@ -4488,7 +4488,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(2) },
     ],
-    replaces: { ballistic: 16, extras: { mine: 3, cluster: 1, stealthBomber: 1 } },
+    replaces: { ballistic: 16, extras: { mine: 3, cluster: 1, stealthBomber: 2 } },
     calm: 6,
   },
 ];
