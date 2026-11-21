@@ -137,9 +137,12 @@ export const STATUS = {
     { n: 205, title: 'Saltgate: the Gatecrashers truck-assault boss, no subs (log v42)', state: 'merged' },
     { n: 206, title: 'Hub update', state: 'merged' },
     { n: 207, title: 'iPhone home-screen app sizes itself right on first load', state: 'merged' },
+    { n: 208, title: 'Hub update', state: 'merged' },
+    { n: 209, title: 'Armory: Lifeboats and Quartermaster reworked, golden bomb (log v44)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-21', what: 'Merged #209 (log v44): Lifeboats and Quartermaster reworked as you asked. Lifeboats: L1 the carrier mends 66% of its damage between waves; L2 the carrier and every ship afloat mend 66%; L3 an orange “+1 LIFE” Lifeboat card joins the draft after waves 3, 6, 9 and 12 (take it instead of a weapon); L4 everything mended to full between waves; L5 (my proposal) you also start with one extra life. Extra lives show as orange pips on the SUNK row. Quartermaster: re-rolls 1 / 2 / 2 / 3 / 3; from L3 a glowing gold BOMB button in the left rail fires a Nuke once a run whenever you tap it (even in boss rounds); L5 deals 4 cards and gives one free weapon level-up a run (the gold button top-right of the draft). Bot with your Armory: each card at L5 lifts wins from 50% to 67%.' },
     { date: '2026-11-21', what: 'Your answers read. Being built now: the Lifeboats rework (repair and extra life alternating by level) and Quartermaster’s path with the golden bomb that waits until you use it (log v44); Saltgate’s boss as a parade of ballistic-missile trucks instead of rocket trucks (log v45). The Battery rebuild (log v43) was interrupted by a server restart and has resumed. After those: a few more drones and easy kills in waves 1–6.' },
     { date: '2026-11-21', what: 'Merged #207: the iPhone first-load sizing fix. Cause: the game measured the notch and home-bar margins once at launch, before iOS had filled them in on a home-screen launch, and never looked again (rotating the phone made it re-measure). It now keeps re-checking for the first seconds after a launch or return, and can’t size itself taller than the screen. Tested on an emulated iPhone 874×402; please check on yours: open from the home screen in landscape without rotating.' },
     { date: '2026-11-21', what: 'Your three Battery runs read (production campaign, v40). Runs 1–2 (Warhead / Point Defense / Drops Armory) lost at waves 7 and 6, mostly to shells; run 2 lost 4 ships in wave 3. Run 3 (Reload / Plating / Magazine, Orbital and Aegis) reached wave 10, waves 6–9 rated 5 / 5 / 5, “one of the best rounds”, so the “too hard” note is set aside as you said. Started: chapter 3, with The Battery rebuilt to the rules (keep the climb, smooth the wave 3 shell spike, check wave 10 isn’t a wall), and a fix for the iPhone home-screen app not sizing itself right until you rotate the phone.' },
@@ -187,6 +190,13 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
 
+  {
+    id: 'r14-lifeboats-l5',
+    kind: 'question',
+    title: 'Lifeboats level 5: start each run with one extra life?',
+    text: 'You set levels 1–4 (repair, repair + all ships, the Lifeboat card, full repair). Level 5 is built as: everything from level 4, and every run starts with +1 life, keeping the repair / life alternation.',
+    options: ['Start with +1 life (as built, recommended)', 'Instead the Lifeboat card shows up every other wave', 'Something else (say in the note)'],
+  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
