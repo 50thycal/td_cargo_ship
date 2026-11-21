@@ -2028,7 +2028,7 @@ function atStation(th: Threat): boolean {
   const f = th.foe;
   if (!f) return true;
   if (th.kind === 'tender') return f.n === 1;
-  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
+  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'missileTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
   return true;
 }
 
@@ -5422,6 +5422,7 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   hydra: GUIDED.waveSpeedShare,
   dart: 0.5,
   rocketTruck: 0,
+  missileTruck: 0,
   attackHeli: 0.3,
   heliRocket: 0.5,
   torpedoSub: 0,
@@ -5640,20 +5641,24 @@ export function launchPlane(g: Game, l: Launch): void {
   th.dropT = 99;
 }
 
-/** Ballistics commit at launch to the point their ship will have reached. */
-function aimBallistic(g: Game, th: Threat): void {
+/** Ballistics commit at launch to the point their ship will have reached.
+ *  Log v45: a Missile Truck's lob is in the air at least `lob.flight` s and
+ *  climbs at least `lob.apex` px (still under the ceiling). */
+function aimBallistic(g: Game, th: Threat, lob?: { flight: number; apex: number }): void {
   const t = targetPos(g, th);
   const ship = g.ships.find((o) => o.id === th.target);
+  const least = lob ? lob.flight : BALLISTIC.minFlight / g.waveSpeed;
   let at: Point = t;
-  let dur = dist(th.sx, th.sy, t.x, t.y) / th.speed;
+  let dur = Math.max(lob ? least : 0, dist(th.sx, th.sy, t.x, t.y) / th.speed);
   for (let k = 0; k < 2 && ship; k++) {
     at = shipAhead(g, ship, dur);
-    dur = dist(th.sx, th.sy, at.x, at.y) / th.speed;
+    dur = Math.max(lob ? least : 0, dist(th.sx, th.sy, at.x, at.y) / th.speed);
   }
   th.ix = Math.min(VIEW.width - 20, at.x);
   th.iy = at.y;
-  th.dur = Math.max(BALLISTIC.minFlight / g.waveSpeed, dur);
+  th.dur = Math.max(least, dur);
   th.apex = Math.min(BALLISTIC.apexMax, BALLISTIC.apexFrac * dist(th.sx, th.sy, th.ix, th.iy));
+  if (lob) th.apex = Math.max(th.apex, lob.apex);
   // Keep the top of the arc on screen: a missile you can't see can't be tapped.
   let lo = 0;
   let hi = th.apex;
@@ -5664,6 +5669,14 @@ function aimBallistic(g: Game, th: Threat): void {
     if (hi - lo < 1) hi = lo;
   }
   th.apex = hi;
+}
+
+/** Log v45 (the Missile Truck): a ballistic at ship `target` (or, gone,
+ *  wherever it was aimed), lobbed high and slow. */
+export function lobBallistic(g: Game, th: Threat, target: number, lob: { flight: number; apex: number }): void {
+  th.target = target;
+  aimBallistic(g, th, lob);
+  th.heading = Math.atan2(th.iy - th.sy, th.ix - th.sx);
 }
 
 /** Highest (smallest y) point of a ballistic arc with the given apex. */
@@ -7225,6 +7238,7 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   hydra: 'kill.missile',
   dart: 'kill.small',
   rocketTruck: 'truck.destroyed',
+  missileTruck: 'truck.destroyed',
   attackHeli: 'kill.big',
   heliRocket: 'kill.small',
   torpedoSub: 'sub.destroyed',
@@ -7274,6 +7288,7 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   hydra: 'missile.launch',
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
+  missileTruck: 'truck.raise',
   attackHeli: 'foe.rotor',
   heliRocket: 'missile.launch',
   torpedoSub: 'sub.surface',

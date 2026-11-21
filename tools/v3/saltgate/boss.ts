@@ -1,8 +1,10 @@
 // Saltgate Canal's Gatecrashers, round by round, as the report's bot plays
-// the map card (log v42, docs/design/v3-ch2-saltgate.md): trucks sent, shot
-// before their first salvo (or gone without firing), salvos and clusters
-// fired, ships lost and the round's seconds. Also the trucks
-// of waves 1-10 (`--waves`).
+// the map card (docs/design/v3-ch2-saltgate.md): trucks sent (Rocket
+// Trucks and, log v45, Missile Trucks), shot before their first salvo or
+// missile (or gone without firing), salvos (a Missile Truck's missiles)
+// and clusters fired, missiles shot down in the air, the most missiles in
+// the air at once, ships lost and the round's seconds. Also the trucks of
+// waves 1-10 (`--waves`).
 //   npx vite-node tools/v3/saltgate/boss.ts -- [--seeds=24] [--from=900]
 //       [--armory=player|latest|none] [--waves]
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -20,9 +22,9 @@ const a = opt('armory') ?? 'player';
 const armory = a === 'latest' ? LATEST_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const waves = args.includes('--waves');
 
-type Row = { runs: number; trucks: number; early: number; salvos: number; clusters: number; lost: number; secs: number };
+type Row = { runs: number; trucks: number; early: number; salvos: number; clusters: number; lost: number; secs: number; shot: number; peak: number };
 const rows = new Map<number, Row>();
-const row = (w: number) => rows.get(w) ?? (rows.set(w, { runs: 0, trucks: 0, early: 0, salvos: 0, clusters: 0, lost: 0, secs: 0 }), rows.get(w)!);
+const row = (w: number) => rows.get(w) ?? (rows.set(w, { runs: 0, trucks: 0, early: 0, salvos: 0, clusters: 0, lost: 0, secs: 0, shot: 0, peak: 0 }), rows.get(w)!);
 
 for (let seed = from; seed < from + n; seed++) {
   const card = labCard(mapCardId('saltgate', VERSION_DEFAULT))!;
@@ -31,6 +33,10 @@ for (let seed = from; seed < from + n; seed++) {
   const g = run.game;
   const seen = new Map<number, { wave: number; full: number; fired: number }>();
   const clusters = new Set<number>();
+  // A Missile Truck's missiles in the air (id -> last age, flight), and the
+  // most at once this wave.
+  const lobs = new Map<number, { wave: number; age: number; dur: number }>();
+  let peak = 0;
   let wave = -1;
   let lost0 = 0;
   let t0 = 0;
@@ -40,7 +46,9 @@ for (let seed = from; seed < from + n; seed++) {
         const r = row(wave);
         r.lost += shipsSunk(g) - lost0;
         r.secs += g.t - t0;
+        r.peak += peak;
       }
+      peak = 0;
       wave = g.wave;
       lost0 = shipsSunk(g);
       t0 = g.t;
@@ -49,7 +57,7 @@ for (let seed = from; seed < from + n; seed++) {
     run.advance(1);
     if (g.wave < 11 && !waves) continue;
     for (const th of g.threats) {
-      if (th.kind !== 'rocketTruck' || seen.has(th.id)) continue;
+      if ((th.kind !== 'rocketTruck' && th.kind !== 'missileTruck') || seen.has(th.id)) continue;
       seen.set(th.id, { wave: g.wave, full: th.foe?.n ?? 0, fired: 0 });
       row(g.wave).trucks += 1;
     }
@@ -62,6 +70,14 @@ for (let seed = from; seed < from + n; seed++) {
         s.fired = fired;
       }
     }
+    for (const th of g.threats) if (th.kind === 'ballistic' && !th.dead && seen.has(th.from ?? -1)) lobs.set(th.id, { wave: lobs.get(th.id)?.wave ?? g.wave, age: th.age, dur: th.dur });
+    for (const [id, l] of lobs) {
+      if (g.threats.some((o) => o.id === id && !o.dead)) continue;
+      // Gone before its flight was up: shot down.
+      if (l.age < l.dur - 0.05) row(l.wave).shot += 1;
+      lobs.delete(id);
+    }
+    peak = Math.max(peak, g.threats.filter((o) => o.kind === 'ballistic' && !o.dead && seen.has(o.from ?? -1)).length);
     for (const th of g.threats) if (th.kind === 'cluster' && !clusters.has(th.id) && seen.has(th.from ?? -1)) {
       clusters.add(th.id);
       row(g.wave).clusters += 1;
@@ -71,12 +87,13 @@ for (let seed = from; seed < from + n; seed++) {
     const r = row(wave);
     r.lost += shipsSunk(g) - lost0;
     r.secs += g.t - t0;
+    r.peak += peak;
   }
   for (const s of seen.values()) if (s.fired === 0) row(s.wave).early += 1;
 }
 console.log(`saltgate armory=${a}, ${n} seeds from ${from}`);
-console.log('wave runs trucks shot-early salvos clusters lost secs (means a run)');
+console.log('wave runs trucks shot-early salvos/missiles clusters missiles-shot peak-in-air lost secs (means a run)');
 for (const [w, r] of [...rows].sort((x, y) => x[0] - y[0])) {
   const m = (v: number) => (v / Math.max(1, r.runs)).toFixed(2);
-  console.log(`${w < 11 ? `w${w}` : `B${w - 10}`} ${r.runs} ${m(r.trucks)} ${m(r.early)} ${m(r.salvos)} ${m(r.clusters)} ${m(r.lost)} ${m(r.secs)}`);
+  console.log(`${w < 11 ? `w${w}` : `B${w - 10}`} ${r.runs} ${m(r.trucks)} ${m(r.early)} ${m(r.salvos)} ${m(r.clusters)} ${m(r.shot)} ${m(r.peak)} ${m(r.lost)} ${m(r.secs)}`);
 }
