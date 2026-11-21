@@ -4574,7 +4574,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
       { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { ballistic: 4, guided: 1 },
+    replaces: { ballistic: 7, guided: 1 },
   },
   {
     id: 'rigs-relief',
@@ -4598,7 +4598,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 7, ballistic: 7, extras: { cluster: 1, rig: 1 } },
+    replaces: { ballistic: 9, extras: { cluster: 1, rig: 1 } },
   },
   {
     id: 'rigs-rig-or-volley',
@@ -4622,7 +4622,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 3, ballistic: 8, guided: 1, extras: { cluster: 1 } },
+    replaces: { ballistic: 9, guided: 1, extras: { cluster: 1 } },
   },
   {
     id: 'rigs-periscope',
@@ -4646,7 +4646,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
     ],
-    replaces: { drones: 4, ballistic: 10, extras: { cluster: 2 } },
+    replaces: { ballistic: 12, extras: { cluster: 2 } },
   },
   {
     id: 'rigs-supersonic',
@@ -4671,7 +4671,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 9, ballistic: 10, guided: 1, extras: { supersonic: 1, cluster: 1, rig: 1 } },
+    replaces: { ballistic: 12, guided: 1, extras: { supersonic: 1, cluster: 1, rig: 1 } },
   },
   {
     id: 'rigs-two-tows',
@@ -4695,7 +4695,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 10, ballistic: 12, guided: 1, extras: { cluster: 1, rig: 2 } },
+    replaces: { ballistic: 15, guided: 1, extras: { cluster: 1, rig: 2 } },
   },
   {
     id: 'rigs-whole-field',
@@ -4721,7 +4721,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.35, plus: 6, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 5, ballistic: 13, guided: 2, extras: { cluster: 1 } },
+    replaces: { ballistic: 15, guided: 2, extras: { cluster: 1 } },
   },
   {
     id: 'rigs-last-tow',
@@ -4748,7 +4748,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 4, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { drones: 12, ballistic: 11, guided: 2, extras: { cluster: 1, rig: 2 } },
+    replaces: { ballistic: 19, guided: 2, extras: { cluster: 1, rig: 2 } },
     calm: 6,
   },
 ];
@@ -5014,7 +5014,7 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
-const RIGS_CLIMB = [0.9, 0.95, 0.9, 1.04, 1, 0.92, 0.96, 1.1, 0.92, 0.92];
+const RIGS_CLIMB = [0.9, 0.95, 0.95, 1, 1, 1, 1, 1, 1, 1];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -5536,9 +5536,9 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  missiles, shells and drones converging on the convoy. A rig brought down
  *  fires no more. Rising: more rigs, more volleys, bigger ones. */
 export const RIGS_BOSS_ROUNDS: BossRound[] = [
-  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 5, count: 4, size: 1, warn: 1.5 } },
+  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6, count: 3, size: 1, warn: 1.5 } },
   { rigs: 3, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
