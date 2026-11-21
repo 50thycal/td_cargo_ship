@@ -235,6 +235,18 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // ---- Chapter 3, Dark Water (docs/design/v3-ch3-battery.md) ----
+  battery: {
+    problem: 'Two shore guns of your own on the headland cover the east of the lane, where the ships deliver, while they stand: the enemy\'s shells and heavies go for the guns first, and each one knocked out leaves the ships under it uncovered for twelve seconds, while the middle of the lane, between your carrier and the guns, is covered by neither.',
+    counters: ['aegis', 'orbital', 'railgun'],
+    offCounter: ['seeker', 'droneScreen', 'well'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane, past the carrier in the west, through the open middle and under the shore guns on the headland to deliver in the east.',
+    stretches: { danger: 'middle', safe: 'early' },
+    boss: {
+      plan: 'The Blackout at the guns: night, stealth strafers from alternate sides (6, 7, then 8, closer together each round; the event sends 8 every round), with shells from the silo across from the headland at your shore guns each round and, from round 2, a heavy cruise missile at them, round 3 a cluster over the ships coming in too (encounters rev 4, MAP_BOSS; lab only).',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

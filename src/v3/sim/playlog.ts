@@ -296,11 +296,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      no Torpedo Sub on the map (MAP_FOE_SWAP), a truck down a road in an
  *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
  *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
- *      longer replays to the same game; the campaign plays as it did. */
-export const LOG_VERSION = 42;
+ *      longer replays to the same game; the campaign plays as it did.
+ *  43: chapter 3's first map, Battery Point, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-battery.md; lab, under the encounter
+ *      layer): ten encounters (BATTERY_R4), a climb (BATTERY_CLIMB), the
+ *      signature (MAP_SIGNATURE.battery: the wave's heavies at the shore
+ *      guns, off a truck as off a silo, and its strike jets as Stealth
+ *      Strafers), a launch at a knocked-out gun goes for the other gun,
+ *      and the Blackout's rounds rise (MAP_BOSS.battery: `jets`, `jetAt`,
+ *      `jetGap`, `fire`). A v42 Battery card log played the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did. */
+export const LOG_VERSION = 43;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [42];
+export const LOG_REPLAYS: readonly number[] = [43];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

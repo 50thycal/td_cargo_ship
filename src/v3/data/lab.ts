@@ -712,6 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'battery', log: 43, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },
   { map: 'saltgate', log: 42, tag: 'Polished', note: 'Trucks come to the locks: shoot them on the road. Boss: a truck assault. Intense?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },

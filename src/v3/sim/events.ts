@@ -599,8 +599,13 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'blackout': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch3-battery.md): Battery
+      // Point's rounds rise, their own stealth strafers and launches of
+      // their own (MAP_BOSS: shells and heavies at the shore guns).
       const E = EV.blackout;
-      return [...steps(E.strafers, (k) => k * E.every, 'jet'), ...steps(1, () => E.shellAt, 'shell')];
+      const R = bossRound(g, ev);
+      const every = R?.jetGap ?? E.every;
+      return [...steps(R?.jets ?? E.strafers, (k) => (R?.jetAt ?? 0) + k * every, 'jet'), ...steps(1, () => E.shellAt, 'shell'), ...fireSteps(R)];
     }
     case 'carpet-run': {
       const E = EV['carpet-run'];
