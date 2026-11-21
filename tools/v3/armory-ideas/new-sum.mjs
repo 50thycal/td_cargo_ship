@@ -2,9 +2,13 @@
 // per base ("alone", "player") and draft mode ("kit", "self"), each config's
 // ships lost a run (all 13 waves), ships saved against "none" on the same
 // base, mode, map and seed (± one standard error, paired), per map; the share
-// won under the normal loss limit (lifeboats' half losses counted); the
-// Scrap a run banks (with Salvage Crews 5 for "salvage"); the lifeboats used
-// and the loss tally they saved (half a ship each); the re-rolls used.
+// won under the normal loss limit; the Scrap a run banks (with Salvage Crews
+// 5 for "salvage"); the re-rolls used. Runs from log 40 (new-runs.jsonl):
+// the lifeboats used and the loss tally they saved (half a ship each). Runs
+// from log 44 (rework-runs.jsonl): the extra lives taken, the golden bombs
+// set off and the wave they went at, and the free level-ups used. A
+// "normal" mode run ends where the game ends it, so its ships saved are not
+// a whole run's: read its `won` and `endWave`.
 //   node tools/v3/armory-ideas/new-sum.mjs <runs.jsonl>... > new-results.json
 import { readFileSync } from 'node:fs';
 const seen = new Set();
@@ -40,7 +44,7 @@ for (const [gk, by] of Object.entries(groups)) {
     const scrapBase = rs.map((r) => base.get(`${r.map}:${r.seed}`).normal.scrap);
     // The loss tally the lifeboats saved, against "none" (the ships sunk
     // saved, plus half a ship for each boat).
-    const tally = rs.map((r, i) => d[i] + r.boats.length * 0.5);
+    const tally = rs.map((r, i) => d[i] + (r.boats ?? []).length * 0.5);
     g.configs[k] = {
       seeds: rs.length / maps.length,
       lost: r1(mean(rs.map(tot))),
@@ -50,7 +54,13 @@ for (const [gk, by] of Object.entries(groups)) {
       endWave: r1(mean(rs.map((r) => r.normal.endWave))),
       scrap: Math.round(mean(scrap)),
       scrapGain: Math.round(mean(scrap) - mean(scrapBase)),
-      ...(rs.some((r) => r.boats.length) ? { boats: r1(mean(rs.map((r) => r.boats.length))), tallySaved: r1(mean(tally)), tallySe: r1(se(tally)) } : {}),
+      ...(rs.some((r) => r.boats?.length) ? { boats: r1(mean(rs.map((r) => r.boats.length))), tallySaved: r1(mean(tally)), tallySe: r1(se(tally)) } : {}),
+      ...(rs.some((r) => r.lives) ? { lives: r1(mean(rs.map((r) => r.lives))) } : {}),
+      ...(rs.some((r) => r.bomb) ? { bombs: r1(mean(rs.map((r) => (r.bomb ? 1 : 0)))), bombWave: r1(mean(rs.filter((r) => r.bomb).map((r) => r.bomb))) } : {}),
+      ...(rs.some((r) => r.free) ? { free: r1(mean(rs.map((r) => r.free))) } : {}),
+      // The won share's paired difference against "none", ± one standard error.
+      wonGain: Math.round(100 * mean(rs.map((r) => Number(r.normal.won) - Number(base.get(`${r.map}:${r.seed}`).normal.won)))),
+      wonSe: Math.round(100 * se(rs.map((r) => Number(r.normal.won) - Number(base.get(`${r.map}:${r.seed}`).normal.won)))),
       ...(rs.some((r) => r.rerolls) ? { rerolls: r1(mean(rs.map((r) => r.rerolls))) } : {}),
       perMap: perMap((r) => tot(base.get(`${r.map}:${r.seed}`)) - tot(r)),
     };

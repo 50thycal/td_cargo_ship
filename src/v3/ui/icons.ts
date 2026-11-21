@@ -36,6 +36,8 @@ export const ICON_COLOR: Record<CardId, string> = {
   shield: '#67e8f9',
   fullSteam: '#e2e8f0',
   resupply: '#8be38b',
+  // Lifeboats' extra-life card (the Armory's Lifeboats 3+): lifeboat orange.
+  lifeboat: '#fb8c3c',
 }
 
 const PATHS: Record<CardId, string> = {
@@ -87,6 +89,8 @@ const PATHS: Record<CardId, string> = {
   shield: '<path d="M16 3 L27 7 V15 C27 22 22 27 16 29 C10 27 5 22 5 15 V7 Z"/><path d="M11 16 L15 20 L21 12"/>',
   fullSteam: '<path d="M3 22 H26 L29 18 H23 V14 H11 V18 H3 Z"/><path d="M13 14 V9 M18 14 V7 M13 9 q-3 -3 0 -6 M18 7 q3 -3 0 -5"/>',
   resupply: '<rect x="6" y="9" width="20" height="16" rx="2"/><path d="M16 12 V22 M11 17 H21"/>',
+  // A lifeboat under a plus: one more life.
+  lifeboat: '<path d="M4 19 H28 L24 26 H8 Z"/><path d="M16 4 V14 M11 9 H21"/>',
 }
 
 export function upgradeIcon(id: CardId, size = 32): SVGSVGElement {

@@ -4,7 +4,7 @@
 // or press / pressMove / release for the gesture weapons).
 
 import { describe, expect, it } from 'vitest';
-import { AB, ABILITIES, ABILITY_ORDER, WEAPON, type AbilityId } from '../../src/v3/data/abilities';
+import { AB, ABILITIES, ABILITY_ORDER, WEAPON, isSpecialCard, type AbilityId } from '../../src/v3/data/abilities';
 import { PICKUPS, PICKUP_KINDS } from '../../src/v3/data/config';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { ROSTER, draftPool, gestureOf, isPrototype } from '../../src/v3/data/roster';
@@ -88,7 +88,7 @@ describe('the roster (moddable: one line a weapon)', () => {
         g.raiders = [];
         step(g, DT);
         if ((g.phase as string) !== 'draft') continue;
-        for (const id of g.offer) if (id !== 'resupply') {
+        for (const id of g.offer) if (!isSpecialCard(id)) {
           expect(ROSTER[id].unlock, `${map} ${seed} ${id}`).toBeLessThanOrEqual(chapter);
           seen[chapter].add(id);
         }
@@ -111,7 +111,7 @@ describe('the roster (moddable: one line a weapon)', () => {
         g.raiders = [];
         step(g, DT);
         if ((g.phase as string) !== 'draft') continue;
-        for (const id of g.offer) if (id !== 'resupply') expect(isPrototype(id), `${map} ${seed} ${id}`).toBe(false);
+        for (const id of g.offer) if (!isSpecialCard(id)) expect(isPrototype(id), `${map} ${seed} ${id}`).toBe(false);
       }
     }
   });

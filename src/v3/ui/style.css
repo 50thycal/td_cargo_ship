@@ -7997,10 +7997,149 @@ a.v3-lab-page {
   opacity: 0.45;
 }
 
-/* Lifeboats: a ship that counted as half a loss fills half a pip. */
-.v2-hud-lost i.half {
+/* Lifeboats (reworked, log 44): an extra life is one more pip, lifeboat
+   orange; more than seven pips wrap to a second row. */
+.v2-hud-lost em {
+  display: block;
+  max-width: 72px;
+  margin: 0 auto;
+  line-height: 1;
+}
+
+.v2-hud-lost i.life {
+  border-color: #fb8c3c;
+}
+
+.v2-hud-lost i.lost.life {
+  background: var(--danger);
   border-color: var(--danger);
-  background: linear-gradient(90deg, var(--danger) 50%, transparent 50%);
+}
+
+/* Lifeboats' extra-life card in the draft. */
+.v2-card.v3-lifeboat {
+  border-color: #fb8c3c;
+}
+
+.v2-badge.life {
+  background: #fb8c3c;
+  color: #1a0d02;
+}
+
+/* Quartermaster 3+: the golden bomb, in the left rail under the ships
+   slider, from the run's start until it is tapped. */
+.v3-gold-bomb {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  margin-top: 4px;
+  border-radius: 50%;
+  border: 2px solid #fde68a;
+  background: radial-gradient(circle at 35% 28%, #fff4b8 0%, #f8c21c 45%, #b07400 100%);
+  color: #2e1d00;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 0 0 3px rgb(251 191 36 / 0.25), 0 0 14px rgb(251 191 36 / 0.55);
+  animation: v3-gold-glow 1.4s ease-in-out infinite alternate;
+}
+
+.v3-gold-bomb[hidden] {
+  display: none;
+}
+
+.v3-gold-bomb svg {
+  width: 24px;
+  height: 24px;
+}
+
+.v3-gold-bomb b {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1;
+}
+
+.v3-gold-bomb:disabled {
+  animation: none;
+  opacity: 0.6;
+}
+
+.v3-gold-bomb:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+@keyframes v3-gold-glow {
+  from {
+    box-shadow: 0 0 0 3px rgb(251 191 36 / 0.25), 0 0 8px rgb(251 191 36 / 0.4);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgb(251 191 36 / 0.35), 0 0 18px rgb(251 191 36 / 0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-gold-bomb {
+    animation: none;
+  }
+}
+
+/* Quartermaster 5: the draft's Free level-up button (beside Re-roll) and
+   the held weapons it can level. */
+.v2-draft-head:has(.v3-free-level) {
+  position: relative;
+  align-self: stretch;
+}
+
+/* Top-right (a test run's Done is there too: then under it). */
+.v2-draft-head .v3-free-level {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 4px 12px;
+  min-height: 44px;
+  justify-content: center;
+  border-color: #f8c21c;
+  color: #fde68a;
+  line-height: 1.1;
+}
+
+.v2-draft-head:has(.v3-draft-done) .v3-free-level {
+  top: 48px;
+}
+
+.v2-draft-head .v3-free-level span {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.v2-draft-head .v3-free-level.on {
+  background: rgb(248 194 28 / 0.25);
+}
+
+.v2-draft-head .v3-free-level:disabled {
+  opacity: 0.45;
+}
+
+.v2-slot.v3-free-slot {
+  border-color: #f8c21c;
+  box-shadow: 0 0 0 2px rgb(248 194 28 / 0.35);
+  cursor: pointer;
+}
+
+.v3-free-plus {
+  margin-left: 4px;
+  font-weight: 800;
+  color: #fde68a;
 }
 
 /* A short phone (≤ 430 px high) with five or six cards a row: smaller art

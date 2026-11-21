@@ -4,7 +4,7 @@
 // extra: it grabs their pickups like any other and keeps tapping threats
 // (with the Railgun loaded, the toughest threat first).
 
-import { ABILITY_ORDER, canTake, type AbilityId, type CardId } from '../data/abilities';
+import { ABILITY_ORDER, canTake, isSpecialCard, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { MapId } from '../data/maps';
 import { newFoeState, pickupLocked } from './foes';
@@ -23,6 +23,11 @@ import {
   createGame,
   pickUpgrade,
   rerollDraft,
+  freeLevelPick,
+  freeLevelUp,
+  goldBomb,
+  goldBombWorth,
+  lifeCardWorth,
   rerollWorth,
   step,
   tap,
@@ -81,6 +86,14 @@ export class Bot {
       const prefer = this.skill.prefer ?? ABILITY_ORDER;
       // Quartermaster: a hand with nothing it wants is dealt again.
       while (rerollWorth(g, prefer.slice(0, 4)) && rerollDraft(g));
+      // Quartermaster 5: the free level-up, at once.
+      const free = freeLevelPick(g);
+      if (free) freeLevelUp(g, free);
+      // Lifeboats 3+: the extra life when lives run low.
+      if (lifeCardWorth(g)) {
+        pickUpgrade(g, 'lifeboat');
+        return;
+      }
       const pick = g.offer
         .filter((id) => canTake(g.levels, id))
         .sort((a, b) => held(g, b) - held(g, a) || rank(prefer, a) - rank(prefer, b))[0];
@@ -92,6 +105,8 @@ export class Bot {
     // Focus (a boost): hold one finger down while a rush is about to land,
     // lift it when it has passed; the other finger keeps tapping.
     if (g.phase === 'wave') {
+      // Quartermaster 3+: the golden bomb, into a crowd near the ships.
+      if (goldBombWorth(g)) goldBomb(g);
       const rush = g.boost?.id === 'focus' && g.boost.bank > 0 && g.threats.filter((t) => !t.dead && timeToImpact(g, t) < 3).length >= 2;
       if (rush !== g.finger) focusHold(g, rush);
     }
@@ -275,7 +290,7 @@ function rank(prefer: AbilityId[], id: CardId): number {
 }
 
 function held(g: Game, id: CardId): number {
-  return id === 'resupply' ? -1 : (g.levels[id] ?? 0) > 0 ? 1 : 0;
+  return isSpecialCard(id) ? -1 : (g.levels[id] ?? 0) > 0 ? 1 : 0;
 }
 
 export interface BotRun {

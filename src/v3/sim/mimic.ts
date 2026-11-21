@@ -15,13 +15,13 @@ import { applyConvoy } from './convoy';
 import { ConvoyPilot, type PilotSkill } from './convoyPilot';
 import type { ConvoySetup } from '../data/convoy';
 import type { EncounterSetup } from '../data/encounters';
-import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, loadout, type AbilityId, type CardId } from '../data/abilities';
+import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, isSpecialCard, loadout, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, quieterBranch, rerollWorth, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, freeLevelPick, goldBombWorth, lifeCardWorth, quieterBranch, rerollWorth, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { isBoost } from '../data/roster';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
@@ -258,6 +258,10 @@ export interface BotIO {
   pace?(speed: number): void;
   /** Quartermaster: deal the draft again (true if it was). */
   reroll?(): boolean;
+  /** Quartermaster 5: a free level-up of a held weapon, in a draft. */
+  freeLevel?(id: AbilityId): boolean;
+  /** Quartermaster 3+: set off the golden bomb. */
+  goldBomb?(): boolean;
 }
 
 /** Quartermaster: the bot re-rolls a hand with nothing it wants (no weapon
@@ -329,12 +333,14 @@ export class Mimic {
     }
     // Stack: level up the card it holds highest, or (with `fresh`, a slot
     // free) now and then take a new weapon instead.
-    const held = takeable.filter((id): id is AbilityId => id !== 'resupply' && (g.levels[id] ?? 0) > 0);
+    // Lifeboats 3+: the extra life when lives run low.
+    if (lifeCardWorth(g)) return { id: 'lifeboat' };
+    const held = takeable.filter((id): id is AbilityId => !isSpecialCard(id) && (g.levels[id] ?? 0) > 0);
     const rank = (id: CardId) => {
       const k = this.persona.taste.indexOf(id as AbilityId);
       return k < 0 ? 50 + (ABILITY_ORDER as readonly string[]).indexOf(id) : k;
     };
-    const fresh = takeable.filter((id) => id !== 'resupply' && !(g.levels[id as AbilityId] ?? 0));
+    const fresh = takeable.filter((id) => !isSpecialCard(id) && !(g.levels[id as AbilityId] ?? 0));
     const room = loadout(g.levels).length < MAX_SLOTS;
     // The same game state always draws the same: the pick never moves the
     // bot's dice.
@@ -353,6 +359,8 @@ export class Mimic {
     if (g.phase === 'draft') {
       if (drafts) {
         if (io.reroll && this.wantsReroll(g) && io.reroll()) return;
+        const free = io.freeLevel ? freeLevelPick(g) : null;
+        if (free && io.freeLevel!(free)) return;
         const c = this.choose(g);
         io.pick(c.id, c.replace);
       }
@@ -372,6 +380,8 @@ export class Mimic {
         this.noticeAt.set(th.id, from + this.scale(r));
       }
     if (t < this.lapseUntil) return;
+    // Quartermaster 3+: the golden bomb, into a crowd near the ships.
+    if (io.goldBomb && goldBombWorth(g) && io.goldBomb()) return;
     if (this.nextLapse !== null && t >= this.nextLapse && p.lapse) {
       this.lapseUntil = t + this.scale(this.logNormal(p.lapse), false);
       const played = this.start === null ? 0 : (t - this.start) / 300;
@@ -767,6 +777,8 @@ export class BotRun {
       formation: (id) => rec.formation(id),
       pace: (v) => rec.pace(v),
       reroll: () => rec.reroll(),
+      freeLevel: (id) => rec.freeLevel(id),
+      goldBomb: () => rec.goldBomb(),
     };
   }
 
