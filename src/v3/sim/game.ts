@@ -1316,6 +1316,7 @@ function startWave(g: Game): void {
     cursor.set(theme, at0 + 1);
   }
   g.raiderQueue = planVectors(g, raids, raidUnits, rng);
+  let besides = 0;
   raids.forEach((raid, r) => {
     for (const u of raidUnits[r]) {
       const at = raid.at + rng.range(0, RAID.window);
@@ -1329,7 +1330,11 @@ function startWave(g: Game): void {
         // Rocket Trucks fire at the ships held at the locks.
         // Sowers' Reach (log v48, MAP_SIGNATURE `sow`): its stealth bombers
         // sow mines ahead of the ships in place of their missiles.
-        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
+        // The Black Strait (log v50, MAP_SIGNATURE `beside`): its siege
+        // guns rise beside the bases of the enemy's dark bank, in turn.
+        const beside = u.kind === 'siege' && sig?.beside?.length ? sig.beside[besides++ % sig.beside.length] : -1;
+        const salvos = beside >= 0 && sig?.salvos !== undefined ? { salvos: sig.salvos } : {};
+        queue.push({ at, kind: u.kind, base: beside, ...salvos, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1459,7 +1464,8 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
       const aim = b.aim && b.aim !== 'any' ? { aim: b.aim } : {};
       if ('base' in b.from) {
         const gap = b.gap ?? 0.35;
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
+        // (Log v50: a siege gun beside the base fires the beat's salvos.)
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
         start = Math.min(start, at - RAID.warn);
       } else if ('road' in b.from) {

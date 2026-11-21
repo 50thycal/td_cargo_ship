@@ -153,6 +153,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
   // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
+  // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): the
+  // campaign's own schedule (step 1) and Pairs, as the Battery's; no
+  // command. The night is read and shot, not sailed round.
+  lantern: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {
