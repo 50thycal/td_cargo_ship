@@ -4243,8 +4243,9 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  with a long flight. Most in waves 1-3 (two strings on waves 1-2, one on
  *  wave 3), two drones on waves 4-6; none where the wave's budget had no
  *  room (Kesh 4, Marrow 6, the Archipelago 4-6, the second string of
- *  Harbor 2 and Saltgate 1); the Battery, whose waves 3-4 rated well, 1-2
- *  only. The encounters themselves (their beats, what they take out of the
+ *  Harbor 2 and Saltgate 1) or where the bots lost more with it on 96
+ *  seeds (the Island 4, Marrow 5, the Needle 5, Saltgate 2's first string);
+ *  the Battery, whose waves 3-4 rated well, 1-2 only. The encounters themselves (their beats, what they take out of the
  *  wave) are unchanged. */
 const FILL_GAP = 0.9;
 const fill = (at: number, count: number, from: number): Beat => ({ at, kind: 'drone', count, gap: FILL_GAP, from: base(from), filler: true });
@@ -4266,22 +4267,24 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['strait-ranging-opener', 'strait-far-silo', 'strait-silo-to-silo', 'strait-periscope', 'strait-swarm-screen', 'strait-both-ways'], 0, 2),
   // Kesh: the far east silo only (the south silo's flight to the apex is the shortest on the map).
   ...busy(['kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks', 'kesh-bunch'], 1, 1, [4]),
-  ...busy(['marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship', 'marrow-both-shores'], 0, 1, [6]),
+  ...busy(['marrow-under-the-sweep', 'marrow-shell-at-tower', 'marrow-under-the-island', 'marrow-shells-below', 'marrow-tower-or-ship', 'marrow-both-shores'], 0, 1, [5, 6]),
   // The Gauntlet: the north-west and south-west silos, one shore then the other.
   ...busy(['gauntlet-north-south-opener', 'gauntlet-p4-shell-each-shore', 'gauntlet-p4-way-in', 'gauntlet-p4-periscope', 'gauntlet-p4-overlap', 'gauntlet-p4-crossing'], 0, 2),
   // Harbor Mouth: the north-west silo and the south headland's; its wave 2 (the smallest wave of all) one string only.
   ...busy(['harbor-first-look', 'harbor-wide-water', 'harbor-periscope', 'harbor-south-headland', 'harbor-funnel-tail', 'harbor-both-headlands'], 0, 3, [2]),
   ['harbor-wide-water', [fill(0.75, 2, 3)]],
   // Chapter 2. The Island: the north shore's silo only (the island's own two sit over both lanes).
-  ...busy(['island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes', 'island-behind'], 3, 3),
+  ...busy(['island-point-blank', 'island-far-shore', 'island-quiet-water', 'island-two-lanes', 'island-both-lanes', 'island-behind'], 3, 3, [4]),
   ...busy(['behemoth-first-tanker', 'behemoth-tanker-shell', 'behemoth-headland', 'behemoth-periscope', 'behemoth-tanker-or-convoy', 'behemoth-both-sides'], 0, 2),
   // The Needle: the north-west silo only (the south one is at the mouth).
-  ...busy(['needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands', 'needle-way-out'], 0, 0),
+  ...busy(['needle-the-mouth', 'needle-open-water', 'needle-queue', 'needle-periscope', 'needle-both-headlands', 'needle-way-out'], 0, 0, [5]),
   // The Archipelago: every drone silo is an islet among the lanes, so waves 1-3 only, from the outer islets.
   ...busy(['archipelago-west-islet', 'archipelago-gap', 'archipelago-front-back', 'archipelago-islet-chain', 'archipelago-both-ends', 'archipelago-behind'], 0, 2, [4, 5, 6]),
   // Saltgate Canal: the west shore and the east lock's silo; its wave 1 (a second swarm since log v42) one string only.
-  ...busy(['saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates', 'saltgate-periscope'], 0, 3, [1]),
+  ...busy(['saltgate-first-lock', 'saltgate-chamber', 'saltgate-both-locks', 'saltgate-cluster', 'saltgate-two-gates', 'saltgate-periscope'], 0, 3, [1, 2]),
   ['saltgate-first-lock', [fill(0.1, 3, 0)]],
+  // (Its wave 2's truck drives in early: the filler comes after it.)
+  ['saltgate-chamber', [fill(0.75, 2, 0)]],
   // Chapter 3: the Battery's waves 3-4 already rated 3-4, so waves 1-2 only.
   ['battery-guns', [fill(0.1, 3, 0)]],
   ['battery-ranging', [fill(0.8, 3, 3)]],
