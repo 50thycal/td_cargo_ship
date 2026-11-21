@@ -152,6 +152,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // left alone: only Hold is added. Chapter 3's rebuild (docs/design/
   // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
   // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
+  // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md, log v51): the
+  // campaign's own schedule (step 1), as the Battery's; no command. The
+  // battleship is fought by shooting, not by sailing.
+  dreadnought: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
 };
 

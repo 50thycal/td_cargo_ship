@@ -43,6 +43,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // ahead of the ships, and the mines they sow (counted apart from the
   // chutes' own, the map's mechanic, as `sownMine`).
   sowers: ['stealthBomber', 'sownMine'],
+  // Dreadnought Pass (log v51): laying the guns, the spotter planes that
+  // call the battleship's guns, and its broadsides (counted apart from the
+  // battleship itself, the map's mechanic, as `broadside`).
+  dreadnought: ['spotter', 'broadside'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -66,7 +70,7 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         const w = out[Math.min(13, g.wave) - 1];
         // A mine a stealth bomber sowed (log v48) is the signature's; a
         // chute's is the map's mechanic.
-        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.kind;
+        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
