@@ -326,7 +326,7 @@ Log v42:
 
 ## The play log (v46)
 
-`LOG_VERSION` 46, `LOG_REPLAYS` `[46]` (`src/v3/sim/playlog.ts`); 43–45 are kept for the parallel builds (the Armory rework 44, the Battery 45). The change is lab only, under the encounter layer, but it adds a threat kind (`missileTruck`), so every log's counts carry it: the map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and state hashes (the same runs, the same numbers), was rewritten with `--write`, and replays exactly with telemetry on and off. The version pins moved to 46 (`tools/v3/playtest-fixes/pins.py`). "Ready to test" lists Saltgate Canal at v46 ("Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?").
+`LOG_VERSION` 46, `LOG_REPLAYS` `[46]` (`src/v3/sim/playlog.ts`); after 44 (the Armory rework, #209) and 45 (the Battery rebuild, #210), both merged into this branch first; the bot numbers above were read on the merged build too (the same to the run). The change is lab only, under the encounter layer, but it adds a threat kind (`missileTruck`), so every log's counts carry it: the map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and state hashes (the same runs, the same numbers), was rewritten with `--write`, and replays exactly with telemetry on and off. The version pins moved to 46 (`tools/v3/playtest-fixes/pins.py`). "Ready to test" lists Saltgate Canal at v46 ("Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?").
 
 Log v42:
 
