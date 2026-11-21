@@ -4076,7 +4076,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.7, kind: 'ballistic', count: 2, gap: 0.75, from: base(2), aim: 'post' },
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'mid' },
     ],
-    replaces: { drones: 0, ballistic: 9, extras: { heavy: 1, bomber: 1, cluster: 1, supersonic: 1 } },
+    replaces: { drones: 0, ballistic: 9, extras: { heavy: 1, bomber: 1 } },
   },
   {
     id: 'battery-both-ends',

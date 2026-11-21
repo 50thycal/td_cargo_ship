@@ -239,6 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## Battery Point: chapter 3's first map (game version 43)
+
+> 2026-11-21. Battery Point rebuilt to the map rules (docs/design/v3-ch3-battery.md): its signature is "silence the battery" (the wave's heavy cruise missiles at your two shore guns, the wave's strike jets as Stealth Strafers) from wave 4, and most of its shells go for the guns. The question, as for each chapter 2 map: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 43, with chapter 3's draft (25 weapons: chapter 2's and Grapnel, Bomber Wing, Orbital Strike, Dual Wield, Focus Fire): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`; the build changes nothing of theirs). Results: `tools/v3/combo-sweep/results/v43-ch3`; the comparison: `python3 tools/v3/battery/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Battery Point (v43) | **Frigate Escort + Boomerang + Railgun** 5.1 ±0.8, won 63% | Air Strike + Boomerang + Supply Run 5.2 | Boomerang + Gravity Well + Overdrive 5.5 | Air Strike + Thermobaric Shell + Supply Run 5.7 | Gravity Well + Gunship Pair + Overdrive 5.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | **0 / 0 / 0 / 0 / 0** |
+| The same, the Battery against itself (two halves of its seeds) | 0.25 |
+| #1 kit | its own (in no other map's top 5) |
+| Best weapon alone | **Gunship Pair** 5.3 (Railgun 5.6, Shield 5.8, Thermobaric Shell 5.8, Gravity Well 6.1, Air Strike 6.2: sixth) |
+| Rank correlation of the weapons alone (the 20 both drafts deal), the Battery against the Island / Behemoth / Needle / Archipelago / Saltgate | 0.65 / 0.54 / 0.62 / 0.39 / 0.29 |
+| Chapter 3's new weapons | none in the top 5 kits; alone, Orbital Strike 6.6, Bomber Wing 8.6, Grapnel, Focus Fire and Dual Wield 11–12 |
+
+### Reading
+
+- **All five of the Battery's best kits are its own**, and its #1 kit is in no other map's top 5. Boomerang is in three of them; Railgun, the Gunship Pair and Gravity Well recur.
+- **Its best weapon alone is the Gunship Pair, as on the Needle of Bosk.** It leads Railgun by 0.3 of a ship on 12 seeds (inside the noise), so "the Battery's own best single" is not shown either way; it is not Air Strike (best alone on three of the five chapter 2 maps).
+- **Air Strike is not over-dominant here:** sixth alone (6.2, against 3.7–6.8 on chapter 2's maps), in two of the five best kits, never the #1.
+- **The halves agree little** (0.25): the top kits are within a standard error of each other, so their order is noise; that none is another map's is not.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=battery --out=tools/v3/combo-sweep/results/v43-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v43-ch3 --maps=battery --json=tools/v3/combo-sweep/results/v43-ch3/diversity.json
+python3 tools/v3/battery/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=battery --seeds=4
+```
+
 ## Saltgate Canal at game version 42: the trucks
 
 > 2026-11-20. The player's answer to the v38 card made Saltgate's boss a truck assault (the Gatecrashers) and its signature "the trucks come to the locks" (Rocket Trucks for half the wave's new enemies from wave 4, the wave's clusters at the locks; no Torpedo Sub on the map; docs/design/v3-ch2-saltgate.md, "Log v42"). Swept again the same way at version 42 (on top of v41's cluster climb and sub sites): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16. The other four maps are read from `results/v37-ch2` as at v38 (not re-swept at v41). Results: `tools/v3/combo-sweep/results/v42-ch2`; the comparison: `python3 tools/v3/saltgate/compare.py`.
