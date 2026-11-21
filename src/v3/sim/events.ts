@@ -226,8 +226,6 @@ export function startBonus(g: Game, id: EventId): void {
  *  afloat is mended, and the carrier's hull is full. */
 export function restoreConvoy(g: Game): void {
   g.lossBase = g.lost;
-  // Lifeboats' half losses were of the ships that no longer count.
-  g.lossCredit = 0;
   if (g.tel) g.tel.healAll(g, (s) => Math.max(s.hp, g.stats.shipHp), Math.max(g.carrierHp, g.stats.carrierHp), 'restore');
   g.carrierHp = Math.max(g.carrierHp, g.stats.carrierHp);
   for (const s of g.ships) s.hp = Math.max(s.hp, g.stats.shipHp);
