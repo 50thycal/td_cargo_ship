@@ -137,6 +137,19 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   if (spotter && ship) drawPaint(ctx, g, spotter, ship);
 }
 
+/** Log v50 (the Black Strait: night over the whole map): the circles that
+ *  warn of what no interceptor can stop (a dive bomber's, a siege
+ *  battery's), drawn again on top of the dark so every one still reads at
+ *  full strength (rule m-reads: anything that can sink a ship is warned). */
+export function drawWarningMarks(ctx: CanvasRenderingContext2D, g: Game): void {
+  for (const m of g.foe.marks) {
+    if (m.kind === 'dive') drawTargetCircle(ctx, g, m.x, m.y, FOE.diveBomber.hit + 14, m.t / m.dur, '255,77,61');
+    if (m.kind === 'shell') drawTargetCircle(ctx, g, m.x, m.y, FOE.siege.radius, m.t / m.dur, '255,170,60');
+  }
+  for (const th of g.threats) if (th.kind === 'diveBomber' && th.foe && th.foe.state === 0) drawTargetCircle(ctx, g, th.foe.px, th.foe.py, FOE.diveBomber.hit + 14, 1, '255,77,61');
+  for (const s of g.foe.shots) if (s.kind === 'bomb') drawTargetCircle(ctx, g, s.tx, s.ty, FOE.diveBomber.hit + 14, 1, '255,77,61');
+}
+
 /** Test Lab round 1: everything no interceptor can stop is red all over,
  *  with a red glow ("make the projectiles red, then we can tell the player:
  *  red projectiles you just cannot intercept"). Missiles you can shoot are

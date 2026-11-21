@@ -4619,6 +4619,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 0.8, from: sub(2), aim: 'lead' },
       { at: 0.5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.6, kind: 'siege', count: 1, from: base(5), salvos: 1 },
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(5), aim: 'lead' },
     ],
@@ -4644,11 +4645,12 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
       { at: 0.3, plus: 2, kind: 'ballistic', count: 1, from: base(4), aim: 'lead' },
       { at: 0.6, kind: 'cluster', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.5, kind: 'siege', count: 1, from: base(5), salvos: 1 },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
-      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 12, extras: { cluster: 1 } },
+    replaces: { ballistic: 12, extras: { cluster: 1, mothership: 1 } },
   },
   {
     id: 'lantern-two-guns',
@@ -4671,9 +4673,9 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.4, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 12, guided: 1 },
+    replaces: { ballistic: 12, guided: 1, extras: { mothership: 1 } },
   },
   {
     id: 'lantern-dark-water',
@@ -4695,11 +4697,12 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 0.8, from: sub(2), aim: 'lead' },
       { at: 0.3, plus: 4, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
       { at: 0.55, kind: 'cluster', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.4, kind: 'siege', count: 1, from: base(4), salvos: 1 },
       { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
-      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 16, guided: 1, extras: { cluster: 1 } },
+    replaces: { ballistic: 16, guided: 1, extras: { cluster: 1, mothership: 1 } },
   },
   {
     id: 'lantern-crossfire',
@@ -4721,11 +4724,12 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
       { at: 0.3, plus: 1, kind: 'ballistic', count: 1, from: base(4), aim: 'lead' },
       { at: 0.6, kind: 'cluster', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.5, kind: 'siege', count: 1, from: base(5), salvos: 1 },
       { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
-      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'rear' },
+      { at: 0.4, kind: 'drone', count: 7, gap: 0.35, from: base(3), aim: 'rear' },
     ],
-    replaces: { ballistic: 16, guided: 2, extras: { cluster: 1 } },
+    replaces: { ballistic: 16, guided: 2, extras: { cluster: 1, mothership: 2 } },
   },
   {
     id: 'lantern-last-light',
@@ -4749,9 +4753,9 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
       { at: 1, plus: 6, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
       { at: 1, plus: 8, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.5, kind: 'drone', count: 8, gap: 0.35, from: base(3) },
     ],
-    replaces: { ballistic: 15, guided: 1, extras: { cluster: 2 } },
+    replaces: { ballistic: 15, guided: 1, extras: { cluster: 2, mothership: 2 } },
     calm: 6,
   },
 ];
@@ -5538,9 +5542,9 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  place), with shells, missiles and clusters out of the dark bank at the
  *  lead ship. Rising: more guns, closer together, more salvos. */
 export const LANTERN_BOSS_ROUNDS: BossRound[] = [
-  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 0, supply: 3, fire: [{ kind: 'ballistic', at: 8, count: 2, gap: 1, base: 4, aim: 'lead' }] },
-  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 1, supply: 3, fire: [{ kind: 'guided', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'cluster', at: 10, count: 1, base: 5, aim: 'lead' }] },
-  { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 3, fire: [{ kind: 'cluster', at: 5, count: 1, base: 5, aim: 'lead' }] },
+  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 0, supply: 4, fire: [{ kind: 'ballistic', at: 8, count: 2, gap: 1, base: 4, aim: 'lead' }] },
+  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 1, supply: 4, fire: [{ kind: 'guided', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 10, count: 2, gap: 1, base: 4, aim: 'lead' }] },
+  { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 5, aim: 'lead' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

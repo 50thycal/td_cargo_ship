@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers,lantern] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -43,6 +43,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // ahead of the ships, and the mines they sow (counted apart from the
   // chutes' own, the map's mechanic, as `sownMine`).
   sowers: ['stealthBomber', 'sownMine'],
+  // The Black Strait (log v50): guns in the dark, the siege guns that rise
+  // on the enemy's dark bank (a gun counts once, by its hits, however many
+  // times it rises).
+  lantern: ['siege'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
