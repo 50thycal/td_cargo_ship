@@ -1626,11 +1626,14 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
         expect(base.kinds ?? ['drone'], `${id}: a drone silo`).toContain('drone');
       }
     }
-    // Every rebuilt map has it: on wave 1, and on at least two of waves 1-3.
+    // Every rebuilt map has it: on wave 1, and on at least two of waves 1-3;
+    // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
+    // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
     expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
-    for (const map of maps) {
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
+    for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
     }

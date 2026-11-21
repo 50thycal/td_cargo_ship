@@ -18,7 +18,7 @@ Your chapter 2 playtests (2026-11-20) rated waves 1–6 fun 1–2 and intensity 
 - they come from a far silo, the back shore rather than one over a lane, so each has a long flight and is one easy tap;
 - one shot down drops nothing, so the run's pickups and weapons come as they would without it.
 
-The encounters themselves are unchanged: their beats, what they take out of the wave, and their call-outs. Most of the filler is in waves 1–3. The Battery, whose waves 3–4 already rated 3–4, gets waves 1–2 only. Test Lab only: the campaign plays as before.
+The encounters themselves are unchanged: their beats, what they take out of the wave, and their call-outs. Most of the filler is in waves 1–3. The Battery, whose waves 3–4 already rated 3–4 and whose wave 1 is already the busiest of any map, gets wave 2 only. Test Lab only: the campaign plays as before.
 
 | Map | Filler drones (wave: drones) | Total |
 | --- | --- | --- |
@@ -26,26 +26,26 @@ The encounters themselves are unchanged: their beats, what they take out of the 
 | Kesh Hook | 1: 3 + 2 · 2: 3 + 2 · 3: 3 · 5: 2 · 6: 2 (east silo only) | 17 |
 | Lee of Marrow | 1: 3 + 2 · 2: 3 + 2 · 3: 3 · 4: 2 | 15 |
 | The Gauntlet | 1: 3 + 2 · 2: 3 + 2 · 3: 3 · 4–6: 2 each | 19 |
-| Harbor Mouth | 1: 3 + 2 · 2: 2 · 3: 3 · 4–6: 2 each | 16 |
+| Harbor Mouth | 1: 3 + 2 · 3: 3 · 4–6: 2 each | 14 |
 | The Island | 1: 2 · 3: 2 (north shore only) | 4 |
 | The Behemoth Run | 1: 3 · 2: 3 · 3: 3 | 9 |
 | The Needle of Bosk | 1: 3 + 2 · 2: 3 + 2 · 3: 3 · 4: 2 · 6: 2 (north-west silo only) | 17 |
 | The Archipelago | 1: 3 · 2: 3 · 3: 3 (east islet) | 9 |
 | Saltgate Canal | 1: 3 · 2: 2 (after the truck) · 3: 3 · 4: 2 · 6: 2 | 12 |
-| Battery Point | 1: 2 · 2: 3 (late in the wave) | 5 |
+| Battery Point | 2: 3 (early in the wave) | 3 |
 
 The plan started as the same pattern on every map (two strings on waves 1–2, one on 3, two drones on 4–6). It was cut back wherever the bots lost more or won less with it:
 - **The Island:** the only drone silo off its islands sits right over the north lane.
 - **The Archipelago:** every drone silo is an islet among the lanes.
 - **The Behemoth and the Strait** (waves 4–6), **Marrow 5, the Needle 5 and Saltgate 5.**
 
-It was also left off wherever a wave's budget had no room: Kesh 4, Marrow 6, and the second string on Harbor 2 and Saltgate 1.
+It was also left off wherever a wave's budget had no room: Kesh 4, Marrow 6, Harbor 2, and the second string on Saltgate 1.
 
 **Measuring busyness.** The bot report has a new **Action per wave** table (`src/v3/sim/mapReport.ts`, `actionOf`; `tools/v3/map-report/quick.ts` prints it too). It has two rows:
 - **on the board:** the threats on the board at a moment (threat-seconds over seconds of play, structures left out);
 - **kills a minute:** threats shot down a minute.
 
-**The wave budget.** A filler drone counts as a quarter of a launch (`FILLER_WEIGHT`): four easy drones weigh one launch. Every wave stays within ±15% of the same wave with the encounters off. The highest filled waves are Harbor 2 (×1.14) and Harbor 1 / Saltgate 1 (×1.13).
+**The wave budget.** A filler drone counts as a quarter of a launch (`FILLER_WEIGHT`): four easy drones weigh one launch. Every wave stays within ±15% of the same wave with the encounters off. The highest filled waves are Harbor 1 and Saltgate 1 (×1.13).
 
 ### Before and after (the "you" bot, your Armory, 384 seeds a map, normal runs)
 
@@ -57,22 +57,28 @@ These are 384 seeds a map, not 24. On 24 or even 96 seeds, the waves 1–5 losse
 | Kesh Hook | 0.9 0.7 0.9 0.7 0.8 0.6 → **1.1 0.9 1.0** 0.7 **0.9 0.7** | 32 27 28 26 28 24 → **37 33 31** 26 **30 26** | 0.33 → 0.26 | 47% → 43% |
 | Lee of Marrow | 1.0 0.9 1.1 1.3 1.0 1.3 → **1.4 1.1 1.4 1.4** 1.0 1.3 | 32 29 34 38 28 34 → **40 36 39 40** 28 34 | 0.25 → 0.25 | 89% → 89% |
 | The Gauntlet | 0.9 0.8 1.1 0.8 0.9 0.9 → **1.0 0.9 1.2 0.9** 0.9 **1.0** | 31 26 30 21 24 25 → **34 28 34 23 26 27** | 0.64 → 0.63 | 45% → 48% |
-| Harbor Mouth | 0.8 0.9 0.6 0.7 1.1 1.0 → **1.0** 0.8 **0.7 0.8 1.2 1.1** | 24 31 17 20 27 25 → **30** 27 **21 23 29 27** | 0.86 → 0.88 | 29% → 27% |
+| Harbor Mouth | 0.8 0.9 0.6 0.7 1.1 1.0 → **1.0** 0.9 **0.8 0.8 1.1 1.1** | 24 31 17 20 27 25 → **30** 31 **21 23 29 27** | 0.86 → 0.90 | 29% → 25% |
 | The Island | 1.0 1.0 1.3 0.9 1.1 1.1 → **1.1** 0.9 **1.4** 1.0 1.1 1.1 | 32 30 39 32 36 29 → **35** 30 **41** 32 36 30 | 0.67 → 0.75 | 45% → 43% |
 | The Behemoth Run | 1.4 1.4 1.2 1.2 1.4 1.4 → **1.7 1.6 1.4** 1.2 1.4 1.4 | 36 38 36 34 34 34 → **42 41 40** 34 34 34 | 0.48 → 0.53 | 59% → 55% |
 | The Needle of Bosk | 0.9 0.9 1.0 1.1 1.1 1.2 → **1.3 1.2 1.2 1.2** 1.1 **1.3** | 32 26 31 31 31 28 → **40 33 36 34** 31 **31** | 0.57 → 0.61 | 52% → 55% |
 | The Archipelago | 1.2 0.9 1.2 1.5 1.4 1.9 → **1.4 1.0 1.3** 1.5 1.5 1.9 | 35 34 34 41 39 42 → **39 36 39** 41 38 42 | 0.63 → 0.65 | 53% → 56% |
 | Saltgate Canal | 0.9 0.9 1.1 1.2 1.2 1.0 → **1.1** 0.9 **1.3 1.4** 1.2 **1.1** | 27 26 33 31 31 26 → **33** 27 **38 34** 31 **28** | 0.25 → 0.32 | 60% → 56% |
-| Battery Point | 2.2 1.9 2.1 2.2 2.0 2.4 → **2.3 2.2** 2.1 2.1 2.0 2.4 | 51 53 54 55 52 54 → **52 56** 54 55 52 54 | 0.81 → 0.82 | 57% → 54% |
+| Battery Point | 2.2 1.9 2.1 2.2 2.0 2.4 → 2.2 **2.2** 2.1 2.1 2.0 2.4 | 51 53 54 55 52 54 → 51 **57** 55 56 52 54 | 0.81 → 0.73 | 57% → 55% |
 
-Bold marks a wave with filler. Wave 1, the weakest everywhere, gains the most. Most maps get about a fifth to two fifths more on the board and in kills a minute. The Island, the Gauntlet and the Battery get about a tenth, since their filler is the lightest or their wave 1 was already the busiest.
+Bold marks a wave with filler. Wave 1, the weakest everywhere, gains the most. Most maps get about a fifth to two fifths more on the board and in kills a minute. The Island and the Gauntlet get about a tenth, since their filler is the lightest. The Battery's wave 1 is unchanged, and its wave 2 gains about a sixth.
 
 Waves 1–5 losses move by at most +0.08. The Island is the most, and it stays inside the 0.4–0.8 target. Harbor Mouth and Battery Point were already a little over 0.8 before this, and they stay there. Win rates move by 4 points or less, which is about the noise on 384 seeds (±2.5 points a side).
 
 What did not work:
 - **Filler from a silo over a lane** cost up to 0.3 of a ship (the Island's wave 4, the Archipelago's waves 4–5).
 - **A late string on the Island's wave 2** moved its losses from wave 5 to wave 4 on every block of seeds. Likely cause: the wave ran on longer, so the convoy was somewhere else when wave 4's encounter fired. Not proven.
-- **The Battery's first try**, four drones early on its wave 1, lost wave-1 ships for the no-Armory bots. Its wave 1 is already the busiest of any map.
+- **Filler on the Battery's wave 1**, early or mid-wave, lost wave-1 ships for the no-Armory bots (0.02 → 0.17–0.20 a run for "you"). Late in the wave, its wave 7 rose. Its wave 1 is already the busiest of any map, so it is left as it was.
+
+**The checks** (bot report, tough runs):
+- **No-cliff, close-call, warning, wave-1 and budget checks:** they pass on 96 seeds as before on the Gauntlet and Saltgate, and on 192 seeds on Harbor Mouth.
+- **The Island:** its wave 7 cliff flags with the filler and without (0.44 → 0.94 before), so it predates this work.
+- **Battery Point:** its wave 7 cliff now reads just over the 2× line on 192 seeds (wave 6 0.36 → wave 7 0.79; before 0.48 → 0.74). That comes from a lower wave 6, on waves the filler doesn't touch, so it is likely dice.
+- **24-seed reports:** they flip these flags both ways with nothing changed.
 
 ### The flaky e2e check (Skip to boss)
 
