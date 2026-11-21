@@ -122,11 +122,21 @@ function fake(launches: number[], lost: number[] = []): RunDigest {
   return {
     seed: 0, won: false, endWave: 10, reached: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     lost: pad(lost), lostBonus: 0, launches: pad(launches), close: z().map(() => 1), warnSum: z().map((_, k) => 10 - k), warnN: z().map(() => 1),
+    waveSec: z().map(() => 60), boardSec: z().map((_, k) => 60 * (k + 1)), kills: z().map(() => 20),
     stretch: { core: { hp: [[1, 4, 5]], sunk: g() }, all: { hp: [[1, 4, 5]], sunk: g() } },
   };
 }
 
 describe('the report', () => {
+  it('reads the action a wave: threats on the board at a moment, kills a minute', () => {
+    const r = mapReport({ map: MAPS.strait, seeds: [0, 1], normal: [fake([]), fake([])], tough: [fake([])] });
+    expect(r.normal.action.onBoard[0]).toBeCloseTo(1);
+    expect(r.normal.action.onBoard[2]).toBeCloseTo(3);
+    expect(r.normal.action.killsMin[0]).toBeCloseTo(20);
+    // A wave no run reached reads NaN.
+    expect(r.normal.action.onBoard[10]).toBeNaN();
+  });
+
   it('sets the table × scale and the budget ratio to the encounters-off wave', () => {
     expect(tableLaunches(strait, 1)).toBe(Math.round(16 * strait.threatScale));
     const card = fake([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
