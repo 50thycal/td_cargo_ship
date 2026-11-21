@@ -4104,7 +4104,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'post' },
       { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'post' },
     ],
-    replaces: { drones: 0, ballistic: 13, guided: 2, extras: { supersonic: 1, mothership: 1, cluster: 1 } },
+    replaces: { drones: 0, ballistic: 13, guided: 2, extras: { supersonic: 1, mothership: 1 } },
   },
   {
     id: 'battery-dark-jet',
@@ -4157,7 +4157,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(1), aim: 'rear' },
       { at: 0.5, kind: 'guided', count: 2, gap: 1, from: base(0), aim: 'post' },
-      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'post' },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'post' },
     ],
     replaces: { drones: 0, ballistic: 16, guided: 4, extras: { cluster: 1 } },
   },
@@ -4195,7 +4195,7 @@ const BATTERY_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [10],
     role: 'climax',
     name: 'Last light',
-    callout: 'The guns and the lane',
+    callout: 'The guns and the convoy',
     premise: 'Once the wave\'s own fire is spent, a breath, then a heavy at the guns, shells at them from across the headland, a cluster over the ships coming in and swarms at both ends of the lane.',
     decision: 'Everything at once, the guns first: the map\'s question at its hardest.',
     counters: 'The shells and the cluster first, the heavy all the way in, the swarms last.',
@@ -4375,7 +4375,7 @@ const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96]
  *  ships in waves 1-5 and won 8% with the player's Armory): waves 5-10
  *  send a little less, within ±15% of each wave and never more than the
  *  ten. */
-const BATTERY_CLIMB = [1.05, 1.05, 1, 0.92, 0.88, 0.88, 0.88, 0.88, 0.88, 0.9];
+const BATTERY_CLIMB = [1.05, 1.05, 1, 0.92, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
