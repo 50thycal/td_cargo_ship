@@ -237,7 +237,9 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('coves')).toEqual({ convoy: 'tactical', encounters: true });
     // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
     expect(mapProduction('delta')).toEqual({ convoy: 'tactical', encounters: true });
-    expect(mapProduction('crossing')).toEqual({ convoy: 'current', encounters: false });
+    // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): the same.
+    expect(mapProduction('crossing')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('tide')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
   });

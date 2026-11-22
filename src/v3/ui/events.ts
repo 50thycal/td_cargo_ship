@@ -11,7 +11,8 @@ import type { Game } from '../sim/game';
 /** Under the threats: Beacon Strike's marks (each beacon to the ship it
  *  has marked). */
 export function drawEventUnder(ctx: CanvasRenderingContext2D, g: Game): void {
-  if (g.event?.id === 'beacon-strike') drawBeaconMarks(ctx, g);
+  // Log v58 (Dunmar Crossing): a spotter beacon marks its ship in any wave.
+  if (g.event?.id === 'beacon-strike' || g.threats.some((t) => t.kind === 'lure' && t.foe?.spot)) drawBeaconMarks(ctx, g);
 }
 
 /** Beacon Strike (round 8): while a beacon charges its call, a dashed
@@ -25,7 +26,7 @@ function drawBeaconMarks(ctx: CanvasRenderingContext2D, g: Game): void {
     const s = beaconMark(g, t);
     const f = t.foe;
     if (!s || !f || f.call === undefined) continue;
-    const k = Math.max(0, Math.min(1, 1 - (f.call - f.t) / E.charge));
+    const k = Math.max(0, Math.min(1, 1 - (f.call - f.t) / (f.spot?.charge ?? E.charge)));
     const hot = f.call - f.t < 0.5;
     const col = hot ? '255,90,60' : '253,224,71';
     ctx.strokeStyle = `rgba(${col},${0.45 + 0.4 * k})`;

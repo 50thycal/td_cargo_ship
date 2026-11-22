@@ -196,7 +196,7 @@ describe('wave 1 says something about the map, in every version', () => {
       // encounter's own; tests/v3/encounters.test.ts checks it.)
       // (Sowers' Reach, log v48: three mines off the east chute ahead of the
       // lead ship, the map's own mechanic, and three drones at it.)
-      expect(first[0].beats.filter((b) => !b.filler).map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : map === 'battery' ? [['drone', 4]] : map === 'sowers' ? [['mine', 3], ['drone', 3]] : map === 'rigs' || map === 'lantern' ? [['drone', 3], ['drone', 2]] : map === 'coves' ? [['fastboat', 1], ['fastboat', 1], ['drone', 3]] : map === 'delta' ? [['drone', 3], ['drone', 3], ['drone', 2]] : [['drone', 3]]);
+      expect(first[0].beats.filter((b) => !b.filler).map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : map === 'battery' ? [['drone', 4]] : map === 'sowers' ? [['mine', 3], ['drone', 3]] : map === 'rigs' || map === 'lantern' ? [['drone', 3], ['drone', 2]] : map === 'coves' ? [['fastboat', 1], ['fastboat', 1], ['drone', 3]] : map === 'delta' ? [['drone', 3], ['drone', 3], ['drone', 2]] : map === 'crossing' ? [['drone', 2], ['drone', 2]] : [['drone', 3]]);
       expect(encountersFor(map, 1, 'v1', 3), map).toEqual([]);
       const p = plan(map, 'v1');
       expect(p.encounters, map).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });

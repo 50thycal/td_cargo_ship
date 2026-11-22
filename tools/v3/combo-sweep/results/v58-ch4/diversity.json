@@ -1,0 +1,944 @@
+{
+ "about": "Each map's own best kits (tools/v3/combo-sweep/diversity.ts).",
+ "logVersion": 58,
+ "botRev": 3,
+ "persona": "you",
+ "top": 6,
+ "screenSeeds": 6,
+ "confirmSeeds": 16,
+ "maps": {
+  "crossing": {
+   "pairs": [
+    {
+     "key": "scatter+dualWield",
+     "lostAll": 3.167
+    },
+    {
+     "key": "flak+supplyRun",
+     "lostAll": 3.333
+    },
+    {
+     "key": "well+wildCard",
+     "lostAll": 3.333
+    },
+    {
+     "key": "airstrike+dualWield",
+     "lostAll": 3.5
+    },
+    {
+     "key": "airstrike+shrapnel",
+     "lostAll": 4.167
+    },
+    {
+     "key": "flak+railgun",
+     "lostAll": 4.167
+    }
+   ],
+   "screened": [
+    {
+     "key": "flak+railgun+supplyRun",
+     "lostAll": 3,
+     "won": 1
+    },
+    {
+     "key": "airstrike+shrapnel+dualWield",
+     "lostAll": 4.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "scatter+dualWield+shield",
+     "lostAll": 4.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "boomerang+well+wildCard",
+     "lostAll": 4.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+scatter+dualWield",
+     "lostAll": 4.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+wildCard+dualWield",
+     "lostAll": 4.5,
+     "won": 1
+    },
+    {
+     "key": "boomerang+flak+supplyRun",
+     "lostAll": 4.5,
+     "won": 1
+    },
+    {
+     "key": "airstrike+shrapnel+tesla",
+     "lostAll": 4.5,
+     "won": 1
+    },
+    {
+     "key": "airstrike+shrapnel+supplyRun",
+     "lostAll": 4.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+dualWield+focus",
+     "lostAll": 4.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "scatter+flak+supplyRun",
+     "lostAll": 4.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+flak+supplyRun",
+     "lostAll": 4.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+well+wildCard",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "scatter+well+wildCard",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "airstrike+orbital+dualWield",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "flak+railgun+dualWield",
+     "lostAll": 5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+wildCard",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "flak+railgun+overdrive",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "airstrike+boomerang+dualWield",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+dualWield+overdrive",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+droneScreen",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+tesla+dualWield",
+     "lostAll": 5.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+dualWield+fullSteam",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+shrapnel+seeker",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "well+wildCard+supplyRun",
+     "lostAll": 5.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+cadence",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "scatter+boomerang+dualWield",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+supplyRun+overdrive",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+focus",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+flak+railgun",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+boomerang",
+     "lostAll": 5.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+wildCard+shield",
+     "lostAll": 5.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+orbital+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+flak+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+aegis+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+bomberWing+dualWield",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+wildCard+dualWield",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+flak",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+cadence",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+gunships+wildCard",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+thermo+dualWield",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+railgun+dualWield",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+aegis+railgun",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+well+railgun",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+well+wildCard",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+railgun+wildCard",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+shield",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+orbital",
+     "lostAll": 6,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+well+wildCard",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+well",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+supplyRun+shield",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+gunships+dualWield",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+frigate",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+seeker+railgun",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+flak+railgun",
+     "lostAll": 6.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "flak+droneScreen+supplyRun",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+dualWield+fullSteam",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+supplyRun+dualWield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+dualWield+overdrive",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+well+wildCard",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+bomberWing",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+gunships+dualWield",
+     "lostAll": 6.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+seeker+dualWield",
+     "lostAll": 6.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+supplyRun+dualWield",
+     "lostAll": 6.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+droneScreen",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+railgun+gunships",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+flak+supplyRun",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+well+wildCard",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+railgun",
+     "lostAll": 6.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+seeker+dualWield",
+     "lostAll": 6.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+bomberWing+supplyRun",
+     "lostAll": 6.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+scatter+dualWield",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+scatter+dualWield",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+well+wildCard",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+bomberWing+wildCard",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+supplyRun+fullSteam",
+     "lostAll": 6.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+shrapnel+fullSteam",
+     "lostAll": 6.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+flak+dualWield",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+well+wildCard",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+thermo",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+railgun+tesla",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+dualWield",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+aegis",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+orbital",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+focus",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+well+supplyRun",
+     "lostAll": 7,
+     "won": 0.5
+    },
+    {
+     "key": "flak+gunships+supplyRun",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+wildCard+overdrive",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+wildCard+fullSteam",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+scatter",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+gunships",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+railgun+dualWield",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+seeker+supplyRun",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+wildCard+dualWield",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+well+dualWield",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+wildCard",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+dualWield+shield",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "flak+wildCard+supplyRun",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+cadence+supplyRun",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+tesla+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+aegis+dualWield",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+orbital+dualWield",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+flak+railgun",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+shield",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+droneScreen+dualWield",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+flak+railgun",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+fullSteam",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+lance+supplyRun",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "flak+grapnel+supplyRun",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+shrapnel+overdrive",
+     "lostAll": 7.833333333333333,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "well+orbital+wildCard",
+     "lostAll": 8,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+supplyRun+dualWield",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+cadence+dualWield",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+flak+dualWield",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "flak+tesla+supplyRun",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "well+droneScreen+wildCard",
+     "lostAll": 8.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+well+dualWield",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+flak+railgun",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+tesla+dualWield",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "well+lance+wildCard",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "well+grapnel+wildCard",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+shrapnel+focus",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+flak+railgun",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+lance",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+grapnel",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+droneScreen+dualWield",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+cadence+dualWield",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+supplyRun+focus",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+dualWield+focus",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+shrapnel+lance",
+     "lostAll": 9,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+grapnel",
+     "lostAll": 9,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "scatter+bomberWing+dualWield",
+     "lostAll": 9.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+aegis+dualWield",
+     "lostAll": 9.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "shrapnel+scatter+dualWield",
+     "lostAll": 9.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "well+cadence+wildCard",
+     "lostAll": 9.5,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+lance+dualWield",
+     "lostAll": 10,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+grapnel+dualWield",
+     "lostAll": 10,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+bomberWing",
+     "lostAll": 10.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "scatter+lance+dualWield",
+     "lostAll": 10.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+grapnel+dualWield",
+     "lostAll": 10.666666666666666,
+     "won": 0.5
+    }
+   ],
+   "best": [
+    {
+     "key": "airstrike+scatter+dualWield",
+     "name": "Air Strike + Scattergun + Dual Wield",
+     "lostAll": 4.6875,
+     "won": 0.8125,
+     "lost10": 2.5,
+     "boss": 0.7291666666666665,
+     "se": 0.4977978850648122,
+     "halves": [
+      4.5,
+      4.875
+     ]
+    },
+    {
+     "key": "airstrike+shrapnel+supplyRun",
+     "name": "Air Strike + Shrapnel Shell + Supply Run",
+     "lostAll": 5.1875,
+     "won": 0.8125,
+     "lost10": 2,
+     "boss": 1.0625,
+     "se": 0.560543472332878,
+     "halves": [
+      4.5,
+      5.875
+     ]
+    },
+    {
+     "key": "boomerang+well+wildCard",
+     "name": "Boomerang + Gravity Well + Wild Card",
+     "lostAll": 5.375,
+     "won": 0.875,
+     "lost10": 2.4375,
+     "boss": 0.9791666666666667,
+     "se": 0.6606992034958117,
+     "halves": [
+      5.125,
+      5.625
+     ]
+    },
+    {
+     "key": "flak+railgun+supplyRun",
+     "name": "Flak Cannon + Railgun + Supply Run",
+     "lostAll": 5.625,
+     "won": 0.75,
+     "lost10": 2.4375,
+     "boss": 1.0625,
+     "se": 0.8744417862270764,
+     "halves": [
+      3.375,
+      7.875
+     ]
+    },
+    {
+     "key": "airstrike+shrapnel+tesla",
+     "name": "Air Strike + Shrapnel Shell + Tesla Arc",
+     "lostAll": 5.875,
+     "won": 0.75,
+     "lost10": 2.4375,
+     "boss": 1.1458333333333333,
+     "se": 0.6179287479151622,
+     "halves": [
+      5.25,
+      6.5
+     ]
+    },
+    {
+     "key": "scatter+dualWield+shield",
+     "name": "Scattergun + Dual Wield + Shield",
+     "lostAll": 5.9375,
+     "won": 0.9375,
+     "lost10": 2.5625,
+     "boss": 1.125,
+     "se": 0.6642003533385088,
+     "halves": [
+      5.375,
+      6.5
+     ]
+    },
+    {
+     "key": "scatter+wildCard+dualWield",
+     "name": "Scattergun + Wild Card + Dual Wield",
+     "lostAll": 6.0625,
+     "won": 0.75,
+     "lost10": 3.5,
+     "boss": 0.8541666666666665,
+     "se": 0.8219106456148381,
+     "halves": [
+      5.875,
+      6.25
+     ]
+    },
+    {
+     "key": "boomerang+flak+supplyRun",
+     "name": "Boomerang + Flak Cannon + Supply Run",
+     "lostAll": 6.1875,
+     "won": 0.8125,
+     "lost10": 3,
+     "boss": 1.0625,
+     "se": 0.6200979635307634,
+     "halves": [
+      4.875,
+      7.5
+     ]
+    },
+    {
+     "key": "airstrike+shrapnel+dualWield",
+     "name": "Air Strike + Shrapnel Shell + Dual Wield",
+     "lostAll": 6.1875,
+     "won": 0.6875,
+     "lost10": 2.5625,
+     "boss": 1.2083333333333333,
+     "se": 1.0429029122478275,
+     "halves": [
+      5.5,
+      6.875
+     ]
+    },
+    {
+     "key": "scatter+dualWield+focus",
+     "name": "Scattergun + Dual Wield + Focus",
+     "lostAll": 7.125,
+     "won": 0.625,
+     "lost10": 4.0625,
+     "boss": 1.0208333333333333,
+     "se": 0.8921314014762624,
+     "halves": [
+      6.375,
+      7.875
+     ]
+    }
+   ]
+  }
+ },
+ "overlap": {
+  "jaccardTop5": {
+   "crossing": {
+    "crossing": 1
+   }
+  },
+  "sameMapHalves": {
+   "crossing": 0.43
+  },
+  "spearmanSingles": {
+   "crossing": {
+    "crossing": 1
+   }
+  },
+  "firstKit": {
+   "crossing": "airstrike+scatter+dualWield"
+  },
+  "firstKitShare": {
+   "most": "airstrike+scatter+dualWield",
+   "maps": 1,
+   "of": 1
+  },
+  "firstSingle": {
+   "crossing": "airstrike"
+  },
+  "firstSingleShare": {
+   "most": "airstrike",
+   "maps": 1,
+   "of": 1
+  },
+  "inTop5": {
+   "airstrike": {
+    "crossing": 3
+   },
+   "scatter": {
+    "crossing": 1
+   },
+   "dualWield": {
+    "crossing": 1
+   },
+   "shrapnel": {
+    "crossing": 2
+   },
+   "supplyRun": {
+    "crossing": 2
+   },
+   "boomerang": {
+    "crossing": 1
+   },
+   "well": {
+    "crossing": 1
+   },
+   "wildCard": {
+    "crossing": 1
+   },
+   "flak": {
+    "crossing": 1
+   },
+   "railgun": {
+    "crossing": 1
+   },
+   "tesla": {
+    "crossing": 1
+   }
+  }
+ }
+}
