@@ -5297,8 +5297,9 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  The enemy reads the switch: from wave 4 incendiary missiles burst on the
  *  water at the mouth of the branch it is set to (MAP_SIGNATURE), so the
  *  safe branch is only safe until the enemy fires on it. The danger is the
- *  way in, the river and the fork, where the ships bunch before the switch
- *  splits them. Bases counted from 0 here: 0 the north-west silo over the
+ *  fork and the branch mouths just past it (the lanes' middle third),
+ *  where the ships come out of the river under the fork's silo and the
+ *  fire on the branches; the safe stretch is the branch ends. Bases counted from 0 here: 0 the north-west silo over the
  *  river (220, 150; drones, shells), 1 the silo over the fork (560, 175;
  *  guided, supersonic), 2 the north bank's silo over the north branch (860,
  *  82; heavies, shells), 3 the island's west silo between the north and

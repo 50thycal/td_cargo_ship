@@ -383,7 +383,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     counters: ['seeker', 'thermo', 'cadence'],
     offCounter: ['well', 'tesla', 'aegis'],
     convoy: 'The map\'s own convoy, no commands: heavy river traffic (flow step 3) in a Spread, one ship at a time across the river (the player\'s own habit in the campaign), down to the fork, where the switch (a tap on its buoy) sends the next ships down one of three branches; the ships bunch in the river and at the fork, and spread out across the branches.',
-    stretches: { danger: 'early', safe: 'late' },
+    stretches: { danger: 'middle', safe: 'late' },
     boss: {
       plan: 'The Burning Delta (in place of the Escort Run: the Bodyguard Ring is a regular of chapter 4\'s waves, and the Delta\'s own debut): burning oil closes branches of the fork, the one the switch is set to first, its mouth lit 2.5 s before, so the convoy funnels into the branch left open, while a raid off every silo comes at the ships bunched on the way in. Round 1: one branch burns; round 2: two; round 3: two, then the fire moves to the branch that was open. Encounters rev 4, MAP_BOSS; lab only: the campaign plays the Escort Run.',
       botTarget: 2,
