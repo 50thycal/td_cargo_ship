@@ -21,7 +21,7 @@ import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
 import { makeRng, type RNG } from '../../sim/rng';
 import type { ThreatKind } from '../data/config';
-import { applyEncounters, applyFreePlay, applyLab, boostLevel, canFire, createGame, freeLevelPick, goldBombWorth, lifeCardWorth, quieterBranch, rerollWorth, step, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
+import { applyEncounters, applyFreePlay, applyLab, boostLevel, branchBurning, canFire, createGame, freeLevelPick, goldBombWorth, lifeCardWorth, quieterBranch, rerollWorth, step, switchLane, timeToImpact, worthShooting, type FreePlaySetup, type Game, type TapResult, type Tempo, type Threat } from './game';
 import { isBoost } from '../data/roster';
 import { Recorder, SIM_DT, type GhostResult, type PlayLog } from './playlog';
 import { pickupLocked } from './foes';
@@ -421,10 +421,14 @@ export class Mimic {
     // The Delta: a glance at the fork now and then, and a tap on the buoy if
     // another branch is clearly quieter.
     const fork = g.map.fork;
-    if (fork && t - this.lastSwitch > 12 && this.tapsLeft <= 0) {
+    // Log v54: fire burning on the switch's own branch (the Delta's
+    // incendiaries, its boss's oil) is seen at once, as a player does, and
+    // the switch thrown.
+    const burning = !!fork && branchBurning(g, switchLane(g));
+    if (fork && (t - this.lastSwitch > 12 || (burning && t - this.lastSwitch > 1.5)) && this.tapsLeft <= 0) {
       this.lastSwitch = t;
       const want = quieterBranch(g);
-      if (want !== null && this.rng.chance(0.6)) {
+      if (want !== null && (burning || this.rng.chance(0.6))) {
         io.tap(fork.x, fork.y, BOT_TAP_RADIUS);
         this.nextTap = t + this.scale(this.logNormal(p.pause) * 0.5);
         return;

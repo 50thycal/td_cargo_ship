@@ -311,6 +311,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-delta.md
+  delta: {
+    problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
+    // COUNTERS
+    counters: ['flak', 'shrapnel', 'well'],
+    offCounter: ['tesla', 'fullSteam', 'aegis'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs down the river to the fork, where the switch (a tap on its buoy) sends the next ships down one of three branches; the ships bunch in the river and at the fork, and spread out across the branches.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'The Burning Delta (in place of the Escort Run: the Bodyguard Ring is a regular of chapter 4\'s waves, and the Delta\'s own debut): burning oil closes branches of the fork, the one the switch is set to first, its mouth lit 2.5 s before, so the convoy funnels into the branch left open, while a raid off every silo comes at the ships bunched on the way in. Round 1: one branch burns; round 2: two; round 3: two, then the fire moves to the branch that was open. Encounters rev 4, MAP_BOSS; lab only: the campaign plays the Escort Run.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {
