@@ -412,6 +412,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      log before v55 no longer replays to the same game; the campaign
  *      plays as it did. (56 and 57 are the Coves' and the Delta's
  *      rebuilds, built alongside.)
+ *  56: chapter 4's first map, the Coves, rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-coves.md; lab, under the encounter layer): ten
+ *      encounters (COVES_R4) with their filler, a climb (COVES_CLIMB), the
+ *      map's own convoy at the campaign's schedule (MAP_CONVOY.coves), fire
+ *      ships (data/config.ts FIRESHIP; Beat, Launch, Unit and Threat
+ *      `fire`, game.ts lightFireShip: a fast boat set alight that burns
+ *      where it is sunk or rams, foes.ts burstCloud's `burn`), the
+ *      signature (MAP_SIGNATURE.coves `fireShips`: so many of the wave's own
+ *      fast boats come out of the coves as fire ships from wave 4), and a
+ *      new boss on the Repair Yard, the Fire Fleet (MAP_BOSS.coves `fleet`:
+ *      sorties of fire ships out of more coves each round; BossFire
+ *      `fastboat`). Chapter 4's table, CHAPTER_FOUR_MAPS, in REBUILT_MAPS.
+ *      A Coves card log before v56 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did. (Built as 53 alongside the Delta; it ships as 56,
+ *      after round 15's 55.)
  *  57: chapter 4's second map, the Delta, rebuilt to the map and wave rules
  *      (docs/design/v3-ch4-delta.md; lab, under the encounter layer): ten
  *      encounters (DELTA_R4) with their filler, a climb (DELTA_CLIMB), a new
@@ -425,7 +441,8 @@ import type { EncounterSetup } from '../data/encounters';
  *      ships bunched on the way in). The bots throw the switch away from a
  *      burning branch (quieterBranch). A Delta card log before v57 played today's
  *      convoy controls and the shared waves and no longer replays to the
- *      same game; the campaign plays as it did. (56: the Coves, built alongside.) */
+ *      same game; the campaign plays as it did. (56: the Coves, built
+ *      alongside.) */
 export const LOG_VERSION = 57;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */

@@ -599,6 +599,26 @@ function burningDelta(g: Game, ev: EventRun, s: EventStep): void {
   }
 }
 
+/** The Coves' Fire Fleet (log v53): a sortie's cove mouths light, the
+ *  sortie (a fire ship out of each cove at once, all at the ship nearest
+ *  halfway along), or the round's added launches. */
+function fireFleet(g: Game, ev: EventRun, s: EventStep): void {
+  const R = bossRound(g, ev)!;
+  if (s.op === 'fire') {
+    fireStep(g, ev, s.k);
+    return;
+  }
+  const F = R.fleet!;
+  if (s.op === 'lit') {
+    for (const i of F.coves) addFx(g, 'launch', g.map.bases[i].x, g.map.bases[i].y, { life: F.warn, r: 52 });
+    if (F.coves.length) cue(g, 'raid.warning', g.map.bases[F.coves[0]].x, g.map.bases[F.coves[0]].y);
+    return;
+  }
+  for (const i of F.coves) g.queue.push({ at: g.waveT, kind: 'fastboat', base: i, aim: 'mid', fire: true });
+  sent(ev, 'fastboat', F.coves.length);
+  g.queue.sort((a, b) => a.at - b.at);
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -746,6 +766,15 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'repair-yard': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch4-coves.md): the Coves'
+      // boss is the Fire Fleet, fire ships out of every cove at once at the
+      // clustered convoy (MAP_BOSS `fleet`), in place of the mothership and
+      // its repair ships (the Repair Ship is a regular of the Coves' waves).
+      const R = bossRound(g, ev);
+      if (R?.fleet) {
+        const F = R.fleet;
+        return [...steps(F.sorties, (k) => F.first + k * F.every - F.warn, 'lit'), ...steps(F.sorties, (k) => F.first + k * F.every, 'sortie'), ...fireSteps(R)];
+      }
       const E = EV['repair-yard'];
       return [...steps(1, () => 0, 'yard'), ...steps(E.swarms, (k) => 5 + k * 7, 'swarm')];
     }
@@ -1163,6 +1192,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'repair-yard': {
+      if (s.op === 'lit' || s.op === 'sortie' || s.op === 'fire') {
+        fireFleet(g, ev, s);
+        return;
+      }
       if (s.op === 'swarm') {
         swarm(g, ev, EV['repair-yard'].size);
         return;

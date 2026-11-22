@@ -1,0 +1,937 @@
+{
+ "about": "Each map's own best kits (tools/v3/combo-sweep/diversity.ts).",
+ "logVersion": 53,
+ "botRev": 3,
+ "persona": "you",
+ "top": 6,
+ "screenSeeds": 6,
+ "confirmSeeds": 16,
+ "maps": {
+  "coves": {
+   "pairs": [
+    {
+     "key": "shrapnel+orbital",
+     "lostAll": 5.167
+    },
+    {
+     "key": "cadence+shield",
+     "lostAll": 5.167
+    },
+    {
+     "key": "flak+wildCard",
+     "lostAll": 5.833
+    },
+    {
+     "key": "airstrike+flak",
+     "lostAll": 6
+    },
+    {
+     "key": "airstrike+aegis",
+     "lostAll": 6
+    },
+    {
+     "key": "thermo+overdrive",
+     "lostAll": 6
+    }
+   ],
+   "screened": [
+    {
+     "key": "airstrike+flak+wildCard",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+flak",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+flak+orbital",
+     "lostAll": 6,
+     "won": 1
+    },
+    {
+     "key": "airstrike+flak+orbital",
+     "lostAll": 6,
+     "won": 1
+    },
+    {
+     "key": "airstrike+flak+well",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+aegis+overdrive",
+     "lostAll": 6.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "shrapnel+thermo+orbital",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+flak+aegis",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+boomerang+orbital",
+     "lostAll": 6.5,
+     "won": 1
+    },
+    {
+     "key": "well+cadence+shield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+droneScreen+overdrive",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+orbital+dualWield",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+cadence+wildCard",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+flak+cadence",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+tesla",
+     "lostAll": 6.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "thermo+flak+wildCard",
+     "lostAll": 6.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+orbital+overdrive",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "cadence+droneScreen+shield",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+lance+wildCard",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+grapnel+wildCard",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+thermo+overdrive",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+wildCard+supplyRun",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+orbital+fullSteam",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+wildCard+overdrive",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+flak+shield",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+aegis+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+dualWield",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "flak+well+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+frigate+aegis",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+cadence+shield",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "cadence+gunships+shield",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+orbital+wildCard",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+wildCard",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+tesla+wildCard",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+aegis+tesla",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+overdrive",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+scatter+overdrive",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+railgun+overdrive",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+wildCard+overdrive",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+bomberWing+orbital",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+wildCard+dualWield",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+railgun",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "cadence+overdrive+shield",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+bomberWing",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+tesla+overdrive",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+railgun+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+orbital+shield",
+     "lostAll": 7.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+cadence+shield",
+     "lostAll": 7.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+orbital",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+cadence+shield",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+railgun",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "cadence+wildCard+shield",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+boomerang+overdrive",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+frigate+orbital",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+seeker+orbital",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+gunships+wildCard",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+cadence",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+supplyRun+overdrive",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+droneScreen+wildCard",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+supplyRun",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "flak+wildCard+fullSteam",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+boomerang+flak",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+droneScreen",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+thermo+aegis",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+overdrive+shield",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+aegis+orbital",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+well+orbital",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+shield",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+thermo+overdrive",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+flak+overdrive",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+flak+wildCard",
+     "lostAll": 8.333333333333334,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+railgun+orbital",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+tesla+orbital",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+flak+wildCard",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+well",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+thermo+flak",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+dualWield+overdrive",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+cadence+shield",
+     "lostAll": 8.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+scatter+aegis",
+     "lostAll": 8.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+orbital+wildCard",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+aegis",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+orbital+overdrive",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+scatter+orbital",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+focus",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+cadence+overdrive",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "cadence+supplyRun+shield",
+     "lostAll": 8.666666666666666,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+flak+lance",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+grapnel",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+boomerang+aegis",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+wildCard",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+bomberWing+overdrive",
+     "lostAll": 8.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+droneScreen+orbital",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+cadence+shield",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+frigate+flak",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+overdrive",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "flak+seeker+wildCard",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+flak+supplyRun",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+aegis+lance",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+aegis+grapnel",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "thermo+seeker+overdrive",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "thermo+gunships+overdrive",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "flak+bomberWing+wildCard",
+     "lostAll": 8.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+gunships+orbital",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+scatter+flak",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+flak+overdrive",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "cadence+shield+fullSteam",
+     "lostAll": 8.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "shrapnel+orbital+supplyRun",
+     "lostAll": 9,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+cadence+shield",
+     "lostAll": 9,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "cadence+focus+shield",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+orbital",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "railgun+cadence+shield",
+     "lostAll": 9,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+flak+focus",
+     "lostAll": 9.166666666666666,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+aegis+bomberWing",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+focus+overdrive",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "boomerang+cadence+shield",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "tesla+cadence+shield",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+droneScreen",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+well+overdrive",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "cadence+bomberWing+shield",
+     "lostAll": 9.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "cadence+orbital+shield",
+     "lostAll": 9.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+aegis+gunships",
+     "lostAll": 9.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+fullSteam",
+     "lostAll": 9.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+orbital+focus",
+     "lostAll": 9.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+cadence+shield",
+     "lostAll": 9.666666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+gunships",
+     "lostAll": 9.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+aegis+dualWield",
+     "lostAll": 9.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+overdrive+fullSteam",
+     "lostAll": 9.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "cadence+dualWield+shield",
+     "lostAll": 9.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+cadence+shield",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+flak+fullSteam",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "flak+wildCard+shield",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "thermo+lance+overdrive",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "thermo+grapnel+overdrive",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+flak+seeker",
+     "lostAll": 10.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+cadence+orbital",
+     "lostAll": 10.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+seeker+aegis",
+     "lostAll": 10.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "scatter+flak+wildCard",
+     "lostAll": 10.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "shrapnel+lance+orbital",
+     "lostAll": 10.5,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+grapnel+orbital",
+     "lostAll": 10.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+wildCard+focus",
+     "lostAll": 11.5,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "lance+cadence+shield",
+     "lostAll": 11.833333333333334,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "grapnel+cadence+shield",
+     "lostAll": 11.833333333333334,
+     "won": 0.16666666666666666
+    }
+   ],
+   "best": [
+    {
+     "key": "airstrike+flak+well",
+     "name": "Air Strike + Flak Cannon + Gravity Well",
+     "lostAll": 6.0625,
+     "won": 0.8125,
+     "lost10": 2.4375,
+     "boss": 1.2083333333333333,
+     "se": 0.5410403029118995,
+     "halves": [
+      5.375,
+      6.75
+     ]
+    },
+    {
+     "key": "airstrike+shrapnel+flak",
+     "name": "Air Strike + Shrapnel Shell + Flak Cannon",
+     "lostAll": 6.375,
+     "won": 0.9375,
+     "lost10": 2.4375,
+     "boss": 1.3125,
+     "se": 0.3736956482219187,
+     "halves": [
+      6.25,
+      6.5
+     ]
+    },
+    {
+     "key": "airstrike+flak+orbital",
+     "name": "Air Strike + Flak Cannon + Orbital Strike",
+     "lostAll": 6.5,
+     "won": 0.8125,
+     "lost10": 2.6875,
+     "boss": 1.2708333333333335,
+     "se": 0.5659615711335886,
+     "halves": [
+      6,
+      7
+     ]
+    },
+    {
+     "key": "airstrike+flak+aegis",
+     "name": "Air Strike + Flak Cannon + Point Defense",
+     "lostAll": 6.8125,
+     "won": 0.75,
+     "lost10": 2.5,
+     "boss": 1.4374999999999998,
+     "se": 0.7027776920015318,
+     "halves": [
+      7.375,
+      6.25
+     ]
+    },
+    {
+     "key": "shrapnel+thermo+orbital",
+     "name": "Shrapnel Shell + Thermobaric Shell + Orbital Strike",
+     "lostAll": 7.3125,
+     "won": 0.75,
+     "lost10": 3.1875,
+     "boss": 1.3749999999999998,
+     "se": 0.5055840527301074,
+     "halves": [
+      6.75,
+      7.875
+     ]
+    },
+    {
+     "key": "thermo+aegis+overdrive",
+     "name": "Thermobaric Shell + Point Defense + Overdrive",
+     "lostAll": 7.4375,
+     "won": 0.8125,
+     "lost10": 3,
+     "boss": 1.479166666666667,
+     "se": 0.5657458434447398,
+     "halves": [
+      7.5,
+      7.375
+     ]
+    },
+    {
+     "key": "shrapnel+boomerang+orbital",
+     "name": "Shrapnel Shell + Boomerang + Orbital Strike",
+     "lostAll": 7.4375,
+     "won": 0.6875,
+     "lost10": 3.25,
+     "boss": 1.3958333333333335,
+     "se": 0.5587985856952395,
+     "halves": [
+      6.75,
+      8.125
+     ]
+    },
+    {
+     "key": "airstrike+flak+wildCard",
+     "name": "Air Strike + Flak Cannon + Wild Card",
+     "lostAll": 7.625,
+     "won": 0.6875,
+     "lost10": 2.9375,
+     "boss": 1.5625000000000002,
+     "se": 0.6051536478449089,
+     "halves": [
+      6.875,
+      8.375
+     ]
+    },
+    {
+     "key": "shrapnel+flak+orbital",
+     "name": "Shrapnel Shell + Flak Cannon + Orbital Strike",
+     "lostAll": 7.9375,
+     "won": 0.6875,
+     "lost10": 3.375,
+     "boss": 1.5208333333333335,
+     "se": 0.8026749711900827,
+     "halves": [
+      6.375,
+      9.5
+     ]
+    },
+    {
+     "key": "well+cadence+shield",
+     "name": "Gravity Well + Cadence Gun + Shield",
+     "lostAll": 8.0625,
+     "won": 0.6875,
+     "lost10": 4.125,
+     "boss": 1.3125,
+     "se": 0.7524374454896566,
+     "halves": [
+      6.625,
+      9.5
+     ]
+    }
+   ]
+  }
+ },
+ "overlap": {
+  "jaccardTop5": {
+   "coves": {
+    "coves": 1
+   }
+  },
+  "sameMapHalves": {
+   "coves": 0.43
+  },
+  "spearmanSingles": {
+   "coves": {
+    "coves": 1
+   }
+  },
+  "firstKit": {
+   "coves": "airstrike+flak+well"
+  },
+  "firstKitShare": {
+   "most": "airstrike+flak+well",
+   "maps": 1,
+   "of": 1
+  },
+  "firstSingle": {
+   "coves": "orbital"
+  },
+  "firstSingleShare": {
+   "most": "orbital",
+   "maps": 1,
+   "of": 1
+  },
+  "inTop5": {
+   "airstrike": {
+    "coves": 4
+   },
+   "flak": {
+    "coves": 4
+   },
+   "well": {
+    "coves": 1
+   },
+   "shrapnel": {
+    "coves": 2
+   },
+   "orbital": {
+    "coves": 2
+   },
+   "aegis": {
+    "coves": 1
+   },
+   "thermo": {
+    "coves": 1
+   }
+  }
+ }
+}

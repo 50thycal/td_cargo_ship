@@ -1156,13 +1156,13 @@ function sailTender(g: Game, th: Threat, f: FoeData, dt: number): void {
 /** An Incendiary Missile bursts (shot down, or at its ship): its fireball
  *  burns where it burst. Its `n` says whether a hull was already near (for
  *  the Test Lab's "stopped before harm"). */
-export function burstCloud(g: Game, th: Threat): void {
+export function burstCloud(g: Game, th: Threat, burn?: number): void {
   const C = FOE.cloud;
   const f = (th.foe ??= data());
   if (f.state === 9) return;
   f.state = 9;
   f.n = g.ships.some((s) => dist(s.x, s.y, th.x, th.y) <= C.radius * 2) ? 1 : 0;
-  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: g.event?.linger ?? C.linger, dose: {}, src: th.id });
+  g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: th.x, y: th.y, t: 0, dur: burn ?? g.event?.linger ?? C.linger, dose: {}, src: th.id });
   addFx(g, 'burst', th.x, th.y, { life: 0.6, r: C.radius * 0.8 });
   cue(g, 'foe.ignite', th.x, th.y);
 }

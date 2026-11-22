@@ -172,6 +172,9 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // Armory on the map's own convoy, no encounters); step 2 spreads the
   // same fire over more hulls.
   lantern: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
+  // The Coves (docs/design/v3-ch4-coves.md, log v53): the same, no command:
+  // the boats are answered by shooting them, not by sailing.
+  coves: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

@@ -362,6 +362,31 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-coves.md (chapter 4, Open War: its first map)
+  coves: {
+    problem: 'Four smugglers\' coves hide fast boats two seconds from the lane, three in the enemy\'s north shore and one in the south shore by the delivery end: a boat takes two hits and rams for two, and from wave 4 fire ships come out of them that burn where they are sunk or ram, so each wants stopping far out, at the cove mouth, not on the lane.',
+    // The fire is boats out of the coves (two seconds from the lane, at the
+    // ship passing a cove mouth or along the lane), fire ships among them,
+    // drones off the one far silo, and, in the boss, fire ships out of every
+    // cove at once. Weapons that fire on their own catch a boat as it
+    // leaves its cove, while the finger is on something else: the Orbital
+    // Strike, the Frigate Escort on the lane and the Gunship Pair. Seekers
+    // chase what is already in the air, Full Steam sails the convoy past
+    // the coves faster but not out of their reach, and the Tesla Arc's
+    // chain wants strings of small things, not lone boats (forced, the
+    // combo sweep's singles at log v53: Orbital 6.4, Frigate 6.5, Gunship
+    // Pair 7.0 against Tesla 9.2, Full Steam 9.5, Seeker 10.0;
+    // docs/design/v3-ch4-coves.md, The counters). Every weapon is in
+    // chapter 4's draft.
+    counters: ['orbital', 'frigate', 'gunships'],
+    offCounter: ['tesla', 'fullSteam', 'seeker'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane under the three north coves, past the carrier in the middle, delivering in the east between the north-east cove and the south cove; the boats are answered by shooting, not by sailing.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Fire Fleet (in place of the Repair Yard: the Repair Ship debuts in the Coves\' wave 2 and is a regular from then): sorties of fire ships, one out of every cove listed at once, all at the ship nearest halfway along, the cove mouths lit first: two coves in round 1, three in round 2, all four in round 3, two sorties a round, with a pack of fast boats and a guided missile in rounds 1 and 2. A fire ship takes three hits; sunk or ramming, it burns on the water (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Repair Yard). Rising, below the asked 1.5 / 2 / 2.5 a round on the bot in the first two rounds, as on every rebuilt map, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
   // docs/design/v3-ch4-delta.md
   delta: {
     problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
