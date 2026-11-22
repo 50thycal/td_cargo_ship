@@ -6079,7 +6079,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [8],
     role: 'escalate',
     name: 'Crossfire',
-    callout: 'Fire across the lanes',
+    callout: 'Crossfire',
     premise: 'Each shore fires at the far lane: guided missiles off the north shore at the inbound ships and off the south shore at the outbound ships, crossing over the carrier, while a beacon rises at the crossing.',
     decision: 'Missiles over your own lane at the other one, and a beacon calling: which first?',
     counters: 'The missiles as they cross the water between the lanes; the beacon with your own shots.',
@@ -6261,9 +6261,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
   // Dunmar Crossing (log v58): the north-west and north-east silos, the
   // map's two drone silos on the far (north) shore, waves 1-6.
-  // Wave 1 one string only (its shared drones already reach the ships
-  // coming in at both ends).
-  ['crossing-two-fronts', [fill(0.1, 3, 0)]],
+  // Wave 1 one late string of two only, off the north-east silo (its
+  // shared drones already reach the ships coming in at both ends; an early
+  // string of three off the north-west silo sank ships for the bots with no
+  // Armory on wave 1).
+  ['crossing-two-fronts', [fill(0.75, 2, 2)]],
   ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2, [1]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
@@ -6482,7 +6484,7 @@ const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 /** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
-const CROSSING_CLIMB = [0.88, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
+const CROSSING_CLIMB = [0.85, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {

@@ -2672,6 +2672,7 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
     expect(c!.a.channel).toBe(0);
     expect(c!.b.channel).toBe(1);
     g.queue.push({ at: g.waveT, kind: 'lure', base: -1, beacon: SPOTTER });
+    g.queue.sort((x, y) => x.at - y.at);
     step(g, DT);
     const b = g.threats.find((t) => t.kind === 'lure' && !t.dead)!;
     expect(b).toBeDefined();
@@ -2693,9 +2694,18 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
     expect(b.dead).toBe(true);
     // Shot down early, it calls no more.
     g.queue.push({ at: g.waveT, kind: 'lure', base: -1, beacon: SPOTTER });
+    g.queue.sort((x, y) => x.at - y.at);
     step(g, DT);
     const b2 = g.threats.find((t) => t.kind === 'lure' && !t.dead)!;
+    for (let i = 0; i < 2 / DT; i++) step(g, DT);
+    // Only the player's own weapons sink it (a tap), not a helper.
     damageThreat(g, b2, SPOTTER.hp);
+    expect(b2.dead).toBe(false);
+    g.foe.byTap = true;
+    damageThreat(g, b2, SPOTTER.hp - 1);
+    expect(b2.dead).toBe(false);
+    damageThreat(g, b2, 1);
+    g.foe.byTap = false;
     expect(b2.dead).toBe(true);
     const before = g.queue.filter((l) => l.called).length;
     for (let i = 0; i < 8 / DT; i++) step(g, DT);
@@ -2703,7 +2713,9 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
   });
 
   it('the Beacon Line: lines of spotter beacons calling together, longer each round; a rev 3 log and the campaign play Beacon Strike', () => {
-    const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+    // (A sturdier Armory than the Coves' test: the line's volleys end a
+    // weak run in round 1.)
+    const opts = { persona: PERSONAS.tryhard, armory: { reload: 5, repair: 4, stockpile: 5, plating: 5 }, firstWave: 11 };
     const off = playMimic('crossing', 219, opts);
     const old = playMimic('crossing', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
     expect(old.game.eventLog).toEqual(off.game.eventLog);

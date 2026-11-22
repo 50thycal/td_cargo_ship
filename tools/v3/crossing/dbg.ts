@@ -1,16 +1,20 @@
-import { MAP_SIGNATURE } from '../../../src/v3/data/encounters';
-import { foesUpTo } from '../../../src/v3/data/foes';
-import { chapterOf } from '../../../src/v3/data/maps';
+import { SPOTTER } from '../../../src/v3/data/encounters';
 import { PERSONAS, playMimic } from '../../../src/v3/sim/mimic';
 import { applyEncounters, createGame, step } from '../../../src/v3/sim/game';
 import { crossingPair } from '../../../src/v3/sim/foes';
 
-console.log(MAP_SIGNATURE.crossing, foesUpTo(chapterOf('crossing')));
+const DT = 1 / 60;
 const g = createGame('crossing', 5, 4);
 applyEncounters(g, { rev: 4, version: 'v1' });
+g.tempo = { ...g.tempo, lossLimit: 999 };
 g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
 g.raiderQueue = [];
-for (let i = 0; i < 40 * 60; i++) step(g, 1 / 60);
-console.log(g.ships.map((s) => [s.channel, Math.round(s.x)]), crossingPair(g));
-const on = playMimic('crossing', 219, { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11, encounters: { rev: 4, version: 'v1' } });
-console.log(on.game.eventLog.map((e) => [e.run, e.outcome, e.sent, e.t]), on.game.lost, on.game.phase);
+for (let i = 0; i < 40 / DT; i++) step(g, DT);
+console.log('pair', !!crossingPair(g), g.ships.length, g.phase);
+g.queue.push({ at: g.waveT, kind: 'lure', base: -1, beacon: SPOTTER });
+step(g, DT);
+console.log('lures', g.threats.filter((t) => t.kind === 'lure').map((t) => [t.dead, t.hp, Math.round(t.x), Math.round(t.y)]), g.queue.length);
+for (const seed of [219, 220, 221]) for (const persona of ['you', 'tryhard'] as const) {
+  const on = playMimic('crossing', seed, { persona: PERSONAS[persona], armory: { reload: 5, repair: 4, stockpile: 5, plating: 5 }, firstWave: 11, encounters: { rev: 4, version: 'v1' } });
+  console.log(seed, persona, on.game.eventLog.map((e) => [e.run, e.outcome]), on.game.lost);
+}
