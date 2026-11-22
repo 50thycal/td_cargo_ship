@@ -1,6 +1,6 @@
 # The Black Strait (the Lantern): map card (map rebuild, chapter 3)
 
-**Date:** 2026-11-22. The Black Strait (`lantern`, "the Lantern", chapter 3 "Dark Water", map 4 of 5, the 14th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way Battery Point (`docs/design/v3-ch3-battery.md`, #210) and Sowers' Reach (`docs/design/v3-ch3-sowers.md`, #213) were. Encounter rev 4; play log **v50** (the Rigs, built alongside, takes v49).
+**Date:** 2026-11-22. The Black Strait (`lantern`, "the Lantern", chapter 3 "Dark Water", map 4 of 5, the 14th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way Battery Point (`docs/design/v3-ch3-battery.md`, #210) and Sowers' Reach (`docs/design/v3-ch3-sowers.md`, #213) were. Encounter rev 4; play log **v52** (built as v50; the Rig Field, v49, and Dreadnought Pass, v51, built alongside, merged first).
 
 There is no player run of the Black Strait to start from. The starting point is the map as it was (the Test Lab card: today's convoy controls, the shared waves, the Bombardment as its event) and what the player asked of every rebuild: a question of its own and kits of its own, busier early waves ("more drones and easy things to kill", "less is more"), the climb from wave 4 to 9 they rated 5/5/5, no single-wave cliff, wave 10 the climax and not a wall, a boss with three rising rounds that is a set-piece, and everything readable on an iPhone in landscape (874×402).
 
@@ -12,7 +12,7 @@ Code:
 - `src/v3/sim/game.ts`: the signature's siege guns get their dark-bank base in turn and their salvos; an encounter's siege beat from a base passes its salvos;
 - `src/v3/sim/events.ts`: the Bombardment reads its rounds from `MAP_BOSS` (its line of guns along the far shore, their gap and salvos, the guns on the dark bank, its supply swarms, the round's own launches); with no boss tuning it plays as it did;
 - `src/v3/ui/foes.ts`, `ui/features.ts`, `ui/render.ts`: a siege battery's and a dive bomber's circles are drawn again on top of the night (`drawWarningMarks`), so a warning for something no interceptor can stop never dims (this also helps the Battery's Blackout);
-- `src/v3/data/convoy.ts`: `MAP_CONVOY.lantern` (flow 2, Pairs, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.lantern`; `src/v3/data/lab.ts`: "Ready to test" lists the Black Strait at v50; `src/v3/sim/playlog.ts`: `LOG_VERSION` 50;
+- `src/v3/data/convoy.ts`: `MAP_CONVOY.lantern` (flow 2, Pairs, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.lantern`; `src/v3/data/lab.ts`: "Ready to test" lists the Black Strait at v52; `src/v3/sim/playlog.ts`: `LOG_VERSION` 52;
 - tools: `tools/v3/lantern/read.py` with `seeds.ts` (a tuning read on four processes), `sunk.ts` (what sinks the ships, wave by wave), `budget.ts` (each wave against the shared wave and no layer), `books.ts` (each encounter by the encounter test's books), `wave1.ts`, `probe-boss.ts` (the boss rounds as the encounter test plays them), `compare.py` (the diversity check); `tools/v3/combo-sweep/mixwaves.ts` counts the signature (`siege`).
 
 Bot reports: `tools/v3/map-report/results/lantern-player.md` (the usual Armory: Quick Reload 5, Damage Control 4, Stockpile 5), `lantern-latest.md` (Wide Warhead 5, Point Defense 4, Supply Lines 3), `lantern-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4), `lantern.md` (no Armory); each with a heat map and the counter and off-counter kits; the map as it was: `lantern-before*.md`. Tuning reads: the record report's bot on 192 seeds (900–1091) (`python3 tools/v3/lantern/read.py --seeds=192 --armory=... [--tough] [--no-enc]`).
@@ -99,16 +99,16 @@ Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, v
 
 ## Diversity: are the Black Strait's best kits its own?
 
-Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16) and compared with the five chapter 2 maps, the Battery, Sowers and the Rig Field from their last sweeps (`docs/design/v3-combo-diversity.md`, "The Black Strait"; `python3 tools/v3/lantern/compare.py`).
+Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16) and compared with the five chapter 2 maps, the Battery, Sowers, the Rig Field and Dreadnought Pass from their last sweeps (`docs/design/v3-combo-diversity.md`, "The Black Strait"; `python3 tools/v3/lantern/compare.py`).
 
 | | Result |
 | --- | --- |
 | Top 5 kits | **Air Strike + Frigate Escort + Supply Run** 2.9, Air Strike + Gunship Pair + Supply Run 3.1, Air Strike + Drone Screen + Shield 3.5, Air Strike + Railgun + Supply Run 3.6, Air Strike + Scattergun + Flak Cannon 3.6 (±0.5–0.6 each) |
-| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field | 0 / 0 / 0 / 0 / **0.11** / **0.11** / 0 / 0 |
+| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field / Dreadnought | 0 / 0 / 0 / 0 / **0.11** / **0.11** / 0 / 0 / 0 |
 | The same, against itself (two halves of its seeds) | 0.67 |
 | #1 kit | **the Battery's #1** (its #2 is in Saltgate's top 5) |
 | Best weapon alone | **Scattergun** 3.8 (the best single on no other rebuilt map) |
-| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field | 0.50 / 0.76 / 0.38 / 0.59 / 0.32 / 0.62 / 0.59 / 0.75 |
+| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field / Dreadnought | 0.50 / 0.76 / 0.38 / 0.59 / 0.32 / 0.62 / 0.59 / 0.75 / 0.67 |
 | Air Strike | 2nd of 25 alone (4.5); in **all five** of the best kits |
 
 - **The best weapon alone is its own** (the Scattergun), and three of its five best kits are its own.
@@ -250,9 +250,9 @@ The counter kit wins more often and loses fewer ships than the off-counter kit w
 - **The dark-bank guns sit low on a phone** (y 830–840 of 900): visible at 874×402, but a "NEW" card or an alert in the bottom-right corner can cover them for a few seconds.
 - **The convoy before** cannot be compared directly: the old card played today's convoy controls (the bot opened the flow and spread the ships: 70%); every rebuilt map's card plays the map's own convoy.
 
-## The play log (v50)
+## The play log (v52)
 
-`LOG_VERSION` 50, `LOG_REPLAYS` `[50]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer, and the night drawing: the campaign plays as at 48, and a v48 Black Strait card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins moved to 50 (`python3 tools/v3/playtest-fixes/pins.py 48 50`, and `tests/v3/scorecard.test.ts`). The Rigs, built alongside, takes v49 and merges first. The Test Lab's "Ready to test" lists the Black Strait at v50. The combo sweep's results are in `tools/v3/combo-sweep/results/v50-ch3`.
+`LOG_VERSION` 52, `LOG_REPLAYS` `[52]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer, and the night drawing: the campaign plays as at 51, and an older Black Strait card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins moved to 52 (`python3 tools/v3/playtest-fixes/pins.py`, and `tests/v3/scorecard.test.ts`). The Rig Field (v49) and Dreadnought Pass (v51), built alongside, merged first; this branch merged both and kept every playlog entry. The Test Lab's "Ready to test" lists the Black Strait at v52. The combo sweep ran while the build was numbered v50 (the same game); its results are in `tools/v3/combo-sweep/results/v50-ch3`.
 
 ## Questions for the player
 
@@ -277,7 +277,7 @@ The counter kit wins more often and loses fewer ships than the off-counter kit w
   - the filler: every one of waves 1–6.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2. `tests/v3/convoy.test.ts`: flow 2, Pairs, no command.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`: the production setup is policy D with no command and the encounters. `tests/v3/round12fixes.test.ts`: wave 1 opens with its two strings of drones and loses no ship (seeds 11–13, "you" and casual).
-- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 50.
+- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 52.
 - `e2e/v3-map-cards.mjs`: the hub card says so. `e2e/v3-encounters.mjs`: the card opens with its encounters and no command, the pause screen's script names its first encounter and the Bombardment, and skipped to the boss, the guns rise and mark the lane (a shot at one pixel a point: `e2e/shots/v3-encounters/lantern-boss.png`).
 
 ## What to look for when you play

@@ -137,7 +137,7 @@ export function drawFoeGround(ctx: CanvasRenderingContext2D, g: Game): void {
   if (spotter && ship) drawPaint(ctx, g, spotter, ship);
 }
 
-/** Log v50 (the Black Strait: night over the whole map): the circles that
+/** Log v52 (the Black Strait: night over the whole map): the circles that
  *  warn of what no interceptor can stop (a dive bomber's, a siege
  *  battery's), drawn again on top of the dark so every one still reads at
  *  full strength (rule m-reads: anything that can sink a ship is warned). */

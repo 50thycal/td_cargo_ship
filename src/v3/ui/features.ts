@@ -572,7 +572,7 @@ function drawDreadnought(ctx: CanvasRenderingContext2D, th: Threat, t: number): 
     ctx.stroke();
   }
   ctx.restore();
-  bar(ctx, th.x, th.y - 52, 160, th.hp / THREATS.dreadnought.hp, '#ff8a7a');
+  bar(ctx, th.x, th.y - 52, 160, th.hp / (th.maxHp ?? THREATS.dreadnought.hp), '#ff8a7a');
   label(ctx, 'DREADNOUGHT', th.x, th.y - 60, '#ffb2a3', 18);
 }
 
@@ -653,7 +653,7 @@ export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (
     ctx.fill();
     if (th.kind === 'ballistic' && reticleVisible(g, th)) drawReticle(th);
   }
-  // Log v50: a siege battery's and a dive bomber's circles on top of the
+  // Log v52: a siege battery's and a dive bomber's circles on top of the
   // dark too (their shells and bombs can't be shot down: the circle is the
   // whole warning).
   drawMarks?.();

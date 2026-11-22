@@ -47,7 +47,11 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // tow (`towRig`, apart from the rigs that stand from the start, the map's
   // mechanic) with the rack it fires as it docks (`rack`).
   rigs: ['towRig', 'rack'],
-  // The Black Strait (log v50): guns in the dark, the siege guns that rise
+  // Dreadnought Pass (log v51): laying the guns, the spotter planes that
+  // call the battleship's guns, and its broadsides (counted apart from the
+  // battleship itself, the map's mechanic, as `broadside`).
+  dreadnought: ['spotter', 'broadside'],
+  // The Black Strait (log v52): guns in the dark, the siege guns that rise
   // on the enemy's dark bank (a gun counts once, by its hits, however many
   // times it rises).
   lantern: ['siege'],
@@ -76,7 +80,8 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         // chute's is the map's mechanic.
         // A relief rig on its tow and its rack (log v49) are the Rig
         // Field's; its rigs standing from the start are its mechanic.
-        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.kind;
+        // A broadside of the Dreadnought's (log v51) is its signature's.
+        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate

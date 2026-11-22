@@ -152,12 +152,16 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // left alone: only Hold is added. Chapter 3's rebuild (docs/design/
   // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
   // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
+  // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md, log v51): the
+  // campaign's own schedule (step 1), as the Battery's; no command. The
+  // battleship is fought by shooting, not by sailing.
+  dreadnought: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
   // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the campaign's own
   // schedule, as the Battery's, and no command: the rigs are answered by
   // shooting them, not by sailing.
   rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
-  // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): flow 2 and
+  // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): flow 2 and
   // Pairs, as most of chapter 2's maps; no command (the night is read and
   // shot, not sailed round). At the campaign's step 1 its shared waves were
   // the hardest of any rebuilt map for the bot (won 9% with the usual
