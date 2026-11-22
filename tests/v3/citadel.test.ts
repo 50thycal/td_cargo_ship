@@ -160,7 +160,7 @@ describe('the Citadel\'s signature (log v60, MAP_SIGNATURE `dome`): fire under t
     expect(domed(g, m)).toBe(false);
     damageThreat(g, m, 5, true, 'gun');
     expect(m.dead).toBe(true);
-    // The rest of the Citadel's fire (no `dome`) is shot as anywhere.
+    // Fire with no `dome` (the Citadel's own on waves 1-3) is shot as anywhere.
     const g2 = layer(1, 4);
     const plain = spawnThreat(g2, 'guided', core.x, core.y + 20, 'base');
     damageThreat(g2, plain, 5, true, 'gun');

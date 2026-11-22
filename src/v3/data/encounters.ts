@@ -6715,9 +6715,10 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // or throw the switch and send the ships round it.
   delta: { from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' },
   // The Citadel (log v60, docs/design/v3-ch4-citadel.md): "under the dome",
-  // from wave 4. So many of the wave's own guided missiles and shells come
-  // off the Citadel itself, under its dome: while the shield stands, each
-  // can't be shot until it has left the dome, a breath from the narrows.
+  // from wave 4. Everything the Citadel fires leaves under its dome, and so
+  // many more of the wave's own guided missiles and shells come off the
+  // Citadel itself: while the shield stands, each can't be shot until it
+  // has left the dome, a breath from the narrows.
   // The shield rises again every wave (SHIELD_RISES), so the generators are
   // the price of shooting the keep's fire early, every wave.
   citadel: { from: 4, dome: [1, 1, 1, 2, 1, 1, 1] },

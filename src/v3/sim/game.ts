@@ -5800,7 +5800,9 @@ function launch(g: Game, l: Launch): void {
     if (l.filler) th.filler = true;
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
-    if (l.dome && base.core) th.dome = true;
+    // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
+    // first wave everything the Citadel fires leaves under its dome.
+    if (base.core && (l.dome || !!signatureOf(g.map.id, g.wave, g.enc?.setup)?.dome)) th.dome = true;
     if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
