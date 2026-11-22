@@ -277,11 +277,13 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(plan('rocketTruck').variant).toBeUndefined();
   });
 
-  it('the log is version 56 (the Coves rebuilt, chapter 4\'s first; after 55, round 15: hidden mines on the Sowers, rigs that count shots, 52, the Black Strait rebuilt, 51, Dreadnought Pass rebuilt, 49, the Rig Field rebuilt, 48, Sowers\' Reach rebuilt, 47, busier early waves, 46, Saltgate Canal\'s missile parade, 45, Battery Point rebuilt, 44, Lifeboats and Quartermaster reworked, 42, Saltgate Canal\'s trucks, 41, round 12\'s cluster climb and sub sites, 40, four new Armory upgrades, 39, the Shield takes 2 / 3 / 4 hits, 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest); only 56 replays here (an older Sowers or Rig Field card log plays a different game)', () => {
-    expect(LOG_VERSION).toBe(56);
-    expect(LOG_REPLAYS).toEqual([56]);
-    expect(replaysHere(56)).toBe(true);
+  it('the log is version 57 (the Delta rebuilt; after 56, the Coves rebuilt, chapter 4\'s first, 55, round 15: hidden mines on the Sowers, rigs that count shots, 52, the Black Strait rebuilt, 51, Dreadnought Pass rebuilt, 49, the Rig Field rebuilt, 48, Sowers\' Reach rebuilt, 47, busier early waves, 46, Saltgate Canal\'s missile parade, 45, Battery Point rebuilt, 44, Lifeboats and Quartermaster reworked, 42, Saltgate Canal\'s trucks, 41, round 12\'s cluster climb and sub sites, 40, four new Armory upgrades, 39, the Shield takes 2 / 3 / 4 hits, 38, Saltgate Canal rebuilt, 37, the Archipelago, and 36, the 2026-11-20 playtest); only 54 replays here (an older Black Strait card log plays a different game)', () => {
+    expect(LOG_VERSION).toBe(57);
+    expect(LOG_REPLAYS).toEqual([57]);
+    expect(replaysHere(57)).toBe(true);
+    expect(replaysHere(56)).toBe(false);
     expect(replaysHere(55)).toBe(false);
+    expect(replaysHere(54)).toBe(false);
     expect(replaysHere(53)).toBe(false);
     expect(replaysHere(52)).toBe(false);
     expect(replaysHere(51)).toBe(false);

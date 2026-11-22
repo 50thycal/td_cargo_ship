@@ -33,6 +33,8 @@ import {
   tap,
   timeToImpact,
   quieterBranch,
+  branchBurning,
+  switchLane,
   worthShooting,
   type Game,
   type Threat,
@@ -126,7 +128,7 @@ export class Bot {
     }
     // The Delta: throw the switch toward a quieter branch now and then.
     const fork = g.map.fork;
-    if (fork && g.t - this.lastSwitch > 10) {
+    if (fork && (g.t - this.lastSwitch > 10 || (branchBurning(g, switchLane(g)) && g.t - this.lastSwitch > 1.5))) {
       this.lastSwitch = g.t;
       const want = quieterBranch(g);
       if (want !== null) {
