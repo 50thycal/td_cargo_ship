@@ -83,14 +83,17 @@ function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
     }
   }
   // The gauge: time to the turn of the tide.
-  const gx = 1500;
-  const gy = top - 14;
-  bar(ctx, gx, gy, 150, frac, high ? CYAN : '#d8c08a');
+  // In the open water between the two lanes, mid-map and large enough to
+  // read on a phone held sideways (log v59: at the right edge, at 18 px, it
+  // was clipped and about 8 px tall on an iPhone).
+  const gx = 800;
+  const gy = top - 16;
+  bar(ctx, gx, gy, 260, frac, high ? CYAN : '#d8c08a');
   const secs = Number.isFinite(left) ? ` · ${Math.ceil(left)} s` : '';
   // The last seconds before the ebb read larger, in gold: the crowd is
   // coming (log v59).
   const ebbing = high && left <= 5;
-  label(ctx, ebbing ? `THE TIDE TURNS${secs}` : high ? `HIGH TIDE${secs}` : `LOW TIDE · flats closed${secs}`, gx, gy - 8, ebbing ? GOLD : high ? CYAN : '#ead7a4', ebbing ? 24 : 18);
+  label(ctx, ebbing ? `THE TIDE TURNS${secs}` : high ? `HIGH TIDE${secs}` : `LOW TIDE · flats closed${secs}`, gx, gy - 10, ebbing ? GOLD : high ? CYAN : '#ead7a4', ebbing ? 36 : 28);
 }
 
 function drawLock(ctx: CanvasRenderingContext2D, g: Game, i: number, x0: number, x1: number): void {
