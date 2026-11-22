@@ -262,10 +262,11 @@ export const TOW = { hp: 8, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 } 
 /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet; lab
  *  only): a fire ship is a fast boat set alight, `hp` hits, at `speed` × a
  *  fast boat's. Sunk, or where it rams a ship, it bursts into a fireball on
- *  the water, an Incendiary Missile's (FOE.cloud: 75 px, burning 7 s, a hit
- *  to a hull inside 0.7 s in and every 2 s after), so it wants sinking far
+ *  the water, an Incendiary Missile's (FOE.cloud: 75 px, a hit to a hull
+ *  inside 0.7 s in and every 2 s after), burning `burn` s (about a hit
+ *  to each hull that sails through it); its own ram does `ram`, so it wants sinking far
  *  out, at the cove mouth, not on the lane. */
-export const FIRESHIP = { hp: 4, speed: 0.8 } as const;
+export const FIRESHIP = { hp: 3, speed: 0.8, burn: 2.5, ram: 1 } as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;

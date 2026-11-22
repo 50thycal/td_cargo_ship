@@ -1,6 +1,6 @@
 // What sinks the ships on the Rig Field, wave by wave (g.sunkBy), as the bot
 // report's "you" bot plays the map card (tough: every seed plays every wave).
-//   npx vite-node tools/v3/rigs/sunk.ts -- [--seeds=24] [--from=900] [--armory=player]
+//   npx vite-node tools/v3/rigs/sunk.ts -- [--map=rigs] [--seeds=24] [--from=900] [--armory=player]
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
@@ -15,11 +15,11 @@ const a = opt('armory') ?? 'player';
 const armory = a === 'latest' ? LATEST_ARMORY : a === 'plating' ? PLATING_ARMORY : a === 'none' ? {} : PLAYER_ARMORY;
 const by: Record<number, Record<string, number>> = {};
 for (let seed = from; seed < from + n; seed++) {
-  const card = labCard(mapCardId('rigs', VERSION_DEFAULT))!;
+  const card = labCard(mapCardId((opt('map') ?? 'rigs') as never, VERSION_DEFAULT))!;
   const setup = defaultSetup(card, parseLabProgress(null));
   if (args.includes('--no-enc')) setup.encounters = false;
   const p = labRunPlan(card, setup, null);
-  const run = new BotRun('rigs', seed, { persona: PERSONAS.you, armory, lab: p.lab, ...(p.convoy ? { convoy: p.convoy } : {}), ...(p.encounters ? { encounters: p.encounters } : {}) });
+  const run = new BotRun((opt('map') ?? 'rigs') as never, seed, { persona: PERSONAS.you, armory, lab: p.lab, ...(p.convoy ? { convoy: p.convoy } : {}), ...(p.encounters ? { encounters: p.encounters } : {}) });
   const g = run.game;
   g.tempo = { ...g.tempo, lossLimit: 999 };
   g.carrierHp = g.stats.carrierHp = 1e6;

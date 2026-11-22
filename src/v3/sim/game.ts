@@ -6420,9 +6420,10 @@ export function checkImpact(g: Game, th: Threat): void {
   }
   // A heavy's direct hit sinks the ship whatever its armour or formation
   // (the supertanker takes VIP.heavyHit: it is built to take one).
-  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : dmg, blame, true, imp);
-  // The Coves (log v53): a fire ship that rams leaves its fire on the lane.
-  if (th.fire) burstCloud(g, th);
+  // The Coves (log v53): a fire ship rams for FIRESHIP.ram (its weapon is
+  // its fire), and leaves the fire on the lane.
+  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : th.fire ? FIRESHIP.ram : dmg, blame, true, imp);
+  if (th.fire) burstCloud(g, th, FIRESHIP.burn);
 }
 
 /** Log v53 (The Coves): a fast boat set alight, a fire ship (FIRESHIP):
@@ -6565,7 +6566,7 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   if (isFoe(th.kind)) foeDown(g, th, !drops);
   // The Coves (log v53): a fire ship sunk burns where it went down (the
   // Nuke puts it out, as an Incendiary Missile's).
-  if (th.fire && drops) burstCloud(g, th);
+  if (th.fire && drops) burstCloud(g, th, FIRESHIP.burn);
   if (g.event) eventFoeDown(g, th);
   if (g.lab) labKilled(g, th, !!g.lab.weapon && !!held(g, g.lab.weapon));
   if (isStructure(th.kind)) {
