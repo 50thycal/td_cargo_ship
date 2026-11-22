@@ -239,6 +239,36 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## Tidewater Flats: chapter 4's third rebuilt map (game version 59)
+
+> 2026-11-22. Tidewater Flats rebuilt to the map rules (docs/design/v3-ch4-tide.md): the tide goes out once a wave, every new ship crowds into the deep channel under the north shore, and the enemy fires at the crowd; its signature is "the ebb strike" (cluster missiles at the crowd at low water), its convoy a Box at flow step 2. Swept at version 59 with chapter 4's draft (27 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory (on the build just before the final one, whose waves 5, 6 and 10 send three drones more to the flats). The other maps are read from their last sweeps, the Coves from `results/v53-ch4` and the Delta from `results/v54-ch4`. Results: `tools/v3/combo-sweep/results/v59-ch4`; the comparison: `python3 tools/v3/tide/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Tide (v59) | **Point Defense + Gunship Pair + Bomber Wing** 4.4, won 94% | Frigate Escort + Flak Cannon + Gravity Well 4.9 | Point Defense + Orbital Strike + Supply Run 5.5 | Tesla Arc + Orbital Strike + Supply Run 5.8 | Frigate Escort + Flak Cannon + Dual Wield 6.2 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Tide against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | **0** against all twelve |
+| The same, the Tide against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Gravity Well** 4.7 (the best single on no other rebuilt map; Bomber Wing 4.9, Point Defense 5.4, Gunship Pair 5.5) |
+| Rank correlation of the weapons alone, against the twelve | 0.75 / 0.87 / 0.54 / 0.68 / 0.54 / 0.69 / 0.46 / 0.60 / 0.63 / 0.62 / 0.67 / 0.60 |
+| Air Strike | 6.1 alone (6th of 27); **in none of the five best kits** |
+| The bot drafting for itself; the plain gun | 8.9 lost, won 42%; 13.7, won 17% |
+
+### Reading
+
+- **All five of the Tide's best kits are its own**, and its best weapon alone is its own: the Gravity Well, which pulls the strike converging on the crowd into its core.
+- **No Air Strike and no Air Strike + Flak core** in its best kits: the kits that hold the sky over one bunch of ships (Point Defense, the Well, the Bomber Wing, the Gunship Pair, the Frigate with Flak) lead.
+- **The weapons alone rank most like the Behemoth Run's** (0.87) and least like Sowers' Reach's (0.46).
+
+```
+tools/v3/tide/sweep.sh
+python3 tools/v3/tide/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=tide --seeds=8
+```
+
 ## The Delta: chapter 4's second map (game version 57; swept at 54)
 
 > 2026-11-22. The Sharra Delta rebuilt to the map rules (docs/design/v3-ch4-delta.md): the river forks three ways at the buoy and the enemy fires at the branch the switch is set to; its signature is "fire on the branch" (from wave 4 the wave's new enemies come as Incendiary Missiles that burst on the mouth of the switch's branch), its convoy a Spread at flow step 3. Swept at version 54 (the same sim as 57) with chapter 4's draft (27 weapons: the Cadence Gun and the Wild Card join): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps. Results: `tools/v3/combo-sweep/results/v54-ch4`; the comparison: `python3 tools/v3/delta/compare.py`.

@@ -91,7 +91,21 @@ Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, v
 
 ## Diversity: are the Tide's best kits its own?
 
-DIVERSITY
+Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16; `tools/v3/tide/sweep.sh`), and compared with the five chapter 2 maps, the five of chapter 3, the Coves and the Delta from their last sweeps (`docs/design/v3-combo-diversity.md`, "Tidewater Flats"; `python3 tools/v3/tide/compare.py`).
+
+| | Result |
+| --- | --- |
+| Top 5 kits | **Point Defense + Gunship Pair + Bomber Wing** 4.4 (won 94%), Frigate Escort + Flak Cannon + Gravity Well 4.9, Point Defense + Orbital Strike + Supply Run 5.5, Tesla Arc + Orbital Strike + Supply Run 5.8, Frigate Escort + Flak Cannon + Dual Wield 6.2 |
+| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | **0** against all twelve |
+| The same, the Tide against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Gravity Well** 4.7 (the best single on no other rebuilt map) |
+| Rank correlation of the weapons alone, against the same twelve | 0.75 / 0.87 / 0.54 / 0.68 / 0.54 / 0.69 / 0.46 / 0.60 / 0.63 / 0.62 / 0.67 / 0.60 |
+| Air Strike | 6th of 27 alone (6.1); **in none of the five best kits** |
+
+- **All five of the Tide's best kits are its own**, and its best weapon alone is its own: the Gravity Well.
+- **No Air Strike + Flak core** (the brief's worry): the map's natural counter is holding the sky over one bunch of ships, and the Air Strike is in none of its best kits.
+- The sweep ran on the build just before the final one (waves 5, 6 and 10 send three drones more to the flats).
 
 ## Debuts and the chapter's enemies
 
