@@ -4907,7 +4907,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'The island between',
     callout: 'Fire from the island',
-    premise: 'The island between the north and middle branches fires both ways: a cluster at the ship halfway along, guided missiles at the ships nearest its east silo, and an incendiary at the switch\'s branch.',
+    premise: 'The island between the north and middle branches fires both ways: a cluster at the ship halfway along, a guided missile at the ship nearest its east silo, and an incendiary at the switch\'s branch.',
     decision: 'The island covers two branches: send the next ships south and leave the two under it to the guns?',
     counters: 'The cluster before it splits, the missiles, the incendiary far out.',
     succeeds: 'A close call in most runs; a run that sends ships south meets the incendiary there.',
@@ -4918,7 +4918,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.25, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
-      { at: 0.4, kind: 'guided', count: 2, gap: 1.5, from: base(4), aim: 'near' },
+      { at: 0.4, kind: 'guided', count: 1, from: base(4), aim: 'near' },
       { at: 0.55, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
       { at: 0.7, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
@@ -5010,7 +5010,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, plus: 9, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
       { at: 0.3, plus: 12, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
       { at: 0.3, plus: 10, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.3, plus: 11, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'rear' },
+      { at: 0.3, plus: 11, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
       { at: 0.22, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
       { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
@@ -5039,7 +5039,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 1, plus: 5, kind: 'cloud', count: 1, from: base(0), aim: 'switch' },
       { at: 1, plus: 4, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
       { at: 1, plus: 7, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 1, plus: 6, kind: 'guided', count: 2, gap: 0.7, from: base(1), aim: 'rear' },
+      { at: 1, plus: 6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
       { at: 1, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'rear' },
       { at: 1, plus: 8, kind: 'drone', count: 3, gap: 0.5, from: base(3), aim: 'rear' },
       { at: 1, plus: 11, kind: 'drone', count: 2, gap: 0.5, from: base(3) },
@@ -5139,12 +5139,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
   ['rigs-point-blank', [fill(0.7, 2, 3)]],
   ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 3]),
-  // The Delta (log v54): its two drone silos, the north-west one over the
-  // river and the island's west one, waves 1-6. Wave 1 one late string out
-  // of the island only: the north-west silo is a short flight from the
-  // ships coming in down the river.
+  // The Delta (log v54): the island's west silo, the far one of its two
+  // drone silos, waves 1-6 (the north-west one over the river is a short
+  // flight from the ships coming in down it); wave 1 one late string.
   ['delta-three-ways', [fill(0.7, 2, 3)]],
-  ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 0, 3, [1]),
+  ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -5332,7 +5331,7 @@ const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
  *  four waves and then climb to a wave 10 of 1.2 ships, so waves 2-4 send
  *  a little more and waves 9-10 a little less, within ±15% of each wave
  *  and never more than the ten. */
-const DELTA_CLIMB = [1, 1, 0.95, 0.95, 0.9, 0.88, 0.88, 0.87, 0.87, 0.88];
+const DELTA_CLIMB = [1, 0.92, 0.88, 0.88, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -5894,6 +5893,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
     fire: [
       { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
       { kind: 'guided', at: 8, count: 1, base: 1, aim: 'rear' },
+      { kind: 'guided', at: 15, count: 1, base: 4, aim: 'switch' },
       { kind: 'ballistic', at: 11, count: 1, base: 0, aim: 'rear' },
       { kind: 'drone', at: 13, count: 4, gap: 0.3, base: 3, aim: 'rear' },
     ],
@@ -5901,7 +5901,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
   {
     burn: [{ at: 3, n: 2, dur: 18 }],
     fire: [
-      { kind: 'drone', at: 4, count: 6, gap: 0.3, base: 0, aim: 'rear' },
+      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
       { kind: 'guided', at: 7, count: 1, base: 1, aim: 'rear' },
       { kind: 'cluster', at: 9, count: 1, base: 3, aim: 'rear' },
       { kind: 'ballistic', at: 11, count: 2, gap: 0.8, base: 0, aim: 'rear' },
@@ -5918,9 +5918,9 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
       { kind: 'guided', at: 6, count: 1, base: 1, aim: 'rear' },
       { kind: 'cluster', at: 8, count: 1, base: 3, aim: 'rear' },
       { kind: 'ballistic', at: 10, count: 2, gap: 0.8, base: 0, aim: 'rear' },
-      { kind: 'drone', at: 15, count: 6, gap: 0.3, base: 3, aim: 'rear' },
+      { kind: 'drone', at: 15, count: 5, gap: 0.3, base: 3, aim: 'rear' },
       { kind: 'guided', at: 18, count: 1, base: 4, aim: 'switch' },
-      { kind: 'ballistic', at: 21, count: 2, gap: 0.8, base: 2, aim: 'rear' },
+      { kind: 'ballistic', at: 21, count: 1, base: 2, aim: 'rear' },
     ],
   },
 ];
