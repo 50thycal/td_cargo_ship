@@ -1303,10 +1303,17 @@ function startWave(g: Game): void {
   // The Coves (log v53, MAP_SIGNATURE `fireShips`): so many of the wave's own
   // fast boats (what is left of them after its encounters) come as fire
   // ships, one for one, so the wave sends no more launches (rule w-budget).
+  // They come out of the coves themselves (a fast boat in a raid may go to
+  // a truck or a sub), the coves in turn, spread over the wave, each cove
+  // lit as a raid's base first.
+  let fireShips = 0;
   if (sig?.fireShips) {
-    const boats = units.filter((u) => u.kind === 'fastboat');
-    const n = Math.min(boats.length, sig.fireShips[Math.min(g.wave, 10) - sig.from] ?? 0);
-    for (let k = 0; k < n; k++) boats[k].fire = true;
+    const want = sig.fireShips[Math.min(g.wave, 10) - sig.from] ?? 0;
+    for (let i = units.length - 1; i >= 0 && fireShips < want; i--)
+      if (units[i].kind === 'fastboat') {
+        units.splice(i, 1);
+        fireShips++;
+      }
   }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
@@ -1374,6 +1381,15 @@ function startWave(g: Game): void {
   });
   g.raids = raids;
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
+  if (fireShips) {
+    const coves = g.map.bases.map((x, i) => (x.cove && x.kinds.includes('fastboat') ? i : -1)).filter((i) => i >= 0);
+    for (let k = 0; k < fireShips && coves.length; k++) {
+      const at = lead + RAID.warn + (spec.duration * (k + 1)) / (fireShips + 1);
+      const base = coves[(g.wave + k) % coves.length];
+      queue.push({ at, kind: 'fastboat', base, fire: true });
+      g.raids.push({ at, theme: RAID_THEME.fastboat, bases: [base] });
+    }
+  }
   trickled.forEach((size, k) => {
     const base = pickBase(g, 'drone', rng);
     let at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);

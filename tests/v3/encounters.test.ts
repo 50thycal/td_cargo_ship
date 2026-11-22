@@ -2003,7 +2003,7 @@ describe('the Coves (log v53): fire ships, the signature and the Fire Fleet', ()
         for (const l of kinds(on, 'fastboat').filter((x) => x.fire)) expect(MAPS.coves.bases[l.base].cove, `wave ${w}`).toBe(true);
         expect([...kinds(camp, 'fastboat'), ...kinds(shared, 'fastboat')].filter((l) => l.fire)).toEqual([]);
       }
-    expect(fires).toBeGreaterThanOrEqual(12);
+    expect(fires).toBeGreaterThanOrEqual(18);
     expect(signatureOf('coves', 3, { rev: 4 })).toBeUndefined();
     expect(signatureOf('coves', 4, { rev: 3 })).toBeUndefined();
     expect(signatureOf('coves', 4, { rev: 4, only: [] })).toBeUndefined();
