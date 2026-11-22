@@ -370,6 +370,42 @@ try {
     await one.close();
   }
 
+  // ---- The Delta (log v54): chapter 4's second map, the fork's switch,
+  // incendiaries on the switch's branch, and the Burning Delta ----
+  await open(page, 'lab=map-delta&seed=7');
+  const dl = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: document.querySelectorAll('.v3-command').length }));
+  check(dl.map === 'delta' && dl.rev === ENCOUNTER_REV && dl.cmds === 0, `the Delta's card opens with its encounters and no command (${JSON.stringify(dl)})`);
+  await labMenu(page);
+  const dlArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Burning Delta/.test(dlArc) && /Three ways/.test(dlArc), `the Delta's script names its first encounter and its boss, the Burning Delta (${dlArc.slice(0, 120)})`);
+  await page.screenshot({ path: `${OUT_DIR}/delta-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): a branch's mouth burning, the raid coming down the river.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-delta&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let burn = { fires: 0, raid: 0, event: '' };
+    for (let k = 0; k < 500 && !(burn.fires >= 1 && burn.raid >= 3); k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      burn = await one.evaluate(() => {
+        const g = window.__v3.game();
+        return {
+          fires: g.foe.marks.filter((m) => m.kind === 'fire').length,
+          raid: g.threats.filter((t) => !t.dead && ['drone', 'guided', 'ballistic', 'cluster'].includes(t.kind)).length,
+          event: g.event?.id ?? '',
+        };
+      });
+    }
+    check(burn.event === 'escort-run' && burn.fires >= 1 && burn.raid >= 3, `the Burning Delta: a branch burns at its mouth and the raid comes down the river (${JSON.stringify(burn)})`);
+    await one.screenshot({ path: `${OUT_DIR}/delta-boss.png` });
+    await one.close();
+  }
+
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-crossing', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
