@@ -157,6 +157,6 @@ describe('Round 15: the Rig Field\'s rigs count shots', () => {
   it('a relief rig on its tow takes TOW.hp shots, docked TOW.dock', () => {
     expect(TOW.hp).toBe(10);
     expect(TOW.dock).toBe(20);
-    expect(RIG_SHOTS.rig).toBe(40);
+    expect(RIG_SHOTS.rig).toBe(32);
   });
 });

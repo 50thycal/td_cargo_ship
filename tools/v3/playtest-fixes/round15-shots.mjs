@@ -27,7 +27,10 @@ const onward = async (p) => {
   await p.evaluate(() => {
     const btn = [...document.querySelectorAll('.v2-overlay button')].find((b) => /^(Skip|Next)$/.test(b.textContent.trim()));
     if (btn) return btn.click();
-    document.querySelector('.v2-overlay .v2-card:not([disabled])')?.click();
+    const cards = [...document.querySelectorAll('.v2-overlay .v2-card:not([disabled])')];
+    (cards.find((c) => /LEVEL UP/.test(c.textContent)) ?? cards[0])?.click();
+    // A swap: the held weapon it replaces.
+    document.querySelector('.v2-overlay .v2-slot')?.click();
   });
   await p.waitForTimeout(200);
 };

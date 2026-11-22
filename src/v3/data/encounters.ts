@@ -5373,9 +5373,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
   // Log v55 (round 15: the player rated the Rigs' waves 1-3 1, 2 and 1):
   // a little more on each, easy strings of drones off the two drone rigs:
-  // wave 1 a string off the west rig too, wave 2 a third string, wave 3
-  // one (it had none).
-  ['rigs-point-blank', [fill(0.35, 2, 0), fill(0.7, 2, 3)]],
+  // wave 1 its late string split in two, a little earlier and a little
+  // later, off the east rig (more off the west rig, or earlier, sank
+  // ships for the bots on wave 1), wave 2 a third string, wave 3 one (it
+  // had none).
+  ['rigs-point-blank', [fill(0.55, 2, 3), fill(0.85, 2, 3)]],
   ['rigs-bring-down', [fill(0.1, 3, 0), fill(0.45, 2, 3), fill(0.8, 2, 3)]],
   ['rigs-under', [fill(0.15, 3, 3)]],
   ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 2, 3]),

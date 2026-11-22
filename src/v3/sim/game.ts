@@ -7404,6 +7404,12 @@ function updateMine(g: Game, th: Threat, dt: number): void {
   const c = g.map.current ?? { x: 0, y: 1 };
   const k = th.speed / (Math.hypot(c.x, c.y) || 1);
   if (th.hidden && (g.steps + th.id) % 3 === 0 && mineNear(g, th, c.x * k, c.y * k)) surfaceMine(g, th);
+  // Log v55: a hidden mine that has drifted past every lane is gone (out of
+  // sight it would only hold the wave open, drifting on to the edge).
+  if (th.hidden && g.map.channels.every((ch) => th.y > ch.y + ch.halfWidth + 60)) {
+    th.dead = true;
+    return;
+  }
   const wob = Math.sin(th.age * 1.3 + th.phase) * MINE.wobble;
   th.x += (c.x * k + wob * (c.y * k) / (th.speed || 1)) * dt;
   th.y += (c.y * k - wob * (c.x * k) / (th.speed || 1)) * dt;
