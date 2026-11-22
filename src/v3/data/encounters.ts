@@ -6040,7 +6040,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.9, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
     ],
-    replaces: { ballistic: 12, extras: { heavy: 1, cluster: 1, mothership: 1 } },
+    replaces: { ballistic: 12, guided: 2, extras: { heavy: 1, cluster: 1, mothership: 1 } },
   },
   {
     id: 'citadel-keep',
@@ -6485,7 +6485,7 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
 /** The Citadel (log v60): its shared waves are heavy with sub salvos, so
  *  the climb sends a little less than the shared wave from wave 2 (within
  *  rule w-budget's ±15%). */
-const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.88, 0.92, 0.86, 0.88, 0.9];
+const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9];
 const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
