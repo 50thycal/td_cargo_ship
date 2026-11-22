@@ -157,6 +157,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // battleship is fought by shooting, not by sailing.
   dreadnought: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
+  // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the campaign's own
+  // schedule, as the Battery's, and no command: the rigs are answered by
+  // shooting them, not by sailing.
+  rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

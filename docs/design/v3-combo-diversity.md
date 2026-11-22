@@ -269,6 +269,37 @@ npm run v3:combo-sweep -- --stage=pairs --maps=dreadnought --out=tools/v3/combo-
 npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v51-ch3 --maps=dreadnought --json=tools/v3/combo-sweep/results/v51-ch3/diversity.json
 python3 tools/v3/dreadnought/compare.py
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=dreadnought --seeds=8
+## The Rig Field: chapter 3's third map (game version 49)
+
+> 2026-11-22. The Rig Field rebuilt to the map rules (docs/design/v3-ch3-rigs.md): four rigs in the sea fire at the ships from point-blank, one brought down stays down (its fire moves to the far shore), and its signature is "relief rigs" (from wave 4 the wave's new enemies come as relief rigs towed in to stand where one fell); from wave 3 the waves' shells, and from wave 7 their guided missiles, come off the rigs or as drones. The question, as for each rebuild: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 49, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, the Sowers `results/v48-ch3`). Results: `tools/v3/combo-sweep/results/v49-ch3`; the comparison: `python3 tools/v3/rigs/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Rig Field (v49) | **Gravity Well + Drone Screen + Gunship Pair** 5.1 ±0.5, won 88% | Shrapnel Shell + Flak Cannon + Shield 5.4 | Shrapnel Shell + Thermobaric Shell + Supply Run 5.5 | Air Strike + Boomerang + Orbital Strike 5.7 | Air Strike + Orbital Strike + Overdrive 5.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Rigs against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | **0 / 0 / 0 / 0 / 0 / 0 / 0** |
+| The same, the Rigs against itself (two halves of its seeds) | 0.67 |
+| #1 kit | in no chapter 2 or chapter 3 map's top 5 |
+| Best weapon alone | **Shrapnel Shell** 4.8 (Gravity Well 5.1, Flak 5.5, Thermobaric 5.8, Air Strike 5.9: fifth) |
+| Rank correlation of the weapons alone, the Rigs against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | 0.43 / 0.51 / 0.49 / 0.77 / 0.44 / 0.60 / 0.58 |
+| The bot drafting for itself; the plain gun | 9.8 lost, won 58%; 15.0, won 0% |
+
+### Reading
+
+- **All five of the Rigs' best kits are its own** (Jaccard 0 against all seven rebuilt maps), within about a standard error of each other (5.1–5.9, ±0.5–0.6).
+- **Its best weapon alone is its own: the Shrapnel Shell** (4.8), the best single on no other rebuilt map: its burst takes a volley off the rigs as it converges.
+- **Air Strike is not over-dominant**: fifth alone (5.9), in two of the five best kits, never the #1.
+- **The weapons alone rank most like the Archipelago's** (0.77, another map of launchers close over the lanes) and least like the Island's and Saltgate's (0.43–0.44).
+- The singles moved between builds while tuning (Railgun 5.5 on one build, 6.9 on the final one; 12 seeds), so the order of the top few weapons alone is noise; that the top 5 kits are the Rigs' own held on every build swept.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=rigs --out=tools/v3/combo-sweep/results/v49-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=rigs --out=tools/v3/combo-sweep/results/v49-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v49-ch3 --maps=rigs --json=tools/v3/combo-sweep/results/v49-ch3/diversity.json
+python3 tools/v3/rigs/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=rigs --seeds=8
 ```
 
 ## Sowers' Reach: chapter 3's second map (game version 48)

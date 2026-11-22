@@ -354,6 +354,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      `sow`, `fire`, a boss round's mines off the chutes). A v47 Sowers
  *      card log played the shared waves and no longer replays to the same
  *      game; the campaign plays as it did.
+ *  49: chapter 3's third map, the Rig Field, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-rigs.md; lab, under the encounter layer):
+ *      ten encounters (RIGS_R4) with their filler, a climb (RIGS_CLIMB),
+ *      the signature (MAP_SIGNATURE.rigs `kind: 'rig'`: from wave 4 the
+ *      wave's new enemies come as relief rigs towed in along the rig line,
+ *      Threat `tow`, game.ts towRig, data/config.ts TOW; docked, one stands
+ *      where a rig fell or mends one, and fires its rack, Launch `tow`,
+ *      Threat `rack`), the map's own convoy at the campaign's schedule
+ *      (MAP_CONVOY.rigs), and a new boss on the Dive Circus, the Rig Barrage
+ *      (MAP_BOSS.rigs: `rigs`, `rigHp`, `barrage`: the downed rigs rise
+ *      again and every rig standing fires its volley together). A v48 Rig
+ *      Field card log played today's convoy controls and the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
  *  51: chapter 3's finale, Dreadnought Pass, rebuilt to the map and wave
  *      rules (docs/design/v3-ch3-dreadnought.md; lab, under the encounter
  *      layer): ten encounters (DREAD_R4) with their filler, the

@@ -253,6 +253,44 @@ try {
     await one.close();
   }
 
+  // ---- The Rig Field (log v49): chapter 3's third map, rigs in the sea
+  // you can bring down, relief rigs towed in, and the Rig Barrage ----
+  await open(page, 'lab=map-rigs&seed=7');
+  const rg = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command) }));
+  check(rg.map === 'rigs' && rg.rev === ENCOUNTER_REV && rg.cmds.length === 0, `the Rig Field's card opens with its encounters and no command (${JSON.stringify(rg)})`);
+  await labMenu(page);
+  const rgArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Rig Barrage/.test(rgArc) && /The relief tow/.test(rgArc), `the Rig Field's script names its boss, the Rig Barrage, and its first relief tow (${rgArc})`);
+  await page.screenshot({ path: `${OUT_DIR}/rigs-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): the rigs risen again fire their volleys together.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-rigs&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let barrage = { rigs: 0, volley: 0, name: '' };
+    for (let k = 0; k < 400 && barrage.volley < 3; k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      barrage = await one.evaluate(() => {
+        const g = window.__v3.game();
+        const rigs = g.threats.filter((t) => t.kind === 'rig' && !t.dead && t.tow === undefined);
+        return {
+          rigs: rigs.length,
+          // Launches in the air off a rig's own station, as the volleys go.
+          volley: g.threats.filter((t) => !t.dead && t.age < 3 && ['guided', 'ballistic', 'drone'].includes(t.kind) && rigs.some((r) => Math.hypot(r.x - t.sx, r.y - t.sy) < 4)).length,
+          name: g.event?.id ?? '',
+        };
+      });
+    }
+    check(barrage.name === 'dive-circus' && barrage.rigs >= 2 && barrage.volley >= 3, `the Rig Barrage: the rigs risen again fire their volleys together (${JSON.stringify(barrage)})`);
+    await one.screenshot({ path: `${OUT_DIR}/rigs-boss.png` });
+    await one.close();
+  }
+
   // ---- Dreadnought Pass (log v51): chapter 3's finale, the battleship's
   // passes, its spotters laying its guns, and the Dreadnought as the boss ----
   await open(page, 'lab=map-dreadnought&seed=7');
@@ -294,7 +332,7 @@ try {
   }
 
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-rigs', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point, Sowers\' Reach and Dreadnought Pass since chapter 3)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-lantern', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point, Sowers\' Reach, the Rig Field and Dreadnought Pass since chapter 3)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');

@@ -281,6 +281,7 @@ describe('the sheet saves it, and the log carries it', () => {
     expect(LOG_VERSION).toBe(51);
     expect(LOG_REPLAYS).toEqual([51]);
     expect(replaysHere(51)).toBe(true);
+    expect(replaysHere(49)).toBe(false);
     expect(replaysHere(48)).toBe(false);
     expect(replaysHere(47)).toBe(false);
     expect(replaysHere(46)).toBe(false);
