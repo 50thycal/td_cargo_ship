@@ -78,11 +78,34 @@ How much of waves 4–10 it is: TBD
 
 ## The counters
 
-TBD
+- **Counter kit: Gunship Pair, Point Defense, Flak Cannon.** The Citadel's fire lands a breath from its keep and from wave 4 is shielded under its dome, and the shield rises every wave, so the player's own taps are wanted on the generators and the keep: what pays is fire that works on its own while the finger is there: the Gunship Pair over the lane, Point Defense round the carrier, the Flak Cannon's clouds waiting where the drones converge.
+- **Off-counter kit: Thermobaric Shell, Seeker Pod, Tesla Arc.** The Thermobaric and the Seekers want the finger on what is in the air; the Tesla's chain wants strings the dome and the long flight break up.
+- Both chosen from the combo sweep's singles at log v60 (Gunship Pair 5.8, Flak 6.9, Point Defense 6.9; Thermobaric 9.2, Seeker 9.3, Tesla 9.7), leaving the Air Strike (the best alone) out of both. Every weapon is in chapter 4's draft. A design note for the bots only: nothing in the game nudges the player towards it.
+
+## Loadouts on this map (combo sweep singles)
+
+Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, version 60; `npm run v3:combo-sweep -- --stage=singles --maps=citadel --out=tools/v3/combo-sweep/results/v60-ch4`). Ships lost over all 13 waves:
+
+- **Strong:** **Air Strike 5.7**, Gunship Pair 5.8, Orbital Strike 6.5, Flak Cannon and Point Defense 6.9, Gravity Well and Drone Screen 7.2, the Wild Card 7.4.
+- **Middling:** Cadence Gun 7.7, Frigate Escort 7.8, Boomerang and Overdrive 7.9, Shrapnel 8.0, Railgun 8.4, Scattergun 8.5, Shield 8.7.
+- **Weak:** Thermobaric 9.2, Seeker 9.3, Tesla 9.7, Bomber Wing 10.5, Supply Run alone 12.2, the plain gun 13.2, Focus Fire, Grapnel and the Charge Lance 14.3, Full Steam 14.9, Dual Wield 15.2, the Laser Cutter 47.2. The bot drafting for itself: 6.7 (won 83%).
 
 ## Diversity: are the Citadel's best kits its own?
 
-TBD
+Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16), and compared with the five chapter 2 maps, the five of chapter 3 and chapter 4's Coves and Delta from their last sweeps (`docs/design/v3-combo-diversity.md`, "The Citadel"; `python3 tools/v3/citadel/compare.py`). Swept on the build before the last three changes (waves 2, 5–9 and the Bodyguard's swap through wave 6: a few drones and missiles), which move the kits' numbers a little, not the weapons' order.
+
+| | Result |
+| --- | --- |
+| Top 5 kits | **Air Strike + Gunship Pair + Supply Run** 5.4 (won 94%), Air Strike + Frigate Escort + Gunship Pair 6.8, Air Strike + Gunship Pair + Dual Wield 6.9, Gravity Well + Gunship Pair + Orbital Strike 6.9, Air Strike + Gunship Pair + Shield 6.9 |
+| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | 0 / 0 / 0 / **0.11** / **0.11** / 0 / **0.11** / 0 / **0.11** / 0 / 0 / 0 |
+| The same, the Citadel against itself (two halves of its seeds) | 0.25 |
+| #1 kit | **also in the Saltgate's and the Black Strait's top 5** |
+| Best weapon alone | **Air Strike** 5.7 (as on the Island, the Behemoth, the Archipelago and the Delta) |
+| Rank correlation of the weapons alone, against the same twelve | 0.72 / 0.84 / 0.65 / 0.60 / 0.49 / 0.82 / 0.61 / 0.70 / 0.77 / 0.66 / 0.84 / 0.70 |
+| Air Strike | **1st of 27 alone; in four of the five best kits** |
+
+- **The Gunship Pair is in all five of the best kits**, the Citadel's own mark: it fires on its own over the lane while the player's taps go on the generators. Gravity Well + Gunship Pair + Orbital Strike (the #4) is in no other map's top 5.
+- **But the Air Strike leads here**: the best weapon alone and in four of the five best kits; three of the five are in another map's top 5 (one map each: the Archipelago, Saltgate, the Sowers, the Black Strait), so the Citadel is less its own than the Coves or the Delta (0 against all). The dome does not counter it: the Air Strike's work is the drones on the long flight, outside the dome. A question for the player (below).
 
 ## Debuts
 

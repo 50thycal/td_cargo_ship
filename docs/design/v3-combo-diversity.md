@@ -239,6 +239,37 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## The Citadel: chapter 4's last map, the game's finale (game version 60)
+
+> 2026-11-22. The Citadel of Vey rebuilt to the map rules (docs/design/v3-ch4-citadel.md): the shield rises again every wave on three generators spread round the map, the generators and the Citadel count shots, and from wave 4 everything the Citadel fires leaves under its dome, where it can't be shot while the shield stands; its convoy a Spread at the campaign's schedule. Swept at version 60 with chapter 4's draft (27 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory, on the build before its last three wave changes. The other maps are read from their last sweeps (the Coves at 53, the Delta at 54). Results: `tools/v3/combo-sweep/results/v60-ch4`; the comparison: `python3 tools/v3/citadel/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Citadel (v60) | **Air Strike + Gunship Pair + Supply Run** 5.4 | Air Strike + Frigate Escort + Gunship Pair 6.8 | Air Strike + Gunship Pair + Dual Wield 6.9 | Gravity Well + Gunship Pair + Orbital Strike 6.9 | Air Strike + Gunship Pair + Shield 6.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Citadel against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | 0 / 0 / 0 / 0.11 / 0.11 / 0 / 0.11 / 0 / 0.11 / 0 / 0 / 0 |
+| The same, the Citadel against itself (two halves of its seeds) | 0.25 |
+| #1 kit | also in Saltgate's and the Black Strait's top 5 |
+| Best weapon alone | **Air Strike** 5.7 (Gunship Pair 5.8, Orbital Strike 6.5, Flak 6.9, Point Defense 6.9) |
+| Rank correlation of the weapons alone, against the twelve | 0.72 / 0.84 / 0.65 / 0.60 / 0.49 / 0.82 / 0.61 / 0.70 / 0.77 / 0.66 / 0.84 / 0.70 |
+| The bot drafting for itself; the plain gun | 6.7 lost, won 83%; 13.2, won 33% |
+
+### Reading
+
+- **The Gunship Pair is in all five of the Citadel's best kits**: it fires on its own over the lane while the player's taps go on the generators and the keep.
+- **Air Strike is over-dominant here**, as on the Delta: the best weapon alone and in four of the five best kits; three of the five kits are in one other map's top 5 each (the Archipelago, Saltgate, the Sowers, the Black Strait). The dome doesn't counter it: its work is the drones on the long flight, outside the dome.
+- **The weapons alone rank most like the Behemoth Run's and the Coves'** (0.84) and least like Saltgate's (0.49).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=citadel --out=tools/v3/combo-sweep/results/v60-ch4
+npm run v3:combo-sweep -- --stage=pairs --maps=citadel --out=tools/v3/combo-sweep/results/v60-ch4
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v60-ch4 --maps=citadel --json=tools/v3/combo-sweep/results/v60-ch4/diversity.json
+python3 tools/v3/citadel/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=citadel --seeds=8
+```
+
 ## The Delta: chapter 4's second map (game version 57; swept at 54)
 
 > 2026-11-22. The Sharra Delta rebuilt to the map rules (docs/design/v3-ch4-delta.md): the river forks three ways at the buoy and the enemy fires at the branch the switch is set to; its signature is "fire on the branch" (from wave 4 the wave's new enemies come as Incendiary Missiles that burst on the mouth of the switch's branch), its convoy a Spread at flow step 3. Swept at version 54 (the same sim as 57) with chapter 4's draft (27 weapons: the Cadence Gun and the Wild Card join): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps. Results: `tools/v3/combo-sweep/results/v54-ch4`; the comparison: `python3 tools/v3/delta/compare.py`.
