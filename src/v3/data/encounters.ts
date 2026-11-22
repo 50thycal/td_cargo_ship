@@ -6013,7 +6013,6 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
-      { at: 0.65, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
     ],
     replaces: { ballistic: 9, extras: { cluster: 1 } },
   },
@@ -6095,7 +6094,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.8, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
     ],
-    replaces: { ballistic: 13, guided: 2, extras: { supersonic: 2, heavy: 1, mothership: 1, cluster: 1 } },
+    replaces: { ballistic: 13, guided: 2, extras: { supersonic: 2, heavy: 2, mothership: 1, cluster: 1 } },
   },
   {
     id: 'citadel-fortress',
@@ -6115,7 +6114,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.25, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
-      { at: 0.4, kind: 'cluster', count: 1, from: base(0), aim: 'lead' },
+      { at: 0.4, kind: 'cluster', count: 1, from: base(0), aim: 'rear' },
       { at: 0.55, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.55, plus: 2, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.7, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'rear' },
@@ -6124,7 +6123,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.85, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.3, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
     ],
-    replaces: { ballistic: 15, guided: 2, extras: { heavy: 1, cluster: 1, mothership: 1 } },
+    replaces: { ballistic: 15, guided: 2, extras: { heavy: 2, cluster: 1, mothership: 1 } },
   },
   {
     id: 'citadel-grand-salvo',
@@ -6143,8 +6142,9 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The map\'s problem at its hardest, the boss in miniature; in place of the wave\'s own guided missiles, shells and supersonics.',
     },
     beats: [
-      { at: 1, plus: 2, kind: 'guided', count: 2, gap: 0.15, from: base(0), aim: 'lead', dome: true },
-      { at: 1, plus: 2.1, kind: 'ballistic', count: 2, gap: 0.15, from: base(0), aim: 'lead', dome: true },
+      { at: 1, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 1, plus: 2.05, kind: 'guided', count: 1, from: base(0), aim: 'mid', dome: true },
+      { at: 1, plus: 2.1, kind: 'ballistic', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 1, plus: 4, kind: 'supersonic', count: 2, gap: 1.2, from: base(5), aim: 'mid' },
       { at: 1, plus: 1, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
@@ -6153,7 +6153,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.4, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
     ],
-    replaces: { ballistic: 16, guided: 3, extras: { supersonic: 2, heavy: 2, mothership: 1, cluster: 1 } },
+    replaces: { ballistic: 16, guided: 3, extras: { supersonic: 2, heavy: 3, mothership: 1, cluster: 1 } },
     calm: 6,
   },
 ];
@@ -6719,7 +6719,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // can't be shot until it has left the dome, a breath from the narrows.
   // The shield rises again every wave (SHIELD_RISES), so the generators are
   // the price of shooting the keep's fire early, every wave.
-  citadel: { from: 4, dome: [1, 1, 1, 2, 1, 1, 2] },
+  citadel: { from: 4, dome: [1, 1, 1, 2, 1, 1, 1] },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
