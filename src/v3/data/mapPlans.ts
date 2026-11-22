@@ -287,9 +287,22 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch3-dreadnought.md
   dreadnought: {
     problem: 'A battleship steams down the deep channel against the convoy, east to west, firing broadsides across the water at the ships, and from wave 4 its spotter planes lay its guns on a ship from over the horizon: fifty hits sink it and silence it for the wave, or each broadside and each spotter can be shot down as it comes, while the rest of the wave keeps firing, most of all at the ships about to deliver in the east, where it comes in.',
-    // COUNTERS
-    counters: ['railgun', 'airstrike', 'shield'],
-    offCounter: ['flak', 'droneScreen', 'fullSteam'],
+    // The fire is broadsides with a short flight across the deep channel
+    // (two or three launches at once, mostly at the lead ship), spotter
+    // planes painting a ship for a barrage that cannot be shot down, and
+    // swarms off the one far drone silo. The Gunship Pair rides over the
+    // convoy and takes a broadside as it lands, the Shield takes the hit of
+    // the shell that gets through (and of a spotter's barrage), and the
+    // Orbital Strike's heavy blow hurts the battleship's hull. The Seeker
+    // Pod's long flight is late for a broadside's short one, the Bomber Wing
+    // silences silos but the battleship is not one, and Overdrive spends its
+    // seconds on rate of fire where the threats come a few at a time
+    // (forced, the combo sweep's singles at log v51: Gunship Pair 4.7,
+    // Shield 4.8, Orbital Strike 4.9 against Seeker 8.4, Bomber Wing 8.2,
+    // Overdrive 7.8; docs/design/v3-ch3-dreadnought.md, The counters).
+    // Every weapon is in chapter 3's draft.
+    counters: ['gunships', 'shield', 'orbital'],
+    offCounter: ['seeker', 'bomberWing', 'overdrive'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, no command (rule m-convoy: the battleship is fought by shooting, not by sailing): pairs west to east down the one lane, past the carrier in the middle, delivering in the east, where the Dreadnought comes in and its first broadsides fall.',
     stretches: { danger: 'late', safe: 'early' },
     boss: {

@@ -209,7 +209,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), dreadnought: t('map-dreadnought'), rigs: t('map-rigs'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -230,6 +230,8 @@ try {
   check(hub.battery === enc1, `Battery Point says it opens with its encounters (${hub.battery})`);
   // Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): its Hold, and now its encounters.
   check(hub.sowers === "Full map: waves 1–10 and 3 boss rounds · Commands: Hold · encounters v1 Original", `Sowers' Reach says it opens with Hold and its encounters (${hub.sowers})`);
+  // Dreadnought Pass, chapter 3's finale (docs/design/v3-ch3-dreadnought.md, log v51): its encounters, no command.
+  check(hub.dreadnought === enc1, `Dreadnought Pass says it opens with its encounters (${hub.dreadnought})`);
   check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.rigs ?? ''), `a map with no commands or encounters yet says so ("${hub.rigs}")`);
   await shot(page, 'hub-card');
 
@@ -474,8 +476,8 @@ try {
   // Chapter 1: the bare link to the Kesh Hook and Lee of Marrow opens the
   // full map with their encounters (rev 4) and no command; chapter 2's
   // Island, Behemoth Run, Needle of Bosk, Archipelago and Saltgate Canal the
-  // same, and chapter 3's Battery Point.
-  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery']) {
+  // same, and chapter 3's Battery Point and Dreadnought Pass.
+  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'dreadnought']) {
     await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.playing.lab-on');
     await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
