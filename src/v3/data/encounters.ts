@@ -4597,7 +4597,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
-    replaces: { drones: 4, ballistic: 5, guided: 1 },
+    replaces: { drones: 8, ballistic: 5, guided: 1 },
   },
   {
     id: 'dread-both-sides',
@@ -4668,7 +4668,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(3), aim: 'lead' },
       { at: 0.3, plus: 1, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
-      { at: 0.6, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.6, kind: 'guided', count: 2, gap: 1.2, from: base(1), aim: 'mid' },
       { at: 0.25, kind: 'drone', count: 8, gap: 0.35, from: base(0), aim: 'lead' },
       { at: 0.7, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
     ],
@@ -4694,8 +4694,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.25, kind: 'spotter', count: 1, from: { air: 1 } },
       { at: 0.25, plus: 3, kind: 'spotter', count: 1, from: { air: -1 } },
       { at: 0.45, kind: 'rocketTruck', count: 1, from: road(1), aim: 'lead', salvos: 2 },
-      { at: 0.6, kind: 'guided', count: 2, gap: 1, from: base(1), aim: 'mid' },
-      { at: 0.4, kind: 'strafer', count: 1, from: { air: 1 } },
+      { at: 0.6, kind: 'guided', count: 3, gap: 1, from: base(1), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'lead' },
     ],
@@ -4723,7 +4722,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { drones: 8, ballistic: 9, guided: 5, extras: { cluster: 1, heavy: 1 } },
+    replaces: { ballistic: 9, guided: 4, extras: { cluster: 1, heavy: 1 } },
   },
   {
     id: 'dread-full-ahead',
@@ -5557,8 +5556,8 @@ export const DREAD_PASSES: Record<number, DreadPass> = {
   1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
   3: { hp: 40, at: 0, speed: 30, first: 6, every: 10, broadside: ['ballistic', 'ballistic'], aim: 'lead' },
   6: { hp: 45, at: 0, speed: 30, first: 5, every: 8, broadside: ['ballistic', 'ballistic'] },
-  9: { hp: 50, at: 0, speed: 30, first: 5, every: 9.5, broadside: ['ballistic', 'guided'] },
-  10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 5.5, broadside: ['ballistic', 'ballistic', 'guided'] },
+  9: { hp: 50, at: 0, speed: 30, first: 5, every: 11, broadside: ['ballistic', 'guided'] },
+  10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 6.5, broadside: ['ballistic', 'ballistic', 'guided'] },
 };
 
 /** A wave's Dreadnought pass under the layer (rev 4, a map with passes,
@@ -5579,7 +5578,7 @@ export function dreadPasses(map: MapId, setup: Pick<EncounterSetup, 'rev' | 'onl
  *  broadsides, more spotters and swarms. */
 export const DREAD_BOSS_ROUNDS: BossRound[] = [
   { dread: { hp: 40, speed: 60, first: 4, every: 8, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1150, 3], dash: 2 }, spotters: 1, turns: 1, spotAt: 4, spotEvery: 8, swarms: 2, size: 5, swarmAt: 3, swarmGap: 8 },
-  { dread: { hp: 50, speed: 60, first: 4, every: 6, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1050, 4], dash: 2 }, spotters: 1, turns: 2, spotAt: 3, spotEvery: 8, swarms: 3, size: 5, swarmAt: 3, swarmGap: 6 },
+  { dread: { hp: 50, speed: 60, first: 4, every: 6.5, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1050, 4], dash: 2 }, spotters: 1, turns: 2, spotAt: 3, spotEvery: 8, swarms: 3, size: 5, swarmAt: 3, swarmGap: 6 },
   { dread: { hp: 60, speed: 60, first: 4, every: 7, broadside: ['ballistic', 'ballistic'], aim: 'lead', hold: [950, 5], dash: 2 }, spotters: 2, turns: 1, spotAt: 3, spotEvery: 6, swarms: 4, size: 6, swarmAt: 3, swarmGap: 5 },
 ];
 
