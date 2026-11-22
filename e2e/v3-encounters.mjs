@@ -310,7 +310,7 @@ try {
     await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
     await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
     let boss = { ship: 0, x: 0, held: false, broadside: 0, spotter: 0 };
-    for (let k = 0; k < 400 && !(boss.held && boss.broadside >= 2 && boss.spotter >= 1); k++) {
+    for (let k = 0; k < 400 && !(boss.held && boss.broadside >= 2); k++) {
       if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
       await one.evaluate(() => window.__v3.advance(0.1));
       await one.waitForTimeout(20);
