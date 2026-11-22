@@ -1,0 +1,941 @@
+{
+ "about": "Each map's own best kits (tools/v3/combo-sweep/diversity.ts).",
+ "logVersion": 59,
+ "botRev": 3,
+ "persona": "you",
+ "top": 6,
+ "screenSeeds": 6,
+ "confirmSeeds": 16,
+ "maps": {
+  "tide": {
+   "pairs": [
+    {
+     "key": "frigate+thermo",
+     "lostAll": 3.833
+    },
+    {
+     "key": "airstrike+wildCard",
+     "lostAll": 4.333
+    },
+    {
+     "key": "gunships+bomberWing",
+     "lostAll": 4.333
+    },
+    {
+     "key": "orbital+supplyRun",
+     "lostAll": 4.333
+    },
+    {
+     "key": "frigate+flak",
+     "lostAll": 4.5
+    },
+    {
+     "key": "frigate+cadence",
+     "lostAll": 4.5
+    }
+   ],
+   "screened": [
+    {
+     "key": "aegis+gunships+bomberWing",
+     "lostAll": 3.3333333333333335,
+     "won": 1
+    },
+    {
+     "key": "frigate+flak+well",
+     "lostAll": 3.3333333333333335,
+     "won": 1
+    },
+    {
+     "key": "frigate+flak+dualWield",
+     "lostAll": 4.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+dualWield",
+     "lostAll": 4.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+orbital+supplyRun",
+     "lostAll": 4.5,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+cadence",
+     "lostAll": 4.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "tesla+orbital+supplyRun",
+     "lostAll": 4.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+wildCard",
+     "lostAll": 4.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+well",
+     "lostAll": 4.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "gunships+bomberWing+orbital",
+     "lostAll": 4.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "orbital+wildCard+supplyRun",
+     "lostAll": 4.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "cadence+gunships+bomberWing",
+     "lostAll": 5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+boomerang+flak",
+     "lostAll": 5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+aegis",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "cadence+orbital+supplyRun",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+cadence+orbital",
+     "lostAll": 5.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+orbital+supplyRun",
+     "lostAll": 5.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+tesla",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "frigate+cadence+droneScreen",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+railgun",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+orbital+supplyRun",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+shield",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+cadence+fullSteam",
+     "lostAll": 5.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+flak",
+     "lostAll": 5.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+boomerang+wildCard",
+     "lostAll": 5.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+orbital+wildCard",
+     "lostAll": 5.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+flak+railgun",
+     "lostAll": 5.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+boomerang+cadence",
+     "lostAll": 5.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "frigate+orbital+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+orbital",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+cadence+wildCard",
+     "lostAll": 5.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+flak+orbital",
+     "lostAll": 6,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+tesla",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+droneScreen",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+flak+gunships",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+supplyRun",
+     "lostAll": 6,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "droneScreen+gunships+bomberWing",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+lance",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+grapnel",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+bomberWing",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+focus",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "tesla+gunships+bomberWing",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+cadence+supplyRun",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+frigate+wildCard",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+railgun+cadence",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+lance",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+grapnel",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "droneScreen+orbital+supplyRun",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+cadence+dualWield",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "orbital+supplyRun+overdrive",
+     "lostAll": 6.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+cadence+shield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+wildCard+overdrive",
+     "lostAll": 6.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+boomerang",
+     "lostAll": 6.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+well+wildCard",
+     "lostAll": 6.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+gunships+bomberWing",
+     "lostAll": 6.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "boomerang+orbital+supplyRun",
+     "lostAll": 6.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "flak+orbital+supplyRun",
+     "lostAll": 6.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+overdrive",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+orbital+supplyRun",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+cadence",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+focus",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+gunships+bomberWing",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+frigate+flak",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+well+cadence",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+fullSteam",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+railgun+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+wildCard+shield",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+orbital+supplyRun",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+wildCard",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+shield",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+shrapnel+wildCard",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+gunships+bomberWing",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+flak+fullSteam",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "orbital+supplyRun+shield",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+frigate+thermo",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "orbital+supplyRun+fullSteam",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "boomerang+gunships+bomberWing",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+gunships+bomberWing",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+tesla+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+flak+aegis",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+droneScreen+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+cadence+bomberWing",
+     "lostAll": 7.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+wildCard+focus",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+gunships+bomberWing",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+gunships+bomberWing",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+shield",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+cadence+wildCard",
+     "lostAll": 7.833333333333333,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+thermo+scatter",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+gunships+wildCard",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+thermo+gunships",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+flak+seeker",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+frigate+cadence",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+cadence+gunships",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+orbital+supplyRun",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "lance+gunships+bomberWing",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "grapnel+gunships+bomberWing",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "bomberWing+orbital+supplyRun",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+supplyRun",
+     "lostAll": 8.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+cadence+focus",
+     "lostAll": 8.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+thermo+overdrive",
+     "lostAll": 8.166666666666666,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "gunships+orbital+supplyRun",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+frigate+cadence",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+gunships+bomberWing",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+frigate+flak",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+flak+supplyRun",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+lance+cadence",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+grapnel+cadence",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+thermo+droneScreen",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+thermo+bomberWing",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+flak+cadence",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "gunships+bomberWing+dualWield",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "lance+orbital+supplyRun",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "grapnel+orbital+supplyRun",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "orbital+supplyRun+dualWield",
+     "lostAll": 8.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+thermo+seeker",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+scatter+wildCard",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+orbital+supplyRun",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+wildCard+supplyRun",
+     "lostAll": 9,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "orbital+supplyRun+focus",
+     "lostAll": 9,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "thermo+gunships+bomberWing",
+     "lostAll": 9.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+gunships+bomberWing",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+fullSteam",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+orbital+supplyRun",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+scatter+cadence",
+     "lostAll": 9.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+wildCard",
+     "lostAll": 9.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "shrapnel+frigate+thermo",
+     "lostAll": 9.5,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+wildCard+dualWield",
+     "lostAll": 9.5,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "gunships+bomberWing+focus",
+     "lostAll": 9.666666666666666,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "airstrike+aegis+wildCard",
+     "lostAll": 9.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+seeker+wildCard",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+bomberWing+wildCard",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+wildCard+fullSteam",
+     "lostAll": 10.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+tesla+cadence",
+     "lostAll": 10.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+cadence+overdrive",
+     "lostAll": 10.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+scatter+flak",
+     "lostAll": 10.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+seeker+cadence",
+     "lostAll": 11.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+thermo+wildCard",
+     "lostAll": 11.166666666666666,
+     "won": 0
+    },
+    {
+     "key": "frigate+flak+overdrive",
+     "lostAll": 11.5,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "airstrike+lance+wildCard",
+     "lostAll": 12.5,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+grapnel+wildCard",
+     "lostAll": 12.5,
+     "won": 0.3333333333333333
+    }
+   ],
+   "best": [
+    {
+     "key": "aegis+gunships+bomberWing",
+     "name": "Point Defense + Gunship Pair + Bomber Wing",
+     "lostAll": 4.375,
+     "won": 0.9375,
+     "lost10": 1.3125,
+     "boss": 1.0208333333333333,
+     "se": 0.4831132760543846,
+     "halves": [
+      3.625,
+      5.125
+     ]
+    },
+    {
+     "key": "frigate+flak+well",
+     "name": "Frigate Escort + Flak Cannon + Gravity Well",
+     "lostAll": 4.875,
+     "won": 0.8125,
+     "lost10": 2.0625,
+     "boss": 0.9374999999999999,
+     "se": 0.6427176187875979,
+     "halves": [
+      4.375,
+      5.375
+     ]
+    },
+    {
+     "key": "aegis+orbital+supplyRun",
+     "name": "Point Defense + Orbital Strike + Supply Run",
+     "lostAll": 5.5,
+     "won": 0.75,
+     "lost10": 1.625,
+     "boss": 1.2916666666666665,
+     "se": 0.7551903733496608,
+     "halves": [
+      5.375,
+      5.625
+     ]
+    },
+    {
+     "key": "tesla+orbital+supplyRun",
+     "name": "Tesla Arc + Orbital Strike + Supply Run",
+     "lostAll": 5.8125,
+     "won": 0.6875,
+     "lost10": 1.9375,
+     "boss": 1.2916666666666667,
+     "se": 0.8348781254620341,
+     "halves": [
+      5.875,
+      5.75
+     ]
+    },
+    {
+     "key": "frigate+flak+dualWield",
+     "name": "Frigate Escort + Flak Cannon + Dual Wield",
+     "lostAll": 6.25,
+     "won": 0.5625,
+     "lost10": 2.3125,
+     "boss": 1.3125,
+     "se": 1.1267347735824966,
+     "halves": [
+      6.5,
+      6
+     ]
+    },
+    {
+     "key": "frigate+thermo+cadence",
+     "name": "Frigate Escort + Thermobaric Shell + Cadence Gun",
+     "lostAll": 6.5,
+     "won": 0.75,
+     "lost10": 2.6875,
+     "boss": 1.2708333333333333,
+     "se": 0.8569568250501305,
+     "halves": [
+      5.75,
+      7.25
+     ]
+    },
+    {
+     "key": "gunships+bomberWing+orbital",
+     "name": "Gunship Pair + Bomber Wing + Orbital Strike",
+     "lostAll": 6.5625,
+     "won": 0.75,
+     "lost10": 2.75,
+     "boss": 1.2708333333333333,
+     "se": 0.951843400657377,
+     "halves": [
+      6.5,
+      6.625
+     ]
+    },
+    {
+     "key": "frigate+thermo+wildCard",
+     "name": "Frigate Escort + Thermobaric Shell + Wild Card",
+     "lostAll": 6.75,
+     "won": 0.6875,
+     "lost10": 2.5,
+     "boss": 1.4166666666666665,
+     "se": 0.6702378309227255,
+     "halves": [
+      5.75,
+      7.75
+     ]
+    },
+    {
+     "key": "frigate+thermo+well",
+     "name": "Frigate Escort + Thermobaric Shell + Gravity Well",
+     "lostAll": 7.4375,
+     "won": 0.6875,
+     "lost10": 3.625,
+     "boss": 1.2708333333333333,
+     "se": 0.9880882346101486,
+     "halves": [
+      6.5,
+      8.375
+     ]
+    },
+    {
+     "key": "frigate+thermo+dualWield",
+     "name": "Frigate Escort + Thermobaric Shell + Dual Wield",
+     "lostAll": 7.5625,
+     "won": 0.5625,
+     "lost10": 2.875,
+     "boss": 1.5625,
+     "se": 1.1523371292182683,
+     "halves": [
+      5,
+      10.125
+     ]
+    }
+   ]
+  }
+ },
+ "overlap": {
+  "jaccardTop5": {
+   "tide": {
+    "tide": 1
+   }
+  },
+  "sameMapHalves": {
+   "tide": 0.43
+  },
+  "spearmanSingles": {
+   "tide": {
+    "tide": 1
+   }
+  },
+  "firstKit": {
+   "tide": "aegis+gunships+bomberWing"
+  },
+  "firstKitShare": {
+   "most": "aegis+gunships+bomberWing",
+   "maps": 1,
+   "of": 1
+  },
+  "firstSingle": {
+   "tide": "well"
+  },
+  "firstSingleShare": {
+   "most": "well",
+   "maps": 1,
+   "of": 1
+  },
+  "inTop5": {
+   "aegis": {
+    "tide": 2
+   },
+   "gunships": {
+    "tide": 1
+   },
+   "bomberWing": {
+    "tide": 1
+   },
+   "frigate": {
+    "tide": 2
+   },
+   "flak": {
+    "tide": 2
+   },
+   "well": {
+    "tide": 1
+   },
+   "orbital": {
+    "tide": 2
+   },
+   "supplyRun": {
+    "tide": 2
+   },
+   "tesla": {
+    "tide": 1
+   },
+   "dualWield": {
+    "tide": 1
+   }
+  }
+ }
+}
