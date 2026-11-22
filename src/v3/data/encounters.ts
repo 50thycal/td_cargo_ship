@@ -5296,7 +5296,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  north-middle (911, 150), the north-east (1401, 150)) and one in the south
  *  shore by the delivery end (base 7: (1238, 820), on the ships' own side).
  *  A boat takes two hits and rams for two. From wave 4 some come out as
- *  fire ships (four hits): where one is sunk, or where it rams, its fireball
+ *  fire ships (three hits): where one is sunk, or where it rams, its fireball
  *  burns on the water, so it wants sinking far out, at the cove mouth, not
  *  on the lane. The silos: the far north-west (base 0: drones, shells), the
  *  north-middle (base 1: guided, supersonic), the north-east (base 2:
@@ -5385,7 +5385,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Fire ship',
     callout: 'A fire ship',
-    premise: 'A fire ship comes out of the north-middle cove at the ship halfway along: four hits, and where it is sunk or rams it burns on the water; drones come at the same ship, and a cluster off the north-east silo at the lead ship.',
+    premise: 'A fire ship comes out of the north-middle cove at the ship halfway along: three hits, and where it is sunk or rams it burns on the water; drones come at the same ship, and a cluster off the north-east silo at the lead ship.',
     decision: 'Sink the fire ship at the cove mouth, far from the lane, or it burns where the ships sail. Is it worth the shots before the drones?',
     counters: 'The fire ship as it leaves the cove (sunk there, its fire is off the lane), the cluster before it splits, the drones.',
     succeeds: 'The fire ship is sunk before the lane in most runs; no ship lost in most runs.',
@@ -5451,7 +5451,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.9, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+      { at: 0.9, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
     ],
     replaces: { ballistic: 9, guided: 2, drones: 4, extras: { fastboat: 1, cluster: 2, mothership: 1 } },
   },
@@ -6076,10 +6076,10 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   lantern: { from: 4, foe: 'siege', foeShare: 1, beside: [4, 5], salvos: 1 },
   // The Coves (log v53, docs/design/v3-ch4-coves.md): "fire ships", from
   // wave 4. So many of the wave's own fast boats come out of the coves as
-  // fire ships (FIRESHIP: four hits; sunk, or where it rams, its fireball
+  // fire ships (FIRESHIP: three hits; sunk, or where it rams, its fireball
   // burns on the water), one for one, the Fire Fleet's own. Not the wave's
   // new enemies: chapter 4's four debut here on waves 2-5.
-  coves: { from: 4, fireShips: [1, 1, 1, 1, 1, 1, 2] },
+  coves: { from: 4, fireShips: [1, 1, 0, 1, 1, 1, 2] },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
