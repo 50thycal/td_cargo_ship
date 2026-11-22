@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Tide' final read: 192 seeds, every Armory, normal then tough, into
+# The Tide's final read: 192 seeds, every Armory, normal then tough, into
 # <dir>/normal.txt and <dir>/tough.txt.
 #   tools/v3/tide/final.sh <dir>
 cd "$(dirname "$0")/../../.."

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Tide' record reports (24 seeds) for every Armory, written to
+# The Tide's record reports (24 seeds) for every Armory, written to
 # tools/v3/map-report/results/tide[-armory]*; with a suffix (before), the
 # files are renamed tide-<suffix>[-armory]* (the map card as it was).
 #   tools/v3/tide/reports.sh [suffix] [--kits=plan]

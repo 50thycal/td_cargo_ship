@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Tide' tuning read for every Armory (tools/v3/rigs/read.py on the
+# The Tide's tuning read for every Armory (tools/v3/rigs/read.py on the
 # Tide), one after another into one file:
 #   tools/v3/tide/readall.sh <outfile> [--seeds=192] [--tough] [--no-enc]
 out=$1; shift
