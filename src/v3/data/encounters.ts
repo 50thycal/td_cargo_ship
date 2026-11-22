@@ -100,13 +100,18 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { 
  *  Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
  *  'lock', the ship held at a lock (in its chamber, or queued at its shut
  *  entry gate), the lock nearest the launcher first; with none held there,
- *  the ship nearest the launcher. Chapter 4's Tidewater Flats (log v59,
+ *  the ship nearest the launcher. Chapter 4's Delta (docs/design/
+ *  v3-ch4-delta.md, log v57): 'switch', the newest ship bound for the
+ *  branch the fork's switch is set to (the one least far along of those);
+ *  none, the ship least far along. An Incendiary Missile aimed so bursts
+ *  on the water at the mouth of that branch, ahead of the next ships.
+ *  Chapter 4's Tidewater Flats (log v59,
  *  docs/design/v3-ch4-tide.md): 'crowd', the ship with the most hulls
  *  within CROWD_RADIUS of it (the ships bunched in the deep channel at low
  *  water), the one furthest along among equals; 'flats', the ship on the
  *  flats lane (a tide lane) nearest the launcher, a long flight from the
  *  north shore (none there at low water: the ship furthest from it). */
-export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'crowd' | 'flats';
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'switch' | 'crowd' | 'flats';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -5583,6 +5588,295 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 4's Delta (log v57, docs/design/v3-ch4-delta.md): the river
+ *  forks three ways at the buoy, and the switch sends the next ships north
+ *  (under the enemy bank, the shortest flights), middle (past the carrier,
+ *  under the island's silos) or south (out of reach, the long flights).
+ *  The enemy reads the switch: from wave 4 incendiary missiles burst on the
+ *  water at the mouth of the branch it is set to (MAP_SIGNATURE), so the
+ *  safe branch is only safe until the enemy fires on it. The danger is the
+ *  fork and the branch mouths just past it (the lanes' middle third),
+ *  where the ships come out of the river under the fork's silo and the
+ *  fire on the branches; the safe stretch is the branch ends. Bases counted from 0 here: 0 the north-west silo over the
+ *  river (220, 150; drones, shells), 1 the silo over the fork (560, 175;
+ *  guided, supersonic), 2 the north bank's silo over the north branch (860,
+ *  82; heavies, shells), 3 the island's west silo between the north and
+ *  middle branches (1060, 285; clusters, drones), 4 the island's east silo
+ *  (1430, 272; guided, heavies, motherships). No sub spots: the delta is
+ *  too shallow. */
+const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'delta-three-ways',
+    map: 'delta',
+    waves: [1],
+    role: 'teach',
+    name: 'Three ways',
+    callout: 'Drones at the fork',
+    premise: 'Drones come off the island at the lead ship as it reaches the fork, and a few off the north-west silo once the ships are past it: the buoy at the fork sends the next ships north, middle or south.',
+    decision: 'The first look at the map: the river splits three ways, and the switch picks the branch for the next ships.',
+    counters: 'The drones before they reach the fork; a tap on the buoy to try a branch.',
+    succeeds: 'Nothing is sunk on wave 1; the fork and its three branches read at a glance.',
+    notes: {
+      sites: 'The island\'s west silo (1060, 285; drones), the north-west silo over the river (220, 150; drones, late).',
+      target: 'The lead ship (both): the north-west silo\'s once the convoy is past it, a longer flight.',
+      usesMap: 'Shows the map on wave 1: everything comes down one river and splits at the buoy.',
+    },
+    beats: [
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.6, from: base(3), aim: 'lead' },
+      { at: 0.45, kind: 'drone', count: 3, gap: 0.6, from: base(3), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'lead' },
+    ],
+    replaces: { drones: 8 },
+  },
+  {
+    id: 'delta-read-switch',
+    map: 'delta',
+    waves: [2],
+    role: 'teach',
+    name: 'They read the switch',
+    callout: 'Fire on your branch',
+    premise: 'A shell off the north-west silo and a string of drones off the island come at the newest ships on the branch the switch is set to.',
+    decision: 'The enemy fires where the switch sends the ships: keep them on that branch, or throw the switch for the next ones?',
+    counters: 'The shell as it climbs, the drones; the buoy.',
+    succeeds: 'No ship lost on wave 2; the player sees the fire follow the switch.',
+    notes: {
+      sites: 'The north-west silo (a shell), the island\'s west silo (drones).',
+      target: 'The newest ship bound for the switch\'s branch (both).',
+      usesMap: 'The map\'s question on wave 2: the enemy aims at the branch the switch is set to.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'switch' },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.4, from: base(3), aim: 'switch' },
+    ],
+    replaces: { drones: 4, ballistic: 1 },
+  },
+  {
+    id: 'delta-under-bank',
+    map: 'delta',
+    waves: [3],
+    role: 'teach',
+    name: 'Under the bank',
+    callout: 'Shells from the bank',
+    premise: 'The north bank\'s silo shells the ship nearest it, point-blank over the north branch, and a guided missile off the silo over the fork comes at the ships coming in.',
+    decision: 'The first stakes: the north branch is short but under the bank; is it worth it?',
+    counters: 'The shells as they climb, the missile as it leaves the fork\'s silo.',
+    succeeds: 'A close call at the fork in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The north bank\'s silo (860, 82; shells), the silo over the fork (560, 175; a guided missile).',
+      target: 'The ship nearest the north bank (the north branch if one sails it, else the middle); the ships coming in, at the fork.',
+      usesMap: 'The branches differ: the north is point-blank under the bank, and the fork itself is under a silo.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(2), aim: 'near' },
+      { at: 0.6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.5, from: base(3) },
+    ],
+    replaces: { ballistic: 6, guided: 1 },
+  },
+  {
+    id: 'delta-fire-branch',
+    map: 'delta',
+    waves: [4],
+    role: 'combine',
+    name: 'Fire on the branch',
+    callout: 'Incendiary at the fork',
+    premise: 'A slow incendiary missile off the island flies for the mouth of the branch the switch is set to and bursts there, a fireball burning on the water where the next ships will sail; shells and drones come at the ships coming in.',
+    decision: 'Shoot the firebomb far out, or let it burn and throw the switch to send the ships round it?',
+    counters: 'The incendiary far from the ships, or the buoy; the shells, the drones.',
+    succeeds: 'The fire burns an empty branch in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'The island\'s west silo (an incendiary missile), the north-west silo (a shell, drones).',
+      target: 'The mouth of the switch\'s branch (the fireball); the ships coming in (the shell, the drones).',
+      usesMap: 'The signature\'s first wave: the switch is the answer to the enemy\'s fire, in place of the wave\'s own new enemy and a shell.',
+    },
+    beats: [
+      { at: 0.3, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.45, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.6, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.5, from: base(0) },
+      { at: 0.85, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+    ],
+    replaces: { ballistic: 8, guided: 1, extras: { cloud: 1 } },
+  },
+  {
+    id: 'delta-both-ends',
+    map: 'delta',
+    waves: [5],
+    role: 'combine',
+    name: 'Both ends',
+    callout: 'A shell and a cluster',
+    premise: 'A shell off the north-west silo comes at the ships coming down the river while a cluster missile off the island and a guided missile off its east silo go for the lead ship at the far end.',
+    decision: 'The river or the far end: which first?',
+    counters: 'The shell as it climbs, the cluster before it splits, the missile.',
+    succeeds: 'A close call at the fork in most runs; one ship lost at most.',
+    notes: {
+      sites: 'The north-west silo (a shell, drones), the island\'s west silo (a cluster, drones), the island\'s east silo (a guided missile).',
+      target: 'The ships coming in (the shell); the lead ship (the cluster, the missile); any ship (the drones).',
+      usesMap: 'Front and rear of the convoy at once (rule g-split), across the whole delta.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.3, plus: 2, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
+      { at: 0.7, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 5, gap: 0.5, from: base(0) },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+    ],
+    replaces: { ballistic: 8, guided: 2, extras: { cluster: 1 } },
+  },
+  {
+    id: 'delta-island',
+    map: 'delta',
+    waves: [6],
+    role: 'combine',
+    name: 'The island between',
+    callout: 'Fire from the island',
+    premise: 'The island between the north and middle branches fires both ways: a cluster at the ship halfway along, a guided missile at the ship nearest its east silo, and an incendiary at the switch\'s branch.',
+    decision: 'The island covers two branches: send the next ships south and leave the two under it to the guns?',
+    counters: 'The cluster before it splits, the missiles, the incendiary far out.',
+    succeeds: 'A close call in most runs; a run that sends ships south meets the incendiary there.',
+    notes: {
+      sites: 'The island\'s west silo (a cluster, an incendiary, drones), the island\'s east silo (guided missiles).',
+      target: 'The ship halfway along (the cluster, the drones); the ships nearest the east silo (the missiles); the switch\'s branch (the incendiary).',
+      usesMap: 'The island sits between two branches and fires at both; the south is out of its reach but not the incendiary\'s.',
+    },
+    beats: [
+      { at: 0.25, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
+      { at: 0.4, kind: 'guided', count: 1, from: base(4), aim: 'near' },
+      { at: 0.55, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.7, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
+      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.87, kind: 'drone', count: 2, gap: 0.5, from: base(3) },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
+      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+    ],
+    replaces: { ballistic: 11, guided: 2, extras: { cluster: 1, cloud: 1 } },
+  },
+  {
+    id: 'delta-lock-fork',
+    map: 'delta',
+    waves: [7],
+    role: 'escalate',
+    name: 'Lock at the fork',
+    callout: 'Supersonic at the fork',
+    premise: 'The silo over the fork locks a supersonic missile on the newest ship of the switch\'s branch, then guided missiles at the ships coming in, while incendiaries burst on the branch mouths.',
+    decision: 'The fork is where the ships bunch: the supersonic, the missiles or the firebombs?',
+    counters: 'The supersonic as it lifts off, the missiles, the incendiaries far out; the buoy.',
+    succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The silo over the fork (a supersonic, guided missiles), the island\'s west silo and the north-west silo (incendiaries), the north-west silo (drones).',
+      target: 'The newest ship on the switch\'s branch (the supersonic); the ships coming in (the missiles, the drones); the switch\'s branch mouth (the incendiaries).',
+      usesMap: 'The fork\'s own silo at the bunched convoy, and fire wherever the switch sends the next ships.',
+    },
+    beats: [
+      { at: 0.3, kind: 'supersonic', count: 1, from: base(1), aim: 'switch' },
+      { at: 0.3, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.5, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.5, plus: 7, kind: 'cloud', count: 1, from: base(0), aim: 'switch' },
+      { at: 0.7, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
+      { at: 0.82, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.9, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 1, kind: 'drone', count: 2, gap: 0.5, from: base(0) },
+    ],
+    replaces: { ballistic: 11, guided: 5, extras: { supersonic: 1, cloud: 2 } },
+  },
+  {
+    id: 'delta-every-branch',
+    map: 'delta',
+    waves: [8],
+    role: 'escalate',
+    name: 'Every branch',
+    callout: 'Fire down every branch',
+    premise: 'Each branch gets its own: shells off the north bank at the ship nearest it, a cluster off the island at the ship halfway along, guided missiles at the lead ship, and an incendiary at the switch\'s branch.',
+    decision: 'No branch is quiet: which one do you cover?',
+    counters: 'The shells, the cluster, the missiles in turn; the incendiary far out.',
+    succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The north bank\'s silo (shells), the island\'s west silo (a cluster, an incendiary), the island\'s east silo (guided missiles), the north-west silo (drones).',
+      target: 'The ship nearest the north bank (the shells); the ship halfway along (the cluster); the lead ship (the missiles); the switch\'s branch (the incendiary); the ships coming in (the drones).',
+      usesMap: 'All three branches under fire at once: the switch alone cannot dodge it.',
+    },
+    beats: [
+      { at: 0.25, kind: 'ballistic', count: 2, gap: 0.9, from: base(2), aim: 'near' },
+      { at: 0.4, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.45, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.5, from: base(0), aim: 'rear' },
+      { at: 0.92, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.62, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+    ],
+    replaces: { ballistic: 14, guided: 6, extras: { cluster: 1, cloud: 1 } },
+  },
+  {
+    id: 'delta-funnel',
+    map: 'delta',
+    waves: [9],
+    role: 'escalate',
+    name: 'Fire and the funnel',
+    callout: 'Two branches burning',
+    premise: 'An incendiary bursts on the switch\'s branch, and a few seconds later another on the branch it is thrown to; the ships bunch at the fork while a raid off the north-west silo and the fork\'s silo comes at them.',
+    decision: 'Two branches burning: which one is still open, and can you cover the ships bunched on the way to it?',
+    counters: 'The incendiaries far out, then the raid on the ships coming in.',
+    succeeds: 'Most of the raid is shot down; a run that shoots the second incendiary keeps two branches open.',
+    notes: {
+      sites: 'The island\'s west silo and the silo over the fork (incendiaries), the north-west silo (drones, shells), the silo over the fork (guided missiles).',
+      target: 'The switch\'s branch mouth, twice (the incendiaries); the ships coming in (the raid).',
+      usesMap: 'A preview of the boss: fire closes branches and the raid comes at the ships bunched on the way in.',
+    },
+    beats: [
+      { at: 0.3, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.3, plus: 6, kind: 'cloud', count: 1, from: base(1), aim: 'switch' },
+      { at: 0.3, plus: 9, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
+      { at: 0.3, plus: 12, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.3, plus: 10, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.3, plus: 11, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.1, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.22, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.87, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+    ],
+    replaces: { ballistic: 14, guided: 6, extras: { cloud: 2 } },
+  },
+  {
+    id: 'delta-burns',
+    map: 'delta',
+    waves: [10],
+    role: 'climax',
+    name: 'The delta burns',
+    callout: 'The delta burns',
+    premise: 'Once the wave\'s own fire is spent, a breath, then incendiaries burst on two branch mouths while the north-west silo, the fork\'s silo and the island all fire at the ships coming in, and the north bank shells the lead ship.',
+    decision: 'Everything the delta has, at the fork: the map\'s question at its hardest.',
+    counters: 'The incendiaries far out, the raid on the ships coming in, the shells.',
+    succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'The island\'s west silo and the north-west silo (incendiaries), the north-west silo (drones), the fork\'s silo (guided missiles), the island\'s west silo (a cluster, drones), the north bank\'s silo (shells), after the wave\'s own fire and a calm.',
+      target: 'The switch\'s branch mouth (the incendiaries); the ships coming in (the raid); the lead ship (the shells).',
+      usesMap: 'The map\'s problem at its hardest: fire on the branches and the raid at the fork; the climax may reach the safe end.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 1, plus: 5, kind: 'cloud', count: 1, from: base(0), aim: 'switch' },
+      { at: 1, plus: 4, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
+      { at: 1, plus: 7, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 1, plus: 6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 1, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'rear' },
+      { at: 1, plus: 8, kind: 'drone', count: 3, gap: 0.5, from: base(3), aim: 'rear' },
+      { at: 1, plus: 11, kind: 'drone', count: 2, gap: 0.5, from: base(3) },
+      { at: 1, plus: 9, kind: 'ballistic', count: 2, gap: 0.8, from: base(2), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.62, kind: 'drone', count: 2, gap: 0.5, from: base(0) },
+    ],
+    replaces: { ballistic: 17, guided: 9, extras: { cluster: 1, cloud: 2 } },
+    calm: 6,
+  },
+];
+
 /** Chapter 4, Open War (log v59, docs/design/v3-ch4-tide.md): Tidewater
  *  Flats. Two lanes: the deep channel (y 282) under the enemy's north
  *  shore, always open, and the flats lane (y 575) out by the carrier, which
@@ -5970,6 +6264,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Chapter 4. The Coves (log v53): the far north-west silo, the map's only
   // drone launcher, a long flight to the lane, waves 1-6.
   ...busy(['coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends', 'coves-periscope'], 0, 0),
+  // The Delta (log v57): the island's west silo, the far one of its two
+  // drone silos, waves 1-6 (the north-west one over the river is a short
+  // flight from the ships coming in down it); wave 1 one late string.
+  ['delta-three-ways', [fill(0.7, 2, 3)]],
+  ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
   // Tidewater Flats (log v59): the west and east silos, the map's two drone
   // launchers, a long flight to the flats lane, waves 1-6.
   ...busy(['tide-first-ebb', 'tide-far-flats', 'tide-low-water', 'tide-ebb-cluster', 'tide-the-flood', 'tide-both-lanes'], 0, 3),
@@ -6005,6 +6304,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...DREAD_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 4, Open War (docs/design/v3-ch4-coves.md).
   ...COVES_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch4-delta.md)
+  ...DELTA_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-tide.md)
   ...TIDE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
@@ -6062,9 +6363,10 @@ export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs' | 'dreadnought' | 'l
 export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadnought', 'lantern'];
 /** Chapter 4, Open War, a map at a time as chapter 3's: so far the Coves
  *  (log v53, docs/design/v3-ch4-coves.md), the chapter's first, where its
- *  new enemies debut. */
-export type ChapterFourMap = 'coves' | 'tide';
-export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'tide'];
+ *  new enemies debut; the Delta (log v57, docs/design/v3-ch4-delta.md);
+ *  and Tidewater Flats (log v59, docs/design/v3-ch4-tide.md). */
+export type ChapterFourMap = 'coves' | 'delta' | 'tide';
+export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'tide'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS, ...CHAPTER_FOUR_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -6179,6 +6481,11 @@ const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
  *  wave but the first sends a little less, the most off wave 9, within
  *  ±15% of each wave and never more than the ten. */
 const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
+/** The Delta (log v57): its shared waves (threat scale 1.5) are flat for
+ *  four waves and then climb to a wave 10 of 1.2 ships, so waves 2-4 send
+ *  a little more and waves 9-10 a little less, within ±15% of each wave
+ *  and never more than the ten. */
+const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 /** Tidewater Flats (log v59): within ±15% of each shared wave. */
 const TIDE_CLIMB = [1, 0.9, 0.88, 0.88, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
 
@@ -6199,6 +6506,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   dreadnought: { v1: { name: 'Original', idea: 'One encounter a wave, built on the battleship that steams down the deep channel against the convoy firing broadsides: fifty hits sink it, or its broadsides can be shot down one by one; spotter planes lay its guns on a ship from wave 4.', callouts: false, scale: DREAD_CLIMB } },
   // Chapter 4.
   coves: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four smugglers\' coves two seconds from the lane, three on the north shore and one on the south by the delivery end: their fast boats come at the ship passing each cove mouth; fire ships that burn where they are sunk from wave 4.', callouts: false, scale: COVES_CLIMB } },
+  delta: { v1: { name: 'Original', idea: 'One encounter a wave, built on the fork: the switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, and the enemy fires at the branch it is set to; incendiaries burst on that branch\'s mouth from wave 4.', callouts: false, scale: DELTA_CLIMB } },
   tide: { v1: { name: 'Original', idea: 'One encounter a wave, built on the tide: the flats lane by the carrier floats only at high water, so when the tide goes out mid-wave every ship crowds into the deep channel under the guns, and the enemy saves its fire for the crowd; cluster missiles at the ebb from wave 4.', callouts: false, scale: TIDE_CLIMB } },
   sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
 };
@@ -6314,6 +6622,10 @@ export interface MapSignature {
    *  wave from `from` (data/config.ts FIRESHIP), one for one, so the wave
    *  sends no more (rule w-budget). */
   fireShips?: number[];
+  /** The Delta (log v57): the wave's Incendiary Missiles fly at this
+   *  ('switch': they burst on the mouth of the branch the fork's switch is
+   *  set to, ahead of the next ships). */
+  clouds?: BeatAim;
   /** Tidewater Flats (log v59): at each wave's ebb (MAP_TIDE) so many
    *  cluster missiles at the crowd in the deep channel, wave by wave from
    *  `from`, out of `ebbBase`, one for one out of the wave's own clusters
@@ -6396,6 +6708,13 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // burns on the water), one for one, the Fire Fleet's own. Not the wave's
   // new enemies: chapter 4's four debut here on waves 2-5.
   coves: { from: 4, fireShips: [1, 1, 0, 1, 1, 1, 2] },
+  // The Delta (log v57, docs/design/v3-ch4-delta.md): "fire on the branch",
+  // from wave 4. The wave's new enemies come as Incendiary Missiles, chapter
+  // 4's own, each flying for the mouth of the branch the fork's switch is
+  // set to as it leaves (aim 'switch') and bursting there, its fireball
+  // burning on the water where the next ships will sail: shoot it far out,
+  // or throw the switch and send the ships round it.
+  delta: { from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' },
   // Tidewater Flats (log v59, docs/design/v3-ch4-tide.md): "the ebb
   // strike", from wave 4. At each wave's low water so many of the wave's own
   // clusters (then shells, as clusters) fly off the middle silo at the crowd
@@ -6638,6 +6957,14 @@ export interface BossRound {
    *  fire ship out at once (data/config.ts FIRESHIP), all at the ship
    *  nearest halfway along, the coves' mouths lit `warn` s before. */
   fleet?: { coves: number[]; first: number; every: number; sorties: number; warn: number };
+  /** The Delta's Burning Delta (log v57), in place of the Escort Run's
+   *  guarded heavy: burning oil across the mouths of the fork's branches.
+   *  Each burn, `at` s into the round (its mouths lit DELTA_BURN.warn s
+   *  before), sets `n` branches alight for `dur` s, the branch the switch
+   *  is set to first, then the next in the switch's order, so the convoy
+   *  funnels into the branch left open; the round's `fire` comes at the
+   *  ships bunched on the way in. */
+  burn?: { at: number; n: number; dur: number }[];
   /** Tidewater Flats' Low Water (log v59), in place of the Firestorm: the
    *  round's own tide, the flats dry from `ebb.at` s for `ebb.low` s (every
    *  ship in the deep channel), and `strikes`: at each, every base listed
@@ -6947,6 +7274,52 @@ export const COVES_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
+/** The Delta's Burning Delta (log v57, docs/design/v3-ch4-delta.md), in
+ *  place of the Escort Run (one heavy in three rings of Bodyguard drones:
+ *  the Bodyguard Ring is a regular of chapter 4's waves, and the Delta's
+ *  own debut). Burning oil closes branches of the fork, the switch's own
+ *  first, so the convoy funnels into the one left open, and the raid comes
+ *  off every silo at the ships bunched on the way in. Rising: one branch
+ *  burning, then two, then two and the fire moving to the branch that was
+ *  open. */
+export const DELTA_BOSS_ROUNDS: BossRound[] = [
+  {
+    burn: [{ at: 3, n: 1, dur: 16 }],
+    fire: [
+      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
+      { kind: 'guided', at: 8, count: 1, base: 1, aim: 'rear' },
+      { kind: 'guided', at: 15, count: 1, base: 4, aim: 'switch' },
+      { kind: 'ballistic', at: 11, count: 1, base: 0, aim: 'rear' },
+      { kind: 'drone', at: 13, count: 4, gap: 0.3, base: 3, aim: 'rear' },
+    ],
+  },
+  {
+    burn: [{ at: 3, n: 2, dur: 18 }],
+    fire: [
+      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
+      { kind: 'guided', at: 7, count: 1, base: 1, aim: 'rear' },
+      { kind: 'cluster', at: 9, count: 1, base: 3, aim: 'rear' },
+      { kind: 'ballistic', at: 11, count: 2, gap: 0.8, base: 0, aim: 'rear' },
+      { kind: 'drone', at: 14, count: 5, gap: 0.3, base: 3, aim: 'rear' },
+    ],
+  },
+  {
+    burn: [
+      { at: 3, n: 2, dur: 12 },
+      { at: 14, n: 2, dur: 12 },
+    ],
+    fire: [
+      { kind: 'drone', at: 4, count: 6, gap: 0.3, base: 0, aim: 'rear' },
+      { kind: 'guided', at: 6, count: 1, base: 1, aim: 'rear' },
+      { kind: 'cluster', at: 8, count: 1, base: 3, aim: 'rear' },
+      { kind: 'ballistic', at: 10, count: 2, gap: 0.8, base: 0, aim: 'rear' },
+      { kind: 'drone', at: 15, count: 5, gap: 0.3, base: 3, aim: 'rear' },
+      { kind: 'guided', at: 18, count: 1, base: 4, aim: 'switch' },
+      { kind: 'ballistic', at: 21, count: 1, base: 2, aim: 'rear' },
+    ],
+  },
+];
+
 /** Tidewater Flats' Low Water (log v59, docs/design/v3-ch4-tide.md), in
  *  place of the Firestorm (before: firebombs from every side, every round;
  *  the Incendiary Missile is a regular of chapter 4's waves by now, debuted
@@ -7029,6 +7402,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   lantern: { rounds: LANTERN_BOSS_ROUNDS },
   // Chapter 4 (COVES_BOSS_ROUNDS above).
   coves: { rounds: COVES_BOSS_ROUNDS, name: 'Fire Fleet' },
+  delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Burning Delta' },
   tide: { rounds: TIDE_BOSS_ROUNDS, name: 'Low Water' },
 };
 
@@ -7075,6 +7449,7 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   stealthBomber: ['stealth bomber', 'stealth bombers'],
   rig: ['relief rig under tow', 'relief rigs under tow'],
   siege: ['siege gun', 'siege guns'],
+  cloud: ['incendiary missile', 'incendiary missiles'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
@@ -7087,6 +7462,7 @@ const AIM_TEXT: Record<BeatAim, string> = {
   post: 'aimed at the radar tower (once it is gone, the ship nearest where it stood)',
   vip: 'aimed at the supertanker (when none is out, the lead ship)',
   lock: 'aimed at a ship held at the lock nearest it (none there, the ship nearest it)',
+  switch: 'aimed at the branch the switch is set to (an incendiary bursts on its mouth)',
   crowd: 'aimed at the crowd (the ship with the most hulls round it)',
   flats: 'aimed at a ship on the flats lane (none there, the ship furthest from it)',
 };

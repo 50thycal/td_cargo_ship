@@ -209,7 +209,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), coves: t('map-coves'), tide: t('map-tide'), dreadnought: t('map-dreadnought'), lantern: t('map-lantern'), crossing: t('map-crossing'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), coves: t('map-coves'), delta: t('map-delta'), tide: t('map-tide'), dreadnought: t('map-dreadnought'), lantern: t('map-lantern'), crossing: t('map-crossing'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -238,6 +238,8 @@ try {
   check(hub.lantern === enc1, `the Black Strait says it opens with its encounters (${hub.lantern})`);
   // Chapter 4's Coves (docs/design/v3-ch4-coves.md, log v53): the same.
   check(hub.coves === enc1, `the Coves say they open with their encounters (${hub.coves})`);
+  // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
+  check(hub.delta === enc1, `the Delta says it opens with its encounters (${hub.delta})`);
   // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): the same.
   check(hub.tide === enc1, `the Tide says it opens with its encounters (${hub.tide})`);
   check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.crossing ?? ''), `a map with no commands or encounters yet says so ("${hub.crossing}")`);
@@ -350,7 +352,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 56 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 57 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -485,7 +487,7 @@ try {
   // full map with their encounters (rev 4) and no command; chapter 2's
   // Island, Behemoth Run, Needle of Bosk, Archipelago and Saltgate Canal the
   // same, and chapter 3's Battery Point and Dreadnought Pass.
-  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought']) {
+  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'delta']) {
     await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.playing.lab-on');
     await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });

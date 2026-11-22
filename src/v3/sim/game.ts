@@ -1440,7 +1440,9 @@ function startWave(g: Game): void {
       if (base >= 0 && !raid.bases.includes(base) && !(u.kind === 'mine' && hidden)) raid.bases.push(base);
       // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
       // cluster missiles go for the ships held at the locks.
-      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : {};
+      // The Delta (log v57, MAP_SIGNATURE `clouds`): the wave's
+      // Incendiary Missiles burst on the switch's branch.
+      const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : u.kind === 'cloud' && sig?.clouds ? { aim: sig.clouds } : {};
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim, ...(u.fire ? { fire: true } : {}) });
     }
   });
@@ -1702,6 +1704,13 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
     const held = pool.filter((s) => atLock(g, s));
     const near = (a: Ship, b: Ship) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a);
     pick = held.length ? held.reduce(near) : pool.reduce(near);
+  }
+  // Chapter 4's Delta (log v57): the newest ship bound for the branch the
+  // fork's switch is set to; none, the ship least far along.
+  if (aim === 'switch') {
+    const lane = switchLane(g);
+    const bound = pool.filter((s) => s.channel === lane);
+    pick = (bound.length ? bound : pool).reduce((a, b) => (along(b) < along(a) ? b : a));
   }
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
@@ -7422,7 +7431,9 @@ export function worthShooting(g: Game, list: Threat[]): Threat[] {
 export function quieterBranch(g: Game): number | null {
   const fork = g.map.fork;
   if (!fork) return null;
-  const heat = fork.lanes.map((lane) => g.threats.filter((t) => !t.dead && g.ships.some((s) => s.id === t.target && s.channel === lane)).length);
+  // Log v57: a branch burning at its mouth (the Delta's incendiaries and its
+  // boss's oil) is as hot as a raid on it: a player sends the ships round.
+  const heat = fork.lanes.map((lane) => g.threats.filter((t) => !t.dead && g.ships.some((s) => s.id === t.target && s.channel === lane)).length + (branchBurning(g, lane) ? 6 : 0));
   const cur = g.forkLane % fork.lanes.length;
   let best = cur;
   heat.forEach((h, i) => {
@@ -7719,6 +7730,35 @@ export function throwSwitch(g: Game): void {
 }
 
 const FORK_NAMES = ['NORTH', 'MIDDLE', 'SOUTH'];
+
+/** The lane the Delta's switch sends the next ships down (-1: no fork). */
+export function switchLane(g: Game): number {
+  const fork = g.map.fork;
+  return fork ? fork.lanes[g.forkLane % fork.lanes.length] : -1;
+}
+
+/** How far past the buoy, along a branch, its mouth is: where the Delta's
+ *  incendiaries burst and its boss's burning oil lies (log v57), clear of
+ *  the river the three branches share. */
+export const FORK_MOUTH = 270;
+
+/** The mouth of a branch of the Delta's fork (its lane's index): on the
+ *  branch FORK_MOUTH px past the buoy. */
+export function branchMouth(g: Game, lane: number): Point {
+  const fork = g.map.fork!;
+  const ch = g.map.channels[lane];
+  const d0 = laneDAtX(ch, fork.x) ?? 0;
+  const p = laneAt(ch, d0 + FORK_MOUTH, 0);
+  return { x: p.x, y: p.y };
+}
+
+/** Is a branch of the fork burning at its mouth (a fireball on the water
+ *  there: an incendiary's, or the boss's burning oil)? */
+export function branchBurning(g: Game, lane: number): boolean {
+  if (!g.map.fork) return false;
+  const m = branchMouth(g, lane);
+  return g.foe.marks.some((k) => k.kind === 'fire' && k.t < k.dur - 2 && dist(k.x, k.y, m.x, m.y) <= 90);
+}
 
 // ---------------------------------------------------------------------------
 // Pickups
