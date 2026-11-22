@@ -239,6 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## The Delta: chapter 4's second map (game version 57; swept at 54)
+
+> 2026-11-22. The Sharra Delta rebuilt to the map rules (docs/design/v3-ch4-delta.md): the river forks three ways at the buoy and the enemy fires at the branch the switch is set to; its signature is "fire on the branch" (from wave 4 the wave's new enemies come as Incendiary Missiles that burst on the mouth of the switch's branch), its convoy a Spread at flow step 3. Swept at version 54 (the same sim as 57) with chapter 4's draft (27 weapons: the Cadence Gun and the Wild Card join): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps. Results: `tools/v3/combo-sweep/results/v54-ch4`; the comparison: `python3 tools/v3/delta/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Delta (v54) | **Air Strike + Orbital Strike + Wild Card** 5.4 | Air Strike + Boomerang + Wild Card 5.8 | Boomerang + Drone Screen + Wild Card 5.9 | Flak Cannon + Gunship Pair + Wild Card 6.2 | Air Strike + Frigate Escort + Shield 6.8 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Delta against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought | **0** against all ten |
+| The same, the Delta against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Air Strike** 6.0 (Wild Card 6.0, Gravity Well 6.4, Tesla 6.4, Flak 6.8) |
+| Rank correlation of the weapons alone, against the ten | 0.59 / 0.66 / 0.30 / 0.67 / 0.49 / 0.65 / 0.65 / 0.63 / 0.63 / 0.80 |
+| The bot drafting for itself; the plain gun | 7.5 lost, won 67%; 10.3, won 42% |
+
+### Reading
+
+- **All five of the Delta's best kits are its own** (Jaccard 0 against all ten rebuilt maps), but four of the five hold the **Wild Card**, chapter 4's new weapon, which no earlier map's draft deals: part of the difference is the draft, not the map.
+- **Air Strike is over-dominant here**: the best weapon alone and in three of the five best kits, the #1 among them.
+- **The weapons alone rank most like Dreadnought Pass's** (0.80) and least like the Needle's (0.30).
+- The counter kit (Seeker Pod, Thermobaric Shell, Cadence Gun) comes from the kit runs, not these singles: forced alone those three rank 7.7–8.6, but with the bot's taste set to them they won 84% against 66% for the area weapons (32 seeds).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=delta --out=tools/v3/combo-sweep/results/v54-ch4
+npm run v3:combo-sweep -- --stage=pairs --maps=delta --out=tools/v3/combo-sweep/results/v54-ch4
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v54-ch4 --maps=delta --json=tools/v3/combo-sweep/results/v54-ch4/diversity.json
+python3 tools/v3/delta/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=delta --seeds=8
+```
+
 ## The Black Strait (the Lantern): chapter 3's fourth map (game version 52; swept at 50)
 
 > 2026-11-21. The Black Strait rebuilt to the map rules (docs/design/v3-ch3-lantern.md): night, and the fire comes out of the enemy's dark bank behind the ships, the one shore the lighthouse beam never sweeps; its signature is "guns in the dark" (from wave 4 the wave's new enemies are Siege Batteries rising beside that bank, one salvo each), and its convoy sails at flow 2. Swept the same way at version 50, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, Sowers `results/v48-ch3`, the Rig Field `results/v49-ch3`, Dreadnought Pass `results/v51-ch3`). Results: `tools/v3/combo-sweep/results/v50-ch3`; the comparison: `python3 tools/v3/lantern/compare.py`. (Boss rounds 1 and 3 were made a shell lighter after the sweep; the waves are the swept ones.)
