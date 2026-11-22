@@ -247,7 +247,7 @@ The fun check flags "flat" saves on every wave for every Armory (0.1 a run on wa
 
 ## Checks run
 
-`tsc`; `vitest --exclude '.claude/**'`; `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`; the map-lab baseline replays exactly. (Results in the PR's report.)
+`tsc`; `vitest --exclude '.claude/**'`; `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`; the map-lab baseline replays exactly. After merging the base with the Rig Field (log v49): `vitest --exclude '.claude/**'` 80 files, 1886 tests, all pass; all five e2e scripts pass; the baseline rewritten at v51 (its version only) and replaying exactly with telemetry on and off.
 
 ## Tests
 
