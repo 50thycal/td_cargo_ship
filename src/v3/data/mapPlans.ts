@@ -387,6 +387,25 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-tide.md (chapter 4, Open War)
+  tide: {
+    problem: 'The flats lane out by your carrier floats only at high tide: when the tide goes out, every new ship crowds into the deep channel under the enemy\'s guns, and the enemy saves its fire for that crowd, so the tide gauge is the clock you defend by.',
+    // What the waves send: drones over the long flight to the flats lane at
+    // high water, then at the ebb shells, cluster missiles, guided missiles
+    // and supersonics at the crowd in the deep channel, a short flight from
+    // the north shore's four silos. Splash weapons at bunched ships: the
+    // counters are the weapons that stop a missile as it lifts or burst
+    // over the crowd's sky (see docs/design/v3-ch4-tide.md, The counters,
+    // for the sweep's numbers). Every weapon is in chapter 4's draft.
+    counters: ['aegis', 'flak', 'shrapnel'],
+    offCounter: ['grapnel', 'fullSteam', 'gunships'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east, over the flats lane by the carrier and the deep channel under the shore at high water, all of them in the deep channel at low water; the tide steers the ships, and the fire is answered by shooting.',
+    stretches: { danger: 'early', safe: 'late' },
+    boss: {
+      plan: 'Low Water (in place of the Firestorm: the Incendiary Missile is a regular of chapter 4\'s waves): each round the tide runs out early and stays out, every ship crowds into the deep channel, and the whole north shore fires at the crowd at once, strike after strike, its silos lit first: two strikes in round 1, three in rounds 2 and 3, more silos and longer low water each round (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Firestorm). Rising, below the asked 1.5 / 2 / 2.5 a round where the loss limit needs it, as on every rebuilt map.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

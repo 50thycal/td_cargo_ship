@@ -5598,8 +5598,8 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  sub spots between the lanes, west (0) and east (1). The danger is the
  *  way in at low water (the new ships crowd into the deep channel in the
  *  west); the safe stretch the delivery end. */
-export const TIDE_EBB = [0.35, 0.4, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
-export const TIDE_LOW = [13, 14, 15, 15, 16, 16, 17, 17, 18, 20];
+export const TIDE_EBB = [0.5, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
+export const TIDE_LOW = [9, 11, 13, 15, 16, 16, 17, 17, 18, 20];
 const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });
 /** The shells, guided missiles and clusters a Tide wave gives up (its
  *  `replaces`, past the encounter's own) come as `n` drones (strings of up
@@ -5634,7 +5634,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Shows the map on wave 1: the tide goes out mid-wave and the convoy crowds into the deep channel; the ebb\'s fire goes for the crowd.',
     },
     beats: [
-      { at: 0.12, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'lead' },
+      { at: 0.3, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'flats' },
       { ...ebb(1, 2), kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'crowd' },
     ],
     replaces: { drones: 6 },
@@ -5656,11 +5656,12 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Both tides in one wave: the long flight at high water, the crowd under the guns at low; in place of the wave\'s own shells.',
     },
     beats: [
-      { at: 0.1, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'lead' },
+      { at: 0.25, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
       { ...ebb(2, 1.5), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
       { ...ebb(2, 4), kind: 'ballistic', count: 1, from: base(3), aim: 'crowd' },
+      ...swapIn(6),
     ],
-    replaces: { drones: 3, ballistic: 2 },
+    replaces: { drones: 9, ballistic: 2 },
   },
   {
     id: 'tide-low-water',
@@ -5679,12 +5680,12 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The map\'s danger: the way in at low water, every new ship in the deep channel; in place of the wave\'s own guided missile and shells.',
     },
     beats: [
-      { at: 0.15, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
       { ...ebb(3, 1), kind: 'guided', count: 1, from: base(0), aim: 'crowd' },
-      { ...ebb(3, 3.5), kind: 'ballistic', count: 2, gap: 1.2, from: base(0), aim: 'crowd' },
-      ...swapIn(2),
+      { ...ebb(3, 3.5), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
+      ...swapIn(13),
     ],
-    replaces: { drones: 3, guided: 1, ballistic: 4 },
+    replaces: { drones: 13, guided: 1, ballistic: 4 },
   },
   {
     id: 'tide-ebb-cluster',
@@ -5706,9 +5707,9 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'supersonic', count: 1, from: base(2), aim: 'lead' },
       { ...ebb(4, 1), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { ...ebb(4, 2), kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'crowd' },
-      ...swapIn(6),
+      ...swapIn(16),
     ],
-    replaces: { drones: 4, ballistic: 5, guided: 1, extras: { cluster: 1, supersonic: 1 } },
+    replaces: { drones: 14, ballistic: 5, guided: 1, extras: { cluster: 1, supersonic: 1 } },
   },
   {
     id: 'tide-the-flood',
@@ -5727,13 +5728,13 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Both turns of the tide: the ebb, and the flood after the low water; in place of the wave\'s own shells.',
     },
     beats: [
-      { ...ebb(5, 1), kind: 'ballistic', count: 2, gap: 1.2, from: base(0), aim: 'crowd' },
+      { ...ebb(5, 1), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
       { ...ebb(5, TIDE_LOW[4] + 1), kind: 'ballistic', count: 2, gap: 1.2, from: sub(1), aim: 'near' },
-      { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'flats' },
       { ...ebb(5, 3), kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'crowd' },
-      ...swapIn(5),
+      ...swapIn(14),
     ],
-    replaces: { drones: 7, ballistic: 7, guided: 1, extras: { cluster: 1 } },
+    replaces: { drones: 15, ballistic: 7, guided: 1, extras: { cluster: 1 } },
   },
   {
     id: 'tide-both-lanes',
@@ -5741,7 +5742,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [6],
     role: 'combine',
     name: 'Both lanes',
-    callout: 'Both lanes at once',
+    callout: 'Before the ebb and after',
     premise: 'At high water a guided missile goes for the lead ship and shells from the east for the ships coming in; at the ebb a cluster and drones come down on the crowd.',
     decision: 'Spread over two lanes before the ebb, bunched in one after: where are your shots best spent?',
     counters: 'The guided missile in its flight; the shells as they climb; the cluster before it splits.',
@@ -5756,9 +5757,9 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'ballistic', count: 2, gap: 1, from: base(3), aim: 'rear' },
       { ...ebb(6, 1.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { ...ebb(6, 2.5), kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'crowd' },
-      ...swapIn(9),
+      ...swapIn(17),
     ],
-    replaces: { drones: 5, guided: 2, ballistic: 10, extras: { cluster: 1 } },
+    replaces: { drones: 13, guided: 2, ballistic: 10, extras: { cluster: 1 } },
   },
   {
     id: 'tide-supersonic-ebb',
@@ -5777,7 +5778,8 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The ebb at its sharpest: the short flight from the shore to the bunched deep channel; in place of the wave\'s own supersonics and a cluster.',
     },
     beats: [
-      { ...ebb(7, 0.5), kind: 'supersonic', count: 2, gap: 1.6, from: base(2), aim: 'crowd' },
+      { ...ebb(7, 0.5), kind: 'supersonic', count: 1, from: base(2), aim: 'crowd' },
+      { at: 0.15, kind: 'supersonic', count: 1, from: base(2), aim: 'flats' },
       { ...ebb(7, 1.2), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
       { ...ebb(7, 4), kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'crowd' },
@@ -5857,12 +5859,10 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { ...ebb(10, 0.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { ...ebb(10, 1.5), kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'crowd' },
-      { ...ebb(10, 3), kind: 'guided', count: 2, gap: 0.8, from: base(2), aim: 'crowd' },
+      { ...ebb(10, 3), kind: 'guided', count: 1, from: base(2), aim: 'crowd' },
       { ...ebb(10, 7), kind: 'supersonic', count: 1, from: base(2), aim: 'crowd' },
       { ...ebb(10, 2), kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
-      { ...ebb(10, 9), kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'flats' },
-      { ...ebb(10, 14), kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
-      ...swapIn(29),
+      ...swapIn(30),
     ],
     replaces: { drones: 26, ballistic: 15, guided: 9, extras: { cluster: 1, supersonic: 1 } },
     calm: 6,
@@ -6181,7 +6181,7 @@ const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
  *  ±15% of each wave and never more than the ten. */
 const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
 /** Tidewater Flats (log v59): within ±15% of each shared wave. */
-const TIDE_CLIMB = [1, 1, 1, 1, 1, 1, 1, 0.95, 0.9, 0.88];
+const TIDE_CLIMB = [1, 0.9, 0.88, 0.88, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -6401,7 +6401,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // strike", from wave 4. At each wave's low water so many of the wave's own
   // clusters (then shells, as clusters) fly off the middle silo at the crowd
   // in the deep channel, one for one, the Low Water's own.
-  tide: { from: 4, ebb: [1, 1, 1, 1, 1, 1, 1], ebbBase: 1 },
+  tide: { from: 4, ebb: [0, 1, 1, 1, 1, 1, 1], ebbBase: 1 },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -6412,6 +6412,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
  *  missile, rule w-budget). The campaign plays the planner as it was. */
 export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Record<FoeId, FoeId>>>> = {
   saltgate: { torpedoSub: 'rocketTruck' },
+  tide: { tender: 'lure', bodyguard: 'lure' },
 };
 
 /** The enemy a drawn one comes as on this map, under a run's encounter
@@ -6959,7 +6960,7 @@ export const TIDE_BOSS_ROUNDS: BossRound[] = [
     ebb: { at: 2, low: 18 },
     strikes: [
       { at: 6, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }] },
-      { at: 13, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
+      { at: 13, warn: 2.5, from: [{ base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
     ],
   },
   {
@@ -6967,15 +6968,15 @@ export const TIDE_BOSS_ROUNDS: BossRound[] = [
     strikes: [
       { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }] },
       { at: 12, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 0, kind: 'guided', count: 2, gap: 0.8 }] },
-      { at: 18, warn: 2.5, from: [{ base: 0, kind: 'drone', count: 5, gap: 0.35 }, { base: 2, kind: 'guided', count: 1 }] },
+      { at: 18, warn: 2.5, from: [{ base: 0, kind: 'drone', count: 5, gap: 0.35 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 1 }] },
     ],
   },
   {
     ebb: { at: 2, low: 26 },
     strikes: [
-      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
+      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 1 }] },
       { at: 13, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }, { base: 0, kind: 'drone', count: 6, gap: 0.35 }] },
-      { at: 20, warn: 2.5, from: [{ base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'drone', count: 6, gap: 0.35 }] },
+      { at: 20, warn: 2.5, from: [{ base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'drone', count: 5, gap: 0.35 }] },
     ],
   },
 ];

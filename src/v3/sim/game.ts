@@ -1690,11 +1690,7 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
         : aim === 'rear'
           ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
           : aim === 'crowd'
-            ? pool.reduce((a, b) => {
-                const ca = crowdAround(pool, a);
-                const cb = crowdAround(pool, b);
-                return cb > ca || (cb === ca && along(b) > along(a)) ? b : a;
-              })
+            ? crowdShip(pool, th.id, along)
             : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
   // Chapter 2's Saltgate Canal (log v38): the ship held at a lock, in its
   // chamber or waiting at its shut entry gate, the lock nearest the
@@ -1730,6 +1726,19 @@ function crowdAround(pool: Ship[], s: Ship): number {
   let n = 0;
   for (const o of pool) if (o !== s && dist(o.x, o.y, s.x, s.y) <= CROWD_RADIUS) n++;
   return n;
+}
+/** The crowd's ships: the hull with the most round it and those round it,
+ *  west to east; each launch takes one of them by its own id, so a strike at
+ *  the crowd spreads over it rather than all going for one hull (no dice:
+ *  an encounter plays the same every time). */
+function crowdShip(pool: Ship[], id: number, along: (s: Ship) => number): Ship {
+  const core = pool.reduce((a, b) => {
+    const ca = crowdAround(pool, a);
+    const cb = crowdAround(pool, b);
+    return cb > ca || (cb === ca && along(b) > along(a)) ? b : a;
+  });
+  const near = pool.filter((s) => dist(s.x, s.y, core.x, core.y) <= CROWD_RADIUS).sort((a, b) => a.id - b.id);
+  return near[id % near.length] ?? core;
 }
 
 /** Is a ship held at a lock (Saltgate Canal): in a lock's chamber, or in

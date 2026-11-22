@@ -175,7 +175,7 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // schedule and Pairs, no command: the tide steers the ships (the flats
   // lane at high water, the deep channel at low), and the fire is answered
   // by shooting.
-  tide: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
+  tide: { flow: 2, formation: 'box', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

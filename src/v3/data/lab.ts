@@ -712,6 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'tide', log: 59, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
   { map: 'sowers', log: 55, tag: 'Polished', note: 'Mines stay hidden till a ship is close; the big Hold button glows when to press it. Fair?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
