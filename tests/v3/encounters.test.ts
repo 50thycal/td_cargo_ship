@@ -402,7 +402,10 @@ describe('every beat is legal on its map at its wave', () => {
             // fills a salvo of four), which the books don't see. It is held
             // to the wave as planned instead (below).
             const allShells = spec.ballistic > 0 && (e.replaces.ballistic ?? 0) >= spec.ballistic && (e.rev ?? 1) >= 4;
-            if (!allShells) expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked}`).toBeLessThanOrEqual(asked);
+            // (The Coves, log v53: its fast boats are the map's own extras, and
+            // an encounter's boats come out of the wave's own, one for one.)
+            const extras = e.map === 'coves' ? MAPS.coves.extras.filter((x) => x.from <= w).reduce((a, x) => a + Math.min(e.replaces.extras?.[x.kind] ?? 0, Math.round(x.count + x.growth * (w - x.from))), 0) : 0;
+            if (!allShells) expect(sent, `${e.id} wave ${w}: sends ${sent}, takes out ${asked + extras}`).toBeLessThanOrEqual(asked + extras);
             expect(asked, `${e.id} wave ${w}: the wave has that much to give`).toBeLessThanOrEqual(spec.drones + spec.ballistic + spec.guided);
           }
           // And as planned: over eight seeds, no more launches than the same
