@@ -233,6 +233,8 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('rigs')).toEqual({ convoy: 'tactical', encounters: true });
     // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md): the same.
     expect(mapProduction('dreadnought')).toEqual({ convoy: 'tactical', encounters: true });
+    // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
+    expect(mapProduction('coves')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('crossing')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');

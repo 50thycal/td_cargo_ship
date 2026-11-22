@@ -48,6 +48,7 @@ import {
   RIG_SHOTS,
   SOW,
   TOW,
+  FIRESHIP,
   POST,
   VIP,
   isStructure,
@@ -78,7 +79,7 @@ import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
-import { absorbs, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
+import { absorbs, burstCloud, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
@@ -281,6 +282,10 @@ export interface Threat {
    *  left), for the tow's arrival and the tug casting off. */
   dockT?: number;
   towDir?: number;
+  /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet): a
+   *  fire ship, a fast boat set alight (FIRESHIP): where it is sunk, or
+   *  where it rams, its fireball burns on the water (foes.ts burstCloud). */
+  fire?: boolean;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
@@ -468,12 +473,16 @@ export interface Launch {
   sow?: number;
   /** Log v49 (The Rig Field): a docked relief rig's rack. */
   tow?: boolean;
+  /** Log v53 (The Coves): a fast boat that comes as a fire ship. */
+  fire?: boolean;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
 interface Unit {
   kind: ThreatKind;
   size: number;
+  /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`): a fire ship. */
+  fire?: boolean;
 }
 
 /** Launch platforms that are not targets (round 4): a submarine surfacing in
@@ -1320,6 +1329,21 @@ function startWave(g: Game): void {
   // Battery Point (log v45, MAP_SIGNATURE `stealth`): the wave's own strike
   // jets come in dark, as Stealth Strafers, one for one.
   if (sig?.stealth) for (const u of units) if (u.kind === 'strafer') u.kind = 'stealthJet';
+  // The Coves (log v53, MAP_SIGNATURE `fireShips`): so many of the wave's own
+  // fast boats (what is left of them after its encounters) come as fire
+  // ships, one for one, so the wave sends no more launches (rule w-budget).
+  // They come out of the coves themselves (a fast boat in a raid may go to
+  // a truck or a sub), the coves in turn, spread over the wave, each cove
+  // lit as a raid's base first.
+  let fireShips = 0;
+  if (sig?.fireShips) {
+    const want = sig.fireShips[Math.min(g.wave, 10) - sig.from] ?? 0;
+    for (let i = units.length - 1; i >= 0 && fireShips < want; i--)
+      if (units[i].kind === 'fastboat') {
+        units.splice(i, 1);
+        fireShips++;
+      }
+  }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -1388,12 +1412,21 @@ function startWave(g: Game): void {
       // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
       // cluster missiles go for the ships held at the locks.
       const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : {};
-      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
+      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim, ...(u.fire ? { fire: true } : {}) });
     }
   });
   if (hidden) raids.forEach((raid, r) => (raid.quiet = raidUnits[r].length > 0 && raidUnits[r].every((u) => u.kind === 'mine')));
   g.raids = raids;
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
+  if (fireShips) {
+    const coves = g.map.bases.map((x, i) => (x.cove && x.kinds.includes('fastboat') ? i : -1)).filter((i) => i >= 0);
+    for (let k = 0; k < fireShips && coves.length; k++) {
+      const at = lead + RAID.warn + (spec.duration * (k + 1)) / (fireShips + 1);
+      const base = coves[(g.wave + k) % coves.length];
+      queue.push({ at, kind: 'fastboat', base, fire: true });
+      g.raids.push({ at, theme: RAID_THEME.fastboat, bases: [base] });
+    }
+  }
   trickled.forEach((size, k) => {
     const base = pickBase(g, 'drone', rng);
     let at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
@@ -1520,7 +1553,7 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // comes from the far shore instead (rigStandIn), lit there.
         // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.fire ? { fire: true } : {}) });
         // Log v55 (HIDDEN_MINES): a chute's hidden mines just come, unwarned.
         if (b.kind === 'mine' && hiddenMines(g)) {
           start = Math.min(start, at);
@@ -5704,6 +5737,7 @@ function launch(g: Game, l: Launch): void {
     if (l.enc) th.enc = l.enc;
     if (l.filler) th.filler = true;
     if (l.tow) th.rack = true;
+    if (l.fire && l.kind === 'fastboat') lightFireShip(th);
     if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
@@ -6487,7 +6521,18 @@ export function checkImpact(g: Game, th: Threat): void {
   }
   // A heavy's direct hit sinks the ship whatever its armour or formation
   // (the supertanker takes VIP.heavyHit: it is built to take one).
-  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : dmg, blame, true, imp);
+  // The Coves (log v53): a fire ship rams for FIRESHIP.ram (its weapon is
+  // its fire), and leaves the fire on the lane.
+  damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : th.fire ? FIRESHIP.ram : dmg, blame, true, imp);
+  if (th.fire) burstCloud(g, th, FIRESHIP.burn);
+}
+
+/** Log v53 (The Coves): a fast boat set alight, a fire ship (FIRESHIP):
+ *  more hits, a little slower. */
+export function lightFireShip(th: Threat): void {
+  th.fire = true;
+  th.hp = th.maxHp = FIRESHIP.hp;
+  th.speed *= FIRESHIP.speed;
 }
 
 /** Gravity Well: the radius caught threats circle the core at (well inside
@@ -6625,6 +6670,9 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   g.kills[th.kind] += 1;
   if (g.tel) g.tel.hurt(g, th, before, by, weapon);
   if (isFoe(th.kind)) foeDown(g, th, !drops);
+  // The Coves (log v53): a fire ship sunk burns where it went down (the
+  // Nuke puts it out, as an Incendiary Missile's).
+  if (th.fire && drops) burstCloud(g, th, FIRESHIP.burn);
   if (g.event) eventFoeDown(g, th);
   if (g.lab) labKilled(g, th, !!g.lab.weapon && !!held(g, g.lab.weapon));
   if (isStructure(th.kind)) {

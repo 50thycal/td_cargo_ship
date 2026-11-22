@@ -239,6 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## The Coves: chapter 4's first map (game version 56; swept at 53)
+
+> 2026-11-22. The Coves rebuilt to the map rules (docs/design/v3-ch4-coves.md): fast boats out of four coves two seconds from the lane, and its signature is "fire ships" (from wave 4 some of the wave's boats come out of the coves set alight: three hits, and where one is sunk or rams, its fireball burns on the water); from wave 5 most of the waves' shells, and from wave 7 their guided missiles, come as drones. The question, as for each rebuild: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 53, with chapter 4's draft (27 weapons, the Wild Card and the Cadence Gun new): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. (The pairs and kits were swept on the build just before the final one, whose wave 6 sends no signature fire ship and two drones fewer.) The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, the Sowers `results/v48-ch3`, the Rigs `results/v49-ch3`, the Black Strait `results/v50-ch3`, the Dreadnought `results/v51-ch3`). Results: `tools/v3/combo-sweep/results/v53-ch4`; the comparison: `python3 tools/v3/coves/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Coves (v53) | **Air Strike + Flak Cannon + Gravity Well** 6.1, won 81% | Air Strike + Shrapnel Shell + Flak Cannon 6.4 | Air Strike + Flak Cannon + Orbital Strike 6.5 | Air Strike + Flak Cannon + Point Defense 6.8 | Shrapnel Shell + Thermobaric Shell + Orbital Strike 7.3 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Coves against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought | **0 / 0 / 0 / 0 / 0 / 0 / 0 / 0 / 0 / 0** |
+| The same, the Coves against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Orbital Strike** 6.4 (Air Strike and Frigate Escort 6.5, Gunship Pair 7.0): the best single on no other rebuilt map |
+| Rank correlation of the weapons alone, against the same ten | 0.65 / 0.81 / 0.56 / 0.72 / 0.62 / 0.71 / 0.53 / 0.74 / 0.83 / 0.58 |
+| Air Strike | 2nd of 27 alone (6.5); in **four** of the five best kits, never alone the #1 |
+| The bot drafting for itself; the plain gun | 7.5 lost, won 58%; 10.7, won 17% |
+
+### Reading
+
+- **All five of the Coves' best kits are its own**, and its best weapon alone is its own: the Orbital Strike, which (with the Frigate Escort and the Gunship Pair, the next best alone) fires on its own while the finger is on something else, and catches a boat as it leaves its cove.
+- **But Air Strike + Flak Cannon is the core of four of the five best kits.** The flak cloud sits where the boats and the far silo's drones cross the lane, and the Air Strike clears a cove mouth and the lane under it at once. Air Strike is not the best weapon alone (2nd, tied with the Frigate), but it is the most common partner here, more than on any rebuilt map since the Archipelago. A question for the player on the map card; nothing changed for it.
+- **Its weapons alone rank most like the Black Strait's and the Behemoth's** (0.83, 0.81), least like the Sowers' (0.53).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=coves --out=tools/v3/combo-sweep/results/v53-ch4 --procs=2
+npm run v3:combo-sweep -- --stage=pairs --maps=coves --out=tools/v3/combo-sweep/results/v53-ch4 --procs=2
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v53-ch4 --maps=coves --top=6 --seeds=6 --confirm=10 --confirm-seeds=16 --json=tools/v3/combo-sweep/results/v53-ch4/diversity.json
+python3 tools/v3/coves/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=coves --seeds=8
+```
+
 ## The Black Strait (the Lantern): chapter 3's fourth map (game version 52; swept at 50)
 
 > 2026-11-21. The Black Strait rebuilt to the map rules (docs/design/v3-ch3-lantern.md): night, and the fire comes out of the enemy's dark bank behind the ships, the one shore the lighthouse beam never sweeps; its signature is "guns in the dark" (from wave 4 the wave's new enemies are Siege Batteries rising beside that bank, one salvo each), and its convoy sails at flow 2. Swept the same way at version 50, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, Sowers `results/v48-ch3`, the Rig Field `results/v49-ch3`, Dreadnought Pass `results/v51-ch3`). Results: `tools/v3/combo-sweep/results/v50-ch3`; the comparison: `python3 tools/v3/lantern/compare.py`. (Boss rounds 1 and 3 were made a shell lighter after the sweep; the waves are the swept ones.)
