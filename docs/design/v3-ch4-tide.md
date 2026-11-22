@@ -8,9 +8,10 @@ As it was (192 seeds, the usual Armory), the Tide was the hardest map of the cha
 
 Code:
 - `src/v3/data/encounters.ts`: `TIDE_R4` (ten encounters), `TIDE_EBB` and `TIDE_LOW` (each wave's ebb and low water), `MAP_TIDE` and `tideClock` (the tide's clock a wave, under the layer), `swapIn` (the shells and missiles a wave gives up, as drone strings at the flats), the filler for waves 1–6 (`BUSY`), `TIDE_CLIMB`, the aims `'crowd'` and `'flats'` (`BeatAim`), `MAP_SIGNATURE.tide` (`ebb`, `ebbBase`: the ebb strike), `MAP_FOE_SWAP.tide` (the Repair Ship and the Bodyguard Ring as Lure Beacons), `TIDE_BOSS_ROUNDS` and `MAP_BOSS.tide` (a boss round's `ebb` and `strikes`; the boss's name, Low Water), `CHAPTER_FOUR_MAPS` (the Tide joins the Coves and the Delta);
-- `src/v3/sim/game.ts`: Game `ebb` (the wave's low water), `highTide` (reads it), `tideGauge`; `aimBeat` takes `'crowd'` (`crowdShip`, `CROWD_RADIUS`: a ship of the most bunched hulls, each launch a different one of them by its id) and `'flats'` (`flatsShip`); the wave planner holds the signature's clusters for the ebb; Threat `ebb` (launched at the crowd; for the tools' counts);
+- `src/v3/sim/tide.ts` (new): `tideAt` (the tide's phase, falling and rising over `TIDE_TURN`, and the water level), `flatsBand`, `sandEdge`;
+- `src/v3/sim/game.ts`: Game `ebb` (the wave's low water), `highTide` and `tideNow` (read `tideAt`), `leaveFlats` and Ship `cross` (the ships on the flats cross to the deep channel as the tide falls); `aimBeat` takes `'crowd'` (`crowdShip`, `CROWD_RADIUS`: a ship of the most bunched hulls, each launch a different one of them by its id) and `'flats'` (`flatsShip`); the wave planner holds the signature's clusters for the ebb; Threat `ebb` (launched at the crowd; for the tools' counts);
 - `src/v3/sim/events.ts`: the Firestorm under the Tide's boss tuning is Low Water (`lowWater`: the round's own tide, the strikes' silos lit, then the strikes); with no boss tuning it plays as it did;
-- `src/v3/sim/telemetry.ts`, `src/v3/ui/render.ts`, `src/v3/ui/features.ts`: the tide's env events, the dimmed flats lane and the gauge read the wave's own tide; the gauge sits mid-map between the lanes, larger (28 px; 36 px in gold, "THE TIDE TURNS", in the last 5 s before the ebb);
+- `src/v3/sim/telemetry.ts`, `src/v3/ui/render.ts`, `src/v3/ui/features.ts`: the tide's env events, the dimmed flats lane and the gauge read the tide's phase; the sand comes up from the shore with a moving surf line; the gauge sits mid-map between the lanes, larger (28 px; 36 px in gold, "THE TIDE TURNS" and "TIDE GOING OUT");
 - `src/v3/data/convoy.ts`: `MAP_CONVOY.tide` (flow step 2, the Box, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.tide`; `src/v3/data/lab.ts`: "Ready to test" lists the Tide at v59; `src/v3/sim/playlog.ts`: `LOG_VERSION` 59;
 - tools: `tools/v3/tide/` (`readall.sh` and `final.sh`: the tuning reads for every Armory, `tools/v3/rigs/read.py` on the Tide; `reports.sh`: the record reports; `waves.ts`: what each wave plans, by kind and aim; `budget.ts`: each wave's launches against the shared wave; `early.ts`: what sinks the ships in the first waves, high or low water; `convoys.sh`: the read with each flow and formation in turn); `tools/v3/combo-sweep/mixwaves.ts` counts the Tide's signature (`ebbStrike`).
 
@@ -18,19 +19,35 @@ Bot reports: `tools/v3/map-report/results/tide-player.md` (the usual Armory: Qui
 
 ## How it is gated (lab vs campaign)
 
-As every rebuild: **lab only, under the encounter layer.** The Test Lab's map card (`?lab=map-tide`) opens on its production setup, policy D with no command, the map's own convoy and the authored encounters rev 4, because the Tide is in `REBUILT_MAPS` (via `CHAPTER_FOUR_MAPS`). The hub card reads "The map's own convoy (no commands) · encounters v1 Original". Everything new reads the run's encounter setup (`tideClock`, `signatureOf`, `swapFoe`, `bossTune`, an encounter's aim), so the campaign, a run with no layer, a rev 3 log and the shared wave (`only: []`) play the Tide exactly as before: the tide on its own 45 s clock, the shared waves, the planner's own new enemies and the Firestorm. The one thing a campaign player sees change is the tide gauge: it moved from the right edge (where it was clipped on a phone, about 8 px tall) to mid-map between the lanes, larger. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version.
+As every rebuild: **lab only, under the encounter layer.** The Test Lab's map card (`?lab=map-tide`) opens on its production setup, policy D with no command, the map's own convoy and the authored encounters rev 4, because the Tide is in `REBUILT_MAPS` (via `CHAPTER_FOUR_MAPS`). The hub card reads "The map's own convoy (no commands) · encounters v1 Original". Everything new reads the run's encounter setup (`tideClock`, `signatureOf`, `swapFoe`, `bossTune`, an encounter's aim), so the campaign, a run with no layer, a rev 3 log and the shared wave (`only: []`) play the Tide's waves as before: the tide on its own 45 s clock, the shared waves, the planner's own new enemies and the Firestorm. What the campaign shares with the card is the tide's turn itself (below: the tide falls and rises over a few seconds, the ships cross off the flats as it falls, the sand and the gauge are drawn anew), because that is the mechanic, fixed. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version.
 
 ## The problem
 
 > The flats lane out by your carrier floats only at high tide: when the tide goes out, every new ship crowds into the deep channel under the enemy's guns, and the enemy saves its fire for that crowd, so the tide gauge is the clock you defend by.
 
-The tide is the map's one mechanic (rule `m-mechanic`; `data/maps20.ts`): two lanes, the deep channel (y 282) a short flight under the north shore's four silos, and the flats lane (y 575) out by the carrier (800, 748), a long flight from all of them, open only at high water. A new ship takes the lanes in turn at high water and only the deep channel at low water; a ship already on the flats sails on.
+The tide is the map's one mechanic (rule `m-mechanic`; `data/maps20.ts`): two lanes, the deep channel (y 282) a short flight under the north shore's four silos, and the flats lane (y 575) out by the carrier (800, 748), a long flight from all of them, open only at high water. A new ship takes the lanes in turn at high water and only the deep channel otherwise; as the tide falls the ships on the flats cross to the deep channel (below).
 
 Before the rebuild the tide ran on its own 45 s clock (25 s high, 20 s low) through the waves, unrelated to what a wave sent. Under the layer it keeps **each wave's own clock** (`MAP_TIDE`): the wave opens on high water, the tide goes out once at the wave's ebb (`TIDE_EBB`, a share of the wave: 0.4–0.5, about 14–35 s in) and the flats stay dry for the wave's low water (`TIDE_LOW`: 9 s on wave 1 rising to 20 s on wave 10), then it floods for the rest of the wave. So the ebb is a moment the waves are written round.
 
 The question: **when is the crowd?** At high water the convoy is spread over two lanes, one far from every silo; at low water every new ship bunches in the deep channel, the newest in the west, under the shore. The waves' fire at the crowd comes at low water (rule `g-mechanic`: in every wave 1–10, beats aimed `'crowd'`, each launch going for a ship of the most bunched hulls); at high water they send drones the long way to the flats (aim `'flats'`). The gauge counts down to the ebb (gold, "THE TIDE TURNS", in its last 5 s), and the ebb is when the shells, the clusters and the supersonics come.
 
 How it differs from the other rebuilt maps: there the danger is aimed at a place (an island's side, a lock, the guns, the night's bank), a ship (the tanker), a launcher you can remove (the rigs), hiding places (the coves), or the player's own steering (the Delta); here it is a moment, read on a clock, and it comes at the ships the clock has bunched.
+
+## The tide turning: the ships leave the flats (the player's note)
+
+The player, on the map as it was: "the map didn't have a great tide animation or work well, the ships did not navigate off the low tide area, so just make sure that mechanic actually works".
+
+**What was broken.** The tide snapped from high water to low in one frame (no animation but a tint and a gauge at the screen's right edge, clipped on a phone), and only *new* ships were kept off the flats lane at low water: a ship already on it sailed on across the dry sand to the end of the lane, under fire, for as long as the low water lasted. With the old 25 s / 20 s clock and a 42 s crossing, most of a low water had ships on the sand. A test of the old code (`leaveFlats` switched off) finds hulls on exposed sand within 18 s of wave 1.
+
+**What changed** (`src/v3/sim/tide.ts`, `game.ts` `leaveFlats` / `updateShips`, `ui/features.ts` `drawTide`; the campaign's own clock too, not only the lab):
+- **The tide turns over time.** It falls over 4 s before low water and rises over 3 s after it (`TIDE_TURN`); the water level moves smoothly from 1 to 0 and back, never snapping. The flats lane takes new ships only at high water (not while the tide falls, is out, or is still coming in).
+- **The ships leave the flats.** The moment the tide starts to fall, every ship on the flats lane crosses to the deep channel at the same distance along, sailing across at 120 px/s (the 290 px between the lanes in under 2.5 s), and takes its place in the deep channel's formation. None freezes or jitters: it keeps sailing east while it crosses.
+- **The water's edge moves.** The water leaves the flats from the shore side up towards the deep channel as it falls, and comes back the same way as it rises: the exposed flats are drawn as sand (ribbed, opaque) up to a line of surf that moves with the water; at low water the whole band reads as land. The crossing ships stay ahead of the sand.
+- **You see it coming.** The gauge (mid-map between the lanes, 28 px) counts down at high water and turns gold, "THE TIDE TURNS · N s", 5 s before the tide starts to fall; then "TIDE GOING OUT", "LOW TIDE · flats dry", "TIDE COMING IN".
+
+**Proof.**
+- `tests/v3/encounters.test.ts` ("Tidewater Flats (log v59)"): every step of whole bot runs (the card's production setup, waves 1–10 and the three boss rounds, seeds 3, 11 and 29; the campaign's own clock, waves 1–6, seeds 5 and 17): no hull, its whole width, ever overlaps exposed sand; no hull is in the flats band at low water; no hull's progress along its lane stalls for 5 s (300 ticks); and in each run the tide fell, was out and rose for many seconds and ships crossed. The same test fails on the old behaviour. A third test checks the water level never changes by more than one step's share of the turn.
+- `e2e/v3-encounters.mjs`: wave 1 played through its ebb at the phone's own size, with shots at high water (ships on both lanes), as the tide goes out (a box crossing from the flats, the sand coming up from the shore) and at low water (the flats dry, no ship on them): `e2e/shots/v3-encounters/tide-high.png`, `tide-falling.png`, `tide-low.png` (and `tide-boss.png`).
 
 ## Sites and their jobs
 
@@ -195,8 +212,7 @@ RECORD
 - **The signature is 13% of the hits in waves 4–10**, under the asked quarter (the Coves 7%, the Rigs 9%, the Sowers 19%): each cluster more at the crowd cost about 0.3 of a ship a wave on the Box.
 - **The boss is under the asked 1.5 / 2 / 2.5** for the usual Armory (0.67 / 1.36 / 1.93): heavier builds (1.27 / 1.57 / 2.65) won 31%.
 - **Waves 1–5 lose 0.83**, a hair over the asked 0.8; wave 2's ebb shell at the crowd is most of wave 2's 0.11.
-- **A ship already on the flats when the tide goes out sails on across the sand** (the old mechanic did the same): only new ships take the deep channel. It reads oddly on the sand; stranding them was not built (it would sink ships with nothing to shoot).
-- **The tide gauge moved for the campaign too** (it is drawing, not the sim: the campaign plays the same).
+- **The tide's turn changed for the campaign too**: the falling and rising tide, the ships crossing off the flats and the drawing are the mechanic itself (the player's note), so a campaign Tide run plays differently from v57 (its log does not replay).
 - **The map-cards e2e fails one check on the base as on this branch**: "the Strait's card (not its debut): no card for an enemy met before" sees "NEW: Helicopter missile" (the forced Attack Helicopter's rockets get their own first-sight card). Not the Tide's; reproduced on a clean build of the base (#223).
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
 
@@ -211,7 +227,6 @@ RECORD
 - **The Repair Ship and the Bodyguard Ring as Lure Beacons on this map.** Their heavies sink a ship outright at the deep channel's range. Recommended: keep the swap; the chapter's enemies all show on the Coves and the Delta.
 - **The boss: Low Water, a new boss on the Firestorm's slot.** Recommended: keep the name; it is under the asked 1.5 / 2 / 2.5 to keep the win rate in the band.
 - **The signature is 13% of the hits, not 25%.** Recommended: keep it; the ebb's fire at the crowd is the whole wave's turning point already, and more clusters made the climb steeper.
-- **Should ships caught on the flats at the ebb be stranded?** Today they sail on over the sand. Recommended: leave it; stranding would sink ships with nothing to shoot.
 
 ## Checks run
 

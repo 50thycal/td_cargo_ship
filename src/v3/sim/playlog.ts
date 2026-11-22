@@ -455,10 +455,14 @@ import type { EncounterSetup } from '../data/encounters';
  *      (MAP_FOE_SWAP.tide), the map's own convoy, flow step 2 in a Box
  *      (MAP_CONVOY.tide), and a new boss on the Firestorm, Low Water
  *      (MAP_BOSS.tide: `ebb`, `strikes`: the round's tide out early and
- *      the whole shore firing at the crowd). A Tide card log before v59
- *      played today's convoy controls and the shared waves and no longer
- *      replays to the same game; the campaign plays as it did. (58: Dunmar
- *      Crossing, built alongside.) */
+ *      the whole shore firing at the crowd). And the tide's turn itself, on
+ *      the campaign's clock too (sim/tide.ts; the player: "the ships did not
+ *      navigate off the low tide area"): the tide falls over 4 s and rises
+ *      over 3 s instead of snapping, the flats lane takes ships only at high
+ *      water, and as the tide falls every ship on the flats crosses to the
+ *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v59
+ *      (the card or the campaign) no longer replays to the same game; the
+ *      other maps play as they did. (58: Dunmar Crossing, built alongside.) */
 export const LOG_VERSION = 59;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
