@@ -255,6 +255,6 @@ The 24-seed records and the 192-seed reads disagree by up to 14 points on a win 
 On the merged base (Dunmar Crossing's #224, log v58), the Citadel at v60:
 - `npx tsc --noEmit`: clean.
 - `npx vitest run --exclude '.claude/**'`: 82 files, 1920 tests passed (including `tests/v3/citadel.test.ts`: the shield and the shots, the shield rising, the silenced keep's stand-in, the signature, the dome, the early swap, the Last Stand on seed 230).
-- `npm run build`, `vite preview` on port 4862, then `e2e/v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs` (the Citadel's card, script and the Last Stand shot: `e2e/shots/v3-encounters/citadel-boss.png`), `v3-map-lab.mjs`, `v3-convoy.mjs`: all passed (run on the build before the Crossing merge and the last wave change; the merge plays the Citadel's games exactly as before, seed for seed).
+- `npm run build`, `vite preview` on port 4862, then `e2e/v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs` (the Citadel's card, script and the Last Stand shot: `e2e/shots/v3-encounters/citadel-boss.png`), `v3-map-lab.mjs`, `v3-convoy.mjs`: all passed, on the merged build (the merge plays the Citadel's games exactly as before, seed for seed).
 - `npm run v3:map-lab -- baseline --write`: every baseline run replays exactly, with telemetry on and off (only the version changed).
 - `python3 tools/v3/playtest-fixes/pins.py 57 60` (and 58 60 after the merge: nothing left at 58), `tests/v3/scorecard.test.ts` at 60.
