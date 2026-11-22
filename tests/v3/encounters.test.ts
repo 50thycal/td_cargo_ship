@@ -272,8 +272,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('tide')).toBe(false);
-    expect(encountersFor('tide', 5)).toEqual([]);
+    expect(hasEncounters('citadel')).toBe(false);
+    expect(encountersFor('citadel', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
