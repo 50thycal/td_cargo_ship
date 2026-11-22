@@ -5452,6 +5452,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.9, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
+      { at: 0.35, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lead' },
     ],
     replaces: { ballistic: 9, guided: 2, drones: 4, extras: { fastboat: 1, cluster: 2, mothership: 1 } },
   },
@@ -5479,6 +5480,8 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.4, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.35, from: base(0), aim: 'mid' },
     ],
     replaces: { drones: 6, ballistic: 9, guided: 6, extras: { cluster: 2, fastboat: 2 } },
   },
@@ -5872,7 +5875,7 @@ const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
  *  controls before, where a Box takes a hit less from every ram), so every
  *  wave but the first sends a little less, the most off wave 9, within
  *  ±15% of each wave and never more than the ten. */
-const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.85, 0.85, 0.95, 0.92, 1];
+const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
