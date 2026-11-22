@@ -285,6 +285,9 @@ export interface Threat {
   /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet): a
    *  fire ship, a fast boat set alight (FIRESHIP): where it is sunk, or
    *  where it rams, its fireball burns on the water (foes.ts burstCloud). */
+  /** Log v59 (Tidewater Flats): launched at the crowd (BeatAim 'crowd'), the
+   *  ebb's fire; a cluster's bomblets carry it. For the tools' counts only. */
+  ebb?: boolean;
   fire?: boolean;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
@@ -5827,6 +5830,7 @@ function launch(g: Game, l: Launch): void {
     if (l.filler) th.filler = true;
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
+    if (l.aim === 'crowd') th.ebb = true;
     if (l.aim) aimBeat(g, th, l.aim);
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;

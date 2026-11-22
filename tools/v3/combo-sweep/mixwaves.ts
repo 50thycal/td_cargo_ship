@@ -58,6 +58,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // The Coves (log v53): fire ships, fast boats set alight (counted apart
   // from the plain boats, the map's mechanic, as `fireShip`).
   coves: ['fireShip'],
+  // Tidewater Flats (log v59): the ebb strike, everything launched at the
+  // crowd in the deep channel at low water (`ebbStrike`, a cluster's
+  // bomblets with it), the encounters' and the signature's.
+  tide: ['ebbStrike'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -85,7 +89,7 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         // Field's; its rigs standing from the start are its mechanic.
         // A broadside of the Dreadnought's (log v51) is its signature's.
         // A fire ship (log v53) is the Coves' signature; a plain boat its mechanic.
-        const kind = th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
+        const kind = th.ebb ? 'ebbStrike' : th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
