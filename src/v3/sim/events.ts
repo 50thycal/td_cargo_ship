@@ -1520,6 +1520,7 @@ function beaconLine(g: Game, ev: EventRun): void {
     const p = crossingSpot(g, k, x);
     const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
     th.target = CARRIER_TARGET;
+    th.hp = th.maxHp = L.call.hp;
     th.foe = foeData({ life: spotterLife(L.call), call: L.call.first, marked: -1, calls: L.call.calls, spot: L.call });
     sent(ev, 'lure');
   }

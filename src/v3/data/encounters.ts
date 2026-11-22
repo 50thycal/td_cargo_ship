@@ -92,6 +92,8 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { 
  *  calls spent (or `life` s up), it sinks back. Only your own weapons sink
  *  it (it is a Lure Beacon: your helpers in its ring fire at it in vain). */
 export interface BeaconCall {
+  /** Its hits (a plain Lure Beacon's: 2). */
+  hp: number;
   calls: number;
   first: number;
   every: number;
@@ -5601,9 +5603,9 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Dunmar Crossing's spotter beacon (log v58): three calls, the first 2.6 s
+/** Dunmar Crossing's spotter beacon (log v58): four hits, three calls, the first 2 s
  *  after it is up, then every 4 s, each ship marked 1.6 s before. */
-export const SPOTTER: BeaconCall = { calls: 3, first: 2.6, every: 4, charge: 1.6, life: 14 };
+export const SPOTTER: BeaconCall = { hp: 4, calls: 3, first: 2, every: 4, charge: 1.6, life: 14 };
 const cross = { water: 'cross' as const };
 
 /** Dunmar Crossing (chapter 4, Open War; docs/design/v3-ch4-crossing.md,
@@ -5635,10 +5637,10 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Shows the map on wave 1: two convoys, each entering at the other\'s exit, so both edges of the screen are a front.',
     },
     beats: [
-      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear', lane: 0 },
-      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.2, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'mid', lane: 0 },
+      { at: 0.5, kind: 'drone', count: 2, gap: 0.6, from: base(2), aim: 'mid', lane: 1 },
     ],
-    replaces: { drones: 6 },
+    replaces: { drones: 4 },
   },
   {
     id: 'crossing-shore-to-shore',
@@ -5659,7 +5661,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'mid', lane: 0 },
       { at: 0.35, plus: 2.5, kind: 'ballistic', count: 1, from: base(3), aim: 'mid', lane: 1 },
-      { at: 0.65, kind: 'drone', count: 3, gap: 0.4, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.65, kind: 'drone', count: 3, gap: 0.4, from: base(2), aim: 'mid', lane: 1 },
     ],
     replaces: { ballistic: 2, drones: 3 },
   },
@@ -5670,21 +5672,21 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'The meeting',
     callout: 'Where the convoys pass',
-    premise: 'As the next two ships pass each other in the middle, a cluster off the north-middle silo and a guided missile off the south shore come at them, one from each side.',
+    premise: 'As the next two ships pass each other in the middle, a shell off the north shore and a guided missile off the south shore come at them, one from each side.',
     decision: 'The first stakes: the two ships passing are the target. Which do you cover?',
-    counters: 'The cluster before it splits; the guided missile over the south lane.',
+    counters: 'The shell as it climbs; the guided missile over the south lane.',
     succeeds: 'A close call at the crossing in most runs; a good player loses under half a ship.',
     notes: {
-      sites: 'The north-middle silo (800, 90; a cluster), the south-west shore silo (560, 838; a guided missile), the north-west silo (drones).',
+      sites: 'The north-west silo (280, 95; a shell, drones), the south-west shore silo (560, 838; a guided missile).',
       target: 'The next two ships to pass each other (the crossing): the one nearer each launcher.',
-      usesMap: 'The crossing itself, where the two convoys pass by the carrier; in place of the wave\'s own cluster, a guided missile and drones.',
+      usesMap: 'The crossing itself, where the two convoys pass by the carrier; in place of the wave\'s own shells, a guided missile and drones.',
     },
     beats: [
-      { at: 0.4, kind: 'cluster', count: 1, from: base(1), aim: 'cross' },
+      { at: 0.4, kind: 'ballistic', count: 1, from: base(0), aim: 'cross' },
       { at: 0.4, plus: 1.5, kind: 'guided', count: 1, from: base(3), aim: 'cross' },
-      { at: 0.7, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'rear', lane: 0 },
+      { at: 0.7, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'mid', lane: 0 },
     ],
-    replaces: { guided: 1, drones: 3, extras: { cluster: 1 } },
+    replaces: { guided: 1, ballistic: 3, drones: 3 },
   },
   {
     id: 'crossing-spotter',
@@ -5704,10 +5706,11 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'lure', count: 1, from: cross, beacon: SPOTTER },
-      { at: 0.3, plus: 2, kind: 'drone', count: 4, gap: 0.4, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.3, plus: 2, kind: 'drone', count: 4, gap: 0.4, from: base(2), aim: 'mid', lane: 1 },
       { at: 0.7, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
+      { at: 0.55, kind: 'ballistic', count: 1, from: base(0), aim: 'mid', lane: 0 },
     ],
-    replaces: { drones: 5, ballistic: 3, extras: { cluster: 1 } },
+    replaces: { drones: 5, ballistic: 4, extras: { cluster: 1 } },
   },
   {
     id: 'crossing-both-edges',
@@ -5727,11 +5730,10 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'rear', lane: 0 },
-      { at: 0.35, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
-      { at: 0.6, kind: 'ballistic', count: 2, gap: 1.2, from: base(3), aim: 'mid', lane: 1 },
+      { at: 0.35, plus: 3, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
       { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(2), aim: 'lead', lane: 0 },
     ],
-    replaces: { guided: 2, ballistic: 2, drones: 4 },
+    replaces: { guided: 2, ballistic: 3, drones: 4 },
   },
   {
     id: 'crossing-periscopes',
@@ -5775,7 +5777,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'lure', count: 2, gap: 5, from: cross, beacon: SPOTTER },
       { at: 0.3, plus: 3, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
-      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'mid', lane: 1 },
     ],
     replaces: { drones: 7, ballistic: 6, extras: { cluster: 1 } },
   },
@@ -5800,7 +5802,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, plus: 1, kind: 'guided', count: 2, gap: 1, from: base(3), aim: 'mid', lane: 0 },
       { at: 0.3, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
       { at: 0.55, kind: 'lure', count: 1, from: cross, beacon: SPOTTER },
-      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear', lane: 0 },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid', lane: 0 },
     ],
     replaces: { guided: 4, ballistic: 3, drones: 6 },
   },
@@ -5825,7 +5827,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.45, kind: 'cluster', count: 1, from: base(1), aim: 'cross' },
       { at: 0.45, plus: 0.8, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
       { at: 0.7, kind: 'supersonic', count: 1, from: base(1), aim: 'lead' },
-      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'mid', lane: 1 },
     ],
     replaces: { drones: 7, ballistic: 6, extras: { cluster: 2, supersonic: 1 } },
   },
@@ -5848,13 +5850,12 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 1, plus: 1, kind: 'lure', count: 3, gap: 3, from: cross, beacon: SPOTTER },
       { at: 1, plus: 3, kind: 'cluster', count: 1, from: base(1), aim: 'cross' },
-      { at: 1, plus: 4, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
       { at: 1, plus: 6, kind: 'guided', count: 1, from: base(0), aim: 'rear', lane: 0 },
       { at: 1, plus: 6, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
-      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear', lane: 0 },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid', lane: 0 },
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'rear', lane: 1 },
     ],
-    replaces: { drones: 15, ballistic: 9, guided: 2, extras: { cluster: 2 } },
+    replaces: { drones: 15, ballistic: 9, guided: 2, extras: { cluster: 1 } },
     calm: 6,
   },
 ];
@@ -5963,7 +5964,10 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   ...busy(['coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends', 'coves-periscope'], 0, 0),
   // Dunmar Crossing (log v58): the north-west and north-east silos, the
   // map's two drone silos on the far (north) shore, waves 1-6.
-  ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2),
+  // Wave 1 one string only (its shared drones already reach the ships
+  // coming in at both ends).
+  ['crossing-two-fronts', [fill(0.1, 3, 0)]],
+  ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2, [1]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -6173,7 +6177,7 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
 /** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
-const CROSSING_CLIMB = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+const CROSSING_CLIMB = [0.88, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -6924,11 +6928,11 @@ export const COVES_BOSS_ROUNDS: BossRound[] = [
  *  call together: every beacon marks its ship at the same moment (the
  *  lines drawn all at once), then a volley of shells comes off both shores.
  *  Rising: a longer line, a second line, more volleys. */
-const LINE_CALL: BeaconCall = { calls: 3, first: 3.2, every: 5, charge: 2, life: 20 };
+const LINE_CALL: BeaconCall = { hp: 5, calls: 3, first: 2.5, every: 4.5, charge: 2, life: 20 };
 export const CROSSING_BOSS_ROUNDS: BossRound[] = [
-  { line: { at: [0], beacons: 3, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7 },
-  { line: { at: [0, 10], beacons: 3, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7 },
-  { line: { at: [0, 9], beacons: 4, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7 },
+  { line: { at: [0], beacons: 6, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 10], beacons: 5, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 8], beacons: 6, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 12, base: 0, aim: 'rear' }, { kind: 'guided', at: 12, base: 2, aim: 'rear' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

@@ -174,7 +174,7 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): the
   // campaign's schedule, Pairs, no command: two convoys, one each way, and
   // the beacons between them are answered by shooting, not by sailing.
-  crossing: { flow: 2, formation: 'spread', commands: [], dilemma: '' },
+  crossing: { flow: 3, formation: 'spread', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

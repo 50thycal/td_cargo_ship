@@ -491,6 +491,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
         const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
         th.target = CARRIER_TARGET;
         if (l.enc) th.enc = l.enc;
+        th.hp = th.maxHp = l.beacon.hp;
         th.foe = data({ life: spotterLife(l.beacon), call: l.beacon.first, marked: -1, calls: l.beacon.calls, spot: l.beacon });
         return;
       }
