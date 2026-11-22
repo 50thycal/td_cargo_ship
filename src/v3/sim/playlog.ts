@@ -367,11 +367,28 @@ import type { EncounterSetup } from '../data/encounters';
  *      again and every rig standing fires its volley together). A v48 Rig
  *      Field card log played today's convoy controls and the shared waves
  *      and no longer replays to the same game; the campaign plays as it
- *      did. */
-export const LOG_VERSION = 49;
+ *      did.
+ *  51: chapter 3's finale, Dreadnought Pass, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-dreadnought.md; lab, under the encounter
+ *      layer): ten encounters (DREAD_R4) with their filler, the
+ *      battleship's passes each with numbers of its own and a glimpse on
+ *      wave 1 (DREAD_PASSES: hits, speed, cadence, broadside, aim, a turn
+ *      or a spell on station; a pass is a launch at its own moment; drones
+ *      off its deck in a broadside go for the carrier), the
+ *      signature (MAP_SIGNATURE.dreadnought: the wave's new enemies are
+ *      Spotter Planes from wave 4, and a spotter's shells come from the
+ *      battleship's hull while it is on the map, `guns`), and the boss is
+ *      the Dreadnought itself on the Fire Mission's spotters
+ *      (MAP_BOSS.dreadnought: `dread`, `spotters`, `turns`, `spotAt`,
+ *      `spotEvery`, `swarms`, `size`, `swarmAt`, `swarmGap`; sunk, its
+ *      spotters have no guns to call). A v48 Dreadnought card log played
+ *      today's convoy and no layer, and no longer replays to the same
+ *      game; the campaign plays as it did. (49 and 50 are the Rig Field's
+ *      and the Black Strait's rebuilds.) */
+export const LOG_VERSION = 51;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [49];
+export const LOG_REPLAYS: readonly number[] = [51];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

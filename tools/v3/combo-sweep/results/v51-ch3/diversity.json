@@ -1,0 +1,875 @@
+{
+ "about": "Each map's own best kits (tools/v3/combo-sweep/diversity.ts).",
+ "logVersion": 51,
+ "botRev": 3,
+ "persona": "you",
+ "top": 6,
+ "screenSeeds": 6,
+ "confirmSeeds": 16,
+ "maps": {
+  "dreadnought": {
+   "pairs": [
+    {
+     "key": "aegis+gunships",
+     "lostAll": 3.333
+    },
+    {
+     "key": "seeker+tesla",
+     "lostAll": 4.167
+    },
+    {
+     "key": "frigate+shield",
+     "lostAll": 4.333
+    },
+    {
+     "key": "railgun+droneScreen",
+     "lostAll": 4.333
+    },
+    {
+     "key": "frigate+aegis",
+     "lostAll": 4.5
+    },
+    {
+     "key": "shield+fullSteam",
+     "lostAll": 4.667
+    }
+   ],
+   "screened": [
+    {
+     "key": "aegis+gunships+dualWield",
+     "lostAll": 3.8333333333333335,
+     "won": 1
+    },
+    {
+     "key": "frigate+thermo+shield",
+     "lostAll": 4.5,
+     "won": 1
+    },
+    {
+     "key": "aegis+lance+gunships",
+     "lostAll": 4.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "aegis+grapnel+gunships",
+     "lostAll": 4.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "shrapnel+frigate+aegis",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+supplyRun",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+gunships",
+     "lostAll": 5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+gunships+shield",
+     "lostAll": 5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+aegis+gunships",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "shrapnel+frigate+shield",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+shield",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+orbital+shield",
+     "lostAll": 5.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+well",
+     "lostAll": 5.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+seeker+tesla",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "frigate+tesla+shield",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "aegis+gunships+supplyRun",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "frigate+boomerang+shield",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "thermo+seeker+tesla",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+flak+aegis",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+aegis+droneScreen",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+shield+fullSteam",
+     "lostAll": 5.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+gunships+orbital",
+     "lostAll": 5.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "aegis+gunships+fullSteam",
+     "lostAll": 5.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+boomerang+aegis",
+     "lostAll": 5.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+bomberWing",
+     "lostAll": 5.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "railgun+droneScreen+orbital",
+     "lostAll": 5.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+railgun+shield",
+     "lostAll": 5.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "thermo+aegis+gunships",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+droneScreen+gunships",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+well+shield",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "railgun+droneScreen+overdrive",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "droneScreen+shield+fullSteam",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+tesla+overdrive",
+     "lostAll": 6,
+     "won": 1
+    },
+    {
+     "key": "seeker+shield+fullSteam",
+     "lostAll": 6,
+     "won": 1
+    },
+    {
+     "key": "seeker+aegis+gunships",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+railgun+droneScreen",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+railgun+droneScreen",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+orbital",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+orbital",
+     "lostAll": 6.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "tesla+shield+fullSteam",
+     "lostAll": 6.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "frigate+supplyRun+shield",
+     "lostAll": 6.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+seeker+tesla",
+     "lostAll": 6.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+aegis+gunships",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+well+gunships",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "bomberWing+shield+fullSteam",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+seeker+tesla",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+overdrive+shield",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+scatter+aegis",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+lance+droneScreen",
+     "lostAll": 6.5,
+     "won": 1
+    },
+    {
+     "key": "railgun+grapnel+droneScreen",
+     "lostAll": 6.5,
+     "won": 1
+    },
+    {
+     "key": "frigate+aegis+railgun",
+     "lostAll": 6.5,
+     "won": 1
+    },
+    {
+     "key": "flak+aegis+gunships",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+aegis+tesla",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+frigate+shield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "railgun+tesla+droneScreen",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+thermo+aegis",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shield+fullSteam",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "railgun+droneScreen+gunships",
+     "lostAll": 6.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "gunships+shield+fullSteam",
+     "lostAll": 6.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+aegis+gunships",
+     "lostAll": 6.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "shrapnel+railgun+droneScreen",
+     "lostAll": 6.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "shrapnel+shield+fullSteam",
+     "lostAll": 6.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "seeker+railgun+tesla",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "boomerang+railgun+droneScreen",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+gunships+bomberWing",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+gunships+overdrive",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+droneScreen",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+scatter+shield",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+dualWield",
+     "lostAll": 6.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+railgun+droneScreen",
+     "lostAll": 6.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "railgun+shield+fullSteam",
+     "lostAll": 6.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "boomerang+shield+fullSteam",
+     "lostAll": 7,
+     "won": 1
+    },
+    {
+     "key": "frigate+gunships+shield",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+gunships+focus",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+tesla",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+shield+fullSteam",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+droneScreen+supplyRun",
+     "lostAll": 7,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+frigate+aegis",
+     "lostAll": 7,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+aegis+lance",
+     "lostAll": 7,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+aegis+grapnel",
+     "lostAll": 7,
+     "won": 0.5
+    },
+    {
+     "key": "boomerang+seeker+tesla",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "supplyRun+shield+fullSteam",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+tesla+gunships",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+dualWield",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+shield",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "aegis+railgun+gunships",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+shield+fullSteam",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "thermo+railgun+droneScreen",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "dualWield+shield+fullSteam",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "shrapnel+aegis+gunships",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+gunships",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+tesla+fullSteam",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+droneScreen+fullSteam",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+seeker+aegis",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+overdrive",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+droneScreen+shield",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "well+railgun+droneScreen",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "railgun+droneScreen+dualWield",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+focus",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+tesla+supplyRun",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+focus+shield",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+dualWield+shield",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "orbital+shield+fullSteam",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+railgun+droneScreen",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+shield+fullSteam",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+seeker+tesla",
+     "lostAll": 8,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+bomberWing+shield",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "railgun+droneScreen+bomberWing",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+aegis+fullSteam",
+     "lostAll": 8,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+shield+fullSteam",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "flak+railgun+droneScreen",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "railgun+droneScreen+focus",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "railgun+droneScreen+shield",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+well+tesla",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+tesla+bomberWing",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+lance+shield",
+     "lostAll": 8.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "frigate+grapnel+shield",
+     "lostAll": 8.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "overdrive+shield+fullSteam",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "frigate+flak+shield",
+     "lostAll": 8.5,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+railgun+droneScreen",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "lance+shield+fullSteam",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "grapnel+shield+fullSteam",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "focus+shield+fullSteam",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+seeker+shield",
+     "lostAll": 9,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+seeker+tesla",
+     "lostAll": 9.5,
+     "won": 0.5
+    },
+    {
+     "key": "flak+shield+fullSteam",
+     "lostAll": 9.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+tesla+focus",
+     "lostAll": 9.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+tesla+lance",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+tesla+grapnel",
+     "lostAll": 10,
+     "won": 0.3333333333333333
+    }
+   ],
+   "best": [
+    {
+     "key": "aegis+gunships+dualWield",
+     "name": "Point Defense + Gunship Pair + Dual Wield",
+     "lostAll": 4.875,
+     "won": 0.9375,
+     "lost10": 2.0625,
+     "boss": 0.9375,
+     "se": 0.5581428468591172,
+     "halves": [
+      4.125,
+      5.625
+     ]
+    },
+    {
+     "key": "scatter+aegis+gunships",
+     "name": "Scattergun + Point Defense + Gunship Pair",
+     "lostAll": 4.875,
+     "won": 0.9375,
+     "lost10": 1.6875,
+     "boss": 1.0625,
+     "se": 0.5719689130538477,
+     "halves": [
+      4.875,
+      4.875
+     ]
+    },
+    {
+     "key": "frigate+aegis+supplyRun",
+     "name": "Frigate Escort + Point Defense + Supply Run",
+     "lostAll": 5.625,
+     "won": 0.8125,
+     "lost10": 2.9375,
+     "boss": 0.8958333333333334,
+     "se": 0.5650981662507851,
+     "halves": [
+      4.5,
+      6.75
+     ]
+    },
+    {
+     "key": "aegis+gunships+shield",
+     "name": "Point Defense + Gunship Pair + Shield",
+     "lostAll": 5.8125,
+     "won": 0.875,
+     "lost10": 2.5625,
+     "boss": 1.0833333333333333,
+     "se": 0.5319388915796626,
+     "halves": [
+      5.125,
+      6.5
+     ]
+    },
+    {
+     "key": "frigate+thermo+shield",
+     "name": "Frigate Escort + Thermobaric Shell + Shield",
+     "lostAll": 5.875,
+     "won": 0.9375,
+     "lost10": 2.3125,
+     "boss": 1.1875000000000002,
+     "se": 0.5719689130538477,
+     "halves": [
+      4.75,
+      7
+     ]
+    },
+    {
+     "key": "frigate+aegis+gunships",
+     "name": "Frigate Escort + Point Defense + Gunship Pair",
+     "lostAll": 5.9375,
+     "won": 0.875,
+     "lost10": 2.75,
+     "boss": 1.0625,
+     "se": 0.3694247005480278,
+     "halves": [
+      5.5,
+      6.375
+     ]
+    },
+    {
+     "key": "shrapnel+frigate+shield",
+     "name": "Shrapnel Shell + Frigate Escort + Shield",
+     "lostAll": 6.0625,
+     "won": 0.875,
+     "lost10": 2,
+     "boss": 1.3541666666666667,
+     "se": 0.5827517562178599,
+     "halves": [
+      6.25,
+      5.875
+     ]
+    },
+    {
+     "key": "shrapnel+frigate+aegis",
+     "name": "Shrapnel Shell + Frigate Escort + Point Defense",
+     "lostAll": 6.875,
+     "won": 0.75,
+     "lost10": 2.375,
+     "boss": 1.5,
+     "se": 0.6179287479151622,
+     "halves": [
+      5.25,
+      8.5
+     ]
+    },
+    {
+     "key": "aegis+lance+gunships",
+     "name": "Point Defense + Charge Lance + Gunship Pair",
+     "lostAll": 7.0625,
+     "won": 0.6875,
+     "lost10": 2.875,
+     "boss": 1.3958333333333333,
+     "se": 0.7472279500761464,
+     "halves": [
+      6.5,
+      7.625
+     ]
+    },
+    {
+     "key": "aegis+grapnel+gunships",
+     "name": "Point Defense + Grapnel + Gunship Pair",
+     "lostAll": 7.0625,
+     "won": 0.6875,
+     "lost10": 2.875,
+     "boss": 1.3958333333333333,
+     "se": 0.7472279500761464,
+     "halves": [
+      6.5,
+      7.625
+     ]
+    }
+   ]
+  }
+ },
+ "overlap": {
+  "jaccardTop5": {
+   "dreadnought": {
+    "dreadnought": 1
+   }
+  },
+  "sameMapHalves": {
+   "dreadnought": 0.43
+  },
+  "spearmanSingles": {
+   "dreadnought": {
+    "dreadnought": 1
+   }
+  },
+  "firstKit": {
+   "dreadnought": "aegis+gunships+dualWield"
+  },
+  "firstKitShare": {
+   "most": "aegis+gunships+dualWield",
+   "maps": 1,
+   "of": 1
+  },
+  "firstSingle": {
+   "dreadnought": "aegis"
+  },
+  "firstSingleShare": {
+   "most": "aegis",
+   "maps": 1,
+   "of": 1
+  },
+  "inTop5": {
+   "aegis": {
+    "dreadnought": 4
+   },
+   "gunships": {
+    "dreadnought": 3
+   },
+   "dualWield": {
+    "dreadnought": 1
+   },
+   "scatter": {
+    "dreadnought": 1
+   },
+   "frigate": {
+    "dreadnought": 2
+   },
+   "supplyRun": {
+    "dreadnought": 1
+   },
+   "shield": {
+    "dreadnought": 2
+   },
+   "thermo": {
+    "dreadnought": 1
+   }
+  }
+ }
+}

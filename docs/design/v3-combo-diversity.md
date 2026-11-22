@@ -239,6 +239,36 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## Dreadnought Pass: chapter 3's finale (game version 51)
+
+> 2026-11-22. Dreadnought Pass rebuilt to the map rules (docs/design/v3-ch3-dreadnought.md): its signature is "laying the guns" (from wave 4 the wave's new enemies are Spotter Planes, whose calls are the battleship's guns), its battleship's passes each have their own numbers, and its boss is the Dreadnought itself. Swept the same way at version 51, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps, the Battery and Sowers' Reach are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, Sowers `results/v48-ch3`); the Rig Field and the Black Strait, rebuilt at the same time, are not in it. Results: `tools/v3/combo-sweep/results/v51-ch3`; the comparison: `python3 tools/v3/dreadnought/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Dreadnought Pass (v51) | **Point Defense + Gunship Pair + Dual Wield** 4.9 | Scattergun + Point Defense + Gunship Pair 4.9 | Frigate Escort + Point Defense + Supply Run 5.6 | Point Defense + Gunship Pair + Shield 5.8 | Frigate Escort + Thermobaric Shell + Shield 5.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Dreadnought against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | **0 / 0 / 0 / 0 / 0 / 0 / 0** |
+| The same, the Dreadnought against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Point Defense** 4.3 (Shield 5.0, Drone Screen 5.3, Air Strike 5.4, Tesla Arc 5.4) |
+| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | 0.45 / 0.63 / 0.43 / 0.36 / 0.42 / 0.65 / 0.72 |
+| The bot drafting for itself; the plain gun | 6.9 lost, won 58%; 12.2, won 8% |
+
+### Reading
+
+- **All five of its best kits are its own** (Jaccard 0 against all seven), and four of them hold Point Defense, whose interceptors take what the battleship fires with a short flight.
+- **Its best weapon alone is its own: Point Defense** (4.3), the best single on no other rebuilt map.
+- **Air Strike is in none of its five best kits** (4th alone), the first rebuilt map where that is so.
+- **Its weapons alone rank most like its chapter's other maps** (Sowers 0.72, the Battery 0.65).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=dreadnought --out=tools/v3/combo-sweep/results/v51-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=dreadnought --out=tools/v3/combo-sweep/results/v51-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v51-ch3 --maps=dreadnought --json=tools/v3/combo-sweep/results/v51-ch3/diversity.json
+python3 tools/v3/dreadnought/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=dreadnought --seeds=8
 ## The Rig Field: chapter 3's third map (game version 49)
 
 > 2026-11-22. The Rig Field rebuilt to the map rules (docs/design/v3-ch3-rigs.md): four rigs in the sea fire at the ships from point-blank, one brought down stays down (its fire moves to the far shore), and its signature is "relief rigs" (from wave 4 the wave's new enemies come as relief rigs towed in to stand where one fell); from wave 3 the waves' shells, and from wave 7 their guided missiles, come off the rigs or as drones. The question, as for each rebuild: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 49, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, the Sowers `results/v48-ch3`). Results: `tools/v3/combo-sweep/results/v49-ch3`; the comparison: `python3 tools/v3/rigs/compare.py`.

@@ -572,7 +572,7 @@ function drawDreadnought(ctx: CanvasRenderingContext2D, th: Threat, t: number): 
     ctx.stroke();
   }
   ctx.restore();
-  bar(ctx, th.x, th.y - 52, 160, th.hp / THREATS.dreadnought.hp, '#ff8a7a');
+  bar(ctx, th.x, th.y - 52, 160, th.hp / (th.maxHp ?? THREATS.dreadnought.hp), '#ff8a7a');
   label(ctx, 'DREADNOUGHT', th.x, th.y - 60, '#ffb2a3', 18);
 }
 

@@ -34,7 +34,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, launchBoss, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -102,6 +102,9 @@ export interface EventRun {
    *  their turn now, and whether they've been shot down), and the ship last
    *  painted. */
   crew?: { side: 'left' | 'right' | 'far'; hp: number; id: number; down: boolean }[];
+  /** Log v51 (Dreadnought Pass's boss): the round's Dreadnought, once it
+   *  is in (its id). */
+  dread?: number;
   painted: number;
   /** Fire Mission: walking barrages called. */
   barrages: number;
@@ -681,10 +684,21 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     }
     case 'fire-mission': {
       // The spotters take turns: left, right, the far side, and round again.
+      // Encounters rev 4 (lab only; docs/design/v3-ch3-dreadnought.md, log
+      // v51): Dreadnought Pass's boss is the Dreadnought itself, its
+      // spotters laying its guns; each round its own battleship, spotters,
+      // swarms and launches (MAP_BOSS).
       const E = EV['fire-mission'];
+      const R = bossRound(g, ev);
       const sides = ['left', 'right', 'far'] as const;
-      ev.crew = Array.from({ length: E.spotters }, (_, k) => ({ side: sides[k % sides.length], hp: E.hp, id: -1, down: false }));
-      return [...steps(E.spotters * E.turns, (k) => k * E.every, 'spot'), ...steps(E.swarms, (k) => 3 + k * 8, 'swarm')];
+      const n = R?.spotters ?? E.spotters;
+      ev.crew = Array.from({ length: n }, (_, k) => ({ side: sides[k % sides.length], hp: E.hp, id: -1, down: false }));
+      return [
+        ...steps(R?.dread ? 1 : 0, () => 0, 'dread'),
+        ...steps(n * (R?.turns ?? E.turns), (k) => (R?.spotAt ?? 0) + k * (R?.spotEvery ?? E.every), 'spot'),
+        ...steps(R?.swarms ?? E.swarms, (k) => (R?.swarmAt ?? 3) + k * (R?.swarmGap ?? 8), 'swarm'),
+        ...fireSteps(R),
+      ];
     }
     case 'repair-yard': {
       const E = EV['repair-yard'];
@@ -1056,13 +1070,24 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'fire-mission': {
       const E = EV['fire-mission'];
+      const R = bossRound(g, ev);
       if (s.op === 'swarm') {
-        swarm(g, ev, E.size);
+        swarm(g, ev, R?.size ?? E.size);
         return;
       }
-      // A spotter's turn: in from its own side, unless it was shot down.
-      const who = ev.crew![s.k % E.spotters];
+      // Log v51: the round's Dreadnought steams in.
+      if (s.op === 'dread') {
+        if (R?.dread && g.map.boss) {
+          ev.dread = launchBoss(g, R.dread).id;
+          sent(ev, 'dreadnought');
+        }
+        return;
+      }
+      // A spotter's turn: in from its own side, unless it was shot down
+      // (log v51: or its battleship is sunk or gone: no guns to call).
+      const who = ev.crew![s.k % ev.crew!.length];
       if (who.down) return;
+      if (R?.dread && !dreadAfloat(g, ev)) return;
       const { from, at } = spotterRun(g, who.side);
       const sp = spawnThreat(g, 'spotter', from.x, from.y, 'air');
       sp.target = CARRIER_TARGET;
@@ -1551,7 +1576,15 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
   // like an artillery shell coming in from off the map"): from a battery
   // off the map, not a shore base; each shell comes into sight at the
   // map's edge FOE.spotter.flight s before it lands.
-  const gun = offMapGun(g, s, g.rng.foes);
+  let gun = offMapGun(g, s, g.rng.foes);
+  // Log v51 (Dreadnought Pass's boss): the battleship's guns, from its
+  // hull; sunk or gone, there is nothing to call.
+  const near = !!(g.event && bossRound(g, g.event)?.dread);
+  if (near) {
+    const d = dreadAfloat(g, g.event!);
+    if (!d) return;
+    gun = { x: d.x, y: d.y };
+  }
   for (let k = 0; k < E.shells; k++) {
     const t = E.mark + k * E.beat;
     const p = shipAhead(g, s, t);
@@ -1560,13 +1593,20 @@ export function walkingBarrage(g: Game, sp: Threat, shipId: number): void {
     const ux = d > 0.5 ? (q.x - p.x) / d : Math.cos(s.heading);
     const uy = d > 0.5 ? (q.y - p.y) / d : Math.sin(s.heading);
     const off = (k - (E.shells - 1) / 2) * E.walk;
-    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg, far: true, flight: FOE.spotter.flight, src: sp.id });
+    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: E.dmg, far: !near, flight: FOE.spotter.flight, src: sp.id });
   }
   if (g.event) {
     g.event.painted = shipId;
     g.event.barrages += 1;
   }
   cue(g, 'notice', sp.x, sp.y);
+}
+
+/** Log v51 (Dreadnought Pass's boss): the round's Dreadnought, while it
+ *  is afloat and on the screen (or still to come in). */
+function dreadAfloat(g: Game, ev: EventRun): Threat | undefined {
+  if (ev.dread === undefined) return undefined;
+  return g.threats.find((t) => t.id === ev.dread && !t.dead && t.x > 0 && t.x < VIEW.width);
 }
 
 /** The Repair Yard's meeting spot: open water on the mothership's course
