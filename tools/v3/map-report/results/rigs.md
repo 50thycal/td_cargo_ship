@@ -18,7 +18,7 @@
 | `w-early` | Ships lost waves 1–5 | 3.75 a run | a good player 0–1 (rule w-early) | normal | INFO |
 | `w-boss` | Boss rounds | normal (runs that reached it): r1 4.00 (1), r2 0.00 (1), r3 2.00 (1); tough (every run): 2.83, 3.25, 4.25 | about 2 a round on the bot's scale, rising | normal | INFO |
 | `fun` | Fun: saves a wave (provisional) | saves a run: waves 1–7 0.3, 8–10 + boss 1.0; flat (under 0.5) w1, w2, w3, w4, w6, w7, w8 | you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small | normal+forks | **FLAG** |
-| `m-kits` | Kits | counter 19.5 lost 1–10, end 6.6; off-counter 21.5 lost 1–10, end 6.2 | the counter kit clearly better; neither trivial | kits | INFO |
+| `m-kits` | Kits | counter 20.0 lost 1–10, end 6.5; off-counter 20.8 lost 1–10, end 6.6 | the counter kit clearly better; neither trivial | kits | INFO |
 
 ## What to look at
 
@@ -125,7 +125,7 @@ Read on the normal runs' logs, over the runs that reached each wave (docs/design
 | shape (most runs) | flat 96% | flat 71% | flat 62% | flat 45% | one peak 40% | one peak 73% | flat 56% | flat 60% | one peak 100% | one peak 100% | sawtooth 100% | flat 100% | pinned 100% |
 | taps follow tension (r) | 0.20 | 0.16 | 0.23 | 0.22 | 0.26 | 0.20 | 0.14 | -0.03 | 0.07 | 0.34 | 0.13 | 0.52 | -0.22 |
 
-saves a run: waves 1–7 0.3, 8–10 + boss 1.0; flat (under 0.5) w1, w2, w3, w4, w6, w7, w8. 24 runs, 72 s of forks and replays.
+saves a run: waves 1–7 0.3, 8–10 + boss 1.0; flat (under 0.5) w1, w2, w3, w4, w6, w7, w8. 24 runs, 56 s of forks and replays.
 
 ## Kits
 
@@ -133,7 +133,7 @@ The bot's taste set to the kit (it takes these first when a draft offers them).
 
 | Kit | Weapons | Won | End wave | Lost 1–10 (normal) | Lost 1–10 (tough) | Boss r1 / r2 / r3 (reached) | Curve 1–10 (tough) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| counter | railgun, flak, orbital | 0% | 6.6 | 5.8 | 19.5 | 3.50 (2) / 0.50 (2) / 2.00 (2) | 0.0 0.2 1.2 1.3 2.3 2.7 2.1 3.5 2.8 3.4 |
-| off-counter | seeker, shield, tesla | 4% | 6.2 | 5.8 | 21.5 | 2.00 (1) / 1.00 (1) / 2.00 (1) | 0.0 0.3 1.3 1.6 2.3 2.5 3.0 3.4 3.3 3.8 |
+| counter | shrapnel, well, flak | 0% | 6.5 | 5.8 | 20.0 | 4.00 (1) / 0.00 (1) / 2.00 (1) | 0.0 0.3 1.4 1.3 2.1 2.4 2.6 4.3 3.4 2.2 |
+| off-counter | tesla, fullSteam, aegis | 0% | 6.6 | 5.7 | 20.8 | 4.00 (1) / 0.00 (1) / 2.00 (1) | 0.0 0.2 1.3 1.2 2.1 2.4 2.5 4.2 3.4 3.5 |
 
 Read with docs/design/v3-map-report.md (what each number means and the bots' known biases).

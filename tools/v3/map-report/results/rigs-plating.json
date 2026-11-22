@@ -378,31 +378,31 @@
    {
     "kit": "counter",
     "weapons": [
-     "railgun",
-     "flak",
-     "orbital"
+     "shrapnel",
+     "well",
+     "flak"
     ],
     "n": 24,
     "endWave": 13.333,
     "won": 0.917,
-    "lost10": 1.958,
-    "lost10Tough": 2.667,
+    "lost10": 2.042,
+    "lost10Tough": 2.75,
     "curveTough": [
      0,
      0,
      0.208,
-     0.042,
-     0.333,
-     0.375,
+     0.125,
      0.542,
-     0.333,
+     0.417,
+     0.375,
+     0.5,
      0.167,
-     0.667
+     0.417
     ],
     "boss": [
-     0.5,
-     0.591,
-     0.864
+     0.273,
+     0.682,
+     0.682
     ],
     "bossReached": [
      22,
@@ -413,43 +413,43 @@
    {
     "kit": "off-counter",
     "weapons": [
-     "seeker",
-     "shield",
-     "tesla"
+     "tesla",
+     "fullSteam",
+     "aegis"
     ],
     "n": 24,
-    "endWave": 13.667,
-    "won": 0.958,
-    "lost10": 2.042,
-    "lost10Tough": 2.125,
+    "endWave": 13,
+    "won": 0.833,
+    "lost10": 2.167,
+    "lost10Tough": 2.917,
     "curveTough": [
      0,
      0,
-     0.167,
-     0.125,
-     0.375,
      0.25,
-     0.083,
+     0.125,
+     0.5,
+     0.375,
+     0.375,
      0.417,
-     0.333,
-     0.375
+     0.167,
+     0.708
     ],
     "boss": [
-     0.391,
-     0.826,
-     0.696
+     0.4,
+     0.75,
+     0.75
     ],
     "bossReached": [
-     23,
-     23,
-     23
+     20,
+     20,
+     20
     ]
    }
   ],
   "fun": {
    "n": 24,
    "dice": 3,
-   "ms": 133992,
+   "ms": 101364,
    "waves": [
     {
      "wave": 1,
@@ -848,7 +848,7 @@
    {
     "rule": "m-kits",
     "name": "Kits",
-    "value": "off-counter 2.1 lost 1–10, end 13.7; counter 2.7 lost 1–10, end 13.3",
+    "value": "counter 2.8 lost 1–10, end 13.3; off-counter 2.9 lost 1–10, end 13.0",
     "target": "the counter kit clearly better; neither trivial",
     "verdict": "INFO",
     "from": "kits"
