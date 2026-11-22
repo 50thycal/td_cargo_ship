@@ -353,7 +353,7 @@ export function drawNewThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat
       drawRig(ctx, g, th, g.t);
       return true;
     case 'generator':
-      drawGenerator(ctx, th, g.t);
+      drawGenerator(ctx, g, th, g.t);
       return true;
     case 'citadel':
       drawCitadel(ctx, g, th);
@@ -737,7 +737,7 @@ function drawRig(ctx: CanvasRenderingContext2D, g: Game, th: Threat, t: number):
   rigCount(ctx, g, th, x, y - 66);
 }
 
-function drawGenerator(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {
+function drawGenerator(ctx: CanvasRenderingContext2D, g: Game, th: Threat, t: number): void {
   const pulse = 0.5 + 0.5 * Math.sin(t * 4);
   ctx.fillStyle = '#203a46';
   ctx.strokeStyle = `rgba(127,232,255,${0.6 + 0.4 * pulse})`;
@@ -754,7 +754,9 @@ function drawGenerator(ctx: CanvasRenderingContext2D, th: Threat, t: number): vo
   ctx.fill();
   ctx.stroke();
   label(ctx, '⚡', th.x, th.y + 9, CYAN, 26);
-  bar(ctx, th.x, th.y - 50, 60, th.hp / THREATS.generator.hp, CYAN);
+  // Log v60 (The Citadel, counting shots): the shots left in a pill.
+  if (shotRigs(g)) rigCount(ctx, g, th, th.x, th.y - 52);
+  else bar(ctx, th.x, th.y - 50, 60, th.hp / THREATS.generator.hp, CYAN);
 }
 
 function drawCitadel(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
@@ -783,8 +785,9 @@ function drawCitadel(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   ctx.beginPath();
   ctx.arc(x, y, 12, 0, Math.PI * 2);
   ctx.fill();
-  bar(ctx, x, y - 96, 120, th.hp / THREATS.citadel.hp, shield ? 'rgba(255,138,122,0.4)' : '#ff8a7a');
-  label(ctx, shield ? 'SHIELDED · destroy the generators' : 'SHIELD DOWN', x, y - 104, shield ? CYAN : GOLD, 18);
+  if (shotRigs(g) && !shield) rigCount(ctx, g, th, x, y - 100);
+  else bar(ctx, x, y - 96, 120, th.hp / (th.maxHp ?? THREATS.citadel.hp), shield ? 'rgba(255,138,122,0.4)' : '#ff8a7a');
+  label(ctx, shield ? 'SHIELDED · destroy the generators' : 'SHIELD DOWN', x, y - (shotRigs(g) && !shield ? 134 : 104), shield ? CYAN : GOLD, 18);
 }
 
 function drawDreadnought(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {

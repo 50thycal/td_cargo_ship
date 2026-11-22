@@ -165,6 +165,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // campaign's own schedule and no command: the fork's switch (a tap on its
   // buoy) is the map's own way to steer the convoy, and stays what it is.
   delta: { flow: 3, formation: 'spread', commands: [], dilemma: '' },
+  // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the campaign's
+  // own schedule in Pairs, as the Coves', no command: the fortress is
+  // fought by shooting it, its generators and its fire, not by sailing.
+  citadel: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): flow 2 and
   // Pairs, as most of chapter 2's maps; no command (the night is read and
   // shot, not sailed round). At the campaign's step 1 its shared waves were
