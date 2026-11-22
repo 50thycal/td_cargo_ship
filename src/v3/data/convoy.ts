@@ -171,6 +171,11 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // The Coves (docs/design/v3-ch4-coves.md, log v53): the same, no command:
   // the boats are answered by shooting them, not by sailing.
   coves: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
+  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): the campaign's
+  // schedule and Pairs, no command: the tide steers the ships (the flats
+  // lane at high water, the deep channel at low), and the fire is answered
+  // by shooting.
+  tide: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

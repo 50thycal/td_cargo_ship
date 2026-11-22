@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, boostLevel, held, highTide, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
@@ -270,7 +270,7 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
     // Sampled along the lane so a funnel's lanes visibly converge and a
     // bend's lanes follow the turn. A tide lane fades out at low water.
     const samples = laneSamples(ch, 80);
-    const dim = ch.tide && g.map.tide && !(g.t % (g.map.tide.high + g.map.tide.low) < g.map.tide.high);
+    const dim = ch.tide && g.map.tide && !highTide(g);
     ctx.globalAlpha = dim ? 0.25 : 1;
     for (const o of ch.vip ? [0] : offsets) {
       ctx.beginPath();

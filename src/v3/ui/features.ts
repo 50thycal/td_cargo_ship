@@ -6,7 +6,7 @@
 
 import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
-import { FORK_RADIUS, highTide, lockCountdown, reticleVisible, shieldUp, shotRigs, tracked, type Game, type Threat } from '../sim/game';
+import { FORK_RADIUS, tideGauge, lockCountdown, reticleVisible, shieldUp, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 
 const RED = '#ff5a3d';
@@ -62,12 +62,11 @@ export function drawMapUnder(ctx: CanvasRenderingContext2D, g: Game): void {
 }
 
 function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
-  const t = g.map.tide!;
   const lane = g.map.channels.find((c) => c.tide);
   if (!lane) return;
-  const cycle = t.high + t.low;
-  const into = g.t % cycle;
-  const high = highTide(g);
+  // Log v59: under the encounter layer the tide keeps each wave's clock
+  // (sim/game.ts tideGauge): one ebb a wave, then the flood to its end.
+  const { high, left, frac } = tideGauge(g);
   // The flats: sand showing at low water, a wet sheen at high.
   const top = lane.y - lane.halfWidth - 50;
   const bot = lane.y + lane.halfWidth + 50;
@@ -84,12 +83,14 @@ function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
     }
   }
   // The gauge: time to the turn of the tide.
-  const left = high ? t.high - into : cycle - into;
-  const frac = high ? left / t.high : left / t.low;
   const gx = 1500;
   const gy = top - 14;
   bar(ctx, gx, gy, 150, frac, high ? CYAN : '#d8c08a');
-  label(ctx, high ? `HIGH TIDE · ${Math.ceil(left)} s` : `LOW TIDE · flats closed · ${Math.ceil(left)} s`, gx - 75 + 75, gy - 8, high ? CYAN : '#ead7a4', 18);
+  const secs = Number.isFinite(left) ? ` · ${Math.ceil(left)} s` : '';
+  // The last seconds before the ebb read larger, in gold: the crowd is
+  // coming (log v59).
+  const ebbing = high && left <= 5;
+  label(ctx, ebbing ? `THE TIDE TURNS${secs}` : high ? `HIGH TIDE${secs}` : `LOW TIDE · flats closed${secs}`, gx, gy - 8, ebbing ? GOLD : high ? CYAN : '#ead7a4', ebbing ? 24 : 18);
 }
 
 function drawLock(ctx: CanvasRenderingContext2D, g: Game, i: number, x0: number, x1: number): void {

@@ -84,7 +84,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shotRigsOn, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
 
@@ -889,6 +889,11 @@ export interface Game {
   spawnT: number;
   spawnCount: number;
   channelCursor: number;
+  /** Tidewater Flats (log v59, lab only, under the encounter layer): this
+   *  wave's low water, from and to (s of the wave), on the tide's own clock
+   *  for the wave (data/encounters.ts MAP_TIDE) or the boss round's; absent,
+   *  the tide runs on the map's clock (MapDef `tide`). */
+  ebb?: [number, number];
   /** The Armory levels this run was started with (fixed for the run). */
   armory: ArmoryLevels;
   /** Weapon levels held this run. */
@@ -1188,6 +1193,7 @@ function startWave(g: Game): void {
   g.wave += 1;
   g.waveT = 0;
   g.phase = 'wave';
+  g.ebb = undefined;
   g.offer = [];
   const spec = waveSpec(g.wave, g.map.threatScale);
   // A special event is a wave of its own: its script launches in place of
@@ -1227,6 +1233,13 @@ function startWave(g: Game): void {
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
+  // Tidewater Flats (log v59, MAP_TIDE): the wave's own tide, its low water
+  // at a beat's moment.
+  const clock = g.enc ? tideClock(g.map.id, g.wave, g.enc.setup) : undefined;
+  if (clock && g.map.tide) {
+    const at = lead + RAID.warn + clock.ebb * spec.duration;
+    g.ebb = [at, at + clock.low];
+  }
   // Most launches bunch into raids: a few seconds of several bases firing
   // at once, then a short breather. Each raid is one family of threat (a
   // drone swarm, a splash barrage, a guided volley), so each calls for its
@@ -1344,6 +1357,19 @@ function startWave(g: Game): void {
         fireShips++;
       }
   }
+  // Tidewater Flats (log v59, MAP_SIGNATURE `ebb`): so many of the wave's
+  // own clusters, then its shells, are held for the ebb and come as cluster
+  // missiles at the crowd, one for one (rule w-budget).
+  let ebbStrike = 0;
+  if (sig?.ebb && g.ebb) {
+    const want = sig.ebb[Math.min(g.wave, 10) - sig.from] ?? 0;
+    for (const kind of ['cluster', 'ballistic'] as const)
+      for (let i = units.length - 1; i >= 0 && ebbStrike < want; i--)
+        if (units[i].kind === kind) {
+          units.splice(i, 1);
+          ebbStrike++;
+        }
+  }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -1418,6 +1444,14 @@ function startWave(g: Game): void {
   if (hidden) raids.forEach((raid, r) => (raid.quiet = raidUnits[r].length > 0 && raidUnits[r].every((u) => u.kind === 'mine')));
   g.raids = raids;
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
+  if (ebbStrike && g.ebb) {
+    const base = sig!.ebbBase ?? 0;
+    for (let k = 0; k < ebbStrike; k++) {
+      const at = g.ebb[0] + 3 + k * 3;
+      queue.push({ at, kind: 'cluster', base, aim: 'crowd' });
+      g.raids.push({ at, theme: RAID_THEME.cluster, bases: [base] });
+    }
+  }
   if (fireShips) {
     const coves = g.map.bases.map((x, i) => (x.cove && x.kinds.includes('fastboat') ? i : -1)).filter((i) => i >= 0);
     for (let k = 0; k < fireShips && coves.length; k++) {
@@ -1647,13 +1681,21 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   const tanker = aim === 'vip' ? pool.find((s) => s.vip) : undefined;
   let pick =
     tanker ??
-    (aim === 'near' || aim === 'post'
+    (aim === 'flats'
+      ? flatsShip(g, pool, from)
+      : aim === 'near' || aim === 'post'
       ? pool.reduce((a, b) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a))
       : aim === 'mid'
         ? pool.reduce((a, b) => (Math.abs(along(b) - 0.5) < Math.abs(along(a) - 0.5) ? b : a))
         : aim === 'rear'
           ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
-          : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
+          : aim === 'crowd'
+            ? pool.reduce((a, b) => {
+                const ca = crowdAround(pool, a);
+                const cb = crowdAround(pool, b);
+                return cb > ca || (cb === ca && along(b) > along(a)) ? b : a;
+              })
+            : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
   // Chapter 2's Saltgate Canal (log v38): the ship held at a lock, in its
   // chamber or waiting at its shut entry gate, the lock nearest the
   // launcher first; no ship held there, the ship nearest the launcher.
@@ -1671,6 +1713,23 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
   if (th.kind === 'ballistic') aimBallistic(g, th);
   const tp = targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
+}
+
+/** Tidewater Flats (log v59, BeatAim 'flats'): the ship on a tide lane
+ *  nearest `from`; none there (low water), the ship furthest from it. */
+function flatsShip(g: Game, pool: Ship[], from: Point): Ship {
+  const on = pool.filter((s) => g.map.channels[s.channel]?.tide);
+  const d = (s: Ship) => dist(s.x, s.y, from.x, from.y);
+  return on.length ? on.reduce((a, b) => (d(b) < d(a) ? b : a)) : pool.reduce((a, b) => (d(b) > d(a) ? b : a));
+}
+
+/** Tidewater Flats (log v59, BeatAim 'crowd'): how many other hulls are
+ *  within CROWD_RADIUS px of a ship. */
+export const CROWD_RADIUS = 170;
+function crowdAround(pool: Ship[], s: Ship): number {
+  let n = 0;
+  for (const o of pool) if (o !== s && dist(o.x, o.y, s.x, s.y) <= CROWD_RADIUS) n++;
+  return n;
 }
 
 /** Is a ship held at a lock (Saltgate Canal): in a lock's chamber, or in
@@ -5569,11 +5628,32 @@ function laneSpeed(g: Game, s: Ship): number {
   return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
-/** Tidewater Flats: is the tide in? (A map without a tide: always.) */
+/** Tidewater Flats: is the tide in? (A map without a tide: always.) Under
+ *  the encounter layer (log v59) the wave's own low water (`g.ebb`). */
 export function highTide(g: Game): boolean {
   const t = g.map.tide;
   if (!t) return true;
+  if (g.ebb) return !(g.waveT >= g.ebb[0] && g.waveT < g.ebb[1]);
   return g.t % (t.high + t.low) < t.high;
+}
+
+/** The tide gauge (Tidewater Flats): high or low water now, the seconds to
+ *  the turn (Infinity: no more turns this wave, the flood is in), and the
+ *  share of this phase left. */
+export function tideGauge(g: Game): { high: boolean; left: number; frac: number } {
+  const t = g.map.tide;
+  const high = highTide(g);
+  if (!t) return { high, left: Infinity, frac: 1 };
+  if (g.ebb) {
+    const [a, b] = g.ebb;
+    if (g.waveT < a) return { high, left: a - g.waveT, frac: (a - g.waveT) / Math.max(1, a) };
+    if (g.waveT < b) return { high, left: b - g.waveT, frac: (b - g.waveT) / Math.max(1, b - a) };
+    return { high, left: Infinity, frac: 1 };
+  }
+  const cycle = t.high + t.low;
+  const into = g.t % cycle;
+  const left = high ? t.high - into : cycle - into;
+  return { high, left, frac: high ? left / t.high : left / t.low };
 }
 
 // Bomblets are blamed on the cluster that dropped them.

@@ -1082,6 +1082,7 @@ export class Telemetry {
 
 function tideIn(g: Game): boolean {
   const t = g.map.tide;
+  if (t && g.ebb) return !(g.waveT >= g.ebb[0] && g.waveT < g.ebb[1]);
   return !t || g.t % (t.high + t.low) < t.high;
 }
 

@@ -579,6 +579,24 @@ function fireFleet(g: Game, ev: EventRun, s: EventStep): void {
   g.queue.sort((a, b) => a.at - b.at);
 }
 
+/** Tidewater Flats' Low Water (log v59): a strike's silos light, or the
+ *  strike (every launcher listed fires its own at the crowd at once). */
+function lowWater(g: Game, ev: EventRun, s: EventStep): void {
+  const S = bossRound(g, ev)?.strikes?.[s.k];
+  if (!S) return;
+  const up = S.from.filter((f) => !g.baseDown[f.base] && g.map.bases[f.base]);
+  if (s.op === 'lit') {
+    for (const f of up) addFx(g, 'launch', g.map.bases[f.base].x, g.map.bases[f.base].y, { life: S.warn, r: 52 });
+    if (up.length) cue(g, 'raid.warning', g.map.bases[up[0].base].x, g.map.bases[up[0].base].y);
+    return;
+  }
+  for (const f of up) {
+    for (let i = 0; i < f.count; i++) g.queue.push({ at: g.waveT + i * (f.gap ?? 0.35), kind: f.kind, base: f.base, aim: 'crowd' });
+    sent(ev, f.kind, f.count);
+  }
+  g.queue.sort((a, b) => a.at - b.at);
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -747,6 +765,18 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(1, () => 0, 'lures'), ...steps(E.swarms, (k) => E.from + k * E.every, 'swarm')];
     }
     case 'firestorm': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch4-tide.md): Tidewater
+      // Flats' boss is Low Water, the round's own tide out early and the
+      // whole shore firing at the crowd in the deep channel (MAP_BOSS
+      // `ebb`, `strikes`), in place of the firebombs (the Incendiary
+      // Missile is a regular of chapter 4's waves).
+      const R = bossRound(g, ev);
+      if (R?.ebb) {
+        const from = ev.t0 + B + R.ebb.at;
+        g.ebb = [from, from + R.ebb.low];
+        const S = R.strikes ?? [];
+        return [...steps(S.length, (k) => S[k].at - S[k].warn, 'lit'), ...steps(S.length, (k) => S[k].at, 'strike')];
+      }
       const E = EV.firestorm;
       ev.linger = E.linger;
       return [...steps(1, () => 0, 'ring'), ...steps(1, () => E.gap, 'ring2')];
@@ -1187,6 +1217,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'firestorm': {
+      if (s.op === 'lit' || s.op === 'strike') {
+        lowWater(g, ev, s);
+        return;
+      }
       // From every side: each launch base, and both side edges.
       const E = EV.firestorm;
       const n = s.op === 'ring' ? E.first : E.second;
