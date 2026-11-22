@@ -3,7 +3,7 @@
  "about": "Each weapon alone (levelled to MAX, then Resupply at every draft) and as the first pick (then the bot drafts for itself); the plain gun; the bot drafting for itself.",
  "logVersion": 49,
  "botRev": 3,
- "date": "2026-11-21",
+ "date": "2026-11-22",
  "seeds": [
   900,
   901,
@@ -48,7 +48,7 @@
   "shield",
   "fullSteam"
  ],
- "seconds": 325,
+ "seconds": 181,
  "runs": 624,
  "configs": [
   {
@@ -58,26 +58,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0,
-     "endWave": 7.667,
+     "won": 0.083,
+     "endWave": 10.917,
      "flawless": 0,
-     "lost10": 11.25,
-     "boss": 2.333,
-     "lostAll": 18.25,
-     "bossNormal": null,
-     "bossReached": 0
+     "lost10": 6.917,
+     "boss": 2.278,
+     "lostAll": 13.75,
+     "bossNormal": 1.933,
+     "bossReached": 1.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0,
-    "endWave": 7.667,
+    "won": 0.083,
+    "endWave": 10.917,
     "flawless": 0,
-    "lost10": 11.25,
-    "boss": 2.333,
-    "lostAll": 18.25,
-    "bossNormal": null,
-    "bossReached": 0
+    "lost10": 6.917,
+    "boss": 2.278,
+    "lostAll": 13.75,
+    "bossNormal": 1.933,
+    "bossReached": 1.25
    },
    "weapons": []
   },
@@ -89,24 +89,24 @@
     "rigs": {
      "n": 12,
      "won": 0.833,
-     "endWave": 13.5,
+     "endWave": 13.417,
      "flawless": 0,
-     "lost10": 2.583,
-     "boss": 1.278,
-     "lostAll": 6.417,
-     "bossNormal": 1.333,
+     "lost10": 4.5,
+     "boss": 1.25,
+     "lostAll": 8.25,
+     "bossNormal": 1.212,
      "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
     "won": 0.833,
-    "endWave": 13.5,
+    "endWave": 13.417,
     "flawless": 0,
-    "lost10": 2.583,
-    "boss": 1.278,
-    "lostAll": 6.417,
-    "bossNormal": 1.333,
+    "lost10": 4.5,
+    "boss": 1.25,
+    "lostAll": 8.25,
+    "bossNormal": 1.212,
     "bossReached": 2.75
    }
   },
@@ -117,25 +117,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 13.583,
+     "won": 0.833,
+     "endWave": 13.833,
      "flawless": 0,
-     "lost10": 1.833,
-     "boss": 1.722,
-     "lostAll": 7,
-     "bossNormal": 1.611,
+     "lost10": 2.083,
+     "boss": 1.278,
+     "lostAll": 5.917,
+     "bossNormal": 1.25,
      "bossReached": 3
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 13.583,
+    "won": 0.833,
+    "endWave": 13.833,
     "flawless": 0,
-    "lost10": 1.833,
-    "boss": 1.722,
-    "lostAll": 7,
-    "bossNormal": 1.611,
+    "lost10": 2.083,
+    "boss": 1.278,
+    "lostAll": 5.917,
+    "bossNormal": 1.25,
     "bossReached": 3
    },
    "weapons": [
@@ -149,25 +149,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 0.667,
+     "endWave": 13.667,
      "flawless": 0,
-     "lost10": 1.75,
-     "boss": 1.25,
-     "lostAll": 5.5,
-     "bossNormal": 1.194,
+     "lost10": 2.083,
+     "boss": 1.639,
+     "lostAll": 7,
+     "bossNormal": 1.472,
      "bossReached": 3
     }
    },
    "all": {
     "n": 12,
-    "won": 0.833,
-    "endWave": 13.833,
+    "won": 0.667,
+    "endWave": 13.667,
     "flawless": 0,
-    "lost10": 1.75,
-    "boss": 1.25,
-    "lostAll": 5.5,
-    "bossNormal": 1.194,
+    "lost10": 2.083,
+    "boss": 1.639,
+    "lostAll": 7,
+    "bossNormal": 1.472,
     "bossReached": 3
    },
    "weapons": [
@@ -182,25 +182,25 @@
     "rigs": {
      "n": 12,
      "won": 0.583,
-     "endWave": 12.833,
+     "endWave": 12.583,
      "flawless": 0,
-     "lost10": 2.75,
-     "boss": 1.611,
-     "lostAll": 7.583,
-     "bossNormal": 1.483,
-     "bossReached": 2.417
+     "lost10": 2.833,
+     "boss": 1.5,
+     "lostAll": 7.333,
+     "bossNormal": 1.357,
+     "bossReached": 2.333
     }
    },
    "all": {
     "n": 12,
     "won": 0.583,
-    "endWave": 12.833,
+    "endWave": 12.583,
     "flawless": 0,
-    "lost10": 2.75,
-    "boss": 1.611,
-    "lostAll": 7.583,
-    "bossNormal": 1.483,
-    "bossReached": 2.417
+    "lost10": 2.833,
+    "boss": 1.5,
+    "lostAll": 7.333,
+    "bossNormal": 1.357,
+    "bossReached": 2.333
    },
    "weapons": [
     "frigate"
@@ -213,26 +213,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 13.667,
+     "won": 0.583,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 2.167,
-     "boss": 1.472,
+     "lost10": 1.833,
+     "boss": 1.583,
      "lostAll": 6.583,
-     "bossNormal": 1.389,
-     "bossReached": 3
+     "bossNormal": 1.438,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 13.667,
+    "won": 0.583,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 2.167,
-    "boss": 1.472,
+    "lost10": 1.833,
+    "boss": 1.583,
     "lostAll": 6.583,
-    "bossNormal": 1.389,
-    "bossReached": 3
+    "bossNormal": 1.438,
+    "bossReached": 2.667
    },
    "weapons": [
     "thermo"
@@ -245,26 +245,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.833,
-     "endWave": 13.417,
+     "won": 0.75,
+     "endWave": 13.75,
      "flawless": 0,
-     "lost10": 2.333,
-     "boss": 1.306,
-     "lostAll": 6.25,
-     "bossNormal": 1.212,
-     "bossReached": 2.75
+     "lost10": 1.417,
+     "boss": 1.5,
+     "lostAll": 5.917,
+     "bossNormal": 1.389,
+     "bossReached": 3
     }
    },
    "all": {
     "n": 12,
-    "won": 0.833,
-    "endWave": 13.417,
+    "won": 0.75,
+    "endWave": 13.75,
     "flawless": 0,
-    "lost10": 2.333,
-    "boss": 1.306,
-    "lostAll": 6.25,
-    "bossNormal": 1.212,
-    "bossReached": 2.75
+    "lost10": 1.417,
+    "boss": 1.5,
+    "lostAll": 5.917,
+    "bossNormal": 1.389,
+    "bossReached": 3
    },
    "weapons": [
     "scatter"
@@ -280,10 +280,10 @@
      "won": 0.833,
      "endWave": 13.833,
      "flawless": 0,
-     "lost10": 2.083,
-     "boss": 1.417,
-     "lostAll": 6.333,
-     "bossNormal": 1.361,
+     "lost10": 2.333,
+     "boss": 1.306,
+     "lostAll": 6.25,
+     "bossNormal": 1.278,
      "bossReached": 3
     }
    },
@@ -292,10 +292,10 @@
     "won": 0.833,
     "endWave": 13.833,
     "flawless": 0,
-    "lost10": 2.083,
-    "boss": 1.417,
-    "lostAll": 6.333,
-    "bossNormal": 1.361,
+    "lost10": 2.333,
+    "boss": 1.306,
+    "lostAll": 6.25,
+    "bossNormal": 1.278,
     "bossReached": 3
    },
    "weapons": [
@@ -309,24 +309,24 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.917,
-     "endWave": 13.917,
+     "won": 0.75,
+     "endWave": 13.75,
      "flawless": 0,
-     "lost10": 2,
-     "boss": 1.167,
-     "lostAll": 5.5,
+     "lost10": 1.917,
+     "boss": 1.278,
+     "lostAll": 5.75,
      "bossNormal": 1.139,
      "bossReached": 3
     }
    },
    "all": {
     "n": 12,
-    "won": 0.917,
-    "endWave": 13.917,
+    "won": 0.75,
+    "endWave": 13.75,
     "flawless": 0,
-    "lost10": 2,
-    "boss": 1.167,
-    "lostAll": 5.5,
+    "lost10": 1.917,
+    "boss": 1.278,
+    "lostAll": 5.75,
     "bossNormal": 1.139,
     "bossReached": 3
    },
@@ -341,26 +341,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.417,
-     "endWave": 12.5,
+     "won": 0.583,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 2.75,
-     "boss": 1.861,
+     "lost10": 3.583,
+     "boss": 1.583,
      "lostAll": 8.333,
-     "bossNormal": 1.633,
-     "bossReached": 2.5
+     "bossNormal": 1.531,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.417,
-    "endWave": 12.5,
+    "won": 0.583,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 2.75,
-    "boss": 1.861,
+    "lost10": 3.583,
+    "boss": 1.583,
     "lostAll": 8.333,
-    "bossNormal": 1.633,
-    "bossReached": 2.5
+    "bossNormal": 1.531,
+    "bossReached": 2.667
    },
    "weapons": [
     "seeker"
@@ -373,26 +373,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.917,
-     "endWave": 13.833,
+     "won": 0.417,
+     "endWave": 12.917,
      "flawless": 0,
-     "lost10": 2.5,
-     "boss": 1.25,
-     "lostAll": 6.25,
-     "bossNormal": 1.257,
-     "bossReached": 2.917
+     "lost10": 2.333,
+     "boss": 1.778,
+     "lostAll": 7.667,
+     "bossNormal": 1.594,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.917,
-    "endWave": 13.833,
+    "won": 0.417,
+    "endWave": 12.917,
     "flawless": 0,
-    "lost10": 2.5,
-    "boss": 1.25,
-    "lostAll": 6.25,
-    "bossNormal": 1.257,
-    "bossReached": 2.917
+    "lost10": 2.333,
+    "boss": 1.778,
+    "lostAll": 7.667,
+    "bossNormal": 1.594,
+    "bossReached": 2.667
    },
    "weapons": [
     "aegis"
@@ -405,26 +405,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
+     "won": 0.75,
      "endWave": 13.667,
      "flawless": 0,
-     "lost10": 1.667,
-     "boss": 1.472,
-     "lostAll": 6.083,
-     "bossNormal": 1.417,
-     "bossReached": 3
+     "lost10": 2.333,
+     "boss": 1.528,
+     "lostAll": 6.917,
+     "bossNormal": 1.457,
+     "bossReached": 2.917
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
+    "won": 0.75,
     "endWave": 13.667,
     "flawless": 0,
-    "lost10": 1.667,
-    "boss": 1.472,
-    "lostAll": 6.083,
-    "bossNormal": 1.417,
-    "bossReached": 3
+    "lost10": 2.333,
+    "boss": 1.528,
+    "lostAll": 6.917,
+    "bossNormal": 1.457,
+    "bossReached": 2.917
    },
    "weapons": [
     "well"
@@ -440,10 +440,10 @@
      "won": 0.75,
      "endWave": 13.75,
      "flawless": 0,
-     "lost10": 1.417,
-     "boss": 1.361,
-     "lostAll": 5.5,
-     "bossNormal": 1.278,
+     "lost10": 2.833,
+     "boss": 1.083,
+     "lostAll": 6.083,
+     "bossNormal": 1.028,
      "bossReached": 3
     }
    },
@@ -452,10 +452,10 @@
     "won": 0.75,
     "endWave": 13.75,
     "flawless": 0,
-    "lost10": 1.417,
-    "boss": 1.361,
-    "lostAll": 5.5,
-    "bossNormal": 1.278,
+    "lost10": 2.833,
+    "boss": 1.083,
+    "lostAll": 6.083,
+    "bossNormal": 1.028,
     "bossReached": 3
    },
    "weapons": [
@@ -469,26 +469,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 12.917,
+     "won": 0.583,
+     "endWave": 13.25,
      "flawless": 0,
-     "lost10": 3.083,
-     "boss": 1.194,
-     "lostAll": 6.667,
-     "bossNormal": 1.148,
-     "bossReached": 2.25
+     "lost10": 2.833,
+     "boss": 1.5,
+     "lostAll": 7.333,
+     "bossNormal": 1.424,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 12.917,
+    "won": 0.583,
+    "endWave": 13.25,
     "flawless": 0,
-    "lost10": 3.083,
-    "boss": 1.194,
-    "lostAll": 6.667,
-    "bossNormal": 1.148,
-    "bossReached": 2.25
+    "lost10": 2.833,
+    "boss": 1.5,
+    "lostAll": 7.333,
+    "bossNormal": 1.424,
+    "bossReached": 2.75
    },
    "weapons": [
     "tesla"
@@ -501,26 +501,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0,
-     "endWave": 8.167,
+     "won": 0.167,
+     "endWave": 10,
      "flawless": 0,
-     "lost10": 9.25,
-     "boss": 2.528,
-     "lostAll": 16.833,
-     "bossNormal": 2,
-     "bossReached": 0.5
+     "lost10": 7.583,
+     "boss": 2.194,
+     "lostAll": 14.167,
+     "bossNormal": 1.778,
+     "bossReached": 0.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0,
-    "endWave": 8.167,
+    "won": 0.167,
+    "endWave": 10,
     "flawless": 0,
-    "lost10": 9.25,
-    "boss": 2.528,
-    "lostAll": 16.833,
-    "bossNormal": 2,
-    "bossReached": 0.5
+    "lost10": 7.583,
+    "boss": 2.194,
+    "lostAll": 14.167,
+    "bossNormal": 1.778,
+    "bossReached": 0.75
    },
    "weapons": [
     "lance"
@@ -536,9 +536,9 @@
      "won": 0,
      "endWave": 3.917,
      "flawless": 0,
-     "lost10": 58.083,
-     "boss": 5.528,
-     "lostAll": 74.667,
+     "lost10": 51.25,
+     "boss": 5.639,
+     "lostAll": 68.167,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -548,9 +548,9 @@
     "won": 0,
     "endWave": 3.917,
     "flawless": 0,
-    "lost10": 58.083,
-    "boss": 5.528,
-    "lostAll": 74.667,
+    "lost10": 51.25,
+    "boss": 5.639,
+    "lostAll": 68.167,
     "bossNormal": null,
     "bossReached": 0
    },
@@ -565,26 +565,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0,
-     "endWave": 8.167,
+     "won": 0.167,
+     "endWave": 10,
      "flawless": 0,
-     "lost10": 9.25,
-     "boss": 2.528,
-     "lostAll": 16.833,
-     "bossNormal": 2,
-     "bossReached": 0.5
+     "lost10": 7.583,
+     "boss": 2.194,
+     "lostAll": 14.167,
+     "bossNormal": 1.778,
+     "bossReached": 0.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0,
-    "endWave": 8.167,
+    "won": 0.167,
+    "endWave": 10,
     "flawless": 0,
-    "lost10": 9.25,
-    "boss": 2.528,
-    "lostAll": 16.833,
-    "bossNormal": 2,
-    "bossReached": 0.5
+    "lost10": 7.583,
+    "boss": 2.194,
+    "lostAll": 14.167,
+    "bossNormal": 1.778,
+    "bossReached": 0.75
    },
    "weapons": [
     "grapnel"
@@ -597,26 +597,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 12.917,
-     "flawless": 0,
-     "lost10": 2.667,
-     "boss": 1.528,
-     "lostAll": 7.25,
-     "bossNormal": 1.464,
-     "bossReached": 2.333
+     "won": 0.5,
+     "endWave": 12.833,
+     "flawless": 0.083,
+     "lost10": 2.417,
+     "boss": 1.722,
+     "lostAll": 7.583,
+     "bossNormal": 1.517,
+     "bossReached": 2.417
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 12.917,
-    "flawless": 0,
-    "lost10": 2.667,
-    "boss": 1.528,
-    "lostAll": 7.25,
-    "bossNormal": 1.464,
-    "bossReached": 2.333
+    "won": 0.5,
+    "endWave": 12.833,
+    "flawless": 0.083,
+    "lost10": 2.417,
+    "boss": 1.722,
+    "lostAll": 7.583,
+    "bossNormal": 1.517,
+    "bossReached": 2.417
    },
    "weapons": [
     "droneScreen"
@@ -630,25 +630,25 @@
     "rigs": {
      "n": 12,
      "won": 0.583,
-     "endWave": 12.583,
+     "endWave": 13.5,
      "flawless": 0,
-     "lost10": 3.167,
+     "lost10": 1.25,
      "boss": 1.528,
-     "lostAll": 7.75,
-     "bossNormal": 1.5,
-     "bossReached": 2.167
+     "lostAll": 5.833,
+     "bossNormal": 1.543,
+     "bossReached": 2.917
     }
    },
    "all": {
     "n": 12,
     "won": 0.583,
-    "endWave": 12.583,
+    "endWave": 13.5,
     "flawless": 0,
-    "lost10": 3.167,
+    "lost10": 1.25,
     "boss": 1.528,
-    "lostAll": 7.75,
-    "bossNormal": 1.5,
-    "bossReached": 2.167
+    "lostAll": 5.833,
+    "bossNormal": 1.543,
+    "bossReached": 2.917
    },
    "weapons": [
     "gunships"
@@ -661,26 +661,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.333,
-     "endWave": 12.333,
+     "won": 0.25,
+     "endWave": 11.417,
      "flawless": 0,
-     "lost10": 3.917,
-     "boss": 2.111,
-     "lostAll": 10.25,
-     "bossNormal": 1.741,
-     "bossReached": 2.25
+     "lost10": 5,
+     "boss": 1.667,
+     "lostAll": 10,
+     "bossNormal": 1.611,
+     "bossReached": 1.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.333,
-    "endWave": 12.333,
+    "won": 0.25,
+    "endWave": 11.417,
     "flawless": 0,
-    "lost10": 3.917,
-    "boss": 2.111,
-    "lostAll": 10.25,
-    "bossNormal": 1.741,
-    "bossReached": 2.25
+    "lost10": 5,
+    "boss": 1.667,
+    "lostAll": 10,
+    "bossNormal": 1.611,
+    "bossReached": 1.5
    },
    "weapons": [
     "bomberWing"
@@ -693,26 +693,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 0.75,
+     "endWave": 13.5,
      "flawless": 0,
-     "lost10": 2,
-     "boss": 1.25,
-     "lostAll": 5.75,
-     "bossNormal": 1.222,
-     "bossReached": 3
+     "lost10": 2.417,
+     "boss": 1.167,
+     "lostAll": 5.917,
+     "bossNormal": 1,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.833,
-    "endWave": 13.833,
+    "won": 0.75,
+    "endWave": 13.5,
     "flawless": 0,
-    "lost10": 2,
-    "boss": 1.25,
-    "lostAll": 5.75,
-    "bossNormal": 1.222,
-    "bossReached": 3
+    "lost10": 2.417,
+    "boss": 1.167,
+    "lostAll": 5.917,
+    "bossNormal": 1,
+    "bossReached": 2.75
    },
    "weapons": [
     "orbital"
@@ -725,26 +725,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.5,
-     "endWave": 12.75,
+     "won": 0.25,
+     "endWave": 11.5,
      "flawless": 0,
-     "lost10": 3.333,
-     "boss": 1.917,
-     "lostAll": 9.083,
-     "bossNormal": 1.6,
-     "bossReached": 2.5
+     "lost10": 5.083,
+     "boss": 1.667,
+     "lostAll": 10.083,
+     "bossNormal": 1.75,
+     "bossReached": 1.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.5,
-    "endWave": 12.75,
+    "won": 0.25,
+    "endWave": 11.5,
     "flawless": 0,
-    "lost10": 3.333,
-    "boss": 1.917,
-    "lostAll": 9.083,
-    "bossNormal": 1.6,
-    "bossReached": 2.5
+    "lost10": 5.083,
+    "boss": 1.667,
+    "lostAll": 10.083,
+    "bossNormal": 1.75,
+    "bossReached": 1.667
    },
    "weapons": [
     "supplyRun"
@@ -757,25 +757,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.167,
-     "endWave": 10.333,
+     "won": 0.25,
+     "endWave": 10.583,
      "flawless": 0,
-     "lost10": 7.667,
-     "boss": 2.222,
-     "lostAll": 14.333,
-     "bossNormal": 1.667,
+     "lost10": 6.583,
+     "boss": 1.861,
+     "lostAll": 12.167,
+     "bossNormal": 1.533,
      "bossReached": 1.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.167,
-    "endWave": 10.333,
+    "won": 0.25,
+    "endWave": 10.583,
     "flawless": 0,
-    "lost10": 7.667,
-    "boss": 2.222,
-    "lostAll": 14.333,
-    "bossNormal": 1.667,
+    "lost10": 6.583,
+    "boss": 1.861,
+    "lostAll": 12.167,
+    "bossNormal": 1.533,
     "bossReached": 1.25
    },
    "weapons": [
@@ -789,26 +789,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0,
-     "endWave": 8.167,
+     "won": 0.167,
+     "endWave": 10,
      "flawless": 0,
-     "lost10": 9.25,
-     "boss": 2.528,
-     "lostAll": 16.833,
-     "bossNormal": 2,
-     "bossReached": 0.5
+     "lost10": 7.583,
+     "boss": 2.194,
+     "lostAll": 14.167,
+     "bossNormal": 1.778,
+     "bossReached": 0.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0,
-    "endWave": 8.167,
+    "won": 0.167,
+    "endWave": 10,
     "flawless": 0,
-    "lost10": 9.25,
-    "boss": 2.528,
-    "lostAll": 16.833,
-    "bossNormal": 2,
-    "bossReached": 0.5
+    "lost10": 7.583,
+    "boss": 2.194,
+    "lostAll": 14.167,
+    "bossNormal": 1.778,
+    "bossReached": 0.75
    },
    "weapons": [
     "focus"
@@ -821,26 +821,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.75,
-     "endWave": 13.5,
+     "won": 0.667,
+     "endWave": 13,
      "flawless": 0,
-     "lost10": 2.25,
-     "boss": 1.444,
-     "lostAll": 6.583,
-     "bossNormal": 1.242,
-     "bossReached": 2.75
+     "lost10": 2.583,
+     "boss": 1.389,
+     "lostAll": 6.75,
+     "bossNormal": 1.333,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.75,
-    "endWave": 13.5,
+    "won": 0.667,
+    "endWave": 13,
     "flawless": 0,
-    "lost10": 2.25,
-    "boss": 1.444,
-    "lostAll": 6.583,
-    "bossNormal": 1.242,
-    "bossReached": 2.75
+    "lost10": 2.583,
+    "boss": 1.389,
+    "lostAll": 6.75,
+    "bossNormal": 1.333,
+    "bossReached": 2.5
    },
    "weapons": [
     "overdrive"
@@ -853,26 +853,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 12.917,
+     "won": 0.5,
+     "endWave": 12.5,
      "flawless": 0,
-     "lost10": 3,
-     "boss": 1.417,
-     "lostAll": 7.25,
-     "bossNormal": 1.448,
-     "bossReached": 2.417
+     "lost10": 4,
+     "boss": 1.639,
+     "lostAll": 8.917,
+     "bossNormal": 1.481,
+     "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 12.917,
+    "won": 0.5,
+    "endWave": 12.5,
     "flawless": 0,
-    "lost10": 3,
-    "boss": 1.417,
-    "lostAll": 7.25,
-    "bossNormal": 1.448,
-    "bossReached": 2.417
+    "lost10": 4,
+    "boss": 1.639,
+    "lostAll": 8.917,
+    "bossNormal": 1.481,
+    "bossReached": 2.25
    },
    "weapons": [
     "shield"
@@ -886,25 +886,25 @@
     "rigs": {
      "n": 12,
      "won": 0.333,
-     "endWave": 11.75,
+     "endWave": 12.417,
      "flawless": 0,
-     "lost10": 4.833,
-     "boss": 1.972,
-     "lostAll": 10.75,
-     "bossNormal": 1.636,
-     "bossReached": 1.833
+     "lost10": 4.25,
+     "boss": 1.667,
+     "lostAll": 9.25,
+     "bossNormal": 1.615,
+     "bossReached": 2.167
     }
    },
    "all": {
     "n": 12,
     "won": 0.333,
-    "endWave": 11.75,
+    "endWave": 12.417,
     "flawless": 0,
-    "lost10": 4.833,
-    "boss": 1.972,
-    "lostAll": 10.75,
-    "bossNormal": 1.636,
-    "bossReached": 1.833
+    "lost10": 4.25,
+    "boss": 1.667,
+    "lostAll": 9.25,
+    "bossNormal": 1.615,
+    "bossReached": 2.167
    },
    "weapons": [
     "fullSteam"
@@ -917,26 +917,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.75,
-     "endWave": 12.667,
+     "won": 0.583,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 3.417,
-     "boss": 1.389,
-     "lostAll": 7.583,
-     "bossNormal": 1.296,
-     "bossReached": 2.25
+     "lost10": 2.25,
+     "boss": 1.5,
+     "lostAll": 6.75,
+     "bossNormal": 1.406,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.75,
-    "endWave": 12.667,
+    "won": 0.583,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 3.417,
-    "boss": 1.389,
-    "lostAll": 7.583,
-    "bossNormal": 1.296,
-    "bossReached": 2.25
+    "lost10": 2.25,
+    "boss": 1.5,
+    "lostAll": 6.75,
+    "bossNormal": 1.406,
+    "bossReached": 2.667
    },
    "weapons": [
     "airstrike"
@@ -949,26 +949,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 13.583,
+     "won": 0.917,
+     "endWave": 13.333,
      "flawless": 0,
-     "lost10": 2,
-     "boss": 1.694,
-     "lostAll": 7.083,
-     "bossNormal": 1.629,
-     "bossReached": 2.917
+     "lost10": 2.25,
+     "boss": 1.306,
+     "lostAll": 6.167,
+     "bossNormal": 1.242,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 13.583,
+    "won": 0.917,
+    "endWave": 13.333,
     "flawless": 0,
-    "lost10": 2,
-    "boss": 1.694,
-    "lostAll": 7.083,
-    "bossNormal": 1.629,
-    "bossReached": 2.917
+    "lost10": 2.25,
+    "boss": 1.306,
+    "lostAll": 6.167,
+    "bossNormal": 1.242,
+    "bossReached": 2.75
    },
    "weapons": [
     "shrapnel"
@@ -981,26 +981,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 13,
+     "won": 0.833,
+     "endWave": 13.083,
      "flawless": 0,
-     "lost10": 2.917,
-     "boss": 1.611,
-     "lostAll": 7.75,
-     "bossNormal": 1.333,
-     "bossReached": 2.75
+     "lost10": 4.333,
+     "boss": 1.444,
+     "lostAll": 8.667,
+     "bossNormal": 1.267,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 13,
+    "won": 0.833,
+    "endWave": 13.083,
     "flawless": 0,
-    "lost10": 2.917,
-    "boss": 1.611,
-    "lostAll": 7.75,
-    "bossNormal": 1.333,
-    "bossReached": 2.75
+    "lost10": 4.333,
+    "boss": 1.444,
+    "lostAll": 8.667,
+    "bossNormal": 1.267,
+    "bossReached": 2.5
    },
    "weapons": [
     "frigate"
@@ -1014,24 +1014,24 @@
     "rigs": {
      "n": 12,
      "won": 0.667,
-     "endWave": 12.917,
+     "endWave": 13.083,
      "flawless": 0,
-     "lost10": 4.75,
-     "boss": 1.611,
-     "lostAll": 9.583,
-     "bossNormal": 1.433,
+     "lost10": 3.5,
+     "boss": 1.194,
+     "lostAll": 7.083,
+     "bossNormal": 1.2,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
     "won": 0.667,
-    "endWave": 12.917,
+    "endWave": 13.083,
     "flawless": 0,
-    "lost10": 4.75,
-    "boss": 1.611,
-    "lostAll": 9.583,
-    "bossNormal": 1.433,
+    "lost10": 3.5,
+    "boss": 1.194,
+    "lostAll": 7.083,
+    "bossNormal": 1.2,
     "bossReached": 2.5
    },
    "weapons": [
@@ -1045,26 +1045,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 12.667,
+     "won": 0.667,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 3.083,
-     "boss": 1.361,
-     "lostAll": 7.167,
-     "bossNormal": 1.2,
-     "bossReached": 2.5
+     "lost10": 3,
+     "boss": 1.556,
+     "lostAll": 7.667,
+     "bossNormal": 1.485,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 12.667,
+    "won": 0.667,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 3.083,
-    "boss": 1.361,
-    "lostAll": 7.167,
-    "bossNormal": 1.2,
-    "bossReached": 2.5
+    "lost10": 3,
+    "boss": 1.556,
+    "lostAll": 7.667,
+    "bossNormal": 1.485,
+    "bossReached": 2.75
    },
    "weapons": [
     "scatter"
@@ -1077,25 +1077,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 12.583,
+     "won": 0.667,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 2.917,
-     "boss": 1.5,
-     "lostAll": 7.417,
-     "bossNormal": 1.367,
+     "lost10": 2.833,
+     "boss": 1.556,
+     "lostAll": 7.5,
+     "bossNormal": 1.333,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 12.583,
+    "won": 0.667,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 2.917,
-    "boss": 1.5,
-    "lostAll": 7.417,
-    "bossNormal": 1.367,
+    "lost10": 2.833,
+    "boss": 1.556,
+    "lostAll": 7.5,
+    "bossNormal": 1.333,
     "bossReached": 2.5
    },
    "weapons": [
@@ -1109,26 +1109,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 13.083,
+     "won": 0.917,
+     "endWave": 13.333,
      "flawless": 0,
-     "lost10": 3.583,
-     "boss": 1.361,
+     "lost10": 3.75,
+     "boss": 1.306,
      "lostAll": 7.667,
-     "bossNormal": 1.467,
-     "bossReached": 2.5
+     "bossNormal": 1.121,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 13.083,
+    "won": 0.917,
+    "endWave": 13.333,
     "flawless": 0,
-    "lost10": 3.583,
-    "boss": 1.361,
+    "lost10": 3.75,
+    "boss": 1.306,
     "lostAll": 7.667,
-    "bossNormal": 1.467,
-    "bossReached": 2.5
+    "bossNormal": 1.121,
+    "bossReached": 2.75
    },
    "weapons": [
     "flak"
@@ -1141,25 +1141,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 12.25,
-     "flawless": 0.083,
-     "lost10": 5.167,
-     "boss": 1.278,
-     "lostAll": 9,
-     "bossNormal": 1.074,
+     "won": 0.583,
+     "endWave": 12.5,
+     "flawless": 0,
+     "lost10": 5.583,
+     "boss": 1.639,
+     "lostAll": 10.5,
+     "bossNormal": 1.407,
      "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 12.25,
-    "flawless": 0.083,
-    "lost10": 5.167,
-    "boss": 1.278,
-    "lostAll": 9,
-    "bossNormal": 1.074,
+    "won": 0.583,
+    "endWave": 12.5,
+    "flawless": 0,
+    "lost10": 5.583,
+    "boss": 1.639,
+    "lostAll": 10.5,
+    "bossNormal": 1.407,
     "bossReached": 2.25
    },
    "weapons": [
@@ -1173,26 +1173,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.5,
-     "endWave": 12.083,
+     "won": 0.75,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 4.167,
-     "boss": 1.583,
-     "lostAll": 8.917,
-     "bossNormal": 1.444,
-     "bossReached": 2.25
+     "lost10": 3.083,
+     "boss": 1.5,
+     "lostAll": 7.583,
+     "bossNormal": 1.364,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.5,
-    "endWave": 12.083,
+    "won": 0.75,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 4.167,
-    "boss": 1.583,
-    "lostAll": 8.917,
-    "bossNormal": 1.444,
-    "bossReached": 2.25
+    "lost10": 3.083,
+    "boss": 1.5,
+    "lostAll": 7.583,
+    "bossNormal": 1.364,
+    "bossReached": 2.75
    },
    "weapons": [
     "aegis"
@@ -1205,26 +1205,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.75,
-     "endWave": 13.75,
+     "won": 0.583,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 2.417,
-     "boss": 1.389,
-     "lostAll": 6.583,
-     "bossNormal": 1.361,
-     "bossReached": 3
+     "lost10": 2.75,
+     "boss": 1.472,
+     "lostAll": 7.167,
+     "bossNormal": 1.563,
+     "bossReached": 2.667
     }
    },
    "all": {
     "n": 12,
-    "won": 0.75,
-    "endWave": 13.75,
+    "won": 0.583,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 2.417,
-    "boss": 1.389,
-    "lostAll": 6.583,
-    "bossNormal": 1.361,
-    "bossReached": 3
+    "lost10": 2.75,
+    "boss": 1.472,
+    "lostAll": 7.167,
+    "bossNormal": 1.563,
+    "bossReached": 2.667
    },
    "weapons": [
     "well"
@@ -1237,26 +1237,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 0.917,
+     "endWave": 13.5,
      "flawless": 0,
-     "lost10": 1.833,
-     "boss": 1.361,
-     "lostAll": 5.917,
-     "bossNormal": 1.333,
-     "bossReached": 3
+     "lost10": 4,
+     "boss": 0.889,
+     "lostAll": 6.667,
+     "bossNormal": 0.909,
+     "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.833,
-    "endWave": 13.833,
+    "won": 0.917,
+    "endWave": 13.5,
     "flawless": 0,
-    "lost10": 1.833,
-    "boss": 1.361,
-    "lostAll": 5.917,
-    "bossNormal": 1.333,
-    "bossReached": 3
+    "lost10": 4,
+    "boss": 0.889,
+    "lostAll": 6.667,
+    "bossNormal": 0.909,
+    "bossReached": 2.75
    },
    "weapons": [
     "railgun"
@@ -1269,25 +1269,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
+     "won": 0.833,
      "endWave": 13.333,
      "flawless": 0,
-     "lost10": 3.083,
-     "boss": 1.556,
-     "lostAll": 7.75,
-     "bossNormal": 1.485,
+     "lost10": 3.25,
+     "boss": 1.306,
+     "lostAll": 7.167,
+     "bossNormal": 1.333,
      "bossReached": 2.75
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
+    "won": 0.833,
     "endWave": 13.333,
     "flawless": 0,
-    "lost10": 3.083,
-    "boss": 1.556,
-    "lostAll": 7.75,
-    "bossNormal": 1.485,
+    "lost10": 3.25,
+    "boss": 1.306,
+    "lostAll": 7.167,
+    "bossNormal": 1.333,
     "bossReached": 2.75
    },
    "weapons": [
@@ -1301,26 +1301,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 12.167,
+     "won": 0.5,
+     "endWave": 11.917,
      "flawless": 0,
-     "lost10": 5.417,
-     "boss": 1.917,
-     "lostAll": 11.167,
-     "bossNormal": 1.5,
-     "bossReached": 2.167
+     "lost10": 5.5,
+     "boss": 1.806,
+     "lostAll": 10.917,
+     "bossNormal": 1.417,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 12.167,
+    "won": 0.5,
+    "endWave": 11.917,
     "flawless": 0,
-    "lost10": 5.417,
-    "boss": 1.917,
-    "lostAll": 11.167,
-    "bossNormal": 1.5,
-    "bossReached": 2.167
+    "lost10": 5.5,
+    "boss": 1.806,
+    "lostAll": 10.917,
+    "bossNormal": 1.417,
+    "bossReached": 2
    },
    "weapons": [
     "lance"
@@ -1334,11 +1334,11 @@
     "rigs": {
      "n": 12,
      "won": 0,
-     "endWave": 4,
+     "endWave": 3.917,
      "flawless": 0,
-     "lost10": 27.75,
-     "boss": 2.472,
-     "lostAll": 35.167,
+     "lost10": 22.5,
+     "boss": 1.889,
+     "lostAll": 28.167,
      "bossNormal": null,
      "bossReached": 0
     }
@@ -1346,11 +1346,11 @@
    "all": {
     "n": 12,
     "won": 0,
-    "endWave": 4,
+    "endWave": 3.917,
     "flawless": 0,
-    "lost10": 27.75,
-    "boss": 2.472,
-    "lostAll": 35.167,
+    "lost10": 22.5,
+    "boss": 1.889,
+    "lostAll": 28.167,
     "bossNormal": null,
     "bossReached": 0
    },
@@ -1365,26 +1365,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 12.583,
+     "won": 0.5,
+     "endWave": 11.917,
      "flawless": 0,
-     "lost10": 4.5,
-     "boss": 1.472,
-     "lostAll": 8.917,
-     "bossNormal": 1.464,
-     "bossReached": 2.333
+     "lost10": 4.75,
+     "boss": 1.556,
+     "lostAll": 9.417,
+     "bossNormal": 1.417,
+     "bossReached": 2
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 12.583,
+    "won": 0.5,
+    "endWave": 11.917,
     "flawless": 0,
-    "lost10": 4.5,
-    "boss": 1.472,
-    "lostAll": 8.917,
-    "bossNormal": 1.464,
-    "bossReached": 2.333
+    "lost10": 4.75,
+    "boss": 1.556,
+    "lostAll": 9.417,
+    "bossNormal": 1.417,
+    "bossReached": 2
    },
    "weapons": [
     "grapnel"
@@ -1397,26 +1397,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.667,
-     "endWave": 13.583,
+     "won": 0.583,
+     "endWave": 12.417,
      "flawless": 0,
-     "lost10": 2.5,
-     "boss": 1.528,
-     "lostAll": 7.083,
-     "bossNormal": 1.486,
-     "bossReached": 2.917
+     "lost10": 4.5,
+     "boss": 1.444,
+     "lostAll": 8.833,
+     "bossNormal": 1.296,
+     "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.667,
-    "endWave": 13.583,
+    "won": 0.583,
+    "endWave": 12.417,
     "flawless": 0,
-    "lost10": 2.5,
-    "boss": 1.528,
-    "lostAll": 7.083,
-    "bossNormal": 1.486,
-    "bossReached": 2.917
+    "lost10": 4.5,
+    "boss": 1.444,
+    "lostAll": 8.833,
+    "bossNormal": 1.296,
+    "bossReached": 2.25
    },
    "weapons": [
     "droneScreen"
@@ -1429,25 +1429,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.75,
-     "endWave": 13.167,
+     "won": 0.833,
+     "endWave": 13.083,
      "flawless": 0,
-     "lost10": 3.25,
-     "boss": 1.306,
-     "lostAll": 7.167,
-     "bossNormal": 1.333,
+     "lost10": 2.833,
+     "boss": 1.5,
+     "lostAll": 7.333,
+     "bossNormal": 1.267,
      "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.75,
-    "endWave": 13.167,
+    "won": 0.833,
+    "endWave": 13.083,
     "flawless": 0,
-    "lost10": 3.25,
-    "boss": 1.306,
-    "lostAll": 7.167,
-    "bossNormal": 1.333,
+    "lost10": 2.833,
+    "boss": 1.5,
+    "lostAll": 7.333,
+    "bossNormal": 1.267,
     "bossReached": 2.5
    },
    "weapons": [
@@ -1461,26 +1461,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.417,
-     "endWave": 11.667,
+     "won": 0.583,
+     "endWave": 12.583,
      "flawless": 0,
-     "lost10": 5.167,
-     "boss": 1.722,
-     "lostAll": 10.333,
-     "bossNormal": 1.476,
-     "bossReached": 1.75
+     "lost10": 4.333,
+     "boss": 1.556,
+     "lostAll": 9,
+     "bossNormal": 1.519,
+     "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.417,
-    "endWave": 11.667,
+    "won": 0.583,
+    "endWave": 12.583,
     "flawless": 0,
-    "lost10": 5.167,
-    "boss": 1.722,
-    "lostAll": 10.333,
-    "bossNormal": 1.476,
-    "bossReached": 1.75
+    "lost10": 4.333,
+    "boss": 1.556,
+    "lostAll": 9,
+    "bossNormal": 1.519,
+    "bossReached": 2.25
    },
    "weapons": [
     "bomberWing"
@@ -1493,26 +1493,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.75,
-     "endWave": 13.75,
+     "won": 0.833,
+     "endWave": 13.167,
      "flawless": 0,
-     "lost10": 1.417,
-     "boss": 1.389,
-     "lostAll": 5.583,
-     "bossNormal": 1.361,
-     "bossReached": 3
+     "lost10": 3,
+     "boss": 0.972,
+     "lostAll": 5.917,
+     "bossNormal": 0.933,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.75,
-    "endWave": 13.75,
+    "won": 0.833,
+    "endWave": 13.167,
     "flawless": 0,
-    "lost10": 1.417,
-    "boss": 1.389,
-    "lostAll": 5.583,
-    "bossNormal": 1.361,
-    "bossReached": 3
+    "lost10": 3,
+    "boss": 0.972,
+    "lostAll": 5.917,
+    "bossNormal": 0.933,
+    "bossReached": 2.5
    },
    "weapons": [
     "orbital"
@@ -1525,26 +1525,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.833,
-     "endWave": 13.833,
+     "won": 0.583,
+     "endWave": 12.417,
      "flawless": 0,
-     "lost10": 2.667,
+     "lost10": 4.417,
      "boss": 1.306,
-     "lostAll": 6.583,
-     "bossNormal": 1.306,
-     "bossReached": 3
+     "lostAll": 8.333,
+     "bossNormal": 1.407,
+     "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.833,
-    "endWave": 13.833,
+    "won": 0.583,
+    "endWave": 12.417,
     "flawless": 0,
-    "lost10": 2.667,
+    "lost10": 4.417,
     "boss": 1.306,
-    "lostAll": 6.583,
-    "bossNormal": 1.306,
-    "bossReached": 3
+    "lostAll": 8.333,
+    "bossNormal": 1.407,
+    "bossReached": 2.25
    },
    "weapons": [
     "supplyRun"
@@ -1557,25 +1557,25 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.5,
+     "won": 0.667,
      "endWave": 12.667,
      "flawless": 0,
-     "lost10": 3.833,
-     "boss": 1.694,
-     "lostAll": 8.917,
-     "bossNormal": 1.481,
+     "lost10": 4.083,
+     "boss": 1.278,
+     "lostAll": 7.917,
+     "bossNormal": 1.148,
      "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.5,
+    "won": 0.667,
     "endWave": 12.667,
     "flawless": 0,
-    "lost10": 3.833,
-    "boss": 1.694,
-    "lostAll": 8.917,
-    "bossNormal": 1.481,
+    "lost10": 4.083,
+    "boss": 1.278,
+    "lostAll": 7.917,
+    "bossNormal": 1.148,
     "bossReached": 2.25
    },
    "weapons": [
@@ -1589,26 +1589,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
+     "won": 0.5,
      "endWave": 12.667,
      "flawless": 0,
-     "lost10": 4.083,
-     "boss": 1.667,
-     "lostAll": 9.083,
-     "bossNormal": 1.679,
-     "bossReached": 2.333
+     "lost10": 3.167,
+     "boss": 1.806,
+     "lostAll": 8.583,
+     "bossNormal": 1.655,
+     "bossReached": 2.417
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
+    "won": 0.5,
     "endWave": 12.667,
     "flawless": 0,
-    "lost10": 4.083,
-    "boss": 1.667,
-    "lostAll": 9.083,
-    "bossNormal": 1.679,
-    "bossReached": 2.333
+    "lost10": 3.167,
+    "boss": 1.806,
+    "lostAll": 8.583,
+    "bossNormal": 1.655,
+    "bossReached": 2.417
    },
    "weapons": [
     "focus"
@@ -1621,26 +1621,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.333,
-     "endWave": 12.917,
+     "won": 0.833,
+     "endWave": 13.25,
      "flawless": 0,
-     "lost10": 3.583,
-     "boss": 1.917,
-     "lostAll": 9.333,
-     "bossNormal": 1.727,
-     "bossReached": 2.75
+     "lost10": 3.333,
+     "boss": 1.25,
+     "lostAll": 7.083,
+     "bossNormal": 1.133,
+     "bossReached": 2.5
     }
    },
    "all": {
     "n": 12,
-    "won": 0.333,
-    "endWave": 12.917,
+    "won": 0.833,
+    "endWave": 13.25,
     "flawless": 0,
-    "lost10": 3.583,
-    "boss": 1.917,
-    "lostAll": 9.333,
-    "bossNormal": 1.727,
-    "bossReached": 2.75
+    "lost10": 3.333,
+    "boss": 1.25,
+    "lostAll": 7.083,
+    "bossNormal": 1.133,
+    "bossReached": 2.5
    },
    "weapons": [
     "overdrive"
@@ -1653,26 +1653,26 @@
    "perMap": {
     "rigs": {
      "n": 12,
-     "won": 0.583,
-     "endWave": 11.667,
+     "won": 0.667,
+     "endWave": 12.75,
      "flawless": 0,
-     "lost10": 4.667,
-     "boss": 1.139,
-     "lostAll": 8.083,
-     "bossNormal": 0.905,
-     "bossReached": 1.75
+     "lost10": 3.417,
+     "boss": 1.417,
+     "lostAll": 7.667,
+     "bossNormal": 1.259,
+     "bossReached": 2.25
     }
    },
    "all": {
     "n": 12,
-    "won": 0.583,
-    "endWave": 11.667,
+    "won": 0.667,
+    "endWave": 12.75,
     "flawless": 0,
-    "lost10": 4.667,
-    "boss": 1.139,
-    "lostAll": 8.083,
-    "bossNormal": 0.905,
-    "bossReached": 1.75
+    "lost10": 3.417,
+    "boss": 1.417,
+    "lostAll": 7.667,
+    "bossNormal": 1.259,
+    "bossReached": 2.25
    },
    "weapons": [
     "shield"
@@ -1688,10 +1688,10 @@
      "won": 0.667,
      "endWave": 12.75,
      "flawless": 0,
-     "lost10": 4.25,
-     "boss": 1,
-     "lostAll": 7.25,
-     "bossNormal": 1.074,
+     "lost10": 4.75,
+     "boss": 1.611,
+     "lostAll": 9.583,
+     "bossNormal": 1.333,
      "bossReached": 2.25
     }
    },
@@ -1700,10 +1700,10 @@
     "won": 0.667,
     "endWave": 12.75,
     "flawless": 0,
-    "lost10": 4.25,
-    "boss": 1,
-    "lostAll": 7.25,
-    "bossNormal": 1.074,
+    "lost10": 4.75,
+    "boss": 1.611,
+    "lostAll": 9.583,
+    "bossNormal": 1.333,
     "bossReached": 2.25
    },
    "weapons": [

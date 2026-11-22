@@ -295,14 +295,14 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // Cannon's cloud sits where the rigs' short flights cross the lane, and
     // the Orbital Strike falls on a rig and what is round it. The Seeker
     // Pod's long flight is late for a missile off a rig a short way above
-    // the lane, the Gunship Pair and the Frigate Escort sail with the convoy
-    // and meet the fire at the ships, not at the rigs (forced, the combo
-    // sweep's singles at log v49: Railgun 5.5, Flak 5.5, Orbital 5.8
-    // against Seeker 8.3, Gunship Pair 7.8, Frigate Escort 7.6;
-    // docs/design/v3-ch3-rigs.md, The counters). Every weapon is in chapter
-    // 3's draft.
+    // the lane, the Shield takes one hit where a volley brings several, and
+    // the Tesla Arc's chain wants strings of small things close together,
+    // not missiles from four rigs (forced, the combo sweep's singles at log
+    // v49: Flak 5.8, Orbital 5.9, Railgun 6.1 against Seeker 8.3, Shield
+    // 8.9, Tesla 7.3; docs/design/v3-ch3-rigs.md, The counters). Every
+    // weapon is in chapter 3's draft.
     counters: ['railgun', 'flak', 'orbital'],
-    offCounter: ['seeker', 'gunships', 'frigate'],
+    offCounter: ['seeker', 'shield', 'tesla'],
     convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane under the four rigs, past the carrier in the middle, delivering in the east; the rigs are answered by shooting, not by sailing.',
     stretches: { danger: 'early', safe: 'late' },
     boss: {
