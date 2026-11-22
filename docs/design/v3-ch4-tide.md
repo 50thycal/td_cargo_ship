@@ -64,7 +64,11 @@ Bases and spots are counted from 1, as the pause screen counts them.
 
 ## The stretches
 
-From the record reports (24 seeds; `tools/v3/map-report/results/tide-*.md`): STRETCHES.
+From the record reports (24 seeds; `tools/v3/map-report/results/tide-*.md`), waves 1–9:
+
+- **Danger: the late third, the delivery end**, of the deep channel, where the bunched boxes are as the strikes land: 43% of the deep channel's hull damage (the usual Armory; 38–40% for the other Armories), 40% of all lanes'.
+- **Safe: the early third, the way in**: 23% of the deep channel's (22–26%), 26% pooled. The flats lane takes 7% of the hull damage at all (5.5 hull points a run against the deep channel's 77), most of it in its first third as ships come in.
+- Rule `m-stretches` passes for the three player Armories (no Armory: the deep channel's early third 26%).
 
 Rule `m-carrier`: the carrier (800, 748) sits by the middle of the flats lane, under neither the danger stretch nor the deep channel.
 
@@ -197,7 +201,22 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 
 ### The record reports (24 seeds, 900–923)
 
-RECORD
+| | latest / plating / usual / none |
+| --- | --- |
+| Won (normal) | 13% / 83% / 63% / 0% |
+| Waves 1–5 lost (normal) | 1.08 / 0.33 / 0.50 / 2.04 |
+| Boss r1 / r2 / r3 (normal, reached) | 1.10 / 2.80 / 1.86 (10, 10, 7); 0.33 / 1.10 / 1.14 (21); 0.71 / 1.06 / 2.31 (17, 17, 16); – |
+| `w-cliff` (tough) | FLAG (w3, w6) / FLAG (w8) / **PASS** / FLAG (w3, w5, w6): 24 seeds; on 192 seeds the usual set passes, the latest set doubles on w8, plating on w6 |
+| `w-early` close calls from wave 3 | **PASS** for all four (fewest 1.75–2.50 a run, wave 4) |
+| `w-budget` ±15% | FLAG on wave 4 (×0.82–0.83) for all four, on the build before wave 4's climb went from ×0.88 to ×0.92 (the final build; the usual set's report re-run on it below) |
+| `m-stretches` | **PASS**: hot late 38–43%, cold early 22–24% (deep channel); none: early 26% |
+| `g-warning` | PASS: 10.6 s → 7.5 s |
+| `w-first` | PASS (0.00; none 0.04) |
+| Kits (counter / off-counter): lost in waves 1–10 (tough) | latest 10.2 / 10.0; plating 4.2 / 3.4; usual 4.3 / 3.8; none 18.7 / 20.0 |
+
+**The counters do not do clearly better** (rule `m-kits`, 24 seeds, the kit as the bot's taste): the forced singles rank the Gravity Well, the Bomber Wing and Point Defense the best and the Tesla, the Grapnel and Full Steam among the worst, but with the bot drafting toward them the two kits come out level (the counter a few tenths of a ship worse with the usual and plating sets). Neither is trivial. A question for the player and for the next sweep.
+
+**Busier early waves** (the usual Armory's record): threats on the board at a moment 2.3, 1.6, 2.4 on waves 1–3, kills a minute 50, 43, 47.
 
 ### Tide difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
@@ -235,11 +254,12 @@ RECORD
 
 ## Checks run
 
-CHECKS
+`tsc`; `vitest --exclude '.claude/**'` (81 files, 1921 tests: all pass but one timing check, `tests/v3/mapReport.test.ts` "a quick real report" at 20.7 s against 20 s on a machine shared with two other agents' runs, which passes on its own (13/13); and one table fixed after the run, the map with no encounters yet is the Citadel); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs`, `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass on the merged build; `v3-map-cards.mjs`'s check "the Strait's card (not its debut)" failed twice under load before the merge, on a clean build of the base too, and passed after it); the map-lab baseline replays exactly.
 
 ## Tests
 
 - `tests/v3/encounters.test.ts` ("Tidewater Flats (log v59)"):
+  - the tide's turn (the player's note): every step of whole bot runs, the card (waves 1–10 and the boss, three seeds) and the campaign's clock (waves 1–6, two seeds): no hull on exposed sand, none in the flats at low water, none stalled for 5 s, ships crossed; the water level never jumps;
   - the tide's clock: under the layer each wave's low water is its ebb and `TIDE_LOW`, every crowd-aimed launch leaves at low water; the campaign, a rev 3 log and the shared wave keep the map's clock (no `ebb`);
   - at low water no new ship takes the flats lane; at high water both lanes take ships;
   - `'crowd'` goes for a ship among the most bunched hulls; `'flats'` for a ship on the flats lane;
@@ -248,7 +268,7 @@ CHECKS
   - Low Water: the round's own tide, every strike lit first and inside the low water, every launcher carries what it fires, more each round and longer low water; no firebomb; a rev 3 log and the campaign play the Firestorm; 15–30 s a round; the boss's name "Low Water" under the layer, "Firestorm" before it;
   - `REBUILT_MAPS` and `CHAPTER_FOUR_MAPS` (`['coves', 'delta', 'tide']`), the budget, legality, warning and replay checks cover the map.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2. `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command (flow step 2, the Box). `tests/v3/round12fixes.test.ts`: wave 1 opens with two strings of three drones and loses no ship (seeds 11–13, "you" and casual). `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 59.
-- `e2e/v3-map-cards.mjs`: the hub card says so. `e2e/v3-encounters.mjs`: the card opens with its encounters, no command and the wave's own tide; the pause screen's script names Low Water and the first ebb; skipped to the boss, the tide is out and a strike is in the air at the crowd (a shot at one pixel a point: `e2e/shots/v3-encounters/tide-boss.png`).
+- `e2e/v3-map-cards.mjs`: the hub card says so. `e2e/v3-encounters.mjs`: the card opens with its encounters, no command and the wave's own tide; wave 1 played through its ebb with shots at high, falling and low tide (`tide-high.png`, `tide-falling.png`, `tide-low.png`), none on the dry flats at low water; the pause screen's script names Low Water and the first ebb; skipped to the boss, the tide is out and a strike is in the air at the crowd (a shot at one pixel a point: `e2e/shots/v3-encounters/tide-boss.png`).
 
 ## What to look for when you play
 
