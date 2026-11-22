@@ -5890,8 +5890,8 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  the middle (base 1: heavies, clusters), the east-middle (base 2:
  *  supersonic, guided), the east (base 3: drones, motherships, shells); the
  *  sub spots between the lanes, west (0) and east (1). The danger is the
- *  way in at low water (the new ships crowd into the deep channel in the
- *  west); the safe stretch the delivery end. */
+ *  delivery end, the lanes' late third (where the bunched boxes are as the
+ *  strikes land); the safe stretch the way in. */
 export const TIDE_EBB = [0.5, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
 export const TIDE_LOW = [9, 11, 13, 15, 16, 16, 17, 17, 18, 20];
 const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });

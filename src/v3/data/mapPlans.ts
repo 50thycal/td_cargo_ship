@@ -433,7 +433,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     counters: ['well', 'aegis', 'bomberWing'],
     offCounter: ['tesla', 'grapnel', 'fullSteam'],
     convoy: 'The map\'s own convoy, no commands: a Box (three tight abreast: a direct hit does a hit less, splash ×1.8) at flow step 2, west to east over the flats lane by the carrier and the deep channel under the shore at high water, all of them in the deep channel at low water; the tide steers the ships, and the fire is answered by shooting.',
-    stretches: { danger: 'early', safe: 'late' },
+    stretches: { danger: 'late', safe: 'early' },
     boss: {
       plan: 'Low Water (in place of the Firestorm: the Incendiary Missile is a regular of chapter 4\'s waves): each round the tide runs out early and stays out, every ship crowds into the deep channel, and the whole north shore fires at the crowd at once, strike after strike, its silos lit first: two strikes in round 1, three in rounds 2 and 3, more silos and longer low water each round (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Firestorm). Rising, below the asked 1.5 / 2 / 2.5 a round where the loss limit needs it, as on every rebuilt map.',
       botTarget: 2,
