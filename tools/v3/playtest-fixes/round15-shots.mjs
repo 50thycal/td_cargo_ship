@@ -90,7 +90,8 @@ try {
         return { wave: g.wave, phase: g.phase, tow: tow ? { x: Math.round(tow.x), to: b.x } : null };
       });
       if (st.phase !== 'wave') await onward(p);
-      if (st.tow && Math.abs(st.tow.x - st.tow.to) < 420 && Math.abs(st.tow.x - st.tow.to) > 200) break;
+      // Mid-approach: on the water, still well short of its station.
+      if (st.tow && st.tow.x > 110 && st.tow.x < 1490 && Math.abs(st.tow.x - st.tow.to) > 120) break;
     }
     await p.waitForTimeout(150);
     out.tow = st;

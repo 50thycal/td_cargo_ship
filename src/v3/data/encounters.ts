@@ -4306,7 +4306,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The shot split: a mine and a shell in the same seconds, in place of the wave\'s own mines and most of its shells.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.4, from: base(7) },
       { at: 0.3, plus: 7, kind: 'ballistic', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
     ],
@@ -4573,7 +4573,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
-      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'mid' },
     ],
     replaces: { ballistic: 7, guided: 1 },
   },
@@ -5379,7 +5379,7 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // had none).
   ['rigs-point-blank', [fill(0.55, 2, 3), fill(0.85, 2, 3)]],
   ['rigs-bring-down', [fill(0.1, 3, 0), fill(0.45, 2, 3), fill(0.8, 2, 3)]],
-  ['rigs-under', [fill(0.15, 3, 3)]],
+  ['rigs-under', [fill(0.15, 2, 3)]],
   ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 2, 3]),
   // The Black Strait (log v52): the far shore's two drone silos, the west
   // and the east, under the beam (the dark bank's drones are the

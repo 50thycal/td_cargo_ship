@@ -431,20 +431,21 @@ function drawTug(ctx: CanvasRenderingContext2D, x: number, y: number, dir: numbe
     const age = (t * 1.6 + k / 6) % 1;
     ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - age)})`;
     ctx.beginPath();
-    ctx.ellipse(x - dir * (26 + age * 46), y + bob + Math.sin(k * 2.1 + t * 7) * 5 * age, 5 + age * 9, 3 + age * 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(x - dir * (34 + age * 46), y + bob + Math.sin(k * 2.1 + t * 7) * 5 * age, 5 + age * 9, 3 + age * 5, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   // The bow wave: a white V off the stem.
   ctx.strokeStyle = 'rgba(255,255,255,0.75)';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(x + dir * 30, y + bob);
-  ctx.quadraticCurveTo(x + dir * 18, y + bob - 16, x - dir * 4, y + bob - 22);
-  ctx.moveTo(x + dir * 30, y + bob);
-  ctx.quadraticCurveTo(x + dir * 18, y + bob + 16, x - dir * 4, y + bob + 22);
+  ctx.moveTo(x + dir * 40, y + bob);
+  ctx.quadraticCurveTo(x + dir * 24, y + bob - 20, x - dir * 4, y + bob - 28);
+  ctx.moveTo(x + dir * 40, y + bob);
+  ctx.quadraticCurveTo(x + dir * 24, y + bob + 20, x - dir * 4, y + bob + 28);
   ctx.stroke();
   ctx.translate(x, y + bob);
-  ctx.scale(dir, 1);
+  // A little over life size, so it reads at a phone's scale.
+  ctx.scale(dir * 1.3, 1.3);
   // Hull: a round-bowed tug, fendered.
   ctx.fillStyle = '#b83a2c';
   ctx.strokeStyle = '#1d1d22';
@@ -641,7 +642,7 @@ function drawRig(ctx: CanvasRenderingContext2D, g: Game, th: Threat, t: number):
     // the water as it slackens at the end.
     const ax = x + dir * 36;
     const ay = y + 6;
-    const hx = tx - dir * 22;
+    const hx = tx - dir * 29;
     const hy = ty;
     const sag = 6 + 22 * ease + Math.sin(t * 3.1) * 2;
     ctx.strokeStyle = 'rgba(20,20,24,0.55)';

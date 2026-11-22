@@ -245,7 +245,7 @@ export const MINE = {
    *  would sail onto it within this many seconds (about 90-110 px of a
    *  ship's way and the mine's drift): a tight but fair moment for a shot
    *  or a Hold. */
-  surface: 2.4,
+  surface: 2.5,
 } as const;
 
 /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`, and its Carpet Run under the
