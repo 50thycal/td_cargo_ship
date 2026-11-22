@@ -372,7 +372,8 @@ export class Mimic {
     this.rails(g, io);
     this.tempo(g, io);
     for (const th of g.threats)
-      if (!this.noticeAt.has(th.id)) {
+      // Log v55: a hidden mine is noticed only once it surfaces.
+      if (!this.noticeAt.has(th.id) && !th.hidden) {
         let r = this.logNormal(p.react) * (p.reactBy?.[th.kind] ?? 1);
         if (p.reactFloor) r = Math.max(p.reactFloor, r);
         // Seen only once it looks back, and a little slower then.

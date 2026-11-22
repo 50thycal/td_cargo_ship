@@ -1545,6 +1545,8 @@ function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat)
 }
 
 function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
+  // Log v55: a hidden mine is out of sight until a ship comes close.
+  if (th.hidden) return;
   if (drawNewThreat(ctx, g, th)) return;
   if (drawFoe(ctx, g, th)) return;
   const heading = Math.atan2(th.vy, th.vx) || th.heading;

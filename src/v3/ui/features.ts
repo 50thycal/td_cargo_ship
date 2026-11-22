@@ -330,9 +330,21 @@ export function drawTracked(ctx: CanvasRenderingContext2D, g: Game): void {
 /** Draws the new kinds; false for a kind render.ts draws itself. */
 export function drawNewThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): boolean {
   switch (th.kind) {
-    case 'mine':
-      drawMineShape(ctx, th.x, th.y, 1, g.t + th.phase);
+    case 'mine': {
+      // Log v55: a mine that has just surfaced bobs up out of the water,
+      // ringed for a moment so the eye finds it in the ship's path.
+      const up = th.surfacedT === undefined ? 1 : Math.min(1, (g.t - th.surfacedT) / 0.25);
+      if (th.surfacedT !== undefined && g.t - th.surfacedT < 1.2) {
+        const a = 1 - (g.t - th.surfacedT) / 1.2;
+        ctx.strokeStyle = `rgba(255,90,90,${0.9 * a})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(th.x, th.y, 22 + 26 * (1 - a), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      drawMineShape(ctx, th.x, th.y, 0.55 + 0.45 * up, g.t + th.phase);
       return true;
+    }
     case 'fastboat':
       drawBoat(ctx, th);
       return true;

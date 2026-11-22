@@ -5498,6 +5498,34 @@ export function signatureOf(map: MapId, wave: number, setup: Pick<EncounterSetup
   return sig && wave >= sig.from ? sig : undefined;
 }
 
+/** Log v55 (round 15, the player on Sowers' Reach: "have the mines surface
+ *  once the ships are close to them"): on these maps, under the encounter
+ *  layer, every mine drifts hidden (no launch warning, nothing to see or
+ *  shoot) until a ship's sailing would bring it onto one within
+ *  `MINE.surface` s; then it surfaces in that ship's path. The boss rounds
+ *  too. A campaign run, a rev 3 log and the shared wave (`only: []`) keep
+ *  every mine in sight from its chute, as before. */
+export const HIDDEN_MINES: readonly MapId[] = ['sowers'];
+
+/** Log v55 (round 15, the player on the Rig Field: "it has to consume X
+ *  amount of your ammo to be destroyed"): on these maps, under the
+ *  encounter layer, a rig's hits count the player's shots, not their
+ *  damage (sim/game.ts `rigShot`). */
+export const SHOT_RIGS: readonly MapId[] = ['rigs'];
+
+type LayerSetup = Pick<EncounterSetup, 'rev' | 'only'> | null | undefined;
+const layerOn = (setup: LayerSetup) => !!setup && setup.rev >= 4 && !(setup.only && !setup.only.length);
+
+/** Do this map's mines drift hidden until a ship comes close (log v55)? */
+export function hiddenMinesOn(map: MapId, setup: LayerSetup): boolean {
+  return HIDDEN_MINES.includes(map) && layerOn(setup);
+}
+
+/** Do this map's rigs count shots, not damage (log v55)? */
+export function shotRigsOn(map: MapId, setup: LayerSetup): boolean {
+  return SHOT_RIGS.includes(map) && layerOn(setup);
+}
+
 /** A map's boss rounds under the encounter layer (rev 4, map rebuild phase
  *  4: rule w-boss, "harder each round, about a ship a round for a good
  *  player"). The map's own event plays as it is, plus, in each run (1 to

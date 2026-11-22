@@ -238,7 +238,15 @@ export const POST = { radarSlow: 0.65, targetShare: 0.22, batteryGap: 1.3, batte
 export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 
 /** Mines: how near a hull sets one off, and their wobble on the current. */
-export const MINE = { hitRadius: 30, wobble: 6 } as const;
+export const MINE = {
+  hitRadius: 30,
+  wobble: 6,
+  /** Log v55 (round 15, HIDDEN_MINES): a hidden mine surfaces once a ship
+   *  would sail onto it within this many seconds (about 70-90 px of a
+   *  ship's way and the mine's drift): a tight but fair moment for a shot
+   *  or a Hold. */
+  surface: 1.8,
+} as const;
 
 /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`, and its Carpet Run under the
  *  encounter layer): a sowing bomber lays its mines in place of missiles,
