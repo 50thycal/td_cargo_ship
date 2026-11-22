@@ -138,7 +138,7 @@ One encounter a wave, none repeated, each with its filler on waves 1–6 (a stri
 
 **Wave 1** loses no ship on the record reports; over 60 seeds (`tools/v3/lantern/wave1.ts`) the casual bot loses 0.17 ships a run on it and the "you" bot 0.05, all to drones (its two drones from the dark bank are the shortest drone flight of any map's wave 1). The Battery's: 0.15 and 0.02.
 
-**Wave 10, the climax:** level with wave 9 rather than above it (the usual Armory 0.76 against 0.89 on the normal runs, 1.11 against 1.13 tough; the latest set 1.03 against 1.19, 2.02 against 1.91 tough); not a wall: no step to it doubles.
+**Wave 10, the climax:** the hardest regular wave for the usual Armory on the final build (0.96 against wave 9's 0.79), level with wave 9 for the others (the latest set 1.03 against 1.19, tough 2.02 against 1.91; the plating set 0.69 against 0.78); not a wall: no step to it doubles.
 
 ## The boss plan: the Bombardment along the shore
 
@@ -161,7 +161,7 @@ How it reads (192 seeds, normal runs that reached it):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 0.06 / 0.10 / 0.06 | **0.45 / 0.85 / 1.69** |
+| usual | 0.06 / 0.10 / 0.06 | **0.46 / 0.84 / 1.35** |
 | latest | 0.13 / 0.08 / 0.21 | **0.15 / 0.60 / 1.44** |
 | plating | 0.02 / 0.01 / 0.09 | **0.11 / 0.28 / 0.77** |
 
@@ -173,20 +173,22 @@ Rising with every Armory (before it was flat and near nothing), under the asked 
 
 ### The headline (192 seeds, normal runs)
 
+The usual Armory's row is the final build; the latest, plating and no-Armory rows (and every tough curve) one drone earlier in wave 6 (the encounter test's planned budget took one out at the end).
+
 | Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 8 | Wave 10 |
 | --- | --- | --- | --- | --- | --- |
-| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 70% → **55%** | 0.38 → **0.80** | 3.31 → 3.79 | 0.65 → 0.60 | 1.24 → 0.76 |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 70% → **58%** | 0.38 → **0.80** | 3.31 → 3.84 | 0.65 → 0.49 | 1.24 → 0.96 |
 | latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 20% → **32%** | 0.95 → 1.04 | 5.51 → 5.01 | 1.67 → 1.02 | 1.96 → 1.03 |
 | plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 48% → **74%** | 0.44 → **0.45** | 3.86 → 3.38 | 0.99 → 0.60 | 1.24 → 0.69 |
 | none | 0% → 1% | 2.42 → 2.59 | 5.67 → 5.92 | 2.19 → 1.67 | – |
 
-The usual Armory's "before" is on the old setup (today's controls, where the bot opens the flow to step 3–4 and spreads the ships). On the map's own convoy with no encounters the same bot won 9% (step 1) or 18% (flow 2; waves 1–5 1.13, 1–10 5.68): measured that way, the rebuild takes the usual Armory from 18% to 55%.
+The usual Armory's "before" is on the old setup (today's controls, where the bot opens the flow to step 3–4 and spreads the ships). On the map's own convoy with no encounters the same bot won 9% (step 1) or 18% (flow 2; waves 1–5 1.13, 1–10 5.68): measured that way, the rebuild takes the usual Armory from 18% to 58%.
 
 Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 
 | Armory | Before | After |
 | --- | --- | --- |
-| usual | 0 .03 .05 .16 .14 .15 .28 .65 .81 1.24 · boss .06 .10 .06 | .02 .10 .07 .25 .36 .46 .63 .60 .89 .76 · boss .45 .85 1.69 |
+| usual | 0 .03 .05 .16 .14 .15 .28 .65 .81 1.24 · boss .06 .10 .06 | .02 .10 .07 .25 .36 .46 .63 .49 .79 .96 · boss .46 .84 1.35 |
 | latest | 0 .09 .07 .39 .41 .70 .85 1.67 1.68 1.96 · boss .13 .08 .21 | .01 .18 .11 .23 .52 1.04 .90 1.02 1.19 1.03 · boss .15 .60 1.44 |
 | plating | 0 .03 .02 .22 .17 .25 .50 .99 1.09 1.24 · boss .02 .01 .09 | .01 .05 .04 .15 .21 .49 .61 .60 .78 .69 · boss .11 .28 .77 |
 
@@ -230,18 +232,18 @@ The counter kit wins more often and loses fewer ships than the off-counter kit w
 
 ### Black Strait difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
-- **The usual Armory wins 55%**, in the band; **the plating set 74%**, over it, as on the Battery (72%) and Sowers (83%); **the latest set 32%**, under it (the Battery's 28%, Sowers' 56%).
+- **The usual Armory wins 58%** (55–58% over the last three builds), in the band; **the plating set 74%**, over it, as on the Battery (72%) and Sowers (83%); **the latest set 32%**, under it (the Battery's 28%, Sowers' 56%).
 - **Waves 1–5:** 0.80 for the usual Armory (the top of the band), 0.45 for the plating set; the latest set 1.04, over.
-- **The climb from wave 4 to 9** rises for the usual Armory (.25 .36 .46 .63 .60 .89): wave 8 level with wave 7.
-- **Wave 10 is not clearly the hardest**: 0.76 for the usual Armory on the normal runs (wave 9 0.89), 1.11 on the tough runs (wave 9 1.13); on the previous build, one shell apart in waves 6–7, it was 1.11 against 0.79. Within the noise, wave 9 and 10 are level; not a wall either way.
+- **The climb from wave 4 to 9** rises for the usual Armory (.25 .36 .46 .63 .49 .79, then .96 on wave 10): wave 8 dips under wave 7.
+- **Wave 10** is the hardest regular wave for the usual Armory on the final build (0.96; tough 1.11 against wave 9's 1.13 one drone earlier): within the noise, waves 9 and 10 are close; not a wall either way.
 
 ## What is not satisfied, or uncertain
 
 - **The bot cannot see the night.** The sim has no darkness (it is drawn only): the bot sees every glow as a threat of its kind from the moment it launches. A player reads a glow, not a kind, and the dark bank's shells and guns will be harder for a player than for the bot. Not modelled, as Sowers' mines and Hold were not: a modest "dark reaction" handicap on the bot was considered and left out (no player data to fit it to, and it would make this map's bot numbers incomparable with every other map's).
 - **Air Strike leans hard**: in all five best kits and second alone; and the #1 kit is the Battery's #1. Diversity passes for the best weapon alone (the Scattergun is its own) and for three of five kits.
-- **The win rates of the three Armories spread wide** (32% / 55% / 74%), as on the Battery: the plating set shrugs off chip damage, the latest set (no Damage Control) does not.
-- **The boss is under 1.5 / 2 / 2.5** (0.45 / 0.85 / 1.69 for the usual Armory) to keep the win rate, as on every rebuilt map.
-- **Wave 10 is level with wave 9**, not clearly above it (above).
+- **The win rates of the three Armories spread wide** (32% / 58% / 74%), as on the Battery: the plating set shrugs off chip damage, the latest set (no Damage Control) does not.
+- **The boss is under 1.5 / 2 / 2.5** (0.46 / 0.84 / 1.35 for the usual Armory) to keep the win rate, as on every rebuilt map.
+- **Wave 10 is close to wave 9**: above it for the usual Armory on the final build, level with it for the latest and plating sets.
 - **The latest set is under the band** (32%), its waves 1–5 over (1.04).
 - **Flow 2, not the campaign's step 1**: the convoy sails more ships than the Battery's and Sowers'. It is the chapter 2 maps' flow, but a change from how the campaign plays this map.
 - **Wave 1 with the casual bot**: 0.17 ships a run (the two drones out of the dark bank, the shortest drone flight of any wave 1). The record bot loses none.
