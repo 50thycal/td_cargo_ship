@@ -34,7 +34,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, addFx, addPickup, branchMouth, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -80,6 +80,9 @@ export interface EventRun {
   bossSpeed: number;
   /** Firestorm: how long its fireballs burn. */
   linger?: number;
+  /** The Delta's Burning Delta (log v54): the branches (lane indices) each
+   *  burn of the round sets alight, picked as its mouths are lit. */
+  burning?: number[][];
   /** Shield Wall: the block's ids. */
   block: number[];
   /** Shield Wall: each row's launch point, the ship the block is after,
@@ -556,6 +559,43 @@ function rigBarrage(g: Game, ev: EventRun, s: EventStep): void {
   g.queue.sort((a, b) => a.at - b.at);
 }
 
+/** The Delta's Burning Delta (log v54): how long a branch's mouth is lit
+ *  before its oil burns (the readable warning: anything that can sink a
+ *  ship is warned at least 2.5 s ahead). */
+export const DELTA_BURN = { warn: 2.5 };
+
+/** A Burning Delta step (MAP_BOSS `burn`): a burn's mouths light (the
+ *  branch the switch is set to first, then the next in the switch's
+ *  order), they catch fire, or the round's added launches. */
+function burningDelta(g: Game, ev: EventRun, s: EventStep): void {
+  if (s.op === 'fire') {
+    fireStep(g, ev, s.k);
+    return;
+  }
+  const R = bossRound(g, ev)!;
+  const b = R.burn![s.k];
+  const fork = g.map.fork;
+  if (!fork) return;
+  const burning = (ev.burning ??= []);
+  if (s.op === 'lit') {
+    const n = fork.lanes.length;
+    burning[s.k] = Array.from({ length: Math.min(b.n, n) }, (_, i) => fork.lanes[(g.forkLane + i) % n]);
+    for (const lane of burning[s.k]) {
+      const m = branchMouth(g, lane);
+      addFx(g, 'launch', m.x, m.y, { life: DELTA_BURN.warn, r: FOE.cloud.radius });
+      addFx(g, 'text', m.x, m.y - FOE.cloud.radius - 14, { life: DELTA_BURN.warn, text: 'FIRE' });
+    }
+    if (burning[s.k].length) cue(g, 'raid.warning', fork.x, fork.y);
+    return;
+  }
+  for (const lane of burning[s.k] ?? []) {
+    const m = branchMouth(g, lane);
+    g.foe.marks.push({ id: g.nextId++, kind: 'fire', x: m.x, y: m.y, t: 0, dur: b.dur, dose: {} });
+    addFx(g, 'burst', m.x, m.y, { life: 0.6, r: FOE.cloud.radius * 0.8 });
+    cue(g, 'foe.ignite', m.x, m.y);
+  }
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -691,6 +731,15 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(1, () => 0, 'yard'), ...steps(E.swarms, (k) => 5 + k * 7, 'swarm')];
     }
     case 'escort-run': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch4-delta.md): the
+      // Delta's boss is the Burning Delta, burning oil across the fork's
+      // branches and a raid at the ships bunched on the way in (MAP_BOSS
+      // `burn`), in place of the guarded heavy.
+      const R = bossRound(g, ev);
+      if (R?.burn) {
+        ev.burning = [];
+        return [...R.burn.flatMap((b, k) => [{ at: B + Math.max(0, b.at - DELTA_BURN.warn), op: 'lit', k }, { at: B + b.at, op: 'burn', k }]), ...fireSteps(R)];
+      }
       const E = EV['escort-run'];
       return [...steps(1, () => 0, 'escort'), ...steps(E.swarms, (k) => 5 + k * 7, 'swarm')];
     }
@@ -1089,6 +1138,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'escort-run': {
+      if (s.op === 'lit' || s.op === 'burn' || s.op === 'fire') {
+        burningDelta(g, ev, s);
+        return;
+      }
       if (s.op === 'swarm') {
         swarm(g, ev, EV['escort-run'].size);
         return;

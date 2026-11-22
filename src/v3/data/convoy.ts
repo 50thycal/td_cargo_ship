@@ -157,6 +157,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // schedule, as the Battery's, and no command: the rigs are answered by
   // shooting them, not by sailing.
   rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
+  // Chapter 4. The Delta (docs/design/v3-ch4-delta.md, log v54): the
+  // campaign's own schedule and no command: the fork's switch (a tap on its
+  // buoy) is the map's own way to steer the convoy, and stays what it is.
+  delta: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {
