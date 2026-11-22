@@ -4836,18 +4836,18 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'The south cove',
     callout: 'Boats from both shores',
-    premise: 'Boats come at the lead ship from the north-east cove and then the south cove, from both sides of the lane by the delivery end, and a guided missile off the north shore follows them.',
+    premise: 'A boat comes at the lead ship from the north-east cove and then one out of the south cove, on the ships\' own side, at the ship halfway along, and a guided missile off the north shore follows them.',
     decision: 'The first stakes: two boats from two sides at one ship, two seconds out. Which first?',
     counters: 'One boat each side as they leave the coves; the missile after.',
     succeeds: 'A close call at the delivery end in most runs; a good player loses under half a ship.',
     notes: {
       sites: 'The north-east cove (1401, 150) and the south cove (1238, 820; on the ships\' own side), a fast boat each, and a second out of the south cove; the north-middle silo (640, 100; a guided missile, a long flight).',
-      target: 'The lead ship, in the east (the danger stretch), from both sides; the ships coming in (the south cove\'s second boat, a run along the lane).',
+      target: 'The lead ship, in the east (the danger stretch; the north-east cove\'s boat, the missile); the ship halfway along and the ships coming in (the south cove\'s boats, from the ships\' own side).',
       usesMap: 'The map\'s danger stretch: the two coves face each other across the lane by the delivery end; in place of the wave\'s own fast boats and guided missile.',
     },
     beats: [
       { at: 0.35, kind: 'fastboat', count: 1, from: base(6), aim: 'lead' },
-      { at: 0.35, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'lead' },
+      { at: 0.35, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid' },
       { at: 0.35, plus: 5, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
       { at: 0.75, kind: 'fastboat', count: 1, from: base(7), aim: 'rear' },
       { at: 0.15, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
@@ -4887,19 +4887,19 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Both ends',
     callout: 'Shells and boats',
-    premise: 'Shells from the far silo fall on the ships coming in while boats come out of the north-east cove at the lead ship and the south cove down the lane: the two ends of the convoy at once.',
+    premise: 'Shells from the far silo fall on the ships coming in while boats come out of the north-east cove at the lead ship and the south cove at the ship halfway along: the two ends of the convoy at once.',
     decision: 'The shells at the back or the boats at the front?',
     counters: 'The shells as they climb (long warning), the boats as they leave the coves (short).',
     succeeds: 'A close call at one end in most runs; a good player loses under a ship.',
     notes: {
       sites: 'The far north-west silo (shells, drones), the north-east cove and the south cove (fast boats).',
-      target: 'The ships coming in (the shells, the south cove\'s boat); the lead ship (the north-east cove\'s boat); the ship halfway along (the drones).',
+      target: 'The ships coming in (the shells); the lead ship (the north-east cove\'s boat); the ship halfway along (the south cove\'s boat, a run up the lane, and the drones).',
       usesMap: 'The far silo\'s long flight against the coves\' short run, at the two ends of the convoy; in place of the wave\'s own shells and fast boats.',
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(0), aim: 'rear' },
       { at: 0.3, plus: 2, kind: 'fastboat', count: 1, from: base(6), aim: 'lead' },
-      { at: 0.3, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'rear' },
+      { at: 0.3, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
       { at: 0.5, kind: 'drone', count: 2, gap: 0.35, from: base(0), aim: 'lead' },
@@ -4912,24 +4912,25 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [6],
     role: 'combine',
     name: 'Periscope by the cove',
-    callout: 'A periscope, and fire',
-    premise: 'A sub surfaces off the north-east cove and lobs two shells at the lead ship, while a fire ship comes out of the north-west cove at the ships coming in.',
-    decision: 'The front or the back: the sub\'s shells at the delivery end, or the fire ship at the way in?',
-    counters: 'The shells from the sub as they climb; the fire ship at the cove mouth.',
+    callout: 'A periscope by the cove',
+    premise: 'A sub surfaces off the north-east cove and lobs two shells at the lead ship, while a boat comes out of the north-west cove at the ships coming in.',
+    decision: 'The front or the back: the sub\'s shells at the delivery end, or the boat at the way in?',
+    counters: 'The shells from the sub as they climb; the boat at the cove mouth.',
     succeeds: 'A close call at one end in most runs.',
     notes: {
-      sites: 'The sub spot off the north-east cove (1520, 262; 2 shells), the north-west cove (381, 150; a fire ship), the far north-west silo (drones).',
-      target: 'The lead ship (the sub); the ships coming in (the fire ship, the drones).',
-      usesMap: 'Both ends of the convoy at once (rule g-split): the sub by the danger stretch, a fire ship at the way in; in place of the wave\'s own shells and a fast boat.',
+      sites: 'The sub spot off the north-east cove (1520, 262; 2 shells), the north-west cove (381, 150; a fast boat), the far north-west silo (drones).',
+      target: 'The lead ship (the sub); the ships coming in (the boat, the drones).',
+      usesMap: 'Both ends of the convoy at once (rule g-split): the sub by the danger stretch, a boat at the way in; in place of the wave\'s own shells, clusters and a fast boat (drones in their place).',
     },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 2, gap: 1.4, from: sub(1), aim: 'lead' },
-      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'rear', fire: true },
+      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'rear' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.9, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
     ],
-    replaces: { ballistic: 9, drones: 5, extras: { fastboat: 1 } },
+    replaces: { ballistic: 9, drones: 5, extras: { fastboat: 1, cluster: 2 } },
   },
   {
     id: 'coves-crossfire',
@@ -4988,32 +4989,33 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     replaces: { guided: 8, drones: 4, ballistic: 11, extras: { fastboat: 5, cluster: 2 } },
   },
   {
-    id: 'coves-mothership',
+    id: 'coves-facing',
     map: 'coves',
     waves: [9],
     role: 'escalate',
-    name: 'Mothership by the coves',
-    callout: 'A mothership, and fire',
-    premise: 'A drone mothership crawls off the south-east shore over the delivery end, and as it does fire ships come out of the north-east and south coves at the ships near them.',
-    decision: 'The mothership (its drones come from wherever it is) or the fire ships at the cove mouths?',
-    counters: 'The fire ships at the cove mouths, the mothership before it is over the convoy.',
-    succeeds: 'A close call in the east in most runs; the hardest regular wave with wave 10.',
+    name: 'Face to face',
+    callout: 'Both coves at once',
+    premise: 'Boats come out of the north-east and south coves at once at the ships passing between them, then one more from each down the lane, while shells from the far silo fall on the ships coming in.',
+    decision: 'Four boats from two sides by the delivery end, shells at the back: which end do you hold?',
+    counters: 'The boats as they leave the coves, one side then the other; the shells as they climb.',
+    succeeds: 'A close call in the east in most runs; wave 10 is still the hardest.',
     notes: {
-      sites: 'The south-east shore silo (1480, 810; a mothership), the north-east cove and the south cove (fire ships), the far north-west silo (shells).',
-      target: 'The convoy at the delivery end (the mothership); the ship nearest each cove (the fire ships); the ships coming in (the shells).',
-      usesMap: 'The danger stretch at its fullest: the mothership over the east and both of its coves burning; in place of the wave\'s own mothership, fast boats and shells.',
+      sites: 'The north-east cove (1401, 150) and the south cove (1238, 820), two fast boats each; the far north-west silo (shells, drones).',
+      target: 'The ship nearest each cove as its first boat leaves (the ships between the two coves: the danger stretch); the ships coming in (each cove\'s second boat, a run down the lane, and the shells).',
+      usesMap: 'The danger stretch at its fullest, its two coves face to face; in place of the wave\'s own fast boats, motherships, shells, clusters and guided missiles (drones in their place).',
     },
     beats: [
-      { at: 0.25, kind: 'mothership', count: 1, from: base(3), aim: 'lead' },
-      { at: 0.25, plus: 4, kind: 'fastboat', count: 1, from: base(6), aim: 'near', fire: true },
-      { at: 0.25, plus: 4.5, kind: 'fastboat', count: 1, from: base(7), aim: 'near' },
+      { at: 0.3, kind: 'fastboat', count: 1, from: base(6), aim: 'near' },
+      { at: 0.3, plus: 0.6, kind: 'fastboat', count: 1, from: base(7), aim: 'near' },
+      { at: 0.3, plus: 3, kind: 'fastboat', count: 1, from: base(6), aim: 'rear' },
+      { at: 0.3, plus: 3.6, kind: 'fastboat', count: 1, from: base(7), aim: 'rear' },
       { at: 0.6, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'lead' },
     ],
-    replaces: { ballistic: 11, guided: 9, extras: { fastboat: 2, mothership: 1, cluster: 2 } },
+    replaces: { ballistic: 11, guided: 9, extras: { fastboat: 4, mothership: 2, cluster: 2 } },
   },
   {
     id: 'coves-every-cove',
@@ -5327,7 +5329,7 @@ const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
  *  controls before, where a Box takes a hit less from every ram), so every
  *  wave but the first sends a little less, the most off wave 9, within
  *  ±15% of each wave and never more than the ten. */
-const COVES_CLIMB = [1, 0.92, 0.9, 0.9, 0.9, 0.88, 0.88, 0.88, 0.86, 0.92];
+const COVES_CLIMB = [1, 0.92, 0.9, 1, 1, 0.85, 0.88, 0.95, 0.85, 0.95];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -5885,15 +5887,15 @@ export const RIGS_BOSS_ROUNDS: BossRound[] = [
 export const COVES_BOSS_ROUNDS: BossRound[] = [
   {
     fleet: { coves: [5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 4, aim: 'mid' }],
+    fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 4, aim: 'mid' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
   },
   {
     fleet: { coves: [4, 5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
     fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 7, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
   },
   {
-    fleet: { coves: [4, 5, 6, 7], first: 2, every: 8, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'guided', at: 10, count: 1, base: 3, aim: 'lead' }],
+    fleet: { coves: [4, 5, 6, 7], first: 2, every: 10, sorties: 2, warn: 2 },
+    fire: [],
   },
 ];
 
