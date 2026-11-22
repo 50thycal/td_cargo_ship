@@ -99,16 +99,16 @@ Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, v
 
 ## Diversity: are the Black Strait's best kits its own?
 
-Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16) and compared with the five chapter 2 maps, the Battery and Sowers from their last sweeps (`docs/design/v3-combo-diversity.md`, "The Black Strait"; `python3 tools/v3/lantern/compare.py`).
+Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16) and compared with the five chapter 2 maps, the Battery, Sowers and the Rig Field from their last sweeps (`docs/design/v3-combo-diversity.md`, "The Black Strait"; `python3 tools/v3/lantern/compare.py`).
 
 | | Result |
 | --- | --- |
 | Top 5 kits | **Air Strike + Frigate Escort + Supply Run** 2.9, Air Strike + Gunship Pair + Supply Run 3.1, Air Strike + Drone Screen + Shield 3.5, Air Strike + Railgun + Supply Run 3.6, Air Strike + Scattergun + Flak Cannon 3.6 (±0.5–0.6 each) |
-| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | 0 / 0 / 0 / 0 / **0.11** / **0.11** / 0 |
+| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field | 0 / 0 / 0 / 0 / **0.11** / **0.11** / 0 / 0 |
 | The same, against itself (two halves of its seeds) | 0.67 |
 | #1 kit | **the Battery's #1** (its #2 is in Saltgate's top 5) |
 | Best weapon alone | **Scattergun** 3.8 (the best single on no other rebuilt map) |
-| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers | 0.50 / 0.76 / 0.38 / 0.59 / 0.32 / 0.62 / 0.59 |
+| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field | 0.50 / 0.76 / 0.38 / 0.59 / 0.32 / 0.62 / 0.59 / 0.75 |
 | Air Strike | 2nd of 25 alone (4.5); in **all five** of the best kits |
 
 - **The best weapon alone is its own** (the Scattergun), and three of its five best kits are its own.

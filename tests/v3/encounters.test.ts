@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { PLANE, RAID, SOW, SUB, VIEW } from '../../src/v3/data/config';
+import { PLANE, RAID, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -44,7 +44,7 @@ import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { applyEncounters, createGame, damageThreat, step, vipRoute, type Game } from '../../src/v3/sim/game';
+import { applyEncounters, createGame, damageThreat, rigAt, rigStations, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
 import { isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
 import { EV, bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
@@ -165,7 +165,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'lantern']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'lantern']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -209,6 +209,11 @@ describe('a campaign run has no encounter layer', () => {
       'sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold',
       'sowers-two-fields', 'sowers-periscope', 'sowers-carpet', 'sowers-whole-reach', 'sowers-last-sowing',
     ]);
+    // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
+    expect(arc('rigs').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley',
+      'rigs-periscope', 'rigs-supersonic', 'rigs-two-tows', 'rigs-whole-field', 'rigs-last-tow',
+    ]);
     // The Black Strait, the Lantern (docs/design/v3-ch3-lantern.md, log v50): the same.
     expect(arc('lantern').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'lantern-first-light', 'lantern-from-behind', 'lantern-both-banks', 'lantern-gun-in-the-dark', 'lantern-periscope',
@@ -229,8 +234,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('rigs')).toBe(false);
-    expect(encountersFor('rigs', 5)).toEqual([]);
+    expect(hasEncounters('lantern')).toBe(false);
+    expect(encountersFor('lantern', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -282,12 +287,16 @@ describe('every beat is legal on its map at its wave', () => {
           // of the map's chapter or before, from its signature's first wave
           // (the wave's own new enemies come as stealth bombers from then).
           const sower = 'air' in b.from && b.kind === 'stealthBomber' && foesUpTo(chapterOf(e.map)).includes('stealthBomber') && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
+          // Log v49 (The Rig Field): a relief rig towed in from an edge, from
+          // its signature's first wave (the wave's own new enemies come as
+          // relief rigs from then), on a map with rigs.
+          const tow = 'air' in b.from && b.kind === 'rig' && MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.kind === 'rig' && m.bases.some((x) => x.rig) && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
           // Log v50 (the Black Strait): a siege gun beside a base on the
           // enemy's dark bank (the signature's `beside`), an enemy of the
           // map's chapter or before, from the signature's first wave.
           const sig = MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE];
           const gun = 'base' in b.from && b.kind === 'siege' && foesUpTo(chapterOf(e.map)).includes('siege') && w >= (sig?.from ?? 99) && !!sig?.beside?.includes(b.from.base);
-          expect(inTable || extra || plane || truck || sower || gun, where).toBe(true);
+          expect(inTable || extra || plane || truck || sower || tow || gun, where).toBe(true);
           if (gun) expect(m.bases[(b.from as { base: number }).base], where).toBeDefined();
           else if ('base' in b.from) {
             const base = m.bases[b.from.base];
@@ -300,7 +309,7 @@ describe('every beat is legal on its map at its wave', () => {
             expect(w, where).toBeGreaterThanOrEqual(m.vectors.subs);
             expect(['ballistic', 'drone'], where).toContain(b.kind);
             expect(m.subSpots[b.from.sub], where).toBeDefined();
-          } else expect(plane || sower, where).toBe(true);
+          } else expect(plane || sower || tow, where).toBe(true);
           expect(b.count, where).toBeGreaterThan(0);
           expect(b.at, where).toBeGreaterThanOrEqual(0);
           expect(b.at, where).toBeLessThanOrEqual(1);
@@ -438,7 +447,10 @@ describe('every authored launch is warned of', () => {
       // dark from the signature's first wave, a Stealth Strafer with no
       // arrow (the Blackout's own: only its short run-in); it came, tagged.
       const dark = (b: Encounter['beats'][number]) => b.kind === 'strafer' && !!signatureOf(e.map, w, { rev: lastRev(e) })?.stealth;
-      const want = e.beats.filter((b) => !isFoe(b.kind) && !dark(b)).reduce((a, b) => a + b.count, 0);
+      // (Log v49: a relief rig is towed in, a structure on the water, not a
+      // launch: its tow is its own warning, slow along the rig line; the
+      // Rig Field's tests check it docks.)
+      const want = e.beats.filter((b) => !isFoe(b.kind) && !dark(b) && b.kind !== 'rig').reduce((a, b) => a + b.count, 0);
       expect(mine.length, `${e.id}: all its launches came`).toBe(want);
       const darkWant = e.beats.filter(dark).reduce((a, b) => a + b.count, 0);
       expect(launches(sc).filter((l) => l.enc === e.id && l.kind === 'stealthJet').length, `${e.id}: its jets came in dark`).toBe(darkWant);
@@ -721,7 +733,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'lantern'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'lantern'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -809,13 +821,6 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(at('marrow')).toEqual([2, 5, 8, 10]);
     // Battery Point (log v45): its shore guns are the target in every wave
     // from the first shell (wave 2) to the climax.
-    expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    // Sowers' Reach (log v48): its mines are in every wave, off the chutes
-    // or sown by a stealth bomber (the signature, from wave 4).
-    const mines = (kind: string) => arc('sowers').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && b.kind === kind))).map((a) => a.wave);
-    expect(mines('mine')).toEqual([1, 2, 3, 4, 5, 6, 7, 9, 10]);
-    expect(mines('stealthBomber')).toEqual([4, 8, 10]);
-    for (const e of ENCOUNTERS.filter((x) => x.map === 'sowers')) for (const b of e.beats.filter((x) => x.kind === 'mine')) expect(MAPS.sowers.bases[(b.from as { base: number }).base].chute, e.id).toBe(true);
     // The Black Strait (log v50): the night is the mechanic; the waves use
     // it through the enemy's dark bank in the south-east (bases 4 and 5,
     // and the sub spot off it), the one shore the lighthouse beam never
@@ -833,6 +838,20 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(arc('lantern').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && dark(b)))).map((a) => a.wave)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(arc('lantern').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'siege'))).map((a) => a.wave)).toEqual([4, 5, 6, 7, 8, 9, 10]);
     for (const e of ENCOUNTERS.filter((x) => x.map === 'lantern')) for (const b of e.beats.filter((x) => x.kind === 'siege')) expect([4, 5], e.id).toContain((b.from as { base: number }).base);
+    expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // Sowers' Reach (log v48): its mines are in every wave, off the chutes
+    // or sown by a stealth bomber (the signature, from wave 4).
+    const mines = (kind: string) => arc('sowers').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && b.kind === kind))).map((a) => a.wave);
+    expect(mines('mine')).toEqual([1, 2, 3, 4, 5, 6, 7, 9, 10]);
+    expect(mines('stealthBomber')).toEqual([4, 8, 10]);
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'sowers')) for (const b of e.beats.filter((x) => x.kind === 'mine')) expect(MAPS.sowers.bases[(b.from as { base: number }).base].chute, e.id).toBe(true);
+    // The Rig Field (log v49): its rigs fire in every wave (a beat out of a
+    // rig), and relief rigs are towed in (the signature) in waves 4, 7, 8
+    // and 10; a beat out of the far shore's silos is the long flight.
+    const rigged = arc('rigs').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && 'base' in b.from && MAPS.rigs.bases[b.from.base].rig))).map((a) => a.wave);
+    expect(rigged).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const towed = arc('rigs').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'rig'))).map((a) => a.wave);
+    expect(towed).toEqual([4, 7, 8, 10]);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
   });
@@ -1379,6 +1398,71 @@ describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows
   }, 90_000);
 });
 
+describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rises; a rev 3 log and the campaign play the Dive Circus as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  it('the downed rigs rise again each round, more of them, and every rig standing fires its volley together at the ship halfway along', () => {
+    // (Seed 219: the tryhard bot plays all three rounds there, every rig
+    // still standing from the start; tools/v3/rigs/probe-boss.ts.)
+    const off = playMimic('rigs', 219, opts);
+    const old = playMimic('rigs', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own dive bombers and missile pairs.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('dive-circus');
+      expect(e.sent.diveBomber).toBe(8);
+      expect(e.sent.rig ?? 0).toBe(0);
+    }
+    const on = playMimic('rigs', 219, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.rigs!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['dive-circus', 1], ['dive-circus', 2], ['dive-circus', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    for (const e of done) {
+      // No dive bomber and no missile pair: the rigs are the boss.
+      expect(e.sent.diveBomber ?? 0).toBe(0);
+      // What the rigs fired: their volleys, each rig its own kind.
+      expect((e.sent.guided ?? 0) + (e.sent.ballistic ?? 0) + (e.sent.drone ?? 0), `round ${e.run}`).toBeGreaterThan(0);
+    }
+    // Rising: more rigs stand, as many volleys or more, no further apart.
+    for (let k = 1; k < rounds.length; k++) {
+      expect(rounds[k].rigs!, `round ${k + 1}`).toBeGreaterThan(rounds[k - 1].rigs!);
+      expect(rounds[k].rigs! * rounds[k].barrage!.count * rounds[k].barrage!.size, `round ${k + 1}`).toBeGreaterThan(rounds[k - 1].rigs! * rounds[k - 1].barrage!.count * rounds[k - 1].barrage!.size);
+    }
+    for (const r of rounds) {
+      expect(r.rigs!).toBeLessThanOrEqual(rigStations(createGame('rigs', 1, 1)).length);
+      expect(r.barrage!.warn, 'each volley lit first').toBeGreaterThanOrEqual(1);
+    }
+    roundLengths(done);
+    // The boss has a name of its own; the event's id stays.
+    expect(eventName('dive-circus', 'rigs', ENCOUNTER_REV)).toBe('Rig Barrage');
+    expect(eventName('dive-circus', 'rigs', 3)).toBe('Dive Circus');
+    expect(eventName('dive-circus', 'rigs')).toBe('Dive Circus');
+  }, 90_000);
+
+  it('a round raises the downed rigs (the middle two first) until so many stand; a rig still standing keeps its hits', () => {
+    const g = createGame('rigs', 3, 11);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    const st = rigStations(g);
+    // Every rig down but the east one, worn to 30 hits.
+    for (const i of st.slice(0, 3)) {
+      const r = rigAt(g, i)!;
+      damageThreat(g, r, r.hp, false);
+    }
+    rigAt(g, st[3])!.hp = 30;
+    expect(st.map((i) => g.baseDown[i])).toEqual([true, true, true, false]);
+    for (let i = 0; i < 30 / DT && !g.event; i++) step(g, DT);
+    expect(g.event?.id).toBe('dive-circus');
+    for (let i = 0; i < 40 / DT && st.filter((i) => !g.baseDown[i]).length < 2; i++) step(g, DT);
+    // Round 1: two stand, the east one (still standing) and the west-middle (the first to rise).
+    expect(st.map((i) => !g.baseDown[i])).toEqual([false, true, false, true]);
+    expect(rigAt(g, st[1])!.hp).toBe(MAP_BOSS.rigs!.rounds![0].rigHp);
+    expect(rigAt(g, st[3])!.hp).toBeLessThanOrEqual(30);
+  }, 30_000);
+});
+
 describe('the Black Strait\'s boss rounds (log v50, MAP_BOSS): the Bombardment walks the far shore, then the dark bank, and rises; a rev 3 log and the campaign play it as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
@@ -1728,6 +1812,92 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(signatureOf('sowers', 4, { rev: 4, only: [] })).toBeUndefined();
   });
 
+  it('the Rig Field (log v49): from wave 4 the wave\'s new enemies come as relief rigs towed in; the campaign and the shared wave keep the planner\'s own', () => {
+    expect(MAP_SIGNATURE.rigs).toMatchObject({ from: 4, kind: 'rig', foeShare: 1 });
+    let tows = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('rigs', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('rigs', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('rigs', seed, w);
+        const towed = kinds(on, 'rig');
+        // The wave's own: no new enemy but its relief rigs (and none before wave 4).
+        const drawn = on.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && !l.enc);
+        if (w < 4) expect(towed.filter((l) => !l.enc), `wave ${w}`).toEqual([]);
+        else {
+          expect(drawn, `wave ${w}`).toEqual([]);
+          tows += towed.length;
+        }
+        for (const l of towed) expect(l.base, `wave ${w}`).toBe(-1);
+        expect([...kinds(camp, 'rig'), ...kinds(shared, 'rig')]).toEqual([]);
+      }
+    expect(tows).toBeGreaterThanOrEqual(18);
+    expect(signatureOf('rigs', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('rigs', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('rigs', 4, { rev: 4, only: [] })).toBeUndefined();
+  });
+
+  it('a relief rig sails in along the rig line to a downed station and stands there again, firing its rack; sunk on the way, it drops nothing', () => {
+    const g = createGame('rigs', 5, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    // Nothing else in the wave, held open (a structure alone does not).
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const st = rigStations(g);
+    const west = rigAt(g, st[0])!;
+    damageThreat(g, west, west.hp, false);
+    expect(g.baseDown[st[0]]).toBe(true);
+    towRig(g, 1);
+    const tow = g.threats.find((t) => t.tow !== undefined)!;
+    expect(tow.tow).toBe(st[0]);
+    expect(tow.hp).toBe(TOW.hp);
+    expect(tow.x).toBeLessThan(0);
+    expect(tow.y).toBe(MAPS.rigs.bases[st[0]].y);
+    let rack = 0;
+    const seen = new Set<number>();
+    for (let i = 0; i < 20 / DT && g.baseDown[st[0]]; i++) {
+      step(g, DT);
+      expect(tow.y).toBe(MAPS.rigs.bases[st[0]].y);
+    }
+    // Docked: the station stands again, TOW.dock hits, and its rack goes off.
+    expect(g.baseDown[st[0]]).toBe(false);
+    expect(rigAt(g, st[0])!.id).toBe(tow.id);
+    expect(tow.hp).toBe(TOW.dock);
+    for (let i = 0; i < 4 / DT; i++) {
+      step(g, DT);
+      for (const t of g.threats) if (!seen.has(t.id) && t.rack) {
+        seen.add(t.id);
+        rack++;
+        expect(t.kind).toBe('guided');
+      }
+    }
+    expect(rack).toBe(TOW.rack);
+    // A second, with a rig standing at every station: it mends the most
+    // damaged one, and goes.
+    const east = rigAt(g, st[3])!;
+    east.hp = 10;
+    towRig(g);
+    const mend = g.threats.find((t) => t.tow !== undefined)!;
+    expect(mend.tow).toBe(st[3]);
+    expect(mend.x).toBeGreaterThan(VIEW.width);
+    for (let i = 0; i < 20 / DT && !mend.dead; i++) step(g, DT);
+    expect(east.hp).toBe(10 + TOW.dock);
+    // A third, sunk on its way in: no pickup, and the station stays down.
+    damageThreat(g, rigAt(g, st[1])!, 40, false);
+    towRig(g);
+    const sunk = g.threats.find((t) => t.tow !== undefined)!;
+    const pickups = g.pickups.length;
+    for (let i = 0; i < 2 / DT; i++) step(g, DT);
+    damageThreat(g, sunk, sunk.hp, true);
+    expect(sunk.dead).toBe(true);
+    expect(g.pickups.length).toBe(pickups);
+    expect(g.baseDown[st[1]]).toBe(true);
+  });
+
   it('the Black Strait (log v50): from wave 4 the wave\'s new enemies are siege guns beside the dark bank; the campaign and the shared wave keep the planner\'s own', () => {
     expect(MAP_SIGNATURE.lantern).toMatchObject({ from: 4, foe: 'siege', foeShare: 1, beside: [4, 5] });
     let guns = 0;
@@ -1907,13 +2077,17 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('sowers', w))).toEqual([1, 2, 3, 4, 5, 6]);
-    // The Black Strait (log v50): the same, out of the far shore's drone
-    // silos under the beam.
+    // The Rig Field (log v49): waves 1-2 and 4-6, out of its two drone rigs
+    // (a short flight: wave 1 one late string, wave 3 none).
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('rigs', w))).toEqual([1, 2, 4, 5, 6]);
+    expect(BUSY['rigs-point-blank'].length).toBe(1);
+    // The Black Strait (log v50): every one of waves 1-6, out of the far
+    // shore's drone silos under the beam.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);

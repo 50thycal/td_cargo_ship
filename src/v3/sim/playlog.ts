@@ -354,6 +354,20 @@ import type { EncounterSetup } from '../data/encounters';
  *      `sow`, `fire`, a boss round's mines off the chutes). A v47 Sowers
  *      card log played the shared waves and no longer replays to the same
  *      game; the campaign plays as it did.
+ *  49: chapter 3's third map, the Rig Field, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-rigs.md; lab, under the encounter layer):
+ *      ten encounters (RIGS_R4) with their filler, a climb (RIGS_CLIMB),
+ *      the signature (MAP_SIGNATURE.rigs `kind: 'rig'`: from wave 4 the
+ *      wave's new enemies come as relief rigs towed in along the rig line,
+ *      Threat `tow`, game.ts towRig, data/config.ts TOW; docked, one stands
+ *      where a rig fell or mends one, and fires its rack, Launch `tow`,
+ *      Threat `rack`), the map's own convoy at the campaign's schedule
+ *      (MAP_CONVOY.rigs), and a new boss on the Dive Circus, the Rig Barrage
+ *      (MAP_BOSS.rigs: `rigs`, `rigHp`, `barrage`: the downed rigs rise
+ *      again and every rig standing fires its volley together). A v48 Rig
+ *      Field card log played today's convoy controls and the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
  *  50: chapter 3's fourth map, the Black Strait (the Lantern), rebuilt to
  *      the map and wave rules (docs/design/v3-ch3-lantern.md; lab, under
  *      the encounter layer): ten encounters (LANTERN_R4) with their filler,
@@ -363,7 +377,7 @@ import type { EncounterSetup } from '../data/encounters';
  *      the enemy's dark bank, `beside`, one salvo each, `salvos`; a Launch
  *      naming a base puts its siege gun there, an encounter's on the
  *      other side), and the Bombardment's rounds rise (MAP_BOSS.lantern:
- *      `guns`, `gunGap`, `gunSalvos`, `dark`, `supply`, `fire`). A v48
+ *      `guns`, `gunGap`, `gunSalvos`, `dark`, `supply`, `fire`). A v48 or v49
  *      Black Strait card log played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
  *      plays as it did. */

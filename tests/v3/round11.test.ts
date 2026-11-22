@@ -229,7 +229,9 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('battery')).toEqual({ convoy: 'tactical', encounters: true });
     // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): the same.
     expect(mapProduction('lantern')).toEqual({ convoy: 'tactical', encounters: true });
-    expect(mapProduction('rigs')).toEqual({ convoy: 'current', encounters: false });
+    // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
+    expect(mapProduction('rigs')).toEqual({ convoy: 'tactical', encounters: true });
+    expect(mapProduction('dreadnought')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
   });

@@ -153,6 +153,10 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // v3-ch3-sowers.md, log v48) keeps it: the map's one command, because its
   // mechanic needs one (rule m-convoy): a ship cannot steer round a mine.
   sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
+  // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the campaign's own
+  // schedule, as the Battery's, and no command: the rigs are answered by
+  // shooting them, not by sailing.
+  rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   // The Black Strait (docs/design/v3-ch3-lantern.md, log v50): flow 2 and
   // Pairs, as most of chapter 2's maps; no command (the night is read and
   // shot, not sailed round). At the campaign's step 1 its shared waves were

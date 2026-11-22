@@ -34,7 +34,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -510,6 +510,52 @@ function fireStep(g: Game, ev: EventRun, k: number): void {
   sent(ev, f.kind);
 }
 
+/** The Rig Field's Rig Barrage (log v49): the kind each rig station fires in
+ *  a volley, the first of its own it carries of these (a volley of `size`
+ *  guided missiles, one shell more, or twice that many drones). */
+const BARRAGE_KIND: ThreatKind[] = ['guided', 'ballistic', 'drone'];
+/** The order downed rig stations rise in: the middle two, the west, the
+ *  east (as the stations' rank west to east: 1, 2, 0, 3). */
+const RISE_ORDER = [1, 2, 0, 3];
+
+/** A Rig Barrage step (MAP_BOSS `rigs`): the rigs rise, a volley's decks
+ *  light, the volley, or the round's added launches. */
+function rigBarrage(g: Game, ev: EventRun, s: EventStep): void {
+  const R = bossRound(g, ev)!;
+  if (s.op === 'fire') {
+    fireStep(g, ev, s.k);
+    return;
+  }
+  const st = rigStations(g);
+  if (s.op === 'rise') {
+    let up = st.filter((i) => !g.baseDown[i]).length;
+    for (const r of RISE_ORDER) {
+      const i = st[r];
+      if (i === undefined || up >= R.rigs! || !g.baseDown[i]) continue;
+      raiseRig(g, i, R.rigHp ?? THREATS.rig.hp);
+      sent(ev, 'rig');
+      up++;
+    }
+    return;
+  }
+  const live = st.filter((i) => !g.baseDown[i] && rigAt(g, i));
+  if (s.op === 'lit') {
+    for (const i of live) addFx(g, 'launch', g.map.bases[i].x, g.map.bases[i].y, { life: R.barrage!.warn, r: 52 });
+    if (live.length) cue(g, 'raid.warning', g.map.bases[live[0]].x, g.map.bases[live[0]].y);
+    return;
+  }
+  // The volley: every rig standing at once, all at the ship nearest
+  // halfway along (they converge on the clustered convoy).
+  const V = R.barrage!;
+  for (const i of live) {
+    const kind = BARRAGE_KIND.find((k) => g.map.bases[i].kinds.includes(k)) ?? 'guided';
+    const n = kind === 'guided' ? V.size : kind === 'ballistic' ? V.size + 1 : 2 * (V.size + 1);
+    for (let k = 0; k < n; k++) g.queue.push({ at: g.waveT + k * (kind === 'drone' ? 0.2 : 0.3), kind, base: i, aim: 'mid' });
+    sent(ev, kind, n);
+  }
+  g.queue.sort((a, b) => a.at - b.at);
+}
+
 function plan(g: Game, ev: EventRun): EventStep[] {
   switch (ev.id) {
     case 'rush': {
@@ -616,6 +662,15 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(R?.vees ?? E.passes, (k) => (R?.veeAt ?? 0) + k * gap, 'vee'), ...fireSteps(R)];
     }
     case 'dive-circus': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch3-rigs.md): the Rig
+      // Field's boss is the Rig Barrage, its rigs risen again and firing
+      // volleys together at the clustered convoy (MAP_BOSS `rigs`), in
+      // place of the dive bombers and missile pairs.
+      const R = bossRound(g, ev);
+      if (R?.rigs && R.barrage) {
+        const V = R.barrage;
+        return [...steps(1, () => 0, 'rise'), ...steps(V.count, (k) => V.first + k * V.every - V.warn, 'lit'), ...steps(V.count, (k) => V.first + k * V.every, 'volley'), ...fireSteps(R)];
+      }
       // Dives on the beat; a missile pair on every other off-beat.
       const E = EV['dive-circus'];
       return [...steps(E.planes, (k) => k * E.beat, 'dive'), ...steps(E.pairs, (k) => (2 * k + 1.5) * E.beat, 'pair')];
@@ -966,6 +1021,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'dive-circus': {
+      if (s.op === 'rise' || s.op === 'lit' || s.op === 'volley' || s.op === 'fire') {
+        rigBarrage(g, ev, s);
+        return;
+      }
       if (s.op === 'pair') {
         // Two guided missiles off two bases, a beat apart.
         const bs = rng.shuffle(liveBases(g, 'guided'));

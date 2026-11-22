@@ -13,7 +13,7 @@ mine = sys.argv[1] if len(sys.argv) > 1 else f'{R}/v50-ch3'
 ME = 'lantern'
 # Each chapter 2 map from its last sweep: four at version 37, Saltgate at
 # 42; Battery Point at 43; Lantern' Reach at 48.
-OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3'}
+OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3', 'rigs': f'{R}/v49-ch3'}
 
 
 def load(d):

@@ -195,10 +195,8 @@ describe('wave 1 says something about the map, in every version', () => {
       // (Log v47, busier early waves: the easy filler on top is not the
       // encounter's own; tests/v3/encounters.test.ts checks it.)
       // (Sowers' Reach, log v48: three mines off the east chute ahead of the
-      // lead ship, the map's own mechanic, and three drones at it. The Black
-      // Strait, log v50: three off the far east silo, then two out of the
-      // dark bank behind the ships.)
-      expect(first[0].beats.filter((b) => !b.filler).map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : map === 'battery' ? [['drone', 4]] : map === 'sowers' ? [['mine', 3], ['drone', 3]] : map === 'lantern' ? [['drone', 3], ['drone', 2]] : [['drone', 3]]);
+      // lead ship, the map's own mechanic, and three drones at it.)
+      expect(first[0].beats.filter((b) => !b.filler).map((b) => [b.kind, b.count]), map).toEqual(map === 'saltgate' ? [['drone', 3], ['drone', 4]] : map === 'battery' ? [['drone', 4]] : map === 'sowers' ? [['mine', 3], ['drone', 3]] : map === 'rigs' || map === 'lantern' ? [['drone', 3], ['drone', 2]] : [['drone', 3]]);
       expect(encountersFor(map, 1, 'v1', 3), map).toEqual([]);
       const p = plan(map, 'v1');
       expect(p.encounters, map).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });
