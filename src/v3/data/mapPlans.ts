@@ -387,6 +387,33 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-delta.md
+  delta: {
+    problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
+    // The fire is threats at single ships, one after another: drones down
+    // the river and at the fork, short flights off the north bank and the
+    // island, incendiaries at the switch's branch and, in the boss, a raid
+    // off every silo. The ships sail in a Spread, one at a time across the
+    // river, so they are seldom bunched for an area weapon to cover: what
+    // pays is picking each threat off far out, the Seeker Pod homing on the
+    // slow incendiaries before they reach a branch, the Thermobaric Shell's
+    // burst on a string as it closes, the Cadence Gun's steady shots. The
+    // area weapons (Gravity Well, Tesla Arc, Point Defense at the carrier)
+    // wait for bunches the convoy rarely makes. Chosen on the bots' kit
+    // runs (the bot's taste set to the kit, 32 seeds, the usual Armory:
+    // won 84% against 66%), not the forced singles, which rank the area
+    // weapons higher (Gravity Well 6.4, Tesla 6.4, Point Defense 6.8
+    // against Seeker 7.7, Thermobaric 8.1, Cadence 8.6; docs/design/
+    // v3-ch4-delta.md, The counters). Every weapon is in chapter 4's draft.
+    counters: ['seeker', 'thermo', 'cadence'],
+    offCounter: ['well', 'tesla', 'aegis'],
+    convoy: 'The map\'s own convoy, no commands: heavy river traffic (flow step 3) in a Spread, one ship at a time across the river (the player\'s own habit in the campaign), down to the fork, where the switch (a tap on its buoy) sends the next ships down one of three branches; the ships bunch in the river and at the fork, and spread out across the branches.',
+    stretches: { danger: 'middle', safe: 'late' },
+    boss: {
+      plan: 'The Burning Delta (in place of the Escort Run: the Bodyguard Ring is a regular of chapter 4\'s waves, and the Delta\'s own debut): burning oil closes branches of the fork, the one the switch is set to first, its mouth lit 2.5 s before, so the convoy funnels into the branch left open, while a raid off every silo comes at the ships bunched on the way in. Round 1: one branch burns; round 2: two; round 3: two, then the fire moves to the branch that was open. Encounters rev 4, MAP_BOSS; lab only: the campaign plays the Escort Run.',
+      botTarget: 2,
+    },
+  },
   // docs/design/v3-ch4-crossing.md (chapter 4, Open War)
   crossing: {
     problem: 'Two convoys pass each other in the middle of the strait, outbound east under the north shore and inbound west under the south shore, each coming in at the other\'s exit; from wave 4 spotter beacons rise in the water between the lanes where the next two ships cross and call shells on both, and only your own shots sink them.',

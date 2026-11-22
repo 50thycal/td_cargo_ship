@@ -35,6 +35,8 @@ import {
   type Ship,
   type Threat,
   aimBeat,
+  branchMouth,
+  switchLane,
   atLock,
   lobBallistic,
 } from './game';
@@ -508,6 +510,20 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       if (!at) return;
       const th = spawnThreat(g, 'cloud', at.x, at.y, 'base');
       th.foe = data();
+      if (l.enc) th.enc = l.enc;
+      // The Delta (log v57, aim 'switch'): it flies for the mouth of the
+      // branch the fork's switch is set to as it leaves, and bursts there,
+      // ahead of the next ships (its ship is the newest bound there).
+      if (l.aim === 'switch' && g.map.fork) {
+        const lane = switchLane(g);
+        const m = branchMouth(g, lane);
+        th.foe.aim = 'switch';
+        th.foe.px = m.x;
+        th.foe.py = m.y;
+        aimBeat(g, th, 'switch');
+        th.heading = Math.atan2(m.y - th.y, m.x - th.x);
+        return;
+      }
       // It picks a ship it can meet bow or beam on (Test Lab round 2): one
       // already past the base would only be caught up its wake, so it goes
       // for the best placed ship instead. It leaves the rail on its lead.
@@ -1016,8 +1032,18 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       // ship's bow while it is far, so it comes in on the bow or the flank,
       // not up the wake. At the ship it bursts, doing no harm itself (Test
       // Lab round 4): its fireball does it all.
-      retarget(th);
       const C = FOE.cloud;
+      // The Delta (log v57): one for a branch's mouth flies there and
+      // bursts on the water, whatever its ship does.
+      if (f.aim === 'switch') {
+        steer(th, f.px, f.py, th.speed, C.turn * 3, dt);
+        if (dist(th.x, th.y, f.px, f.py) <= Math.max(6, th.speed * dt)) {
+          th.dead = true;
+          burstCloud(g, th);
+        }
+        return;
+      }
+      retarget(th);
       const s = shipOf(g, th);
       const tp = aim(th);
       const d = dist(th.x, th.y, tp.x, tp.y);
