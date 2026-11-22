@@ -135,7 +135,7 @@ How it reads (192 seeds, normal runs that reached it):
 | latest | 0.00 / 0.00 / 0.01 | **1.14 / 3.30 / 2.42** (94, 94, 45 runs) |
 | plating | 0.00 / 0.00 / 0.02 | **0.27 / 1.07 / 2.20** |
 
-Rising for the usual and plating Armories; round 3 is at the asked 2.5 for the usual Armory, rounds 1–2 under the asked 1.5 / 2, as on every rebuilt map (the convoy is restored before the boss and the loss limit is six). The latest set (no Quick Reload) is broken by round 2: a line of four spotters it cannot tap down in time calls twelve shells a volley. TOUGH-BOSS
+Rising for the usual and plating Armories; round 3 is at the asked 2.5 for the usual Armory, rounds 1–2 under the asked 1.5 / 2, as on every rebuilt map (the convoy is restored before the boss and the loss limit is six). The latest set (no Quick Reload) is broken by round 2: a line of four spotters it cannot tap down in time calls twelve shells a volley.
 
 ## Bot results, before and after
 
@@ -158,7 +158,7 @@ Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 | latest | .00 .02 .11 .23 .24 .36 .60 .77 .99 .95 · boss .00 .00 .01 | .01 .01 .11 .07 .54 .42 .63 .81 1.42 .93 · boss 1.14 3.30 2.42 |
 | plating | .00 .01 .08 .15 .25 .28 .44 .54 .63 .85 · boss .00 .00 .02 | .01 .01 .06 .08 .28 .39 .44 .57 .73 .38 · boss .27 1.07 2.20 |
 
-TOUGH-CURVES
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .01 .02 .05 .19 .24 .16 .41 .52 .98 1.23 (wave 9 ×1.9 the wave before); latest .00 .02 .11 .26 .32 .45 .88 1.15 1.70 2.46; plating .00 .01 .08 .15 .25 .31 .54 .75 .96 1.48. After: usual .02 .02 .09 .05 .36 .30 .49 .69 .93 .78; latest .01 .01 .11 .07 .56 .51 .85 1.17 2.21 1.58; plating .01 .01 .06 .08 .28 .43 .53 .67 .96 .68; none .02 .10 .75 .54 1.63 2.18 2.93 2.95 5.59 3.85. **The largest step for the usual Armory: 1.44× on wave 5** (0.25, the floor, → 0.36); latest 1.89× (wave 9), plating 1.72× (wave 5): no wave doubles the one before for a player Armory. With no Armory wave 5 is 3.0× wave 4 (a cliff; the map was lost by wave 7 with no Armory before as after). Boss rounds, tough: usual 0.44 / 1.08 / 2.89, latest 1.29 / 5.52 / 7.84, plating 0.38 / 1.18 / 2.76.
 
 REPORTS
 
