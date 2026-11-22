@@ -209,7 +209,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), lantern: t('map-lantern'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), coves: t('map-coves'), lantern: t('map-lantern'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -232,6 +232,8 @@ try {
   check(hub.sowers === "Full map: waves 1–10 and 3 boss rounds · Commands: Hold · encounters v1 Original", `Sowers' Reach says it opens with Hold and its encounters (${hub.sowers})`);
   // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
   check(hub.rigs === enc1, `the Rig Field says it opens with its encounters (${hub.rigs})`);
+  // Chapter 4's Coves (docs/design/v3-ch4-coves.md, log v53): the same.
+  check(hub.coves === enc1, `the Coves say they open with their encounters (${hub.coves})`);
   check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.lantern ?? ''), `a map with no commands or encounters yet says so ("${hub.lantern}")`);
   await shot(page, 'hub-card');
 

@@ -4927,9 +4927,9 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
-      { at: 0.9, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
+      { at: 0.9, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
     ],
-    replaces: { ballistic: 9, drones: 4, extras: { fastboat: 1, cluster: 2, mothership: 1 } },
+    replaces: { ballistic: 9, guided: 2, drones: 4, extras: { fastboat: 1, cluster: 2, mothership: 1 } },
   },
   {
     id: 'coves-crossfire',
@@ -5029,12 +5029,12 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
     notes: {
       sites: 'All four coves (the north-east and south coves fire ships, the north-west and north-middle fast boats), the north-middle silo (640, 100; a guided missile), the far north-west silo (drones, before the calm), after the wave\'s own fire and a calm.',
-      target: 'The ship nearest each of the two facing coves (the fire ships); the lead ship and the ships coming in (the other coves\' boats, along the lane); the lead ship (the missile).',
+      target: 'The ship nearest each of the two facing coves (the fire ships) and the north-middle cove (its boat); the lead ship (the north-west cove\'s boat, along the lane, and the missile).',
       usesMap: 'The map\'s problem at its hardest, every cove at once; in place of the wave\'s own fast boats and a guided missile; the climax may reach the safe stretch.',
     },
     beats: [
       { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(4), aim: 'lead' },
-      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(5), aim: 'rear' },
+      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(5), aim: 'near' },
       { at: 1, plus: 2, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
       { at: 1, plus: 1.5, kind: 'fastboat', count: 1, from: base(6), aim: 'near', fire: true },
       { at: 1, plus: 1.5, kind: 'fastboat', count: 1, from: base(7), aim: 'near', fire: true },
@@ -5328,7 +5328,7 @@ const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
  *  controls before, where a Box takes a hit less from every ram), so every
  *  wave but the first sends a little less, the most off wave 9, within
  *  ±15% of each wave and never more than the ten. */
-const COVES_CLIMB = [1, 0.92, 0.9, 1, 1, 0.85, 0.88, 0.95, 0.95, 0.95];
+const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.85, 0.88, 0.95, 0.95, 1];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {

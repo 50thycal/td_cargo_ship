@@ -229,6 +229,8 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('battery')).toEqual({ convoy: 'tactical', encounters: true });
     // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
     expect(mapProduction('rigs')).toEqual({ convoy: 'tactical', encounters: true });
+    // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
+    expect(mapProduction('coves')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('lantern')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');

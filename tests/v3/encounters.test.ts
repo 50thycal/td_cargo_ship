@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { PLANE, RAID, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
+import { FIRESHIP, PLANE, RAID, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -23,6 +23,7 @@ import {
   LAYER_MAPS,
   MAP_VERSIONS,
   REBUILT_MAPS,
+  CHAPTER_FOUR_MAPS,
   hasEncounters,
   arc,
   calloutsOn,
@@ -44,7 +45,7 @@ import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { applyEncounters, createGame, damageThreat, rigAt, rigStations, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
+import { applyEncounters, createGame, damageThreat, lightFireShip, rigAt, rigStations, spawnThreat, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
 import { isFoe, onLand, truckMark } from '../../src/v3/sim/foes';
 import { bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
@@ -165,7 +166,9 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'coves']);
+    // Chapter 4, Open War (log v53): its own table, as chapter 3's.
+    expect(CHAPTER_FOUR_MAPS).toEqual(['coves']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -213,6 +216,11 @@ describe('a campaign run has no encounter layer', () => {
     expect(arc('rigs').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley',
       'rigs-periscope', 'rigs-supersonic', 'rigs-two-tows', 'rigs-whole-field', 'rigs-last-tow',
+    ]);
+    // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
+    expect(arc('coves').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends',
+      'coves-periscope', 'coves-crossfire', 'coves-north-shore', 'coves-facing', 'coves-every-cove',
     ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
@@ -722,7 +730,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'coves'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -824,6 +832,15 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(rigged).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     const towed = arc('rigs').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'rig'))).map((a) => a.wave);
     expect(towed).toEqual([4, 7, 8, 10]);
+    // The Coves (log v53): a beat out of a cove in every wave 1-10, the
+    // south cove (on the ships' own side) from wave 3, and fire ships in
+    // waves 4, 7, 8 and 10 (and the signature's from wave 4).
+    const coved = (f: (i: number) => boolean) => arc('coves').filter((a) => a.encounters.some((e) => e.beats.some((b) => 'base' in b.from && MAPS.coves.bases[b.from.base].cove && f(b.from.base)))).map((a) => a.wave);
+    expect(coved(() => true)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(coved((i) => MAPS.coves.bases[i].y > 700)).toEqual([3, 5, 7, 9, 10]);
+    const fired = arc('coves').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.fire))).map((a) => a.wave);
+    expect(fired).toEqual([4, 7, 8, 10]);
+    for (const e of ENCOUNTERS) for (const b of e.beats.filter((x) => x.fire)) expect(e.map === 'coves' && b.kind === 'fastboat' && 'base' in b.from && MAPS.coves.bases[b.from.base].cove, e.id).toBe(true);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
   });
@@ -1935,7 +1952,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -1944,6 +1961,8 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // (a short flight: wave 1 one late string, wave 3 none).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('rigs', w))).toEqual([1, 2, 4, 5, 6]);
     expect(BUSY['rigs-point-blank'].length).toBe(1);
+    // The Coves (log v53): waves 1-6, out of its one drone silo (the far north-west).
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('coves', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
@@ -1957,5 +1976,122 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     const fill = sc.events.filter((e): e is Extract<TelEvent, { k: 'thr+' }> => e.k === 'thr+' && !!e.fill);
     expect(fill.length).toBe(BUSY['strait-ranging-opener'].reduce((a, b) => a + b.count, 0));
     for (const e of fill) expect(e.kind === 'drone' && e.enc === 'strait-ranging-opener').toBe(true);
+  });
+});
+
+// Chapter 4, Open War: the Coves (docs/design/v3-ch4-coves.md, log v53).
+describe('the Coves (log v53): fire ships, the signature and the Fire Fleet', () => {
+  const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
+
+  it('from wave 4 so many of the wave\'s own fast boats come as fire ships; the campaign and the shared wave keep plain boats', () => {
+    expect(MAP_SIGNATURE.coves).toMatchObject({ from: 4 });
+    const want = MAP_SIGNATURE.coves!.fireShips!;
+    expect(want.length).toBe(7);
+    let fires = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('coves', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('coves', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('coves', seed, w);
+        const own = kinds(on, 'fastboat').filter((l) => !l.enc && l.fire);
+        if (w < 4) expect(own, `wave ${w}`).toEqual([]);
+        else expect(own.length, `wave ${w}`).toBeLessThanOrEqual(want[w - 4]);
+        fires += own.length;
+        // The wave sends as many boats with or without it (one for one).
+        for (const l of kinds(on, 'fastboat').filter((x) => x.fire)) expect(MAPS.coves.bases[l.base].cove, `wave ${w}`).toBe(true);
+        expect([...kinds(camp, 'fastboat'), ...kinds(shared, 'fastboat')].filter((l) => l.fire)).toEqual([]);
+      }
+    expect(fires).toBeGreaterThanOrEqual(12);
+    expect(signatureOf('coves', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('coves', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('coves', 4, { rev: 4, only: [] })).toBeUndefined();
+  });
+
+  it('a fire ship takes FIRESHIP.hp hits; sunk, it burns where it went down; the Nuke puts it out; ramming, it does FIRESHIP.ram and burns on the lane', () => {
+    const g = createGame('coves', 5, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const fires = () => g.foe.marks.filter((m) => m.kind === 'fire');
+    const boat = spawnThreat(g, 'fastboat', 911, 200, 'base');
+    lightFireShip(boat);
+    expect(boat.fire).toBe(true);
+    expect(boat.hp).toBe(FIRESHIP.hp);
+    expect(boat.maxHp).toBe(FIRESHIP.hp);
+    damageThreat(g, boat, FIRESHIP.hp - 1);
+    expect(boat.dead).toBe(false);
+    damageThreat(g, boat, 1);
+    expect(boat.dead).toBe(true);
+    expect(fires().map((m) => [Math.round(m.x), Math.round(m.y), m.dur])).toEqual([[911, 200, FIRESHIP.burn]]);
+    // The Nuke (no drops): no fire.
+    const nuked = spawnThreat(g, 'fastboat', 381, 200, 'base');
+    lightFireShip(nuked);
+    damageThreat(g, nuked, 99, false, 'nuke');
+    expect(fires().length).toBe(1);
+    // A plain boat sunk: no fire.
+    const plain = spawnThreat(g, 'fastboat', 1401, 200, 'base');
+    damageThreat(g, plain, 99);
+    expect(fires().length).toBe(1);
+    // Ramming: on at a ship, its hull takes FIRESHIP.ram, and the fire burns there.
+    for (let i = 0; i < 20 / DT && !g.ships.length; i++) step(g, DT);
+    const s = g.ships[0];
+    const ram = spawnThreat(g, 'fastboat', s.x, s.y - 60, 'base');
+    lightFireShip(ram);
+    ram.target = s.id;
+    const hp = s.hp;
+    for (let i = 0; i < 3 / DT && !ram.dead; i++) step(g, DT);
+    expect(ram.dead).toBe(true);
+    expect(hp - s.hp).toBeGreaterThanOrEqual(FIRESHIP.ram);
+    expect(fires().length).toBe(2);
+  });
+
+  it('the Fire Fleet: sorties of fire ships out of more coves each round, the Repair Yard\'s mothership and repair ships gone; a rev 3 log and the campaign play the Repair Yard', () => {
+    const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+    const off = playMimic('coves', 219, opts);
+    const old = playMimic('coves', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('repair-yard');
+      expect(e.sent.mothership).toBe(1);
+      expect(e.sent.tender).toBe(3);
+    }
+    const on = playMimic('coves', 219, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.coves!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['repair-yard', 1], ['repair-yard', 2], ['repair-yard', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    for (const e of done) {
+      expect(e.sent.mothership ?? 0).toBe(0);
+      expect(e.sent.tender ?? 0).toBe(0);
+      const R = rounds[e.run! - 1];
+      const packs = (R.fire ?? []).filter((f) => f.kind === 'fastboat').reduce((a, f) => a + (f.count ?? 1), 0);
+      expect(e.sent.fastboat, `round ${e.run}`).toBe(R.fleet!.coves.length * R.fleet!.sorties + packs);
+    }
+    // Rising: more coves each round, more fire ships; every cove a cove.
+    for (let k = 1; k < rounds.length; k++) {
+      expect(rounds[k].fleet!.coves.length, `round ${k + 1}`).toBeGreaterThan(rounds[k - 1].fleet!.coves.length);
+      expect(rounds[k].fleet!.coves.length * rounds[k].fleet!.sorties).toBeGreaterThan(rounds[k - 1].fleet!.coves.length * rounds[k - 1].fleet!.sorties);
+    }
+    for (const r of rounds) {
+      for (const i of r.fleet!.coves) expect(MAPS.coves.bases[i].cove).toBe(true);
+      expect(r.fleet!.warn, 'each sortie lit first').toBeGreaterThanOrEqual(1);
+    }
+    roundLengths(done);
+    expect(eventName('repair-yard', 'coves', ENCOUNTER_REV)).toBe('Fire Fleet');
+    expect(eventName('repair-yard', 'coves', 3)).toBe('Repair Yard');
+    expect(eventName('repair-yard', 'coves')).toBe('Repair Yard');
+  }, 90_000);
+
+  it('chapter 4\'s four new enemies debut here, waves 2-5, each "New on Open War"; the encounters bring none of them and nothing later', () => {
+    const lead = ['tender', 'bodyguard', 'lure', 'cloud'] as const;
+    lead.forEach((id) => {
+      expect(FOES[id].chapter).toBe(4);
+      expect(mapDebutsFoe('coves', FOES[id].kind), id).toBe(true);
+      expect(foeDebutTag(FOES[id].kind), id).toBe('New on Open War');
+    });
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'coves')) for (const b of e.beats) expect(isFoe(b.kind), e.id).toBe(false);
   });
 });

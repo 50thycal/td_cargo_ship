@@ -291,8 +291,40 @@ try {
     await one.close();
   }
 
+  // ---- The Coves (log v53): chapter 4's first map, fast boats out of four
+  // coves, fire ships, and the Fire Fleet ----
+  await open(page, 'lab=map-coves&seed=7');
+  const cv = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command) }));
+  check(cv.map === 'coves' && cv.rev === ENCOUNTER_REV && cv.cmds.length === 0, `the Coves' card opens with its encounters and no command (${JSON.stringify(cv)})`);
+  await labMenu(page);
+  const cvArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Fire Fleet/.test(cvArc) && /Fire ship/.test(cvArc), `the Coves' script names its boss, the Fire Fleet, and its first fire ship (${cvArc})`);
+  await page.screenshot({ path: `${OUT_DIR}/coves-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): fire ships out of the coves at once, burning.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-coves&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let fleet = { fire: 0, name: '' };
+    for (let k = 0; k < 400 && fleet.fire < 2; k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      fleet = await one.evaluate(() => {
+        const g = window.__v3.game();
+        return { fire: g.threats.filter((t) => t.kind === 'fastboat' && t.fire && !t.dead && t.age > 0.8).length, name: g.event?.id ?? '' };
+      });
+    }
+    check(fleet.name === 'repair-yard' && fleet.fire >= 2, `the Fire Fleet: fire ships out of the coves at once (${JSON.stringify(fleet)})`);
+    await one.screenshot({ path: `${OUT_DIR}/coves-boss.png` });
+    await one.close();
+  }
+
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-lantern', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point, Sowers\' Reach and the Rig Field since chapter 3)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-lantern', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point, Sowers\' Reach and the Rig Field since chapter 3, the Coves since chapter 4)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');
