@@ -1,6 +1,6 @@
 // The Citadel's mechanic read: in each wave (and boss round), the most of
 // the three shield generators down at once, how often the shield fell, and
-// how often the Citadel is silenced by the wave's end, as the bot report's
+// how often the Citadel is silenced in it, as the bot report's
 // "you" bot plays the map card (does the bot invest in the shield, and when?).
 //   npx vite-node tools/v3/citadel/down.ts -- [--seeds=24] [--from=900]
 //       [--armory=player|latest|plating|none] [--no-enc]
@@ -30,11 +30,12 @@ for (let seed = from; seed < from + n; seed++) {
   let w = 0;
   let most = 0;
   let fell = false;
+  let silenced = false;
   const close = () => {
     if (w > 0 && w < 14) {
       gensMost[w] += most;
       shieldFell[w] += fell ? 1 : 0;
-      coreDown[w] += g.baseDown[0] ? 1 : 0;
+      coreDown[w] += silenced ? 1 : 0;
       at[w] += 1;
     }
   };
@@ -44,10 +45,12 @@ for (let seed = from; seed < from + n; seed++) {
       w = g.wave;
       most = 0;
       fell = false;
+      silenced = false;
     }
     const d = g.baseDown.slice(1, 4).filter(Boolean).length;
     most = Math.max(most, d);
     if (d === 3) fell = true;
+    if (g.baseDown[0]) silenced = true;
     run.advance(1);
   }
   close();
@@ -56,4 +59,4 @@ const f = (xs: number[]) => xs.slice(1).map((d, i) => (at[i + 1] ? (d / at[i + 1
 console.log(`citadel ${a}${args.includes('--no-enc') ? ' no-enc' : ''} (${n} seeds), waves 1-13:`);
 console.log(`  most generators down in the wave (mean): ${f(gensMost)}`);
 console.log(`  shield down at some point (share):       ${f(shieldFell)}`);
-console.log(`  Citadel silenced by the wave's end:      ${f(coreDown)}`);
+console.log(`  Citadel silenced in the wave (share):    ${f(coreDown)}`);

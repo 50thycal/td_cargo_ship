@@ -130,7 +130,7 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 
 Wave 1 loses 0.03 ships a run with the usual Armory (192 seeds; 0.01–0.05 with the others): its drones fly the length of the map, the longest flight there is.
 
-**Wave 10, the climax:** after a 6 s calm, the grand salvo; the hardest regular wave for every player Armory on the tough runs (192 seeds: usual 1.49, latest 2.29, plating 1.29), and no step to it doubles the wave before (×1.46 usual).
+**Wave 10, the climax:** after a 6 s calm, the grand salvo; the hardest regular wave for the usual and plating Armories on the tough runs (192 seeds: usual 1.51, plating 1.06; latest 2.16, its wave 9 2.20), and no step to it doubles the wave before (×1.24 usual).
 
 `CITADEL_CLIMB`: 1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9 of the shared wave's drones and missiles; the waves as planned are ×0.88–1.06 of the shared wave on the same dice (`tools/v3/rigs/budget.ts --map=citadel`).
 
@@ -155,15 +155,36 @@ How it reads (192 seeds, normal runs that reached it; tough runs in brackets):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 1.51 / 1.19 / 1.16 (tough 1.65 / 1.30 / 1.54) | **0.33 / 1.19 / 2.37** (tough 0.41 / 1.22 / 2.49) |
-| latest | 2.12 / 2.33 / 1.70 (16, 15, 10 runs reached it) | **0.44 / 2.26 / 2.79** (61 runs; tough 0.58 / 2.32 / 3.60) |
-| plating | 1.05 / 1.41 / 1.07 | **0.15 / 0.84 / 1.94** (tough 0.21 / 0.82 / 1.89) |
+| usual | 1.51 / 1.19 / 1.16 (tough 1.65 / 1.30 / 1.54) | **0.34 / 1.22 / 2.35** (tough 0.46 / 1.28 / 2.45) |
+| latest | 2.12 / 2.33 / 1.70 (16, 15, 10 runs reached it) | **0.48 / 2.24 / 2.58** (54 runs; tough 0.68 / 2.25 / 3.78) |
+| plating | 1.05 / 1.41 / 1.07 | **0.18 / 0.98 / 1.74** (tough 0.19 / 0.96 / 1.83) |
 
 Rising with every Armory, round 3 near the asked 2.5 for the usual Armory; round 1 under the asked 1.5 and round 2 under the asked 2, as on every rebuilt map, to keep the win rate in the band (a build with round 1 at 1.42, its salvo two guided missiles and a shell, won 54% on 96 seeds against 61%).
 
 ## Bot results, before and after
 
-TBD
+"Before" is the map card as it was (log v56's base build, #222; the Delta's and the Crossing's merges change nothing on this map): today's convoy controls, no encounters, the Siege of Vey, ten hits a generator and forty the Citadel. "After" is this build. The reads are 192 seeds (900–1091), the record reports' bot and setup (`tools/v3/citadel/final.sh`).
+
+### The headline (192 seeds, normal runs)
+
+| Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 8 | Wave 10 |
+| --- | --- | --- | --- | --- | --- |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 36% → **49%** | 0.63 → **0.84** | 4.25 → 4.42 | 0.99 → 0.93 | 1.18 → 0.98 |
+| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 3% → **11%** | 1.48 → **1.61** | 5.64 → 5.32 | 1.84 → 1.08 | 1.73 → 1.18 |
+| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 28% → **72%** | 0.51 → **0.63** | 3.91 → 3.27 | 1.21 → 0.54 | 1.09 → 0.75 |
+| none | 0% → 0% | 2.81 → 3.00 | 4.64 → 5.72 | 1.97 → 1.76 | – → 2.00 |
+
+Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
+
+| Armory | Before | After |
+| --- | --- | --- |
+| usual | .00 .18 .17 .06 .22 .58 .60 .99 .95 1.18 · boss 1.51 1.19 1.16 | .03 .22 .12 .10 .35 .49 .69 .93 .95 .98 · boss .34 1.22 2.35 |
+| latest | .00 .25 .37 .37 .51 .99 1.23 1.84 1.68 1.73 · boss 2.12 2.33 1.70 | .02 .30 .32 .26 .74 .88 .82 1.08 1.18 1.18 · boss .48 2.24 2.58 |
+| plating | .00 .09 .09 .09 .23 .46 .63 1.21 .89 1.09 · boss 1.05 1.41 1.07 | .01 .11 .08 .15 .28 .41 .58 .54 .63 .75 · boss .18 .98 1.74 |
+
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before (usual): .00 .18 .17 .06 .22 .61 .69 1.36 1.33 1.97 (wave 6 ×2.4 wave 5, a wave under 0.25 counting as 0.25; wave 8 ×2.0). After: usual .03 .22 .12 .10 .37 .54 .81 1.21 1.22 1.51 (**the largest step ×1.5, on waves 5 and 8: no cliff**); latest .02 .30 .32 .27 .83 1.08 1.18 1.62 2.20 2.16 (**wave 5 ×3.1 wave 4: over the line**); plating .01 .11 .08 .16 .31 .43 .68 .69 .92 1.06 (×1.6 at most).
+
+How the mechanic plays for the bot (`tools/v3/citadel/down.ts`, 12 seeds; `dome.ts`): it brings the shield down in every wave from wave 3 (92% of waves 1–2; the shield stands 12–33% of a wave), and **silences the Citadel in 75–100% of waves 2–10** (its idle shots: nine on the generators, fourteen on the keep), so much of the signature's fire leaves the far silos instead; in the boss rounds it silences the Citadel in all of round 1's runs but only a third of round 2's and a fifth of round 3's. On the base build it had the shield down for good by wave 2 and the Citadel a wreck by wave 4: now the question comes back every wave, but the bot answers it the same way almost every time. A question for the player (below).
 
 ## What is not satisfied, or uncertain
 
