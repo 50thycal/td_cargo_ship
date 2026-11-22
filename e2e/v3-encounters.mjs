@@ -331,8 +331,47 @@ try {
     await one.close();
   }
 
+  // ---- The Black Strait, the Lantern (log v52): chapter 3's night map,
+  // fire out of the dark bank behind the ships, siege guns rising there,
+  // and the Bombardment walking the far shore ----
+  await open(page, 'lab=map-lantern&seed=7');
+  const ln = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: document.querySelectorAll('.v3-command').length }));
+  check(ln.map === 'lantern' && ln.rev === ENCOUNTER_REV && ln.cmds === 0, `the Black Strait's card opens with its encounters and no command (${JSON.stringify(ln)})`);
+  await labMenu(page);
+  const lnArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Bombardment/.test(lnArc) && /Glows in the dark/.test(lnArc), `the Black Strait's script names its first encounter and its boss, the Bombardment (${lnArc.slice(0, 120)})`);
+  await page.screenshot({ path: `${OUT_DIR}/lantern-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): a line of siege guns along the far shore, the night over
+  // it, their circles on the lane drawn over the dark.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-lantern&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let guns = { up: 0, hatches: 0, circles: 0, event: '' };
+    for (let k = 0; k < 400 && !(guns.up >= 2 && guns.circles >= 2); k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      guns = await one.evaluate(() => {
+        const g = window.__v3.game();
+        return {
+          up: g.threats.filter((t) => t.kind === 'siege' && !t.dead).length,
+          hatches: g.foe.marks.filter((m) => m.kind === 'hatch').length,
+          circles: g.foe.marks.filter((m) => m.kind === 'shell').length,
+          event: g.event?.id ?? '',
+        };
+      });
+    }
+    check(guns.event === 'bombardment' && guns.up >= 2 && guns.circles >= 2, `the Bombardment's guns rise along the shore and mark the lane (${JSON.stringify(guns)})`);
+    await one.screenshot({ path: `${OUT_DIR}/lantern-boss.png` });
+    await one.close();
+  }
+
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-lantern', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, Battery Point, Sowers\' Reach, the Rig Field and Dreadnought Pass since chapter 3)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-crossing', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');

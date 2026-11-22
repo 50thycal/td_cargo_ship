@@ -679,8 +679,13 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(E.planes, (k) => k * E.beat, 'dive'), ...steps(E.pairs, (k) => (2 * k + 1.5) * E.beat, 'pair')];
     }
     case 'bombardment': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch3-lantern.md): the
+      // Black Strait's rounds rise, a line of guns of their own along the
+      // far shore and on the dark bank, their own supply swarms, and
+      // launches of their own (MAP_BOSS: out of the dark bank).
       const E = EV.bombardment;
-      return [...steps(1, () => 0, 'hatches'), ...steps(E.swarms, (k) => E.from + k * E.every, 'supply')];
+      const R = bossRound(g, ev);
+      return [...steps(1, () => 0, 'hatches'), ...steps(R?.supply ?? E.swarms, (k) => E.from + k * E.every, 'supply'), ...fireSteps(R)];
     }
     case 'fire-mission': {
       // The spotters take turns: left, right, the far side, and round again.
@@ -1057,13 +1062,22 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       // Three hatches beside three bases, spread along the shore, opening
       // one after another.
       // On the far shore from the carrier where it has bases enough.
+      // Encounters rev 4 (the Black Strait, MAP_BOSS): the round's own
+      // count, gap and salvos, then its guns on the near (dark) bank.
+      const R = bossRound(g, ev);
+      const guns = R?.guns ?? E.guns;
+      const gap = R?.gunGap ?? E.stagger;
+      const salvos = R?.gunSalvos ?? E.salvos;
       const all = liveBases(g);
-      const far = all.filter((i) => (g.map.bases[i].y < VIEW.height / 2) === (g.map.carrier.y > VIEW.height / 2));
-      const bs = (far.length >= E.guns ? far : all).sort((a, b) => g.map.bases[a].x - g.map.bases[b].x);
-      const pick = Array.from({ length: Math.min(E.guns, bs.length) }, (_, k) => bs[Math.round((k * (bs.length - 1)) / Math.max(1, E.guns - 1))]);
-      [...new Set(pick)].forEach((b, k) => {
+      const farSide = (i: number) => (g.map.bases[i].y < VIEW.height / 2) === (g.map.carrier.y > VIEW.height / 2);
+      const far = all.filter(farSide);
+      const bs = (far.length >= guns ? far : all).sort((a, b) => g.map.bases[a].x - g.map.bases[b].x);
+      const pick = Array.from({ length: Math.min(guns, bs.length) }, (_, k) => bs[Math.round((k * (bs.length - 1)) / Math.max(1, guns - 1))]);
+      const near = all.filter((i) => !farSide(i)).sort((a, b) => g.map.bases[a].x - g.map.bases[b].x);
+      const dark = near.length ? Array.from({ length: R?.dark ?? 0 }, (_, k) => near[k % near.length]) : [];
+      [...new Set(pick), ...new Set(dark)].forEach((b, k) => {
         const p = siegeSpotAt(g, g.map.bases[b]);
-        g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: p.x, y: p.y, t: 0, dur: FOE.siege.first + k * E.stagger, spawn: true, salvos: E.salvos });
+        g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: p.x, y: p.y, t: 0, dur: FOE.siege.first + k * gap, spawn: true, salvos });
         sent(ev, 'siege');
       });
       return;

@@ -434,8 +434,15 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'siege': {
       // A closed hatch on the shore first (Test Lab round 1: "raised up
       // from low ground"); the gun comes up out of it when it opens.
-      const gun = siegeSpot(g, rng);
-      g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: gun.x, y: gun.y, t: 0, dur: FOE.siege.first, spawn: true });
+      // Log v52 (The Black Strait, MAP_SIGNATURE `beside`, lab only): a
+      // gun the launch names a base for rises beside that base (the
+      // enemy's dark bank in the south-east), the wave's own on the side
+      // towards the middle of the screen, an encounter's on the other, so
+      // two never share a hatch; otherwise beside any. Its salvos: the
+      // launch's (absent, its own).
+      const b = l.base >= 0 ? g.map.bases[l.base] : undefined;
+      const gun = b ? siegeSpotAt(g, b, l.enc ? -1 : 1) : siegeSpot(g, rng);
+      g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: gun.x, y: gun.y, t: 0, dur: FOE.siege.first, spawn: true, ...(l.salvos !== undefined ? { salvos: l.salvos } : {}) });
       return;
     }
     case 'spotter': {
@@ -523,10 +530,11 @@ function siegeSpot(g: Game, rng: RNG): Point {
   return siegeSpotAt(g, sites.length ? rng.pick(sites) : { x: VIEW.width / 2, y: 90 });
 }
 
-/** A siege gun's place beside a given site. */
-export function siegeSpotAt(g: Game, b: Point): Point {
+/** A siege gun's place beside a given site: on its side towards the
+ *  middle of the screen (`inward` -1: the other side). */
+export function siegeSpotAt(g: Game, b: Point, inward: 1 | -1 = 1): Point {
   void g;
-  const side = b.x < VIEW.width / 2 ? 1 : -1;
+  const side = (b.x < VIEW.width / 2 ? 1 : -1) * inward;
   return { x: clamp(b.x + side * 95, 80, VIEW.width - 80), y: b.y + 6 };
 }
 

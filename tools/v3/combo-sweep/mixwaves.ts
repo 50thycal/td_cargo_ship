@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers,rigs] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers,rigs,lantern] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -51,6 +51,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // call the battleship's guns, and its broadsides (counted apart from the
   // battleship itself, the map's mechanic, as `broadside`).
   dreadnought: ['spotter', 'broadside'],
+  // The Black Strait (log v52): guns in the dark, the siege guns that rise
+  // on the enemy's dark bank (a gun counts once, by its hits, however many
+  // times it rises).
+  lantern: ['siege'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
