@@ -53,7 +53,10 @@ Bases and spots are counted from 1, as the pause screen counts them.
 
 ## The stretches
 
-Read on the record reports (24 seeds, tough, waves 1–9): see "The record reports" below. The danger is where the boats from the north-middle cove and the far silo's drones meet the ships halfway along; the east, where the north-east and south coves face each other, takes the boats from both sides. Rule `m-carrier` asks that the danger stretch not be the carrier's closest; the carrier sits at (700, 722), under the middle.
+- **Danger: the late third, the east**, where the north-east cove and the south cove face each other across the lane by the delivery end and the boats come from both sides: 47% of the hull damage in waves 1–9 (the usual Armory's record report; 44–47% for the other player Armories; before: the middle, 41%).
+- **Safe: the early third, the west**, the way in, under the far silo's long flight and behind the north-west cove: 19% (21–24% for the other Armories; 25% with none; before: 25%, flagged for two Armories).
+- **The middle** (36%) takes the north-middle cove's boats and fire ships at the ship halfway along.
+- Rule `m-carrier`: the danger stretch is not the carrier's closest (the carrier sits at (700, 722), under the middle). The waves' first stakes are in the east (wave 3), and from wave 5 every encounter puts something there; the west gets wave 1's long-run boats, wave 6's boat and the shells at the ships coming in.
 
 ## The convoy
 
@@ -139,7 +142,7 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 
 Wave 1 loses 0.01 ships a run with every Armory (192 seeds, normal; 0.03 with none): its two boats come out of the north-east cove on a long run west at the ships coming in, with a white wake to see, and a ship sunk on wave 1 is a rare one already hit by the drones.
 
-**Wave 10, the climax:** after a 6 s calm, every cove empties at once, two of them fire ships; the hardest regular wave for the usual and plating Armories (192 seeds, normal: 0.97 usual, 0.59 plating; 1.08 latest), and no step to it doubles the wave before.
+**Wave 10, the climax:** after a 6 s calm, every cove empties at once, two of them fire ships; the hardest regular wave for every player Armory (192 seeds, normal: 0.74 usual, 0.97 latest, 0.72 plating; tough 1.27, 2.07, 1.34), and no step to it doubles the wave before.
 
 ## The boss plan: the Fire Fleet
 
@@ -160,11 +163,11 @@ How it reads (192 seeds, normal runs that reached it):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 0.02 / 0.03 / 0.03 | **0.54 / 1.37 / 2.43** |
-| latest | 0.10 / 0.10 / 0.19 (21 runs reached it) | **1.00 / 1.90 / 2.09** (82, 82, 79) |
-| plating | 0.00 / 0.03 / 0.01 | **0.31 / 0.71 / 1.27** |
+| usual | 0.02 / 0.03 / 0.03 | **0.60 / 1.33 / 2.26** |
+| latest | 0.10 / 0.10 / 0.19 (21 runs reached it) | **1.11 / 1.91 / 2.06** (70, 70, 66) |
+| plating | 0.00 / 0.03 / 0.01 | **0.42 / 0.90 / 1.21** |
 
-Rising with every Armory. Round 3 is at the asked 2.5 for the usual Armory; rounds 1–2 are under the asked 1.5 / 2, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so 1.5 / 2 / 2.5 would end most runs that reach it (an earlier build at 0.78 / 1.51 / 2.28 won 52%). Tough runs (every seed plays every round): usual 0.67 / 1.34 / 2.44, latest 1.09 / 1.90 / 2.28, plating 0.33 / 0.73 / 1.27.
+Rising with every Armory. Round 3 is near the asked 2.5 for the usual Armory; rounds 1–2 are under the asked 1.5 / 2, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so 1.5 / 2 / 2.5 would end most runs that reach it (an earlier build at 0.78 / 1.51 / 2.28 won 52%). Tough runs (every seed plays every round): usual 0.65 / 1.39 / 2.44, latest 1.01 / 1.92 / 2.32, plating 0.41 / 0.92 / 1.24.
 
 ## Bot results, before and after
 
@@ -174,30 +177,47 @@ Rising with every Armory. Round 3 is at the asked 2.5 for the usual Armory; roun
 
 | Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 8 | Wave 10 |
 | --- | --- | --- | --- | --- | --- |
-| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 65% → **54%** | 0.38 → **0.91** | 3.76 → 3.91 | 0.85 → 0.58 | 1.25 → 0.97 |
-| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 9% → **25%** | 1.08 → **1.55** | 5.60 → 4.87 | 1.94 → 0.96 | 1.77 → 1.08 |
-| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 55% → **82%** | 0.35 → **0.62** | 3.77 → 2.92 | 0.95 → 0.41 | 1.19 → 0.59 |
-| none | 1% → 1% | 1.94 → 2.97 | 5.30 → 5.70 | 2.02 → 1.44 | 0.50 → 1.79 |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 65% → **57%** | 0.38 → **0.91** | 3.76 → 3.80 | 0.85 → 0.47 | 1.25 → 0.74 |
+| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 9% → **22%** | 1.08 → **1.55** | 5.60 → 5.14 | 1.94 → 0.89 | 1.77 → 0.97 |
+| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 55% → **77%** | 0.35 → **0.62** | 3.77 → 3.07 | 0.95 → 0.44 | 1.19 → 0.72 |
+| none | 1% → 1% | 1.94 → 2.97 | 5.30 → 5.73 | 2.02 → 1.44 | 0.50 → 1.63 |
 
 Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 
 | Armory | Before | After |
 | --- | --- | --- |
-| usual | .01 .14 .13 .03 .07 .55 .31 .85 .76 1.25 · boss .02 .03 .03 | .01 .22 .19 .17 .32 .66 .61 .58 .60 .97 · boss .54 1.37 2.43 |
-| latest | .01 .26 .22 .13 .48 1.30 .88 1.94 1.75 1.77 · boss .10 .10 .19 | .01 .42 .18 .39 .58 .75 .54 .96 .99 1.08 · boss 1.00 1.90 2.09 |
-| plating | .00 .07 .09 .05 .14 .52 .41 .95 .87 1.19 · boss .00 .03 .01 | .01 .10 .12 .12 .28 .39 .47 .41 .59 .59 · boss .31 .71 1.27 |
+| usual | .01 .14 .13 .03 .07 .55 .31 .85 .76 1.25 · boss .02 .03 .03 | .01 .22 .19 .17 .32 .73 .66 .47 .66 .74 · boss .60 1.33 2.26 |
+| latest | .01 .26 .22 .13 .48 1.30 .88 1.94 1.75 1.77 · boss .10 .10 .19 | .01 .42 .18 .39 .58 1.01 .84 .89 1.02 .97 · boss 1.11 1.91 2.06 |
+| plating | .00 .07 .09 .05 .14 .52 .41 .95 .87 1.19 · boss .00 .03 .01 | .01 .10 .12 .12 .28 .42 .53 .44 .55 .72 · boss .42 .90 1.21 |
 
-Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .01 .14 .13 .03 .07 .55 .32 1.11 .92 1.80 (wave 6 ×2.2, wave 8 ×3.5 the wave before, a wave under 0.25 counting as 0.25); latest .01 .26 .22 .18 .59 1.83 1.60 3.85 4.59 6.09; plating .00 .07 .09 .05 .14 .53 .53 1.21 1.27 2.37. After: usual .01 .22 .19 .21 .36 .75 .76 .86 1.00 1.59; latest .01 .42 .18 .43 .65 .93 .87 1.32 1.53 2.01; plating .01 .10 .12 .12 .31 .41 .54 .51 .74 .92. **The largest step:** 2.08× on wave 6 for the usual Armory (0.36 → 0.75), a hair over the line; latest 1.51× (wave 5), plating 1.37× (wave 9).
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .01 .14 .13 .03 .07 .55 .32 1.11 .92 1.80 (wave 6 ×2.2, wave 8 ×3.5 the wave before, a wave under 0.25 counting as 0.25); latest .01 .26 .22 .18 .59 1.83 1.60 3.85 4.59 6.09; plating .00 .07 .09 .05 .14 .53 .53 1.21 1.27 2.37. After: usual .01 .22 .19 .21 .36 .83 .93 .71 .93 1.27; latest .01 .42 .18 .43 .65 1.24 1.29 1.31 1.41 2.07; plating .01 .10 .12 .12 .31 .44 .74 .64 .77 1.34. **The largest step: 2.3× on wave 6 for the usual Armory (0.36 → 0.83), over the line**; latest 1.9× (wave 6), plating 1.7× (waves 7 and 10). Before, three waves doubled for the usual set and the latest set's wave 8 was ×2.4.
 
 ### The record reports (24 seeds, 900–923)
 
-RECORD_TABLE
+| | Before latest / plating / usual / none | After latest / plating / usual / none |
+| --- | --- | --- |
+| Won (normal) | 4% / 54% (192-seed read) / 83% / 0% | 8% / **83% / 67%** / 4% |
+| Waves 1–5 lost (normal) | 0.88 / 0.46 / 0.08 / 1.13 | 1.00 / 0.46 / 0.75 / 2.08 |
+| Boss r1 / r2 / r3 (normal, reached) | nothing (0–0.2 a round) | 1.14 / 2.57 / 2.00 (7, 7, 6); 0.30 / 0.95 / 1.10 (20); 0.65 / 1.45 / 2.05 (20); – |
+| `w-cliff` (tough) | FLAG (w6, w8) for every Armory but plating (w8, w10) | FLAG (w6: 0.17 → 0.83); **PASS**; **PASS**; FLAG (w5, w6): 24 seeds; on 192 seeds wave 6 is 2.3× wave 5 for the usual set (above) |
+| `w-early` close calls from wave 3 | PASS | FLAG (0.96 on w3); FLAG (0.83 on w3); PASS; PASS |
+| `w-budget` ±15% | PASS | **PASS** (furthest ×0.86–0.91, wave 9) |
+| `m-stretches` | PASS / FLAG (cold early 27%) / PASS / FLAG: hot middle 38–43% | **PASS: hot late 44–47%, cold early 19–24%**; none: hot middle 39%, early 25% |
+| `g-warning` | PASS: 6.4 → 4.5–4.7 s | PASS: 7.7 → 6.3–6.4 s |
+| `w-first` | PASS | PASS |
+| Kits (counter / off-counter): won, lost in waves 1–10 (tough) | – | latest 25% / 13%, 6.9 / 7.2; plating 92% / 88%, 3.2 / 3.8; usual 54% / 54%, 4.5 / 4.8; none 0% / 4%, 14.5 / 15.2 |
+
+The 24-seed record and the 192-seed reads disagree by up to 14 points on a win rate here (latest: 8% against 22%; usual 67% against 57%); the larger read is the one to trust.
+
+**Busier early waves** (the usual Armory's record): threats on the board at a moment 2.0, 2.2, 1.9 on waves 1–3 (before 1.4, 1.6, 1.8), kills a minute 52, 42, 50 (before 38, 36, 46).
+
+**The counters** (rule `m-kits`): the counter kit does better than the off-counter with every Armory on the tough runs (0.3–0.7 fewer ships lost in waves 1–10) and wins more with the latest (25% / 13%) and plating sets (92% / 88%), the same with the usual set (54%); not clearly better on 24 seeds. Neither is trivial.
 
 ### Coves difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
-- **The usual Armory wins 54%**, in the band (before 65%, but a flat map with a wave-10 wall and no boss, on today's convoy controls). **The latest set 25%**, under it (before 9%); **the plating set 82%**, over it, as on every chapter 3 map: no single tuning puts the three in 50–70% together. Chapter 4's band is "3–4 tries" for the player (rule `m-difficulty`).
+- **The usual Armory wins 57%**, in the band (before 65%, but a flat map with a wave-10 wall and no boss, on today's convoy controls). **The latest set 22%**, under it (before 9%); **the plating set 77%**, over it, as on every chapter 3 map: no single tuning puts the three in 50–70% together. Chapter 4's band is "3–4 tries" for the player (rule `m-difficulty`).
 - **Waves 1–5:** 0.91 for the usual Armory (over the asked 0.8; before 0.38), the plating set 0.62, the latest 1.55. Most of waves 2–3's is the debuts' heavies (the Repair Ship's, the Bodyguard's): 0.2 of a ship a run on wave 2.
-- **The climb from wave 4 to 9** rises for the usual Armory to wave 6 (.17 .32 .66), then holds at about 0.6 (.61 .58 .60) to wave 10's 0.97; on the tough runs it rises all the way (.21 .36 .75 .76 .86 1.00, then 1.59).
+- **The climb from wave 4 to 9** rises for the usual Armory to wave 6 (.17 .32 .73), then holds at about 0.5–0.7 (.66 .47 .66) to wave 10's 0.74; on the tough runs .21 .36 .83 .93 .71 .93, then 1.27.
 - **Wave 10** is the hardest regular wave for the usual and plating Armories, and no step to it doubles.
 - **Busier early waves:** see the record reports' threats on the board and kills a minute.
 
@@ -205,10 +225,10 @@ RECORD_TABLE
 
 - **The convoy change.** The card played today's convoy controls before, where the bot sails a Box (a ram does one hit, not two) at a higher flow and won 65% on the shared waves; on the map's own convoy (Pairs, the campaign's schedule, as every rebuilt map) the same waves won 6%. The rebuild's waves give up most of their shells (from wave 5), clusters (from 6) and guided missiles (from 7) for drones to come back into the band: late waves are mostly drones (67% of what shows in waves 4–10), as on the Rigs (72%).
 - **Waves 1–5 lose 0.91 for the usual Armory**, over the asked 0.4–0.8, most of it the debuts' heavies on waves 2–3 (the Repair Ship sails in with a heavy, the Bodyguard Ring guards one), which the rebuild leaves as the campaign plans them.
-- **The cliff check: wave 6 is 2.08× wave 5 on 192 tough seeds** for the usual Armory, a hair over the line (wave 6 is where the shared waves bring the first bomber, the first mothership and two new enemies at once); latest and plating pass. Sensitive: moving wave 5 by 5% moved it to 0.59 and wave 6's step to 1.4×, but wave 5's own step from wave 4 to 2.4×.
+- **The cliff check: wave 6 is 2.3× wave 5 on 192 tough seeds** for the usual Armory, over the line (wave 6 is where the shared waves bring the first bomber, the first mothership and two new enemies at once, and where the climb is already at its floor, ×0.88, after the budget check); latest (1.9×) and plating (1.7×) pass. Sensitive: wave 5 5% fuller moved it to 0.59 and wave 6's step to 1.4×, but wave 5's own step from wave 4 to 2.4×. The next build's lever: a lighter debut on wave 6 (the shared wave's two new enemies), not more fire on wave 5.
 - **The signature is 7% of the hits in waves 4–10**, under the asked quarter (the Rigs 9%, the Sowers 19%). Each fire ship more a wave cost the climb its shape (a cliff on wave 6).
 - **Air Strike + Flak Cannon is in four of the five best kits** (all five are the Coves' own; its best weapon alone, the Orbital Strike, is its own). Nothing changed for it.
-- **The danger stretch** and the record-report checks: see the record reports.
+- **Close calls from wave 3** (`w-early`) flag for the latest and plating sets on 24 seeds (0.96 and 0.83 a run on wave 3, against ≥ 1): wave 3's boats come from the facing coves 2.5 s apart, and those Armories catch them.
 - **Fire ships' losses are blamed on the Incendiary Missile** in the logs and the end screen's "what sank you" (the fire is its fireball, `cloud`), so "Incendiary fire did the most damage" can mean the fire ships on this map.
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
 - **The pairs and kits of the diversity sweep** were played on the build before the last change (wave 6's signature fire ship and two drones); the singles on that build too.
@@ -228,7 +248,7 @@ RECORD_TABLE
 
 ## Checks run
 
-CHECKS_RUN
+`tsc`; `vitest --exclude '.claude/**'` (80 files, 1893 tests, all pass, on the build before the last wave 6–7 budget fix; the budget test re-run after it); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs`, `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass; run on the build before the wave 6–7 drone counts, which no e2e check reads); the map-lab baseline replays exactly.
 
 ## Tests
 
