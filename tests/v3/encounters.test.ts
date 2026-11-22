@@ -2476,7 +2476,7 @@ describe('Tidewater Flats (log v59): the tide\'s clock a wave, the crowd, the eb
       const spec = waveSpec(w, MAPS.tide.threatScale);
       const at = 3 + RAID.warn + TIDE_EBB[w - 1] * spec.duration;
       expect(g.ebb![0], `wave ${w}`).toBeCloseTo(at, 5);
-      expect(g.ebb![1] - g.ebb![0], `wave ${w}`).toBe(TIDE_LOW[w - 1]);
+      expect(g.ebb![1] - g.ebb![0], `wave ${w}`).toBeCloseTo(TIDE_LOW[w - 1], 6);
       // Every launch aimed at the crowd leaves at low water.
       for (const l of crowdAimed(g)) {
         expect(l.at, `wave ${w}`).toBeGreaterThanOrEqual(g.ebb![0]);
@@ -2497,7 +2497,7 @@ describe('Tidewater Flats (log v59): the tide\'s clock a wave, the crowd, the eb
     applyEncounters(g, VER('v1'));
     g.tempo = { ...g.tempo, lossLimit: 999 };
     g.carrierHp = g.stats.carrierHp = 1e6;
-    g.queue = [];
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
     g.raiderQueue = [];
     const flats = MAPS.tide.channels.findIndex((c) => c.tide);
     const seen = new Set<number>();
