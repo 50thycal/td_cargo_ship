@@ -38,6 +38,7 @@ import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, SCRAP, a
 import { equipArmory, isUnlocked, levelUp, loadProgress, recordResult, runLoadout, type Progress } from '../platform/save';
 import {
   applyFreePlay,
+  commandAdvised,
   createGame,
   freeLevelPick,
   held,
@@ -321,15 +322,12 @@ export class App {
   private commandSaysT = 0;
   private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
-  /** Playtest notes: pause and say something about this moment; after a
-   *  volley it offers to rate it (see openNote / openRate). */
-  private noteBtn = button('', 'v3-note-btn', () => (this.rateable() ? this.openRate('rail') : this.openNote('rail')));
-  private noteKey = '';
+  /** Playtest notes: the pause menu's "Add a note" and "Rate last volley"
+   *  (round 15: the rail's NOTE / RATE button is gone, in every game type;
+   *  see openNote / openRate). */
   /** Quartermaster 3+ (Armory): the golden bomb, in the left rail from the
    *  run's start until it is tapped (the Nuke's blast, once a run). */
   private bombBtn = button('', 'v3-gold-bomb', () => this.tapGoldBomb());
-  /** Volleys finished when the note button last pulsed. */
-  private volleysSeen = 0;
   private notesOn = !STORE && notesEnabled();
   /** The result screen's run, kept for its review (and a replay's way back). */
   private review: { g: Game; won: boolean; res: ReturnType<typeof recordResult> | null; best: boolean; log: PlayLog | null; ghosted: boolean; rec: Recorder | null } | null = null;
@@ -991,15 +989,20 @@ export class App {
     flowLabel.dataset.flow = '1';
     this.flowSlider.el.dataset.flow = '1';
     flowHint.dataset.flow = '1';
+    // Round 15 (the player: "remove the command and notes buttons on the
+    // left in every game type ... the new buttons on the bottom left will
+    // replace command options"): no note button in the rail (the pause menu
+    // has "Add a note"), and a map's convoy command is one big button at the
+    // bottom of the rail (commandBox, laid out there by style.css), which
+    // glows when it is the moment for it (commandAdvised).
     this.leftRail.append(
       this.formationBtn,
-      this.commandBox,
       flowLabel,
       this.flowSlider.el,
       flowHint,
       this.bombBtn,
-      this.noteBtn,
       this.timers,
+      this.commandBox,
     );
     this.bombBtn.innerHTML = GOLD_BOMB_SVG + '<b>BOMB</b>';
     this.bombBtn.dataset.goldBomb = '1';
@@ -1267,43 +1270,13 @@ export class App {
     return captureThumb(this.canvas, { x: this.offX * d, y: this.offY * d, w: VIEW.width * this.scale * d, h: VIEW.height * this.scale * d });
   }
 
-  /** Is there a finished volley this wave still to rate? */
-  private rateable(): boolean {
-    const last = this.rec?.watch.latest();
-    return !!last && !last.volley.rating && last.volley.wave === this.game?.wave;
-  }
-
-  /** The rail's note button: NOTE, or RATE after a volley (with a pulse as
-   *  it turns). Rebuilt only when that changes. */
-  private syncNoteBtn(g: Game | null): void {
-    const live = this.notesOn && !!g && !!this.rec && g.phase === 'wave' && !this.playback;
-    const rate = live && this.rateable();
-    const closed = this.rec?.watch.closed ?? 0;
-    if (live && closed > this.volleysSeen) {
-      this.volleysSeen = closed;
-      if (rate) {
-        this.noteBtn.classList.remove('pulse');
-        void this.noteBtn.offsetWidth;
-        this.noteBtn.classList.add('pulse');
-      }
-    }
-    const key = `${live}:${rate}`;
-    if (key === this.noteKey) return;
-    this.noteKey = key;
-    this.noteBtn.hidden = !live;
-    this.noteBtn.classList.toggle('rate', rate);
-    this.noteBtn.replaceChildren(el('b', '', rate ? '★' : '📝'), el('span', '', rate ? 'RATE' : 'NOTE'));
-    this.noteBtn.setAttribute('aria-label', rate ? 'Rate the volley that just ended' : 'Pause and add a note');
-  }
-
   /** Pause on this step and say something. The note lands in the log with
    *  the step, the game as it stands and a thumbnail, and the run is saved
    *  at once so it reaches Claude even if the game is closed straight after. */
-  private openNote(from: 'rail' | 'pause'): void {
+  private openNote(from: 'pause'): void {
     const g = this.game;
     const rec = this.rec;
     if (!g || !rec || g.phase !== 'wave') return;
-    if (from === 'rail' && this.paused) return;
     this.paused = true;
     this.hold = null;
     this.dropGesture();
@@ -1771,7 +1744,6 @@ export class App {
     if (g) this.redHint(g);
     this.syncTimers(g);
     this.renderFocus(g);
-    this.syncNoteBtn(g);
     this.syncSound(g);
     this.draw();
     requestAnimationFrame((t) => this.frame(t));
@@ -4241,7 +4213,7 @@ export class App {
     }
     for (const id of convoyCommands(g)) {
       const def = COMMANDS[id];
-      const b = button('', 'v3-command', () => this.giveCommand(id));
+      const b = button('', 'v3-command v3-big-cmd', () => this.giveCommand(id));
       b.dataset.command = id;
       const state = el('small', '', 'READY');
       const bar = el('i');
@@ -4302,10 +4274,13 @@ export class App {
       const def = COMMANDS[c.id];
       const total = CONVOY.hold.max;
       const cool = CONVOY.hold.cooldown;
-      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : st.ready ? 'READY' : 'NO SHIPS';
+      // Round 15: it glows when now is the moment (a ship about to sail onto
+      // a mine, a shell coming down where a ship is about to be).
+      const advised = commandAdvised(g, c.id);
+      const label = st.active ? `${def.active.toUpperCase()} ${Math.ceil(st.left)}` : st.cool > 0 ? `WAIT ${Math.ceil(st.cool)}` : advised ? 'NOW!' : st.ready ? 'READY' : 'NO SHIPS';
       const name = st.active ? 'Release' : def.name;
       const fill = st.active ? st.left / total : st.cool > 0 ? 1 - st.cool / cool : st.ready ? 1 : 0;
-      const key = `${name}|${label}|${st.active ? 'a' : st.ready ? 'r' : 'w'}|${Math.round(fill * 40)}`;
+      const key = `${name}|${label}|${st.active ? 'a' : st.ready ? 'r' : 'w'}|${Math.round(fill * 40)}|${advised}`;
       if (key === c.key) continue;
       c.key = key;
       c.el.firstElementChild!.textContent = name;
@@ -4313,6 +4288,7 @@ export class App {
       c.bar.style.width = `${Math.round(fill * 100)}%`;
       c.el.classList.toggle('active', st.active);
       c.el.classList.toggle('waiting', !st.active && !st.ready);
+      c.el.classList.toggle('advised', advised);
       c.el.setAttribute('aria-disabled', String(!st.ready));
       c.el.setAttribute('aria-label', `${name}: ${def.says} ${def.cost} ${label.toLowerCase()}`);
     }

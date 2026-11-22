@@ -17,6 +17,24 @@ Code:
 
 Bot reports: `tools/v3/map-report/results/rigs-player.md` (the usual Armory: Quick Reload 5, Damage Control 4, Stockpile 5), `rigs-latest.md` (Wide Warhead 5, Point Defense 4, Supply Lines 3), `rigs-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4), `rigs.md` (no Armory); each with a heat map and the counter and off-counter kits; the map as it was: `rigs-before*.md`. Tuning reads: the record report's bot on 192 seeds (900–1091), `python3 tools/v3/rigs/read.py --seeds=192 --armory=... [--tough]`. "Before" on 192 seeds was read on the base build (#214).
 
+## Round 15 (log v55): rigs count shots, a better tow, busier early waves
+
+Your run of 2026-11-22 (v49, won, fun 5, boss 3, waves 1-3 rated 1, 2 and 1; `tools/v3/bot-fit/logs/v3-20261122040236-18317.json`): "The bringing in of the oil rig was hilarious, keep that and improve that animation a lot", and "make the oil rigs stronger ... it has to basically consume X amount of your ammo to be destroyed". Built (details: `docs/design/v3-playtest-fixes.md`, "Round 15"):
+
+- **Rigs count shots, not damage** (`SHOT_RIGS`, `rigShot`): one a shot whatever its damage (a Railgun round, a warhead, a powered-up shot); a seeker's third a third; an area weapon once a rig a step; a flak cloud or burning row once a rig for its whole life; the Nuke and the golden bomb 3. A rig standing from the start takes **32 shots** (`RIG_SHOTS.rig`; was 40 hits), a relief rig on its tow 10 (was 8), docked 20, a risen boss rig 8. Each rig shows its shots left in a pill over it.
+- **Your log, replayed** (`tools/v3/rigs/killtimes.ts`): you had all four rigs down 65 s in. Your Flak clouds did 30-36 of the 40 hits on five of the rigs you sank; by the new count those took 6-11 shots, and now take 32. The plain gun's rigs (40 shots) now take 32: at 40 the bot won 42-45%.
+- **The tow-in**, drawn again: a tug with a wheelhouse, a smoking funnel, a bow wave and churn; a sagging tow line; the rig rolling on its legs with its own bow wave and wake; the tug easing off and the line going slack near the station; on docking a splash ring, spray, a dip and settle, and the tug casting off.
+- **Early waves:** wave 1 four drones in two late strings (was one string of two; earlier or western strings sank ships for the bots), wave 2 three strings (was two), wave 3 one (none); waves 3-5 a little less of their own; the Rig Barrage's round 1 two volleys (was three), round 2 a little slower.
+- **A bug:** a relief rig drawn by the planner could be loaded on a truck and fired at a ship like a missile (since v49). Fixed: a structure is never a truck's load.
+
+| Armory (192 seeds, normal) | v49 won / waves 1-5 | v55 won / waves 1-5 | v55 boss r1 / r2 / r3 |
+| --- | --- | --- | --- |
+| usual | 64% / 0.82 | **53% / 0.80** | 0.77 / 1.07 / 2.02 |
+| latest | 40% / 1.33 | 21% / 1.67 | 0.86 / 1.45 / 1.64 |
+| plating | 89% / 0.57 | 85% / 0.60 | 0.26 / 0.49 / 1.01 |
+
+Tough runs, the usual Armory: .01 .07 .24 .24 .38 .73 .67 .72 1.06 1.27, boss .81 1.11 2.16; no step doubles (the largest 1.92x, wave 6). The latest set (Wide Warhead 5) falls furthest: a warhead's damage no longer brings a rig down faster, which is the rule you asked for. The sections below are the v49 build's and stand as they were measured.
+
 ## How it is gated (lab vs campaign)
 
 As every rebuild: **lab only, under the encounter layer.** The Test Lab's map card (`?lab=map-rigs`) opens on its production setup, policy D with no command, the map's own convoy at the campaign's schedule (new: before, it opened on today's convoy controls) and the authored encounters rev 4, because the Rigs are in `REBUILT_MAPS` (via `CHAPTER_THREE_MAPS`). The hub card reads "The map's own convoy (no commands) · encounters v1 Original". Everything new reads the run's encounter setup (`signatureOf`, `bossTune`), so the campaign, a run with no layer, a rev 3 log and the shared wave (`only: []`) play the Rig Field exactly as before: the shared waves, the planner's own new enemies and the Dive Circus. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version.

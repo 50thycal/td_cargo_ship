@@ -712,11 +712,11 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'coves', log: 53, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
+  { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
+  { map: 'sowers', log: 55, tag: 'Polished', note: 'Mines stay hidden till a ship is close; the big Hold button glows when to press it. Fair?' },
+  { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
   { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
-  { map: 'rigs', log: 49, tag: 'New', note: 'Rigs fire from point-blank; bring one down for good, or tows bring it back. Worth it?' },
-  { map: 'sowers', log: 48, tag: 'New', note: 'Mines drift across the lane; bombers sow them ahead of your ships. Hold or shoot?' },
   { map: 'saltgate', log: 46, tag: 'Polished', note: 'Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?' },
   { map: 'battery', log: 45, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },

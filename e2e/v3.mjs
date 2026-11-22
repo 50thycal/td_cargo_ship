@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 53 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 56 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -353,7 +353,9 @@ try {
   check((await page.locator('.v3-weapon').evaluateAll((bs) => bs.every((b) => getComputedStyle(b).animationName === 'none'))), 'nothing in the loadout animates');
 
   // ---- Playtest notes: pause and say something; rate a volley ----
-  check((await page.locator('.v3-note-btn').textContent()).includes('NOTE') || (await page.locator('.v3-note-btn.rate').count()) === 1, 'the rail has the note button');
+  // Round 15: no note button in the rail (in every game type): notes and
+  // volley ratings are the pause menu's.
+  check((await page.locator('.v2-rail-left .v3-note-btn').count()) === 0, 'the rail has no note button (round 15: the pause menu has it)');
   await page.locator('.v2-pause').click();
   await page.locator('.v3-pause-note').click();
   const steps0 = await page.evaluate(() => window.__v3.game().steps);
@@ -382,17 +384,18 @@ try {
   );
   check((await page.locator('[data-screen="pause-panel"]').count()) === 1, 'saving a note from the pause menu goes back to it');
   await page.locator('.v2-overlay .v2-btn.primary').click();
-  // Defend until a volley ends and the button turns to RATE.
+  // Defend until a volley ends: the pause menu then offers to rate it.
   let rate = false;
   for (let i = 0; i < 600 && !rate; i++) {
     await defend(page);
     await page.waitForTimeout(40);
-    rate = (await page.locator('.v3-note-btn.rate').count()) === 1;
+    rate = await page.evaluate(() => (window.__v3.log().volleys ?? []).some((v) => v.to !== undefined));
     if ((await page.evaluate(() => window.__v3.game()?.phase)) !== 'wave') break;
   }
-  check(rate, 'after a volley the note button offers to rate it');
+  check(rate, 'a volley ends');
   if (rate) {
-    await page.locator('.v3-note-btn').click();
+    await page.locator('.v2-pause').click();
+    await page.locator('.v3-pause-rate').click();
     await page.locator('[data-axis="difficulty"] [data-n="4"]').click();
     await page.locator('[data-axis="fun"] [data-n="5"]').click();
     await page.locator('[data-axis="intensity"] [data-n="2"]').click();
@@ -400,7 +403,8 @@ try {
     await page.locator('.v3-note-save').click();
     const rated = await page.evaluate(() => (window.__v3.log().volleys ?? []).filter((v) => v.rating));
     check(rated.length === 1 && rated[0].rating.difficulty === 4 && rated[0].rating.fun === 5 && rated[0].rating.intensity === 2, 'the rating lands on its volley');
-    check((await page.evaluate(() => document.querySelector('.v2-overlay')?.classList.contains('open'))) === false, 'rating from the rail resumes the game');
+    check((await page.locator('[data-screen="pause-panel"]').count()) === 1, 'rating from the pause menu goes back to it');
+    await page.locator('.v2-overlay .v2-btn.primary').click();
   }
 
   // ---- Phone landscape ----
@@ -1265,7 +1269,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 53 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 56 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

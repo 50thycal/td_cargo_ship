@@ -398,7 +398,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      card log before v52 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
  *      plays as it did.
- *  53: chapter 4's first map, the Coves, rebuilt to the map and wave rules
+ *  55: round 15, the player's notes on Sowers' Reach and the Rig Field
+ *      (docs/design/v3-playtest-fixes.md, "Round 15"; lab, under the
+ *      encounter layer). The Sowers' mines drift hidden until a ship's
+ *      course would bring it onto one within MINE.surface s (HIDDEN_MINES:
+ *      no chute warning, nothing sees or shoots them till then; a raid of
+ *      hidden mines alone is `quiet`), its waves 2, 4 and 5 drop fewer
+ *      mines, and the bots' sharp convoy pilot holds when the big Hold
+ *      button glows (commandAdvised). The Rig Field's rigs count shots,
+ *      not damage (SHOT_RIGS, RIG_SHOTS.rig, TOW.hp 10), its waves 1-3
+ *      carry more filler and waves 4-5 a little less, and the Rig
+ *      Barrage's first round fires two volleys. A Sowers or Rig Field card
+ *      log before v55 no longer replays to the same game; the campaign
+ *      plays as it did. (53 and 54 are the Coves' and the Delta's
+ *      rebuilds, built alongside.)
+ *  56: chapter 4's first map, the Coves, rebuilt to the map and wave rules
  *      (docs/design/v3-ch4-coves.md; lab, under the encounter layer): ten
  *      encounters (COVES_R4) with their filler, a climb (COVES_CLIMB), the
  *      map's own convoy at the campaign's schedule (MAP_CONVOY.coves), fire
@@ -410,13 +424,14 @@ import type { EncounterSetup } from '../data/encounters';
  *      new boss on the Repair Yard, the Fire Fleet (MAP_BOSS.coves `fleet`:
  *      sorties of fire ships out of more coves each round; BossFire
  *      `fastboat`). Chapter 4's table, CHAPTER_FOUR_MAPS, in REBUILT_MAPS.
- *      A Coves card log before v53 played today's convoy controls and the
+ *      A Coves card log before v56 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
- *      plays as it did. (Log v54 is the Delta's, built alongside.) */
-export const LOG_VERSION = 53;
+ *      plays as it did. (Built as 53 alongside the Delta; it ships as 56,
+ *      after round 15's 55.) */
+export const LOG_VERSION = 56;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [53];
+export const LOG_REPLAYS: readonly number[] = [56];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

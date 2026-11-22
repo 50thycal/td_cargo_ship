@@ -9,6 +9,92 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
+## Round 15: your notes on Sowers' Reach and the Rig Field (log v55)
+
+Your two chapter 3 logs of 2026-11-22 (v49): Sowers' Reach (won, fun 4, boss 5) and the Rig Field (won, fun 5, boss 3, waves 1-3 rated 1, 2 and 1). Both are in `tools/v3/bot-fit/logs/` (`v3-20261122034709-18316.json`, `v3-20261122040236-18317.json`). Lab only, under the encounter layer, as every rebuild: the campaign plays as before.
+
+### 1. Sowers: the mines surface near a ship; a big Hold button
+
+> "Have the mines surface once the ships are close to them and then the player has the option to hit a larger [Hold] button on the bottom left of the screen ... that button should glow when it is advantageous to use it, like when a ship is about to hit a mine." / "Mines don't need a warning system like the silos, they should just spawn."
+
+- **Hidden mines** (`HIDDEN_MINES`, `hiddenMinesOn` in `data/encounters.ts`; `sim/game.ts`): every mine on the Sowers, the chutes' and the sown ones, the boss rounds' too, drifts out of sight. Nothing draws it, nothing can shoot it, and the bots do not see it (`released` is false for a hidden mine, so `worthShooting`, the helpers and the bots' notice clock all skip it). It **surfaces** when a ship's course (sailing on, or stopped where it is) would bring it onto the mine within `MINE.surface` = **2.5 s** (about 100-120 px), with a splash and a red ring as it bobs up. Deterministic: checked every third step from the step count.
+- **No warning at the chutes:** a chute's mines light no ring and call no "SWARM INBOUND" (a raid of hidden mines alone is `quiet`); a sowing bomber's mine goes in with a small splash under the bomber, then is gone from sight.
+- A hidden mine that drifts past the lane sinks unseen (it would only have held the wave open).
+- **The big Hold button:** the map's command is one large button at the foot of the left rail (68 x 90 at 874 x 402; the power-up timers move up over it). It **pulses gold and reads "NOW!"** when Hold would help (`commandAdvised`): a surfaced mine a ship will sail onto within 2.6 s, or a shell in the air at water a ship has still to reach. It works for any convoy command a map has (today only Hold exists; the advice for another command would go in `commandAdvised`).
+- **The bots:** the sharp convoy pilot (`--pilot=sharp`) now presses Hold exactly when the button glows. The tuning reads below use it: with the mines hidden, Hold is how a player answers a mine that surfaces in front of a ship, and the bot without it is no longer a fair stand-in (see the numbers).
+- **The boss (the Carpet Run)** keeps its vees, their sowing and their rounds: the bombers still sow carpets ahead of the convoy, the mines now go in with a splash and come up in front of the ships.
+- To keep waves 1-5 near their band: wave 2's curtain is three mines, not four; wave 3's two, not three; wave 4's west chute one, not two; wave 5's two, not three; wave 6's west chute two, not three.
+
+### 2. The left rail: no command buttons, no note button
+
+> "We should also remove the command and notes buttons on the left in every game type, test lab and production; the new buttons on the bottom left will replace command options for maps that have it."
+
+- The rail's NOTE / RATE button is gone in every game type. Notes and volley ratings are on the pause menu ("Add a note" and "Rate last volley" outside the Test Lab; the Test Lab's pause menu has its Note), as your logs show you already used them.
+- The command buttons in the middle of the rail are gone; a map with a command has the one big button at the foot of the rail (above). The golden bomb stays in the rail, centred.
+- Campaign and Free Play keep the ship-flow slider and the formation button (those are today's convoy controls, not commands). If you meant those too, say so.
+
+### 3. Rigs: they count shots, not damage
+
+> "It has to basically consume X amount of your ammo to be destroyed, that way power-ups can't do a huge amount of hit points with one ammo."
+
+- **Shots, not damage** (`SHOT_RIGS`, `shotRigs`, `rigShot` in `sim/game.ts`): a rig loses one for each shot that hits it, whatever the shot's damage: a Railgun round, a warhead, Deadeye, a powered-up shot all count 1. A seeker's three mini-missiles count a third each. An area weapon (a blast, Shrapnel's fragments, Scattergun's pellets, Thermobaric, an Orbital strike, a gunship's rounds) counts once a rig a step. A flak cloud or an Air Strike's burning row counts **once per rig for its whole life**: that was the big one, see below. The Nuke and the golden bomb count 3 (`PICKUPS.nukeStructure`, as before: "3 hits, not a kill").
+- **The numbers:** a rig standing from the start takes **32 shots** (`RIG_SHOTS.rig`; it was 40 hits of damage), a relief rig on its tow **10** (was 8), docked **20**, a risen rig in the Rig Barrage **8**.
+- **Your log** (`tools/v3/rigs/killtimes.ts`, replayed on the v49 build): you had all four rigs down 65 s into the run. Two of them took 8 and 11 shots by the new count: the Flak cloud did 30-33 of their 40 hits. Under the new rule those two take 32 shots each, three to four times what they took; a rig you brought down with the plain gun alone (40 shots) now takes 32. Overall the rigs last much longer against power-ups, which is what your note asked for. 32 rather than 40 because at 40 the bot (which shoots rigs mostly with the plain gun) won 42-45% and lost about a ship in waves 1-5.
+- **The count on the rig:** a dark pill over each rig with a crosshair and the shots left, big enough to read on the phone, with a bar under it (pips, one a shot, for a count of 14 or under: a relief rig, a risen one).
+
+### 4. Rigs: the tow-in
+
+> "The bringing in of the oil rig was hilarious, keep that and improve that animation a lot."
+
+The same tow, drawn again (`ui/features.ts`, `drawTug`, `drawRig`): a red tug with a wheelhouse, a funnel trailing smoke, a white bow wave and the churn of its screw; a tow line from the rig's deck to the tug's hook that sags in a curve; the rig rolling a little on its legs, pushing a bow wave and leaving a wake. As it nears its station the tug eases off to one side and the line goes slack. Docking: a splash ring spreads round its legs, spray goes up, the rig dips and settles with a last rock, and the tug casts off and steams away (`dockT`, `towDir` on the rig, drawing only). It reads at phone size: the tug is drawn a little over life size.
+
+### 5. Rigs: busier early waves
+
+> Waves 1-3 rated 1, 2 and 1.
+
+More easy drone strings off the two drone rigs: wave 1 four drones in two strings (was one string of two), wave 2 three strings (was two), wave 3 one (it had none). Wave 1 still loses no ship for any bot (an earlier or western string did, so it stays late and off the east rig). Waves 3-5 send a little less of their own to make room (a smaller swarm on each), and the Rig Barrage's first round fires two volleys, not three.
+
+**A bug found on the way:** since v49 a relief rig the wave planner drew could be handed to a truck or a pop-up launcher, which then fired the rig at a ship like a missile (seen at (800, 84) over the far shore; your log's "New threat: rig" on wave 5 was probably one). A structure is never a truck's load now.
+
+### Bot numbers (192 seeds, 900-1091, normal runs; tough runs for the cliff check)
+
+"Before" is the map cards' own reads (v48 Sowers, v49 Rigs: mines in sight, rigs by damage, the bot never holding). "After" is this build; on the Sowers the bot holds when the button glows (`--pilot=sharp`). `python3 tools/v3/sowers/read.py` and `tools/v3/rigs/read.py --seeds=192 --armory=...`.
+
+| Map, Armory | Won before → after | Waves 1-5 lost before → after | Boss r1 / r2 / r3 after |
+| --- | --- | --- | --- |
+| Sowers, usual | 59% → **53%** | 0.72 → **0.94** | 0.97 / 1.23 / 1.71 |
+| Sowers, latest | 56% → 48% | 0.90 → 0.98 | 0.74 / 0.89 / 1.29 |
+| Sowers, plating | 83% → 82% | 0.47 → 0.58 | 0.58 / 0.62 / 0.90 |
+| Sowers, usual, the bot never holds | 59% → 16% | 0.72 → 1.67 | 1.38 / 1.13 / 1.76 |
+| Rigs, usual | 64% → **53%** | 0.82 → **0.80** | 0.77 / 1.07 / 2.02 |
+| Rigs, latest | 40% → 21% | 1.33 → 1.67 | 0.86 / 1.45 / 1.64 |
+| Rigs, plating | 89% → 85% | 0.57 → 0.60 | 0.26 / 0.49 / 1.01 |
+
+(The Sowers' latest, plating and never-holds rows were read one trim earlier: wave 6 one mine more; on the usual Armory that trim moved waves 1-10 by 0.02.)
+
+Tough runs, the usual Armory (the cliff check):
+- Sowers: .02 .20 .21 .36 .25 .53 .55 .80 .83 1.38, boss .96 1.27 1.75. One step a little over double: wave 5 to 6 (0.25 to 0.53, 2.1x).
+- Rigs: .01 .07 .24 .24 .38 .73 .67 .72 1.06 1.27, boss .81 1.11 2.16. No step doubles (the largest 1.92x, wave 6).
+
+Along the way (96 seeds, usual Armory): mines surfacing at 1.8 s, the bot not holding, won 6%; 2.2 s with Hold 48%; 2.4 s 64%. Rigs at 50 shots (tows 10, docked 25, risen 10) won 34%; at 40, 42-45%; at 32, 52%.
+
+### Checks
+
+- `tsc`; `vitest --exclude '.claude/**'` (81 files, 1899 tests, all pass); a new `tests/v3/round15.test.ts` (hidden mines: on for the Sowers under the layer only, a mine starts hidden and out of reach, surfaces before it reaches a hull, no chute lights a warning, the campaign's stay in sight, the Hold advice; rigs: on for the Rigs only, RIG_SHOTS, a shot is one whatever its damage, a seeker a third, an area weapon once a step, the Nuke three, a flak cloud once).
+- Changed tests: `encounters.test.ts` (a Sowers mine is not warned of; the rig tests bring a rig down with the Nuke or shot by shot; the Rig Barrage test plays seed 220, where the tryhard bot reaches all three rounds now; the Rigs' filler on waves 1-6), `scorecard.test.ts` (v55), the version pins (`pins.py 52 55`).
+- `npm run v3:map-lab -- baseline`: only the version and content hash changed; written with `--write`; replays exactly with telemetry on and off.
+- `vite build`, `vite preview` on a free port, and the e2e scripts `v3.mjs` (notes and the volley rating now from the pause menu; no note button in the rail), `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (the Hold button, now the big one, still the one command), `v3-ios-viewport.mjs`: all pass. Overwritten screenshots in `docs/design/img` restored.
+- Screenshots (874 x 402, one pixel a point; `tools/v3/playtest-fixes/round15-shots.mjs`): the glowing Hold button with a surfaced mine (Sowers, wave 5), a tow mid-approach and the rigs' shot counters (Rigs, wave 5).
+
+### For you to decide
+
+- **Hold is now the Sowers' answer.** With the mines hidden until 2.5 s out, the bot that never holds wins 16%; holding when the button glows, 53%. Is 2.5 s a fair moment for you on the phone? If it feels too tight, `MINE.surface` 3 is one number; if too easy, 2.
+- **Rigs at 32 shots, not 40:** against the Flak and Orbital you used they now last three to four times as long; against the plain gun a little less than before. 40 cost the bot ten points of win rate. Say if they should be sturdier still.
+- **The Wide Warhead set on the Rigs** falls to 21% (a warhead no longer counts extra against a rig, as asked).
+- **Waves 1-5 on the Sowers: 0.94** for the usual Armory, a little over the 0.8 asked, and one tough step at 2.1x (wave 5 to 6). Each mine is far more dangerous hidden; trimming more mines would take the map's mechanic out of its early waves.
+- **The left rail:** in the campaign and Free Play the ship-flow slider and the formation button stay (they are not commands). Remove them too?
+- **The "CONVOY sails itself" label** stays at the foot of the rail on a lab map with no command. Keep or drop?
+
 ## Busier early waves (log v47)
 
 Your chapter 2 playtests (2026-11-20) rated waves 1–6 fun 1–2 and intensity 1 on every map, with wave 1 the weakest every time. Your answer: *"just add in more drones and easy things to kill so it doesn't increase the difficulty but keep it busy. Doesn't need to be super significant. less is more here."*
