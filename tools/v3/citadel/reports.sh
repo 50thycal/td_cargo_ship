@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Citadel' record reports (24 seeds) for every Armory, written to
+# The Citadel's record reports (24 seeds) for every Armory, written to
 # tools/v3/map-report/results/citadel[-armory]*; with a suffix (before), the
 # files are renamed citadel-<suffix>[-armory]* (the map card as it was).
 #   tools/v3/citadel/reports.sh [suffix] [--kits=plan]

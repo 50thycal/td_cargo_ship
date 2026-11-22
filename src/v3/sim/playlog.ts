@@ -442,11 +442,30 @@ import type { EncounterSetup } from '../data/encounters';
  *      burning branch (quieterBranch). A Delta card log before v57 played today's
  *      convoy controls and the shared waves and no longer replays to the
  *      same game; the campaign plays as it did. (56: the Coves, built
- *      alongside.) */
-export const LOG_VERSION = 57;
+ *      alongside.)
+ *  60: chapter 4's last map and the game's, the Citadel of Vey, rebuilt to
+ *      the map and wave rules (docs/design/v3-ch4-citadel.md; lab, under the
+ *      encounter layer): ten encounters (CITADEL_R4) with their filler, a
+ *      climb (CITADEL_CLIMB); the shield rises again every wave
+ *      (SHIELD_RISES: a generator brought down stands again, a silenced
+ *      Citadel is manned again; its fire, once silenced, comes off the far
+ *      silos); the generators and the Citadel count shots (SHOT_RIGS,
+ *      CITADEL); the signature (MAP_SIGNATURE.citadel `dome`: from wave 4
+ *      some of the wave's guided missiles and shells come off the Citadel
+ *      under its dome and can't be shot inside it while the shield stands,
+ *      game.ts `domed`; Beat `dome`); the map's own convoy, the campaign's
+ *      schedule in a Spread (MAP_CONVOY.citadel); and a new boss on the
+ *      Siege of Vey, the Last Stand (MAP_BOSS.citadel: the shield raised,
+ *      the Citadel's grand salvos under its dome). The bots leave the
+ *      Citadel's shielded fire alone until it leaves the dome
+ *      (worthShooting). A Citadel card log before v60 played today's convoy
+ *      controls and the shared waves and no longer replays to the same
+ *      game; the campaign plays as it did. (58 and 59: Dunmar Crossing and
+ *      the Tide, built alongside.) */
+export const LOG_VERSION = 60;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [57];
+export const LOG_REPLAYS: readonly number[] = [60];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

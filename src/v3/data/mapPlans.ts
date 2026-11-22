@@ -387,6 +387,20 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-citadel.md (chapter 4's last map and the game's)
+  citadel: {
+    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map; from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then more on the Citadel to silence it for the wave, or every shot on what is coming?',
+    // COUNTERS: chosen from the combo sweep (docs/design/v3-ch4-citadel.md,
+    // The counters).
+    counters: ['railgun', 'overdrive', 'supplyRun'],
+    offCounter: ['airstrike', 'well', 'tesla'],
+    convoy: 'The map\'s own convoy, no commands: the campaign\'s schedule in a Spread, west to east down wide water past the carrier, then into the narrows under the Citadel, where the lane closes and the ships deliver; a Spread keeps the Citadel\'s shells and heavies to one hull at half their splash.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Last Stand (in place of the Siege of Vey: its Repair Ships, Bodyguard Ring, Lure Beacons and firebombs are chapter 4\'s regulars by now): each round the shield rises and the Citadel is manned, and it fires grand salvos under its dome, three missiles at once at the lead ship in the narrows, its keep lit 2.5 s before (two salvos in round 1, three in rounds 2 and 3, round 3\'s with more guided missiles), while drones, supersonics and strike jets come at the ships behind; drop the shield and the salvos can be shot as they leave the keep, and the Citadel silenced ends them for the round (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Siege of Vey).',
+      botTarget: 2,
+    },
+  },
   // docs/design/v3-ch4-delta.md
   delta: {
     problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',

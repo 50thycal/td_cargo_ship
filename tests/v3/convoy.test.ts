@@ -56,8 +56,8 @@ describe('a campaign run has no convoy layer', () => {
   it('round 11: Hold, the one command left, is on Sowers\' Reach only (mines cross its lane); the reference maps have none', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-*.md) sail the map's own convoy, as the reference maps do.
     // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-*.md): the same.
-    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
-    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'coves', 'delta'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
+    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'citadel', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'coves', 'delta', 'citadel'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
     // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the campaign's own
     // schedule, as Sowers' Reach (the locks set the pace).
     expect(mapConvoy('saltgate')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
@@ -77,6 +77,10 @@ describe('a campaign run has no convoy layer', () => {
     // own habit in the campaign), and no command (the fork's switch is the
     // map's own).
     expect(mapConvoy('delta')).toMatchObject({ flow: 3, formation: 'spread', commands: [] });
+    // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the campaign's
+    // schedule in a Spread (the Citadel's shells and heavies land a breath
+    // from its keep: one hull at half their splash), no command.
+    expect(mapConvoy('citadel')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'spread', commands: [] });
     expect(mapConvoy('sowers').commands).toEqual(['hold']);
     // Sowers' Reach keeps the campaign's own schedule and formation.
     expect(mapConvoy('sowers')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });

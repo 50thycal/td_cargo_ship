@@ -166,8 +166,12 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // buoy) is the map's own way to steer the convoy, and stays what it is.
   delta: { flow: 3, formation: 'spread', commands: [], dilemma: '' },
   // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the campaign's
-  // own schedule in Pairs, as the Coves', no command: the fortress is
-  // fought by shooting it, its generators and its fire, not by sailing.
+  // own schedule in a Spread, no command: the fortress is fought by
+  // shooting it, its generators and its fire, not by sailing. A Spread
+  // (rule m-shape-convoy) because the Citadel's shells and heavies land a
+  // breath from its keep: in Pairs the shared waves won 4% for the bot
+  // (48 seeds, the usual Armory), in a Spread 31%, its splash halved and
+  // on one hull.
   citadel: { flow: 1, formation: 'spread', commands: [], dilemma: '' },
   // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): flow 2 and
   // Pairs, as most of chapter 2's maps; no command (the night is read and

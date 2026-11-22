@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Citadel' tuning read for every Armory (tools/v3/rigs/read.py on the
+# The Citadel's tuning read for every Armory (tools/v3/rigs/read.py on the
 # Citadel), one after another into one file:
 #   tools/v3/citadel/readall.sh <outfile> [--seeds=192] [--tough] [--no-enc]
 out=$1; shift

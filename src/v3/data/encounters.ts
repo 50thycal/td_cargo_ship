@@ -5901,22 +5901,22 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [1],
     role: 'teach',
     name: 'Under the guns',
-    callout: 'The Citadel fires',
-    premise: 'As the lead ship comes into the narrows the Citadel fires a guided missile at it from its island, a short flight, while drones come off the far north-west silo at the ships coming in.',
-    decision: 'The first look at the map: the fortress over the narrows, its dome, and the three generators that feed it.',
-    counters: 'The missile as it leaves the island; the drones on their long flight.',
-    succeeds: 'Nothing is sunk on wave 1; the Citadel reads as the map.',
+    callout: 'Drones for the narrows',
+    premise: 'Drones come off the far north-west silo over the whole map, past the north generator, at the lead ship as it sails into the narrows under the Citadel\'s dome, then at the ships coming in.',
+    decision: 'The first look at the map: the fortress over the narrows, its dome, and the three generators that feed it, a few shots each.',
+    counters: 'The drones on their long flight; a generator in the quiet.',
+    succeeds: 'Nothing is sunk on wave 1; the Citadel and its generators read as the map.',
     notes: {
-      sites: 'The Citadel (1250, 300; a guided missile), the far north-west silo (250, 72; drones).',
-      target: 'The lead ship, in the narrows (the missile); the ships coming in (the drones, a long flight).',
-      usesMap: 'Shows the map on wave 1: the fortress under its dome over the narrows, its fire the shortest on the map; the generators stand round it.',
+      sites: 'The far north-west silo (250, 72; drones, the longest flight on the map, over the north generator at (850, 82) and past the dome).',
+      target: 'The lead ship, in the narrows (the first strings); the ships coming in (the last, a long flight).',
+      usesMap: 'Shows the map on wave 1: the drones fly the length of it into the narrows under the dome, past the generators that hold it up (the Citadel\'s own fire waits for wave 2: wave 1 sends drones only).',
     },
     beats: [
-      { at: 0.45, kind: 'guided', count: 1, from: base(0), aim: 'lead' },
-      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'rear' },
-      { at: 0.7, kind: 'drone', count: 3, gap: 0.5, from: base(4) },
+      { at: 0.25, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.5, from: base(4), aim: 'rear' },
     ],
-    replaces: { drones: 7 },
+    replaces: { drones: 8 },
   },
   {
     id: 'citadel-generators',
@@ -5960,7 +5960,6 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'cluster', count: 1, from: base(0), aim: 'lead' },
-      { at: 0.3, plus: 3, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
       { at: 0.45, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
@@ -5989,8 +5988,9 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.6, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
       { at: 0.7, kind: 'supersonic', count: 1, from: base(5), aim: 'rear' },
+      { at: 0.85, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
     ],
-    replaces: { ballistic: 8, extras: { supersonic: 1 } },
+    replaces: { ballistic: 8, extras: { supersonic: 1, heavy: 1 } },
   },
   {
     id: 'citadel-two-ends',
@@ -6014,7 +6014,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
     ],
-    replaces: { ballistic: 9, extras: { cluster: 1 } },
+    replaces: { ballistic: 9, extras: { cluster: 1, heavy: 1 } },
   },
   {
     id: 'citadel-periscope',
@@ -6733,11 +6733,24 @@ export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Rec
   saltgate: { torpedoSub: 'rocketTruck' },
 };
 
+/** A map's new enemies that come as another on its early waves only (log
+ *  v60, lab only, under the encounter layer as MAP_FOE_SWAP). The Citadel:
+ *  a Bodyguard Ring's heavy comes off the Citadel itself, a breath from
+ *  the narrows, behind its guards, and on waves 2-5 it sank a third of a
+ *  ship a run for the bot on its own (waves 1-5 lost 1.16 against the asked
+ *  0.4-0.8); there the planner's Bodyguard comes as a Lure Beacon, another
+ *  of chapter 4's own. From wave 6 the Bodyguard comes as drawn. */
+export const MAP_FOE_SWAP_EARLY: Partial<Record<EncounterMap | RebuiltMap, { until: number; swap: Partial<Record<FoeId, FoeId>> }>> = {
+  citadel: { until: 5, swap: { bodyguard: 'lure' } },
+};
+
 /** The enemy a drawn one comes as on this map, under a run's encounter
  *  setup (itself with no layer, before rev 4, on the shared wave or past
  *  wave 10). */
 export function swapFoe(map: MapId, wave: number, id: FoeId, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): FoeId {
   if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return id;
+  const early = (MAP_FOE_SWAP_EARLY as Partial<Record<MapId, { until: number; swap: Partial<Record<FoeId, FoeId>> }>>)[map];
+  if (early && wave <= early.until && early.swap[id]) return early.swap[id]!;
   return (MAP_FOE_SWAP as Partial<Record<MapId, Partial<Record<FoeId, FoeId>>>>)[map]?.[id] ?? id;
 }
 
