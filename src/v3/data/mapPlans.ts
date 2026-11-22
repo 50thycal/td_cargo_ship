@@ -390,10 +390,22 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch4-citadel.md (chapter 4's last map and the game's)
   citadel: {
     problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map; from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then more on the Citadel to silence it for the wave, or every shot on what is coming?',
-    // COUNTERS: chosen from the combo sweep (docs/design/v3-ch4-citadel.md,
-    // The counters).
-    counters: ['railgun', 'overdrive', 'supplyRun'],
-    offCounter: ['airstrike', 'well', 'tesla'],
+    // The fire is the Citadel's, a breath from its keep over the narrows
+    // and from wave 4 shielded under its dome, and drones on the long
+    // flight off the far silo; the shield rises every wave, so the
+    // player's own shots are wanted on the generators and the keep. What
+    // pays is fire that works on its own while the finger is on the
+    // generators: the Gunship Pair over the lane, Point Defense round the
+    // carrier, the Flak Cannon's clouds waiting where the drones converge.
+    // The Thermobaric Shell and the Seeker Pod want the finger on what is
+    // in the air, and the Tesla Arc's chain wants strings the dome breaks
+    // up (forced, the combo sweep's singles at log v60: Gunship Pair 5.8,
+    // Flak 6.9, Point Defense 6.9 against Thermobaric 9.2, Seeker 9.3,
+    // Tesla 9.7; docs/design/v3-ch4-citadel.md, The counters). The Air
+    // Strike is the best alone (5.7) and is left out of both. Every weapon
+    // is in chapter 4's draft.
+    counters: ['gunships', 'aegis', 'flak'],
+    offCounter: ['thermo', 'seeker', 'tesla'],
     convoy: 'The map\'s own convoy, no commands: the campaign\'s schedule in a Spread, west to east down wide water past the carrier, then into the narrows under the Citadel, where the lane closes and the ships deliver; a Spread keeps the Citadel\'s shells and heavies to one hull at half their splash.',
     stretches: { danger: 'late', safe: 'early' },
     boss: {
