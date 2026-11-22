@@ -2506,8 +2506,9 @@ export function crossingSpot(g: Game, k: number, x0?: number): Point {
   let x = x0 ?? c?.x ?? VIEW.width * [0.35, 0.65, 0.5][k % 3];
   x = clamp(x, 150, VIEW.width - 150);
   const mid = (xx: number) => (chs.length >= 2 ? (laneY(chs[0], xx) + laneY(chs[1], xx)) / 2 : laneY(chs[0], xx) + chs[0].halfWidth + 40);
-  for (const p of [g.map.carrier, ...(g.map.frigate ? [g.map.frigate] : [])])
-    if (Math.abs(x - p.x) < 70 && Math.abs(mid(x) - p.y) < 70) x = p.x + (x >= p.x ? 70 : -70);
+  // (The carrier's hull is long: 130 px either side of its middle.)
+  for (const [p, r] of [[g.map.carrier, 130], ...(g.map.frigate ? [[g.map.frigate, 70] as const] : [])] as const)
+    if (Math.abs(x - p.x) < r && Math.abs(mid(x) - p.y) < 70) x = p.x + (x >= p.x ? r : -r);
   return { x, y: mid(x) };
 }
 
