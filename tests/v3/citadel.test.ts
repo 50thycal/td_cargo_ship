@@ -167,9 +167,9 @@ describe('the Citadel\'s signature (log v60, MAP_SIGNATURE `dome`): fire under t
     expect(plain.dead).toBe(true);
   });
 
-  it('on waves 2-5 the planner\'s Bodyguard Ring comes as a Lure Beacon (its heavy would come off the keep); from wave 6, and in the campaign, as drawn', () => {
-    for (const w of [2, 3, 4, 5]) expect(swapFoe('citadel', w, 'bodyguard', VER)).toBe('lure');
-    expect(swapFoe('citadel', 6, 'bodyguard', VER)).toBe('bodyguard');
+  it('on waves 2-6 the planner\'s Bodyguard Ring comes as a Lure Beacon (its heavy would come off the keep); from wave 7, and in the campaign, as drawn', () => {
+    for (const w of [2, 3, 4, 5, 6]) expect(swapFoe('citadel', w, 'bodyguard', VER)).toBe('lure');
+    expect(swapFoe('citadel', 7, 'bodyguard', VER)).toBe('bodyguard');
     expect(swapFoe('citadel', 3, 'bodyguard', { rev: 3 })).toBe('bodyguard');
     expect(swapFoe('citadel', 3, 'bodyguard', { ...VER, only: [] })).toBe('bodyguard');
     expect(swapFoe('citadel', 3, 'tender', VER)).toBe('tender');

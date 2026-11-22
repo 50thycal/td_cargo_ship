@@ -6062,7 +6062,6 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.5, kind: 'cluster', count: 1, from: base(0), aim: 'mid' },
       { at: 0.6, kind: 'guided', count: 1, from: base(5), aim: 'rear' },
-      { at: 0.7, kind: 'supersonic', count: 1, from: base(5), aim: 'mid' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
       { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
@@ -6721,7 +6720,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // has left the dome, a breath from the narrows.
   // The shield rises again every wave (SHIELD_RISES), so the generators are
   // the price of shooting the keep's fire early, every wave.
-  citadel: { from: 4, dome: [1, 1, 1, 2, 1, 1, 1] },
+  citadel: { from: 4, dome: [1, 1, 1, 1, 1, 1, 1] },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -6739,10 +6738,11 @@ export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Rec
  *  a Bodyguard Ring's heavy comes off the Citadel itself, a breath from
  *  the narrows, behind its guards, and on waves 2-5 it sank a third of a
  *  ship a run for the bot on its own (waves 1-5 lost 1.16 against the asked
- *  0.4-0.8); there the planner's Bodyguard comes as a Lure Beacon, another
- *  of chapter 4's own. From wave 6 the Bodyguard comes as drawn. */
+ *  0.4-0.8), and on wave 6 it made a cliff (2.4x wave 5 on tough runs);
+ *  there the planner's Bodyguard comes as a Lure Beacon, another of
+ *  chapter 4's own. From wave 7 the Bodyguard comes as drawn. */
 export const MAP_FOE_SWAP_EARLY: Partial<Record<EncounterMap | RebuiltMap, { until: number; swap: Partial<Record<FoeId, FoeId>> }>> = {
-  citadel: { until: 5, swap: { bodyguard: 'lure' } },
+  citadel: { until: 6, swap: { bodyguard: 'lure' } },
 };
 
 /** The enemy a drawn one comes as on this map, under a run's encounter
