@@ -75,11 +75,19 @@ Under the asked quarter, as on the Coves (7%), the Rigs (9%) and the Sowers (19%
 
 ## The counters
 
-COUNTERS
+- **Counter kit: Gravity Well, Point Defense, Bomber Wing.** At the ebb everything converges on one bunch of ships in the deep channel: the weapons that hold the sky over one spot answer it. The Well pulls the converging fire into its core, Point Defense guards the bunched boxes, the Bomber Wing lays its run along the crowded channel.
+- **Off-counter kit: Tesla Arc, Grapnel, Full Steam.** The Tesla's chain wants long strings, not a short sharp strike from four silos; the Grapnel takes one threat at a time while the strike lands together; Full Steam sails the convoy faster but the tide still bunches it.
+- Both chosen from the combo sweep's singles at log v59 (Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4; Tesla 10.0, Grapnel 11.8, Full Steam 8.8), avoiding the Air Strike (6.1 alone, 7th). Every weapon is in chapter 4's draft. A design note for the bots only: nothing in the game nudges the player towards it.
+
+How they compare: the record reports (24 seeds, the kit as the bot's taste), below.
 
 ## Loadouts on this map (combo sweep singles)
 
-SINGLES
+Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, version 59; `npm run v3:combo-sweep -- --stage=singles --maps=tide --out=tools/v3/combo-sweep/results/v59-ch4`). Ships lost over all 13 waves:
+
+- **Strong:** **Gravity Well 4.7**, Bomber Wing 4.9, Point Defense 5.4, Gunship Pair 5.5, Scattergun 6.0, Air Strike and Drone Screen 6.1, Shrapnel Shell 6.3, Orbital Strike 6.4.
+- **Middling:** Flak Cannon 6.8, Frigate Escort 7.1, Cadence Gun 7.2, Railgun 7.3, Thermobaric 7.4, Overdrive 7.5, Seeker 7.8, Shield 8.3.
+- **Weak:** Full Steam 8.8, Boomerang and the Wild Card 8.8, Supply Run alone 9.3, Tesla 10.0, Focus Fire, Grapnel and the Charge Lance 11.8, Dual Wield 11.9, the plain gun 13.7, the Laser Cutter (it only cuts) 54.3. The bot drafting for itself: 8.9 (won 42%).
 
 ## Diversity: are the Tide's best kits its own?
 

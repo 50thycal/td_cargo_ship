@@ -5899,7 +5899,9 @@ const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });
  *  `replaces`, past the encounter's own) come as `n` drones (strings of up
  *  to five out of the west and east silos in turn, spread over the wave),
  *  as the Coves' waves do: the wave sends no fewer launches (rule
- *  w-budget), and its fire at the crowd is the encounter's. */
+ *  w-budget; waves 5, 6 and 10 send three more, which kept them inside
+ *  ±15% of the no-encounter wave), and its fire at the crowd is the
+ *  encounter's. */
 const swapIn = (n: number): Beat[] => {
   const out: Beat[] = [];
   const aims: BeatAim[] = ['flats'];
@@ -6026,7 +6028,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { ...ebb(5, TIDE_LOW[4] + 1), kind: 'ballistic', count: 2, gap: 1.2, from: sub(1), aim: 'near' },
       { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'flats' },
       { ...ebb(5, 3), kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'crowd' },
-      ...swapIn(14),
+      ...swapIn(17),
     ],
     replaces: { drones: 15, ballistic: 7, guided: 1, extras: { cluster: 1 } },
   },
@@ -6051,7 +6053,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.2, kind: 'ballistic', count: 2, gap: 1, from: base(3), aim: 'rear' },
       { ...ebb(6, 1.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { ...ebb(6, 2.5), kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'crowd' },
-      ...swapIn(17),
+      ...swapIn(20),
     ],
     replaces: { drones: 13, guided: 2, ballistic: 10, extras: { cluster: 1 } },
   },
@@ -6155,7 +6157,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { ...ebb(10, 1.5), kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'crowd' },
       { ...ebb(10, 3), kind: 'guided', count: 1, from: base(2), aim: 'crowd' },
       { ...ebb(10, 2), kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
-      ...swapIn(31),
+      ...swapIn(34),
     ],
     replaces: { drones: 26, ballistic: 15, guided: 9, extras: { cluster: 1, supersonic: 1 } },
     calm: 6,
