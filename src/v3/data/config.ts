@@ -238,7 +238,15 @@ export const POST = { radarSlow: 0.65, targetShare: 0.22, batteryGap: 1.3, batte
 export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 
 /** Mines: how near a hull sets one off, and their wobble on the current. */
-export const MINE = { hitRadius: 30, wobble: 6 } as const;
+export const MINE = {
+  hitRadius: 30,
+  wobble: 6,
+  /** Log v55 (round 15, HIDDEN_MINES): a hidden mine surfaces once a ship
+   *  would sail onto it within this many seconds (about 90-110 px of a
+   *  ship's way and the mine's drift): a tight but fair moment for a shot
+   *  or a Hold. */
+  surface: 2.5,
+} as const;
 
 /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`, and its Carpet Run under the
  *  encounter layer): a sowing bomber lays its mines in place of missiles,
@@ -257,7 +265,14 @@ export const SOW = { near: 110, far: 340, across: 190, every: 0.55, line: 0.6 } 
  *  over a rig's own); either way it comes loaded: `rack` guided missiles off
  *  the station at the ship nearest it, `gap` s apart, `fire` s after it
  *  docks (its deck lit as the warning). */
-export const TOW = { hp: 8, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 } as const;
+export const TOW = { hp: 10, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 } as const;
+
+/** Log v55 (round 15, SHOT_RIGS, lab only): on a map whose rigs count
+ *  shots, each rig standing from the start takes `rig` of the player's
+ *  shots (a relief rig: TOW.hp on its tow, TOW.dock docked; a risen one:
+ *  MAP_BOSS `rigHp`). Before, 40 hits of damage, and a power-up's shot or
+ *  a flak cloud did many of them at once. */
+export const RIG_SHOTS = { rig: 32 } as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;

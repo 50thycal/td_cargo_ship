@@ -398,21 +398,34 @@ import type { EncounterSetup } from '../data/encounters';
  *      card log before v52 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
  *      plays as it did.
+ *  55: round 15, the player's notes on Sowers' Reach and the Rig Field
+ *      (docs/design/v3-playtest-fixes.md, "Round 15"; lab, under the
+ *      encounter layer). The Sowers' mines drift hidden until a ship's
+ *      course would bring it onto one within MINE.surface s (HIDDEN_MINES:
+ *      no chute warning, nothing sees or shoots them till then; a raid of
+ *      hidden mines alone is `quiet`), its waves 2, 4 and 5 drop fewer
+ *      mines, and the bots' sharp convoy pilot holds when the big Hold
+ *      button glows (commandAdvised). The Rig Field's rigs count shots,
+ *      not damage (SHOT_RIGS, RIG_SHOTS.rig, TOW.hp 10), its waves 1-3
+ *      carry more filler and waves 4-5 a little less, and the Rig
+ *      Barrage's first round fires two volleys. A Sowers or Rig Field card
+ *      log before v55 no longer replays to the same game; the campaign
+ *      plays as it did. (56 and 57 are the Coves' and the Delta's
+ *      rebuilds, built alongside.)
  *  57: chapter 4's second map, the Delta, rebuilt to the map and wave rules
  *      (docs/design/v3-ch4-delta.md; lab, under the encounter layer): ten
  *      encounters (DELTA_R4) with their filler, a climb (DELTA_CLIMB), a new
  *      aim ('switch': the branch the fork's switch is set to), the signature
  *      (MAP_SIGNATURE.delta `clouds`: from wave 4 the wave's new enemies
  *      come as Incendiary Missiles that burst on the mouth of the switch's
- *      branch, foes.ts, game.ts branchMouth), the map's own convoy at the
- *      campaign's schedule (MAP_CONVOY.delta), and a new boss on the Escort
+ *      branch, foes.ts, game.ts branchMouth), the map's own convoy, flow step 3 in
+ *      a Spread (MAP_CONVOY.delta), and a new boss on the Escort
  *      Run, the Burning Delta (MAP_BOSS.delta: `burn`: burning oil closes
  *      the fork's branches, the switch's own first, and a raid comes at the
  *      ships bunched on the way in). The bots throw the switch away from a
  *      burning branch (quieterBranch). A Delta card log before v57 played today's
  *      convoy controls and the shared waves and no longer replays to the
- *      same game; the campaign plays as it did. (55: the chapter 3 notes; 56: the
- *      Coves, built alongside.) */
+ *      same game; the campaign plays as it did. (56: the Coves, built alongside.) */
 export const LOG_VERSION = 57;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */

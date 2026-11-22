@@ -150,9 +150,11 @@ export const STATUS = {
     { n: 217, title: 'Chapter 3: The Dreadnought rebuilt (log v51)', state: 'merged' },
     { n: 218, title: 'Hub update', state: 'merged' },
     { n: 219, title: 'Chapter 3: The Black Strait (the Lantern) rebuilt (log v52)', state: 'merged' },
+    { n: 220, title: 'Your Sowers and Rig Field notes: hidden mines, big Hold button, rig shot counts, tug tow (log v55)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-22', what: 'Merged #220 (log v55): your Sowers and Rig Field notes, built. Sowers: every mine drifts hidden and surfaces with a splash about 2.5 s before a ship would reach it; a big Hold button at the foot of the left rail pulses gold and reads NOW! when holding would save a ship (it replaces the old command buttons; notes and volley ratings moved to the pause menu in every mode). Rig Field: rigs count shots, not damage (32 shots standing, 10 on tow, 20 docked; a warhead or power-up shot counts 1, the Nuke 3), with a shots-left counter on each rig; a proper tug tows relief rigs in and they settle on docking; more easy drones in waves 1–3. Fixed: a relief rig could be loaded on a missile truck and fired at you. Bot, usual Armory: Sowers wins 53% (16% if it never holds), Rigs 53%.' },
     { date: '2026-11-22', what: 'Merged #219 (log v52): The Black Strait (the Lantern) rebuilt (Test Lab), and with it all five chapter 3 maps. The question: watch the beam, or watch your back? It’s night: a threat is only a glow until the lighthouse beam, your lamp or a star shell lights it, and the enemy’s own bank behind the ships as they deliver is never swept by the beam and has the shortest flights on the map. Signature from wave 4: siege batteries rise beside the dark bank. Boss, Bombardment: a line of siege guns rises along the far shore, with guns joining from the dark bank (3, then 3 + 1, then 4 + 2). Bot with your usual Armory: wins 58%, boss rounds 0.5 / 0.8 / 1.4. The bot sees through the dark, so expect it harder than that.' },
     { date: '2026-11-22', what: 'Your runs read: the Battery (won, fun 4, boss 5), the Sowers (won, fun 4, boss 5) and the Rig Field (won, fun 5) — all Keep. Building from your notes (log v55): Sowers mines hidden until ships are close, with a big glowing Hold button bottom left replacing the command and notes buttons; Rig Field rigs counted in shots so power-ups can’t melt them, a much better tow-in animation, and busier early waves. Also: The Dreadnought merged (#217); The Lantern is finishing; chapter 4 (The Coves, The Delta) is being built.' },
     { date: '2026-11-22', what: 'Merged #217 (log v51): The Dreadnought rebuilt (Test Lab), chapter 3’s finale. The question: sink it or ride it out? A battleship steams down the deep channel against the convoy on waves 3, 6, 9 and 10, firing broadsides with a short flight; 50 hits silence it, or shoot each broadside down. Its deck launches drones at the carrier (easy kills). Signature from wave 4: spotter planes lay its guns, the shells coming from the battleship’s hull. Boss, The Dreadnought: each round it steams in, stops broadside-on and fires at the lead ship while spotters walk barrages; sink it and the spotters have no guns (hull 40 / 50 / 60). Bot wins: usual 63% → 66%, latest 12% → 68%, plating 44% → 89%; the old cliffs on waves 6, 8, 9 and 10 are gone. Best weapon alone: Point Defense; no Air Strike in its best kits.' },
@@ -228,6 +230,19 @@ export const NEEDS = [
     kind: 'item',
     title: 'Play the rebuilt Black Strait (the Lantern), the night map (Test Lab → Ready to test)',
     text: 'Threats are glows until the lighthouse beam or your lamp lights them; the enemy bank behind you as you deliver is never lit and fires from close. Siege batteries rise by the dark bank from wave 4; the boss, Bombardment, is a line of siege guns on the far shore plus guns in the dark. Look for: can you read the dark on your phone? Do the shells from behind feel fair?',
+  },
+  {
+    id: 'r16-play-notes',
+    kind: 'item',
+    title: 'Play the Sowers and the Rig Field again with your notes built in (Test Lab → Ready to test, v55)',
+    text: 'Sowers: mines stay hidden until about 2.5 s before a ship reaches them; the big Hold button bottom left glows NOW! when holding saves a ship. Rigs: each rig shows its shots left (32 standing); watch the new tug tow. Look for: is 2.5 s enough warning on your phone? Do the rigs feel sturdy but fair?',
+  },
+  {
+    id: 'r16-rail-leftovers',
+    kind: 'question',
+    title: 'Campaign and Free Play still have the ship-flow slider and the formation button, and lab maps with no command show “CONVOY sails itself” at the foot of the rail. Keep them, drop the label, or fold them into the big button?',
+    text: 'They are convoy controls, not commands, so they were left alone this round.',
+    options: ['Keep both as they are', 'Drop the “sails itself” label only', 'Fold the slider and formation into the big button too'],
   },
 ];
 

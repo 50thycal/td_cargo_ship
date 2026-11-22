@@ -45,6 +45,7 @@ import {
   FASTBOAT,
   LOCK,
   MINE,
+  RIG_SHOTS,
   SOW,
   TOW,
   POST,
@@ -82,8 +83,9 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, setupVersion, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
-import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shotRigsOn, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
+import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
+import type { CommandId } from '../data/convoy';
 
 export const CARRIER_TARGET = -1;
 
@@ -136,7 +138,7 @@ export function isMunitionKind(k: ThreatKind): boolean {
  *  first SUPERSONIC.rail (0.4 s) of its lock only; then it lifts off and is
  *  a target, its lock line still showing. */
 export function released(th: Threat): boolean {
-  return !th.dead && !racked(th) && !untouchable(th);
+  return !th.dead && !racked(th) && !untouchable(th) && !th.hidden;
 }
 
 /** A supersonic still on its launcher's rail (round 13): no target yet. */
@@ -263,6 +265,22 @@ export interface Threat {
   tow?: number;
   /** Log v49: a missile off a docked relief rig's rack (the signature's). */
   rack?: boolean;
+  /** Log v55 (round 15, Sowers' Reach under the layer, HIDDEN_MINES): a
+   *  mine adrift out of sight: nothing sees, shoots or draws it until a
+   *  ship's course would bring it onto the mine within MINE.surface s;
+   *  then it surfaces (`surfacedT`, game seconds, for the UI's pop). */
+  hidden?: boolean;
+  surfacedT?: number;
+  /** Log v55 (round 15, the Rig Field, SHOT_RIGS): the step and the area
+   *  weapons that have already counted a shot on this rig in it (a burst
+   *  counts once a rig, however many of its fragments land). */
+  shotStep?: number;
+  shotBy?: string[];
+  /** Log v55 (UI only, nothing in the sim reads them): a relief rig's
+   *  docking (game seconds) and the side its tug came from (+1: from the
+   *  left), for the tow's arrival and the tug casting off. */
+  dockT?: number;
+  towDir?: number;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
@@ -611,6 +629,9 @@ export interface Field {
   tick: number;
   /** The level of the weapon that laid it. */
   level: number;
+  /** Log v55 (the Rig Field, SHOT_RIGS): rigs this field has counted its
+   *  one shot on (a flak cloud or a burning row counts once a rig). */
+  rigs?: number[];
 }
 
 /** The weapon loaded in the main gun, at its level, for `t` more seconds. */
@@ -759,6 +780,9 @@ export interface Raid {
   at: number;
   theme: RaidTheme;
   bases: number[];
+  /** Log v55 (HIDDEN_MINES): nothing in it but hidden mines, so no warning
+   *  (the player: "mines don't need a warning system like the silos"). */
+  quiet?: boolean;
 }
 
 /** Developer playtest tempo (never on for players). `waveLen` shortens every
@@ -1330,6 +1354,7 @@ function startWave(g: Game): void {
     cursor.set(theme, at0 + 1);
   }
   g.raiderQueue = planVectors(g, raids, raidUnits, rng);
+  const hidden = hiddenMines(g);
   let besides = 0;
   raids.forEach((raid, r) => {
     for (const u of raidUnits[r]) {
@@ -1358,7 +1383,8 @@ function startWave(g: Game): void {
         continue;
       }
       const base = pickBase(g, u.kind, rng);
-      if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
+      // Log v55 (HIDDEN_MINES): a chute's hidden mines light nothing.
+      if (base >= 0 && !raid.bases.includes(base) && !(u.kind === 'mine' && hidden)) raid.bases.push(base);
       // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
       // cluster missiles go for the ships held at the locks.
       // The Delta (log v57, MAP_SIGNATURE `clouds`): the wave's
@@ -1367,6 +1393,7 @@ function startWave(g: Game): void {
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
     }
   });
+  if (hidden) raids.forEach((raid, r) => (raid.quiet = raidUnits[r].length > 0 && raidUnits[r].every((u) => u.kind === 'mine')));
   g.raids = raids;
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
   trickled.forEach((size, k) => {
@@ -1496,6 +1523,11 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
         for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
+        // Log v55 (HIDDEN_MINES): a chute's hidden mines just come, unwarned.
+        if (b.kind === 'mine' && hiddenMines(g)) {
+          start = Math.min(start, at);
+          continue;
+        }
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [from] });
         start = Math.min(start, at - RAID.warn);
       } else if ('road' in b.from) {
@@ -1662,7 +1694,9 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
     return got;
   };
   const surfaceKind = (u: Unit) => u.kind === 'ballistic' || u.kind === 'drone';
-  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind);
+  // (Log v55: never a structure: a relief rig a truck took was fired off
+  // its rail at a ship, a rig flying over the far shore.)
+  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind) && !isStructure(u.kind);
   // Submarines: a salvo of ballistics back to back, or a drone swarm.
   const spots = rng.shuffle([...g.map.subSpots]);
   for (let k = 0; k < cut(vectorCount(g.wave, vp.subs, 2, 3), g.tempo.waveLen) && spots.length; k++) {
@@ -2298,7 +2332,17 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
     sets: [],
     calls: [],
   };
+  // Log v55 (round 15, SHOT_RIGS): the rigs standing take RIG_SHOTS.rig
+  // shots (a rig's own hits on the map are the campaign's).
+  if (shotRigs(g)) for (const th of g.threats) if (th.kind === 'rig' && th.base !== undefined && th.tow === undefined && th.hp >= (g.map.bases[th.base]?.rig?.hp ?? THREATS.rig.hp) - 1e-6) th.hp = th.maxHp = RIG_SHOTS.rig;
   replanWave(g);
+}
+
+/** A rig's full hits on station `i`: RIG_SHOTS.rig on a map whose rigs
+ *  count shots (log v55), else the map's own. */
+function rigFull(g: Game, i: number): number {
+  const b = g.map.bases[i];
+  return shotRigs(g) ? RIG_SHOTS.rig : (b?.rig?.hp ?? THREATS.rig.hp);
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. A map
@@ -2478,7 +2522,7 @@ export const GOLD_NEAR = 4;
 export const GOLD_LATE = 8;
 export function goldBombWorth(g: Game): boolean {
   if (g.phase !== 'wave' || g.bombsLeft <= 0) return false;
-  const near = g.threats.filter((t) => !t.dead && timeToImpact(g, t) < GOLD_NEAR).length;
+  const near = g.threats.filter((t) => !t.dead && !t.hidden && timeToImpact(g, t) < GOLD_NEAR).length;
   const left = lossLimit(g) - shipsSunk(g);
   const boss = !!g.event && !g.event.bonus && g.event.runs > 1;
   if (boss && near >= GOLD_CROWD / 2) return true;
@@ -5731,9 +5775,13 @@ export function spawnThreat(g: Game, kind: ThreatKind, x: number, y: number, ori
   if (kind === 'ballistic') aimBallistic(g, th);
   const tp = kind === 'mine' ? { x: th.x + (g.map.current?.x ?? 0), y: th.y + (g.map.current?.y ?? 1) } : targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
+  // Log v55 (round 15, HIDDEN_MINES): a mine drifts out of sight until a
+  // ship comes close: no flash, no sound, nothing at its chute.
+  if (kind === 'mine' && hiddenMines(g)) th.hidden = true;
   g.threats.push(th);
   if (g.tel) g.tel.spawn(g, th, origin);
   if (g.lab) labCame(g, th);
+  if (th.hidden) return th;
   // Launch flash by where it came from: a base's red flare, a column of spray
   // off a submarine's deck, a truck's smaller flash (round 4: the base flare
   // drawn over a sub or a truck hid it completely).
@@ -5904,7 +5952,8 @@ export function raiseRig(g: Game, i: number, hp: number): void {
   const b = g.map.bases[i];
   g.baseDown[i] = false;
   const th = structure(g, 'rig', b.x, b.y, hp, i);
-  th.maxHp = b.rig?.hp ?? THREATS.rig.hp;
+  // Counting shots (log v55), its pips are its own: the shots it rose with.
+  th.maxHp = shotRigs(g) ? hp : rigFull(g, i);
   g.threats.push(th);
   if (g.tel) g.tel.spawn(g, th, 'structure');
   addFx(g, 'splash', b.x, b.y + 30, { life: 1.2, r: 60 });
@@ -5931,10 +5980,15 @@ function updateTow(g: Game, th: Threat, dt: number): void {
 function dockRig(g: Game, th: Threat): void {
   const i = th.tow!;
   const b = g.map.bases[i];
-  const full = b.rig?.hp ?? THREATS.rig.hp;
+  const full = rigFull(g, i);
   const rig = rigAt(g, i);
+  // Round 15 (UI only): the side its tug came from, for the cast-off.
+  th.towDir = th.vx < 0 ? -1 : 1;
   th.vx = 0;
+  // Round 15: it settles on its legs with a splash (the tow's arrival).
+  addFx(g, 'splash', b.x, b.y + 34, { life: 1.1, r: 80 });
   if (!rig) {
+    th.dockT = g.t;
     g.baseDown[i] = false;
     th.tow = undefined;
     th.base = i;
@@ -6338,6 +6392,9 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
         m.parent = th.kind;
         m.src = th.id;
         cue(g, 'mine.drop', th.x, th.y);
+        // Log v55: a hidden mine goes into the water with a splash under
+        // the bomber, and is gone from sight until a ship comes close.
+        if (m.hidden) addFx(g, 'splash', th.x, th.y, { life: 0.5, r: 16 });
         g.origins.air -= 1;
         g.origins.child += 1;
       }
@@ -6561,6 +6618,11 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
     if (g.steps % 4 === 0) addFx(g, 'block', th.x, th.y, { life: 0.3, r: 26 });
     return;
   }
+  // Log v55 (round 15, SHOT_RIGS): a rig counts shots, not damage.
+  if (th.kind === 'rig' && shotRigs(g)) {
+    amount = rigShot(g, th, amount, by);
+    if (amount <= 0) return;
+  }
   const before = th.hp;
   th.hp -= amount;
   // Thirds of a hit (seekers) add up to a whole one, float error aside.
@@ -6596,6 +6658,35 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   // Weapons drop on their own roll, on top of the power-ups (playtest round
   // 2: sharing one roll, they crowded out the repairs and Overdrives).
   else if (weaponDue(g, th.kind)) dropWeapon(g, th.x, th.y);
+}
+
+/** Log v55 (round 15, SHOT_RIGS): do this map's rigs count shots? */
+export function shotRigs(g: Game): boolean {
+  return !!g.enc && shotRigsOn(g.map.id, g.enc.setup);
+}
+
+/** Weapons whose one shot lands on a rig in several pieces at once (a
+ *  burst's fragments, a blast round its target, pellets): one shot a rig
+ *  a step, however many land. */
+const AREA_SHOT: ReadonlySet<HurtSrc> = new Set<HurtSrc>(['blast', 'shrapnel', 'scatter', 'thermo', 'grapnel', 'orbital', 'gunship', 'droneScreen', 'reflect', 'well', 'airstrike']);
+
+/** What a hit does to a rig on a map that counts shots (log v55; the
+ *  player: "it has to consume X amount of your ammo to be destroyed, that
+ *  way power-ups can't do a huge amount of hit points with one ammo"): a
+ *  shot is one, whatever its damage (a Railgun's, a warhead's, a powered-up
+ *  shot's); a seeker's third is a third; an area weapon counts once a rig
+ *  a step; the Nuke and the golden bomb count PICKUPS.nukeStructure. */
+function rigShot(g: Game, th: Threat, amount: number, by: HurtSrc): number {
+  if (by === 'nuke') return amount;
+  if (AREA_SHOT.has(by)) {
+    if (th.shotStep !== g.steps) {
+      th.shotStep = g.steps;
+      th.shotBy = [];
+    }
+    if (th.shotBy!.includes(by)) return 0;
+    th.shotBy!.push(by);
+  }
+  return Math.min(1, amount);
 }
 
 function blast(g: Game, x: number, y: number, radius: number, exceptId: number, amount = 1, weapon?: AbilityId): void {
@@ -6948,7 +7039,15 @@ function updateFields(g: Game, dt: number): void {
     if (f.tick > 0) continue;
     f.tick += f.kind === 'flak' ? AB.flak.tick : AB.airstrike.burnTick;
     if (f.kind === 'flak') cue(g, 'flak.cloud', f.x1, f.y1);
-    for (const th of [...g.threats]) if (released(th) && fieldDist(f, th.x, th.y) <= f.hw) damageThreat(g, th, 1, true, f.kind === 'flak' ? 'flak' : 'burn');
+    for (const th of [...g.threats]) {
+      if (!released(th) || fieldDist(f, th.x, th.y) > f.hw) continue;
+      // Log v55 (SHOT_RIGS): a cloud or a burning row is one shot a rig.
+      if (th.kind === 'rig' && shotRigs(g)) {
+        if (f.rigs?.includes(th.id)) continue;
+        (f.rigs ??= []).push(th.id);
+      }
+      damageThreat(g, th, 1, true, f.kind === 'flak' ? 'flak' : 'burn');
+    }
   }
   g.fields = g.fields.filter((f) => f.t < f.life);
 }
@@ -7315,6 +7414,13 @@ function updateBoss(g: Game, th: Threat, dt: number): void {
 function updateMine(g: Game, th: Threat, dt: number): void {
   const c = g.map.current ?? { x: 0, y: 1 };
   const k = th.speed / (Math.hypot(c.x, c.y) || 1);
+  if (th.hidden && (g.steps + th.id) % 3 === 0 && mineNear(g, th, c.x * k, c.y * k)) surfaceMine(g, th);
+  // Log v55: a hidden mine that has drifted past every lane is gone (out of
+  // sight it would only hold the wave open, drifting on to the edge).
+  if (th.hidden && g.map.channels.every((ch) => th.y > ch.y + ch.halfWidth + 60)) {
+    th.dead = true;
+    return;
+  }
   const wob = Math.sin(th.age * 1.3 + th.phase) * MINE.wobble;
   th.x += (c.x * k + wob * (c.y * k) / (th.speed || 1)) * dt;
   th.y += (c.y * k - wob * (c.x * k) / (th.speed || 1)) * dt;
@@ -7337,6 +7443,69 @@ function updateMine(g: Game, th: Threat, dt: number): void {
     cue(g, 'mine.blast', th.x, th.y);
     damageCarrier(g, 1, 'mine', g.tel?.impact(th.id, th.x, th.y));
   }
+}
+
+/** Log v55 (round 15, the player: "that button should glow when it is
+ *  advantageous to use it, like when a ship is about to hit a mine"): is
+ *  now a moment for this convoy command? For Hold: a mine in sight that a
+ *  ship will sail onto within ADVISE.mine s, or a shell in the air aimed
+ *  at water a ship has still to reach (held, the ship is not there when it
+ *  lands). Never while the command is on or cannot be given. Read by the
+ *  big command button and by the bots' sharp pilot alike. */
+export function commandAdvised(g: Game, id: CommandId): boolean {
+  if (g.phase !== 'wave') return false;
+  const st = commandState(g, id);
+  if (!st.ready || st.active) return false;
+  if (id !== 'hold') return false;
+  for (const th of g.threats) {
+    if (!released(th)) continue;
+    if (th.kind === 'mine') {
+      if (mineEta(g, th) <= ADVISE.mine) return true;
+      continue;
+    }
+    if (th.kind !== 'ballistic' || th.target < 0) continue;
+    const left = th.dur - th.age;
+    if (left < ADVISE.shell[0] || left > ADVISE.shell[1]) continue;
+    const s = g.ships.find((o) => o.id === th.target);
+    if (s && dist(s.x, s.y, th.ix, th.iy) > BALLISTIC.splash + 10) return true;
+  }
+  return false;
+}
+
+/** When a command is advised (commandAdvised): a mine this many seconds
+ *  from a hull; a shell with this long still to fly. */
+const ADVISE = { mine: 2.6, shell: [0.6, 3] as const };
+
+/** Log v55 (round 15, HIDDEN_MINES): do this map's mines drift hidden? */
+export function hiddenMines(g: Game): boolean {
+  return !!g.enc && hiddenMinesOn(g.map.id, g.enc.setup);
+}
+
+/** Would a ship's course (or the carrier) bring it onto this mine within
+ *  MINE.surface s, the mine drifting at (vx, vy)? (Log v55: then it
+ *  surfaces, in that ship's path.) */
+function mineNear(g: Game, th: Threat, vx: number, vy: number): boolean {
+  const S = MINE.surface;
+  for (const s of g.ships) {
+    const reach = MINE.hitRadius + (s.vip ? 24 : 0) + 4;
+    if (dist(s.x, s.y, th.x, th.y) > reach + S * (SHIP.speed * g.waveSpeed * 1.5 + th.speed)) continue;
+    // Sailing on, or (held, or stopped behind the ship ahead) where it is.
+    for (let t = 0; t <= S + 1e-9; t += 0.15) {
+      const p = shipAhead(g, s, t);
+      const mx = th.x + vx * t;
+      const my = th.y + vy * t;
+      if (dist(p.x, p.y, mx, my) <= reach || dist(s.x, s.y, mx, my) <= reach) return true;
+    }
+  }
+  return onCarrier(g, th.x + vx * S, th.y + vy * S);
+}
+
+/** A hidden mine surfaces (log v55): in sight, a target, with a splash. */
+function surfaceMine(g: Game, th: Threat): void {
+  th.hidden = false;
+  th.surfacedT = g.t;
+  addFx(g, 'splash', th.x, th.y, { life: 0.7, r: 34 });
+  cue(g, 'mine.drop', th.x, th.y);
 }
 
 /** Seconds until a mine drifts into a hull (99 if it never will). */
@@ -7826,6 +7995,7 @@ export function angleDiff(a: number, b: number): number {
 export function raidWarning(g: Game): { raid: Raid; p: number } | null {
   if (g.phase !== 'wave') return null;
   for (const raid of g.raids) {
+    if (raid.quiet) continue;
     const ahead = raid.at - g.waveT;
     const warn = RAID.warn;
     if (ahead > 0 && ahead <= warn) return { raid, p: 1 - ahead / warn };
