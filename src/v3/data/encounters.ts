@@ -7327,7 +7327,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
  *  more and bigger salvos, more fire round them. */
 export const CITADEL_BOSS_ROUNDS: BossRound[] = [
   {
-    citadel: { gen: 3, core: 12, first: 6, every: 8, salvos: 2, size: 3, warn: 2.5, kinds: ['guided', 'guided', 'ballistic'] },
+    citadel: { gen: 3, core: 12, first: 6, every: 8, salvos: 2, size: 3, warn: 2.5, kinds: ['guided', 'ballistic', 'ballistic'] },
     fire: [{ kind: 'drone', at: 2, count: 2, gap: 4, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 11, count: 1, base: 5, aim: 'mid' }],
   },
   {
@@ -7335,7 +7335,7 @@ export const CITADEL_BOSS_ROUNDS: BossRound[] = [
     fire: [{ kind: 'drone', at: 2, count: 3, gap: 4, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 9, count: 2, gap: 6, base: 5, aim: 'mid' }, { kind: 'strafer', at: 12, count: 2, gap: 3 }],
   },
   {
-    citadel: { gen: 4, core: 16, first: 5, every: 6.5, salvos: 4, size: 3, warn: 2.5, kinds: ['guided', 'ballistic', 'ballistic'] },
+    citadel: { gen: 4, core: 16, first: 5, every: 7, salvos: 3, size: 3, warn: 2.5, kinds: ['guided', 'guided', 'ballistic'] },
     fire: [{ kind: 'drone', at: 2, count: 4, gap: 3.5, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 8, count: 2, gap: 6, base: 5, aim: 'mid' }, { kind: 'strafer', at: 10, count: 2, gap: 3 }],
   },
 ];
