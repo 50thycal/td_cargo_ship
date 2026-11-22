@@ -248,7 +248,7 @@ The 24-seed record and the 192-seed reads disagree by up to 14 points on a win r
 
 ## Checks run
 
-`tsc`; `vitest --exclude '.claude/**'` (80 files, 1893 tests, all pass, on the build before the last wave 6–7 budget fix; the budget test re-run after it); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs`, `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass; run on the build before the wave 6–7 drone counts, which no e2e check reads); the map-lab baseline replays exactly.
+`tsc`; `vitest --exclude '.claude/**'` (81 files, 1903 tests, all pass, after merging round 15's v55 at v56); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs`, `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass, on the final build); the usual Armory's 192-seed read is the same after the merge as before it (won 57%, the same curve); the map-lab baseline replays exactly.
 
 ## Tests
 
