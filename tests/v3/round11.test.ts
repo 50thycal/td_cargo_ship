@@ -227,6 +227,8 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('saltgate')).toEqual({ convoy: 'tactical', encounters: true });
     // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
     expect(mapProduction('battery')).toEqual({ convoy: 'tactical', encounters: true });
+    // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md): the same.
+    expect(mapProduction('dreadnought')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('rigs')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');

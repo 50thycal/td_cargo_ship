@@ -712,7 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'dreadnought', log: 51, tag: 'New', note: 'The chapter finale: sink the battleship or ride out its broadsides; the boss is the Dreadnought itself. Big enough?' },
+  { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
   { map: 'sowers', log: 48, tag: 'New', note: 'Mines drift across the lane; bombers sow them ahead of your ships. Hold or shoot?' },
   { map: 'saltgate', log: 46, tag: 'Polished', note: 'Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?' },
   { map: 'battery', log: 45, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },

@@ -2033,6 +2033,12 @@ function replanWave(g: Game): void {
   g.events = g.events.filter((e) => e.kind !== 'wave' && e.kind !== 'special' && e.kind !== 'restore');
   g.event = null;
   g.cues = [];
+  // Log v51 (Dreadnought Pass): planned again under the layer, the wave's
+  // battleship comes on its pass's own moment, not as the wave started.
+  if (g.map.boss && g.bossWave === g.wave && dreadPasses(g.map.id, g.enc?.setup)) {
+    g.threats = g.threats.filter((t) => t.kind !== 'dreadnought');
+    g.bossWave = g.wave - 1;
+  }
   g.wave -= 1;
   startWave(g);
 }

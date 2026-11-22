@@ -4557,7 +4557,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [3],
     role: 'teach',
     name: 'The first pass',
-    callout: 'Broadsides',
+    callout: 'Battleship broadsides',
     premise: 'The Dreadnought steams the whole deep channel from east to west, firing a broadside of two shells every few seconds at the lead ship; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
     decision: 'Sink it (fifty hits) and silence its broadsides, or shoot each broadside down as it comes?',
     counters: 'Each broadside\'s shells as they climb, the missile; any shots spare into the hull.',
@@ -4586,7 +4586,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The spotter as it circles, the missile, the swarms.',
     succeeds: 'The spotter is shot down before its call in most runs; no ship lost in most runs.',
     notes: {
-      sites: 'A spotter plane from an edge (circling off the lane\'s far side), the east silo (guided missiles), a submarine at (1300, 410), the west silo (swarms).',
+      sites: 'A spotter plane from the west edge (circling off the lane\'s far side), the east silo (guided missiles), a submarine at (1300, 410), the west silo (swarms).',
       target: 'The ship it paints (its shells), the lead ship (the missiles, the salvo), any ship (the swarms).',
       usesMap: 'The signature\'s first wave: the battleship\'s guns laid on a ship by a spotter, with the battleship out of sight, in place of the wave\'s own shells.',
     },
@@ -4636,7 +4636,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The spotter before it calls, each broadside, the salvo; the hull with what is left.',
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The Dreadnought in the deep channel, a spotter plane from an edge, a submarine between the deep channel and the lane in the east (1300, 410), the west silo (swarms).',
+      sites: 'The Dreadnought in the deep channel, a spotter plane from the east edge, a submarine between the deep channel and the lane in the east (1300, 410), the west silo (swarms).',
       target: 'The ship the spotter paints (the battleship\'s guns, from its hull), the convoy (the broadsides), the lead ship (the salvo), the rear (a swarm).',
       usesMap: 'The mechanic and the signature together: the battleship\'s guns laid by a spotter, in place of the wave\'s own shells and a guided missile.',
     },
@@ -4681,13 +4681,13 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Two spotters',
     callout: 'Spotters both ways',
-    premise: 'Two spotter planes fly in from both edges and paint two ships for the guns over the horizon, while a strike jet runs in from the west, a rocket truck drives down the pop-up road in the east, guided missiles come at the middle and swarms come off the west silo.',
+    premise: 'Two spotter planes fly in from both edges and paint two ships for the guns over the horizon, while a rocket truck drives down the pop-up road in the east, guided missiles come at the middle and swarms come off the west silo.',
     decision: 'Two planes painting at once: one before its call, and the shells on the other\'s ship?',
-    counters: 'A spotter before it calls, the jet, the truck as it raises, the missiles, the swarms.',
+    counters: 'A spotter before it calls, the truck as it raises, the missiles, the swarms.',
     succeeds: 'One spotter is shot down before its call in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'Spotter planes from the west and the east edge, a strike jet from the west edge, the pop-up road in the east (x 1500; a rocket truck), the east silo (guided missiles), the west silo (swarms).',
-      target: 'The two ships they paint, the convoy under the jet\'s run, the lead ship (the truck, a swarm), the ship halfway along (the missiles), any ship (a swarm).',
+      sites: 'Spotter planes from the west edge and the east edge, the pop-up road in the east (x 1500; a rocket truck), the east silo (guided missiles), the west silo (swarms).',
+      target: 'The two ships they paint, the lead ship (the truck, a swarm), the ship halfway along (the missiles), any ship (a swarm).',
       usesMap: 'The signature twice over, a preview of the boss\'s gun-laying, in place of the wave\'s own shells, guided missiles and its heavy.',
     },
     beats: [
@@ -4712,7 +4712,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The spotter, each broadside, the missile; the hull while it is in reach.',
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The Dreadnought in the deep channel, a spotter plane from an edge, the east silo (a guided missile), the west silo (swarms).',
+      sites: 'The Dreadnought in the deep channel, a spotter plane from the west edge, the east silo (a guided missile), the west silo (swarms).',
       target: 'The convoy (the broadsides), the lead ship (the missile), the ship the spotter paints, the rear and the middle (the swarms).',
       usesMap: 'The mechanic and the signature at their heaviest before the climax, in place of the wave\'s own shells, guided missiles and a cluster.',
     },
@@ -4736,7 +4736,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The spotter, each broadside, the jet, the swarms.',
     succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
     notes: {
-      sites: 'The Dreadnought in the deep channel (at speed), a spotter plane from an edge, a strike jet from the east edge, the west silo (swarms), after the wave\'s own fire and a calm.',
+      sites: 'The Dreadnought in the deep channel (at speed), a spotter plane from the east edge, a strike jet from the east edge, the west silo (swarms), after the wave\'s own fire and a calm.',
       target: 'The convoy (the broadsides, the jet), the ship the spotter paints, the lead ship and the ships coming in (the swarms).',
       usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles and a cluster; the climax may reach the safe stretch.',
     },

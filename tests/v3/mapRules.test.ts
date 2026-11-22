@@ -189,6 +189,8 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
     // Chapter 3 (docs/design/v3-ch3-battery.md).
     battery: [],
     sowers: [],
+    // Chapter 3's finale (docs/design/v3-ch3-dreadnought.md).
+    dreadnought: [],
   };
 
   it('the back-to-back repeats are exactly the known ones', () => {
@@ -207,7 +209,7 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
 
 describe('w-encounter: an encounter on each of waves 1-10 (v1)', () => {
   /** Waves with no v1 encounter, per map (none today). */
-  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [], needle: [], archipelago: [], saltgate: [], battery: [], sowers: [] };
+  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [], needle: [], archipelago: [], saltgate: [], battery: [], sowers: [], dreadnought: [] };
 
   it('the waves without one are exactly the known gaps', () => {
     const found: Record<string, number[]> = {};
@@ -248,6 +250,8 @@ describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
     expect(MAP_PLANS.battery!.boss.botTarget).toBe(2);
     // Sowers' Reach (log v48): the same.
     expect(MAP_PLANS.sowers!.boss.botTarget).toBe(2);
+    // Dreadnought Pass (log v51), the chapter finale: the same.
+    expect(MAP_PLANS.dreadnought!.boss.botTarget).toBe(2);
   });
 });
 

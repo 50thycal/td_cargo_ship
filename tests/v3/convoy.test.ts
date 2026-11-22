@@ -56,8 +56,8 @@ describe('a campaign run has no convoy layer', () => {
   it('round 11: Hold, the one command left, is on Sowers\' Reach only (mines cross its lane); the reference maps have none', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-*.md) sail the map's own convoy, as the reference maps do.
     // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-*.md): the same.
-    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
-    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
+    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'saltgate', 'sowers', 'strait']);
+    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'dreadnought'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
     // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the campaign's own
     // schedule, as Sowers' Reach (the locks set the pace).
     expect(mapConvoy('saltgate')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });

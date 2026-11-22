@@ -284,6 +284,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch3-dreadnought.md
+  dreadnought: {
+    problem: 'A battleship steams down the deep channel against the convoy, east to west, firing broadsides across the water at the ships, and from wave 4 its spotter planes lay its guns on a ship from over the horizon: fifty hits sink it and silence it for the wave, or each broadside and each spotter can be shot down as it comes, while the rest of the wave keeps firing, most of all at the ships about to deliver in the east, where it comes in.',
+    // COUNTERS
+    counters: ['railgun', 'airstrike', 'shield'],
+    offCounter: ['flak', 'droneScreen', 'fullSteam'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no command (rule m-convoy: the battleship is fought by shooting, not by sailing): pairs west to east down the one lane, past the carrier in the middle, delivering in the east, where the Dreadnought comes in and its first broadsides fall.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Dreadnought itself, on the Fire Mission\'s spotters: each round it steams in from the east at speed, heaves to broadside-on to the convoy (3, 4, then 5 s), firing a broadside at the lead ship every 8, 6.5, then 7 s (a shell and a guided missile, the same, then two shells), and goes on west at twice the speed; its spotters (one for one turn, one for two, then two) call walking barrages from its hull, and sunk, it is silent and its spotters go; 40, 50, then 60 hits; 2, 3, then 4 swarms (encounters rev 4, MAP_BOSS; lab only; the Fire Mission before: 3 spotters calling barrages from off the map, 3 swarms, every round). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on every rebuilt map, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {
