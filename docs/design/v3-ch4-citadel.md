@@ -95,21 +95,48 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 | Wave | Role | Encounter (`id`) | What it sends | Target |
 | --- | --- | --- | --- | --- |
 | 1 | teach | Under the guns (`citadel-under-the-guns`) | far silo, 3 + 3 + 2 drones, over the whole map past the north generator | the lead ship as it sails into the narrows under the dome; the ships coming in |
-| 2 | teach | Three generators (`citadel-generators`) | the Citadel, a shell; north-east silo, a guided missile; far silo, drones past the west islet's generator | the lead ship; halfway along; the ships coming in |
+| 2 | teach | Three generators (`citadel-generators`) | the Citadel, a shell; far silo, a shell and drones past the west islet's generator | the lead ship (a short flight); halfway along (a long one); the ships coming in |
 | 3 | teach | Into the narrows (`citadel-narrows`) | the Citadel, a cluster; north-east silo, a guided missile; 6 drones in place of the subs' shells | the lead ship in the narrows; halfway along |
 | 4 | combine | Under the dome (`citadel-dome`) | the Citadel, a guided missile **under its dome**; north-east silo, a supersonic; 11 drones | the lead ship in the narrows; the ships coming in; halfway along |
 | 5 | combine | Both ends (`citadel-two-ends`) | far silo, 2 shells; the Citadel, a guided missile **under its dome**; north-east silo, a guided missile; 8 drones | the ships coming in; the lead ship; halfway along |
-| 6 | combine | Periscope by the carrier (`citadel-periscope`) | a sub by the carrier, a shell; 20 drones | the ships coming in (the safe stretch's turn); the lead ship and halfway along |
-| 7 | escalate | The keep's battery (`citadel-keep`) | the Citadel, **2 shells under its dome** and a cluster; north-east silo, a guided missile and a supersonic; 18 drones | the lead ship in the narrows; halfway along; the ships coming in |
+| 6 | combine | Periscope by the carrier (`citadel-periscope`) | a sub by the carrier, a shell; 20 drones (the wave's own guided missiles, heavy, cluster and mothership come as drones) | the ships coming in (the safe stretch's turn); the lead ship and halfway along |
+| 7 | escalate | The keep's battery (`citadel-keep`) | the Citadel, **2 shells under its dome** and a cluster; north-east silo, a guided missile; 18 drones | the lead ship in the narrows; halfway along; the ships coming in |
 | 8 | escalate | Crossfire at the narrows (`citadel-crossfire`) | the Citadel, a guided missile **under its dome**; 22 drones from the far silo | the lead ship in the narrows; halfway along; the ships coming in |
 | 9 | escalate | The whole fortress (`citadel-fortress`) | the Citadel, a cluster and a guided missile **under its dome**; north-east silo, a guided missile; far silo, 2 shells and 21 drones | the lead ship and halfway along; the ships coming in |
 | 10 | climax | Grand salvo (`citadel-grand-salvo`), after the wave's own fire and a 6 s calm | the Citadel's grand salvo, **4 missiles at once under its dome** (2 guided at the lead ship and halfway along, 2 shells halfway along); north-east silo, 2 supersonics; 26 drones | the narrows; the ships behind |
 
-TBD: wave 1 and wave 10 numbers.
+Wave 1 loses 0.03 ships a run with the usual Armory (192 seeds; 0.01–0.05 with the others): its drones fly the length of the map, the longest flight there is.
+
+**Wave 10, the climax:** after a 6 s calm, the grand salvo; the hardest regular wave for every player Armory on the tough runs (192 seeds: usual 1.49, latest 2.29, plating 1.29), and no step to it doubles the wave before (×1.46 usual).
+
+`CITADEL_CLIMB`: 1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9 of the shared wave's drones and missiles; the waves as planned are ×0.88–1.06 of the shared wave on the same dice (`tools/v3/rigs/budget.ts --map=citadel`).
 
 ## The boss plan: the Last Stand
 
-TBD
+The Citadel's event was the Siege of Vey: a Repair Yard on the Citadel (a mothership and three Repair Ships), a guarded heavy and Lure Beacons, then firebombs from every side, every round: chapter 4's four new enemies, all of them regulars by the game's last map. It cost the bot about a ship and a half a round, falling (1.51 / 1.19 / 1.16). The boss under encounter rev 4 is new (`CITADEL_BOSS_ROUNDS`, lab only; the event's id stays `siege-of-vey`): **the Last Stand**, the Citadel itself.
+
+Each round opens with **the shield raised** (every generator stands again, its shots the round's own) and **the Citadel manned** (its shots the round's own). Then **grand salvos**: the keep lit 2.5 s ("GRAND SALVO" over it, the raid warning's sound), then three missiles off it at once, under the dome, at the lead ship in the narrows, converging on it. While the shield stands they can't be shot until they leave the dome; with it down they can be shot from the keep, and **the Citadel silenced fires no more salvos that round**. Round by round more salvos, closer together, tougher generators, more guided missiles in the salvo, and more fire round them off the far silos and the edges (drones at the ships coming in, supersonics halfway along, strike jets).
+
+| Round | Generators | Citadel | Salvos | Apart | A salvo | Added |
+| --- | --- | --- | --- | --- | --- | --- |
+| before (every round) | – | – | – | – | – | a Repair Yard (a mothership, 3 Repair Ships), a guarded heavy, 2 Lure Beacons, 5 firebombs, 2 swarms |
+| 1 | 3 shots | 12 | 2, from 6 s | 8 s | a guided missile, 2 shells | 2 drones; a supersonic |
+| 2 | 4 | 14 | 3, from 5 s | 7 s | a guided missile, 2 shells | 3 drones; 2 supersonics; 2 strike jets |
+| 3 | 4 | 16 | 3, from 5 s | 7 s | 2 guided missiles, a shell | 4 drones; 2 supersonics; 2 strike jets |
+
+The intro is the shared cards (log v30): "Boss round", "Convoy restored", "The boss: The Last Stand", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3". Each round lasts 18–24 s (the tryhard bot, seed 230).
+
+The whole map is in it, at its biggest: the shield, the generators, the keep, its fire under the dome converging on the ships in the narrows. As the finale of all four chapters it is the one boss that is a place rather than a ship or a squadron; the Dreadnought (chapter 3's finale) was the closest, a battleship sailing a pass, and the Rig Barrage's rigs rose and fired volleys; here a fortress that can't be sunk is silenced round by round.
+
+How it reads (192 seeds, normal runs that reached it; tough runs in brackets):
+
+| Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
+| --- | --- | --- |
+| usual | 1.51 / 1.19 / 1.16 (tough 1.65 / 1.30 / 1.54) | **0.33 / 1.19 / 2.37** (tough 0.41 / 1.22 / 2.49) |
+| latest | 2.12 / 2.33 / 1.70 (16, 15, 10 runs reached it) | **0.44 / 2.26 / 2.79** (61 runs; tough 0.58 / 2.32 / 3.60) |
+| plating | 1.05 / 1.41 / 1.07 | **0.15 / 0.84 / 1.94** (tough 0.21 / 0.82 / 1.89) |
+
+Rising with every Armory, round 3 near the asked 2.5 for the usual Armory; round 1 under the asked 1.5 and round 2 under the asked 2, as on every rebuilt map, to keep the win rate in the band (a build with round 1 at 1.42, its salvo two guided missiles and a shell, won 54% on 96 seeds against 61%).
 
 ## Bot results, before and after
 
