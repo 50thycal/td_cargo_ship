@@ -4650,7 +4650,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
       { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 12, extras: { cluster: 1, mothership: 1 } },
+    replaces: { ballistic: 11, extras: { cluster: 1, mothership: 1 } },
   },
   {
     id: 'lantern-two-guns',
@@ -4675,7 +4675,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
     ],
-    replaces: { ballistic: 12, guided: 1, extras: { mothership: 1 } },
+    replaces: { ballistic: 11, guided: 1, extras: { mothership: 1 } },
   },
   {
     id: 'lantern-dark-water',
