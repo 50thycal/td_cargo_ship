@@ -7137,12 +7137,19 @@ function updateBoss(g: Game, th: Threat, dt: number): void {
   if (th.fireT > 0 || th.x > VIEW.width - 40 || th.x < 40) return;
   th.fireT = P?.every ?? BOSS.every;
   const kinds: readonly ThreatKind[] = P?.broadside ?? BOSS.broadside;
+  const apart = kinds.length > 3 ? 40 : 60;
   kinds.forEach((kind, k) => {
-    const m = spawnThreat(g, kind, th.x + (k - (kinds.length - 1) / 2) * 60, th.y, 'base');
+    const m = spawnThreat(g, kind, th.x + (k - (kinds.length - 1) / 2) * apart, th.y, 'base');
     m.from = th.id;
     if (P) {
       m.parent = 'dreadnought';
-      if (P.aim) aimBeat(g, m, P.aim);
+      // Log v51: the drones off its deck go for the carrier (they count
+      // in the wave, they do not sink a ship); its guns at the ships.
+      if (kind === 'drone') {
+        m.target = CARRIER_TARGET;
+        const tp = targetPos(g, m);
+        m.heading = Math.atan2(tp.y - m.y, tp.x - m.x);
+      } else if (P.aim) aimBeat(g, m, P.aim);
     }
   });
   addFx(g, 'launch', th.x, th.y, { life: 0.6, r: 40 });

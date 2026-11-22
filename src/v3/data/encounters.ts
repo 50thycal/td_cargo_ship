@@ -4527,7 +4527,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.4, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lead' },
     ],
-    replaces: { drones: 5 },
+    replaces: { drones: 7 },
   },
   {
     id: 'dread-long-reach',
@@ -4698,7 +4698,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.1, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'lead' },
     ],
-    replaces: { drones: 4, ballistic: 9, guided: 4, extras: { heavy: 1 } },
+    replaces: { ballistic: 9, guided: 4, extras: { heavy: 1 } },
   },
   {
     id: 'dread-gunline',
@@ -5540,7 +5540,7 @@ export interface DreadPass {
   speed?: number;
   first?: number;
   every?: number;
-  broadside?: ('ballistic' | 'guided' | 'supersonic' | 'heavy' | 'cluster')[];
+  broadside?: ('ballistic' | 'guided' | 'supersonic' | 'heavy' | 'cluster' | 'drone')[];
   aim?: BeatAim;
   turn?: number;
   hold?: [x: number, t: number];
@@ -5554,10 +5554,10 @@ export interface DreadPass {
  *  24 px/s, as the wave starts. */
 export const DREAD_PASSES: Record<number, DreadPass> = {
   1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
-  3: { hp: 40, at: 0, speed: 30, first: 6, every: 10, broadside: ['ballistic', 'ballistic'], aim: 'lead' },
-  6: { hp: 45, at: 0, speed: 30, first: 5, every: 8, broadside: ['ballistic', 'ballistic'] },
-  9: { hp: 50, at: 0, speed: 30, first: 5, every: 11, broadside: ['ballistic', 'guided'] },
-  10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 6.5, broadside: ['ballistic', 'ballistic', 'guided'] },
+  3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
+  6: { hp: 45, at: 0, speed: 30, first: 5, every: 8, broadside: ['drone', 'ballistic', 'drone', 'drone'] },
+  9: { hp: 50, at: 0, speed: 30, first: 5, every: 9, broadside: ['drone', 'drone', 'guided', 'drone', 'drone', 'drone'] },
+  10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 6.5, broadside: ['drone', 'drone', 'ballistic', 'guided', 'drone', 'drone', 'drone'] },
 };
 
 /** A wave's Dreadnought pass under the layer (rev 4, a map with passes,
