@@ -209,7 +209,7 @@ try {
   await page.locator('[data-card="map-strait"]').scrollIntoViewIfNeeded();
   const hub = await page.evaluate(() => {
     const t = (id) => document.querySelector(`[data-card="${id}"] [data-lab-plays]`)?.textContent;
-    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), coves: t('map-coves'), delta: t('map-delta'), dreadnought: t('map-dreadnought'), lantern: t('map-lantern'), crossing: t('map-crossing'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
+    return { strait: t('map-strait'), harbor: t('map-harbor'), kesh: t('map-kesh'), marrow: t('map-marrow'), island: t('map-island'), behemoth: t('map-behemoth'), needle: t('map-needle'), archipelago: t('map-archipelago'), saltgate: t('map-saltgate'), battery: t('map-battery'), sowers: t('map-sowers'), rigs: t('map-rigs'), coves: t('map-coves'), delta: t('map-delta'), dreadnought: t('map-dreadnought'), lantern: t('map-lantern'), crossing: t('map-crossing'), tide: t('map-tide'), blurb: document.querySelector('[data-section="map"] summary i')?.textContent, n: document.querySelectorAll('[data-section="map"] [data-lab-plays]').length };
   });
   // Round 12: 20 maps and two more versions of each reference map.
   check(hub.n === 26 && hub.strait === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original" && hub.harbor === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands) · encounters v1 Original", `every map card says what it plays and how it opens (${hub.strait} | ${hub.harbor})`);
@@ -240,7 +240,9 @@ try {
   check(hub.coves === enc1, `the Coves say they open with their encounters (${hub.coves})`);
   // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
   check(hub.delta === enc1, `the Delta says it opens with its encounters (${hub.delta})`);
-  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.crossing ?? ''), `a map with no commands or encounters yet says so ("${hub.crossing}")`);
+  // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): the same.
+  check(hub.crossing === enc1, `Dunmar Crossing says it opens with its encounters (${hub.crossing})`);
+  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.tide ?? ''), `a map with no commands or encounters yet says so ("${hub.tide}")`);
   await shot(page, 'hub-card');
 
   // ---- Tap The Strait's card: wave 1, no command (round 11), no Bring one ----
@@ -485,7 +487,7 @@ try {
   // full map with their encounters (rev 4) and no command; chapter 2's
   // Island, Behemoth Run, Needle of Bosk, Archipelago and Saltgate Canal the
   // same, and chapter 3's Battery Point and Dreadnought Pass.
-  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'delta']) {
+  for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'delta', 'crossing']) {
     await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.playing.lab-on');
     await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
