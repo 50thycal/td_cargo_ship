@@ -143,7 +143,7 @@ The Crossing's event was Beacon Strike: a pair of beacons by the lanes twice a r
 | --- | --- | --- | --- | --- |
 | before (every round) | 2 pairs by the lanes | 2 | 4 | 2 swarms of 5 |
 | 1 | 2 (at 0 and 8 s) | 3 | 6 | 3 guided missiles; 2 swarms of 5 |
-| 2 | 3 (0, 7, 14 s) | 4 | 12 | 2 guided missiles; 2 swarms of 5 |
+| 2 | 3 (0, 6, 12 s) | 4 | 12 | 2 guided missiles; 2 swarms of 5 |
 | 3 | 3 (0, 6, 12 s) | 5 | 15 | 2 guided missiles; 2 swarms of 6 |
 
 Each spotter four hits, three calls (the first 2.5 s after it is up, every 4.5 s), each ship marked 2 s before. The intro is the shared cards: "Boss round", "Convoy restored", "The boss: Beacon Line", "Round 1 of 3".
@@ -152,11 +152,11 @@ How it reads (192 seeds, normal runs that reached it):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 0.01 / 0.02 / 0.00 | **0.52 / 1.06 / 2.16** |
-| latest | 0.00 / 0.00 / 0.01 | **1.09 / 2.90 / 3.17** (90, 89, 52 runs) |
-| plating | 0.00 / 0.00 / 0.02 | **0.31 / 1.11 / 2.16** |
+| usual | 0.01 / 0.02 / 0.00 | **0.52 / 1.35 / 2.20** |
+| latest | 0.00 / 0.00 / 0.01 | **1.09 / 2.88 / 3.09** (90, 89, 54 runs) |
+| plating | 0.00 / 0.00 / 0.02 | **0.31 / 1.07 / 1.90** |
 
-Rising for every Armory; round 3 is near the asked 2.5 for the usual Armory (2.16 normal, 2.56 tough), rounds 1–2 under the asked 1.5 / 2, as on every rebuilt map (the convoy is restored before the boss and the loss limit is six). The latest set (no Quick Reload) is broken by round 2: a line of four spotters it cannot tap down in time calls twelve shells a volley.
+Rising for every Armory; round 3 is near the asked 2.5 for the usual Armory (2.20 normal, 2.56 tough), rounds 1–2 under the asked 1.5 / 2, as on every rebuilt map (the convoy is restored before the boss and the loss limit is six). The latest set (no Quick Reload) is broken by round 2: a line of four spotters it cannot tap down in time calls twelve shells a volley.
 
 ## Bot results, before and after
 
@@ -166,20 +166,20 @@ Rising for every Armory; round 3 is near the asked 2.5 for the usual Armory (2.1
 
 | Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 9 | Wave 10 |
 | --- | --- | --- | --- | --- | --- |
-| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 74% → **60%** | 0.51 → **0.53** | 3.06 → 3.18 | 0.78 → 0.78 | 0.96 → 0.57 |
-| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 41% → **7%** | 0.60 → **0.72** | 3.47 → 3.99 | 0.99 → 1.32 | 0.95 → 0.91 |
-| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 50% → **56%** | 0.48 → **0.45** | 2.67 → 2.82 | 0.63 → 0.71 | 0.85 → 0.45 |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 74% → **53%** | 0.51 → **0.53** | 3.06 → 3.18 | 0.78 → 0.78 | 0.96 → 0.57 |
+| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 41% → **8%** | 0.60 → **0.72** | 3.47 → 3.99 | 0.99 → 1.32 | 0.95 → 0.91 |
+| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 50% → **58%** | 0.48 → **0.45** | 2.67 → 2.82 | 0.63 → 0.71 | 0.85 → 0.45 |
 | none | 0% → 0% | 2.35 → 2.52 | 4.11 → 5.47 | 1.00 → 1.33 | 1.25 → 0.20 |
 
 Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 
 | Armory | Before | After |
 | --- | --- | --- |
-| usual | .01 .02 .05 .18 .25 .14 .38 .48 .78 .96 · boss .01 .02 .00 | .02 .02 .09 .06 .34 .30 .46 .66 .78 .57 · boss .52 1.06 2.16 |
-| latest | .00 .02 .11 .23 .24 .36 .60 .77 .99 .95 · boss .00 .00 .01 | .01 .01 .11 .06 .53 .42 .54 .82 1.32 .91 · boss 1.09 2.90 3.17 |
-| plating | .00 .01 .08 .15 .25 .28 .44 .54 .63 .85 · boss .00 .00 .02 | .01 .01 .06 .09 .28 .43 .45 .55 .71 .45 · boss .31 1.11 2.16 |
+| usual | .01 .02 .05 .18 .25 .14 .38 .48 .78 .96 · boss .01 .02 .00 | .02 .02 .09 .06 .34 .30 .46 .66 .78 .57 · boss .52 1.35 2.20 |
+| latest | .00 .02 .11 .23 .24 .36 .60 .77 .99 .95 · boss .00 .00 .01 | .01 .01 .11 .06 .53 .42 .54 .82 1.32 .91 · boss 1.09 2.88 3.09 |
+| plating | .00 .01 .08 .15 .25 .28 .44 .54 .63 .85 · boss .00 .00 .02 | .01 .01 .06 .09 .28 .43 .45 .55 .71 .45 · boss .31 1.07 1.90 |
 
-Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .01 .02 .05 .19 .24 .16 .41 .52 .98 1.23 (wave 9 ×1.9 the wave before); latest .00 .02 .11 .26 .32 .45 .88 1.15 1.70 2.46; plating .00 .01 .08 .15 .25 .31 .54 .75 .96 1.48. After: usual .02 .02 .09 .06 .34 .31 .47 .69 .94 .81; latest .01 .01 .11 .06 .55 .52 .78 1.10 2.27 1.55; plating .01 .01 .06 .09 .28 .47 .54 .62 1.01 .74; none (on the build before the last change) .02 .10 .75 .54 1.63 2.18 2.93 2.95 5.59 3.85. **The largest step for the usual Armory: 1.48× on wave 6 to 7** (wave 5's 1.36× from the 0.25 floor; wave 9 1.36×); plating 1.63× (wave 9); **the latest set's wave 9 is 2.06× its wave 8 (1.10 → 2.27): a cliff for that Armory** (its two spotters and two clusters at the passing ships, which a set with no Quick Reload cannot tap down). With no Armory wave 5 is 3.0× wave 4. Boss rounds, tough: usual 0.53 / 1.09 / 2.56, latest 1.18 / 5.15 / 8.08, plating 0.35 / 1.29 / 2.66.
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .01 .02 .05 .19 .24 .16 .41 .52 .98 1.23 (wave 9 ×1.9 the wave before); latest .00 .02 .11 .26 .32 .45 .88 1.15 1.70 2.46; plating .00 .01 .08 .15 .25 .31 .54 .75 .96 1.48. After: usual .02 .02 .09 .06 .34 .31 .47 .69 .94 .81; latest .01 .01 .11 .06 .55 .52 .78 1.10 2.27 1.55; plating .01 .01 .06 .09 .28 .47 .54 .62 1.01 .74; none (on the build before the last change) .02 .10 .75 .54 1.63 2.18 2.93 2.95 5.59 3.85. **The largest step for the usual Armory: 1.48× on wave 6 to 7** (wave 5's 1.36× from the 0.25 floor; wave 9 1.36×); plating 1.63× (wave 9); **the latest set's wave 9 is 2.06× its wave 8 (1.10 → 2.27): a cliff for that Armory** (its two spotters and two clusters at the passing ships, which a set with no Quick Reload cannot tap down). With no Armory wave 5 is 3.0× wave 4. Boss rounds, tough (with round 2's lines at 0, 7 and 14 s, before they were brought to 0, 6 and 12 s to keep the round under 30 s): usual 0.53 / 1.09 / 2.56, latest 1.18 / 5.15 / 8.08, plating 0.35 / 1.29 / 2.66.
 
 ### The record reports (24 seeds, 900–923)
 
@@ -197,7 +197,7 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 | Kits (counter / off-counter), the usual set: won, lost in waves 1–10 (normal), boss | – | 75% / 75%, 3.0 / 2.9, 0.45 0.68 2.36 / 0.41 0.77 2.24 |
 | Kits, the plating set | – | 46% / 42%, 3.2 / 3.4, 0.25 1.20 2.70 / 0.16 1.74 2.63 |
 
-The 24-seed record and the 192-seed reads disagree by up to 8 points on a win rate here (usual 67% against 60%); the larger read is the one to trust. (The usual Armory's record report was run on the build just before the spotter was kept clear of the carrier's whole hull; the 192-seed reads are on the final build.)
+The 24-seed record and the 192-seed reads disagree by up to 20 points on a win rate here (usual 67% against 53%); the larger read is the one to trust. (The record reports were run on the build just before the last two changes: the spotter kept clear of the carrier's whole hull, and the Beacon Line's round 2 brought under 30 s; the 192-seed normal reads are on the final build, the tough reads on the build before round 2's change.)
 
 **Busier early waves** (the usual Armory's record): threats on the board at a moment 1.5, 1.9, 2.1 on waves 1–3, kills a minute 43, 51, 55.
 
@@ -205,21 +205,21 @@ The 24-seed record and the 192-seed reads disagree by up to 8 points on a win ra
 
 ### Crossing difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
-- **The usual Armory wins 60%**, in the band (before 74%, a map that never used its two lanes, with no boss). **The plating set 56%**, in the band. **The latest set 7%**, far under it (before 41%): the spotters ask for taps, and the latest set has no Quick Reload; its waves 1–10 cost 3.99 ships and its boss rounds 1.09 / 2.90 / 3.17.
+- **The usual Armory wins 53%**, in the band (before 74%, a map that never used its two lanes, with no boss). **The plating set 58%**, in the band. **The latest set 8%**, far under it (before 41%): the spotters ask for taps, and the latest set has no Quick Reload; its waves 1–10 cost 3.99 ships and its boss rounds 1.09 / 2.88 / 3.09.
 - **Waves 1–5:** 0.53 for the usual Armory, in the asked 0.4–0.8 (before 0.51); plating 0.45, latest 0.72.
 - **The climb from wave 4 to 9** rises for the usual Armory from 0.06 to 0.78 (.06 .34 .30 .46 .66 .78).
 - **Wave 10** (0.57) is under wave 9 (0.78) on normal runs for the usual Armory: the climax is not the hardest regular wave on this measure (see the tough runs).
 
 ## What is not satisfied, or uncertain
 
-- **The latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3) wins 7%** (before 41%), far under the band: the spotters ask for your own shots, and a line of four or five a round is more than a set with no Quick Reload taps down before it calls (boss rounds 1.09 / 2.90 / 3.17 on normal runs, 1.18 / 5.15 / 8.08 tough), and its wave 9 is 2.06× its wave 8 on tough runs (a cliff for that set). The usual and plating sets win 60% and 56%. No single tuning put all three in the band: a lighter Beacon Line (lines of three, three, four) won the usual set 81% and the latest 15%.
+- **The latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3) wins 8%** (before 41%), far under the band: the spotters ask for your own shots, and a line of four or five a round is more than a set with no Quick Reload taps down before it calls (boss rounds 1.09 / 2.88 / 3.09 on normal runs, 1.18 / 5.15 / 8.08 tough), and its wave 9 is 2.06× its wave 8 on tough runs (a cliff for that set). The usual and plating sets win 53% and 58%. No single tuning put all three in the band: a lighter Beacon Line (lines of three, three, four) won the usual set 81% and the latest 15%.
 - **The signature is 15% of the hits in waves 4–10**, under the asked quarter (twice the Coves' and the Delta's): most spotters are tapped down before their second call.
 - **Wave 10 is not the hardest regular wave** for the usual Armory (0.57 against wave 9's 0.78 normal; 0.81 against 0.94 tough); see "The ten waves".
 - **No safe stretch under 25%** on either lane (27% each, the ends); the map was flagged the same before (29% / 26%). Every end of a lane is a front.
 - **The danger stretch is the carrier's closest** (rule `m-carrier`): the carrier sits in the middle between the lanes, where the convoys cross.
 - **The 24-seed report flags the budget on wave 10 (×0.74 of the no-encounter wave)**: what flies, not what is planned. A spotter's calls come out of the wave's own shells, and a spotter tapped down before it calls never fires them. Counting each spotter's calls as planned (`tools/v3/crossing/budget.ts`, 8 seeds) every wave is ×0.87–×1.05 of the wave with no layer (wave 10 ×0.91).
 - **The convoy change.** The card played today's convoy controls before; on the campaign's own schedule (step 1, Pairs) the shared waves won 10%, so the map's own convoy is step 3 in a Spread (as the Delta's).
-- **Boss rounds 1–2 under the asked 1.5 / 2** for the usual Armory (0.52 / 1.06), round 3 at 2.16 (2.56 tough), as on every rebuilt map (the loss limit is six).
+- **Boss rounds 1–2 under the asked 1.5 / 2** for the usual Armory (0.52 / 1.35), round 3 at 2.20 (2.56 tough), as on every rebuilt map (the loss limit is six).
 - **The none Armory's wave 5 is 3.0× its wave 4** on tough runs (0.54 → 1.63): a cliff with no Armory (the player Armories pass).
 - **Losses to a spotter's shells are blamed on the shell** (a ballistic missile) in the logs and the end screen's "what sank you", not on the spotter.
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
@@ -233,7 +233,7 @@ The 24-seed record and the 192-seed reads disagree by up to 8 points on a win ra
 - **Does a spotter read as "tap it now" on the phone?** It rises between the lanes, draws a dashed line to the ship it marks and a bracket closing on it 1.6 s before each shell. Recommended: play waves 4, 7 and the boss; if the line is lost among the two convoys, make the spotter's ring brighter, not bigger.
 - **The boss: the Beacon Line, on Beacon Strike's slot.** The spotting beacon is the map's signature from wave 4, so the boss is lines of them between the lanes, calling together. Recommended: keep the name "Beacon Line"; say if you would rather it kept "Beacon Strike".
 - **The convoy: step 3 in a Spread, no command.** On the campaign's own schedule (Pairs, step 1) the Crossing's heavy shared waves won 10%. Recommended: keep it (heavy two-way traffic is the map), as the Delta's.
-- **The latest Armory wins 7% here.** The map asks for your own shots (Quick Reload), and the latest set has none. Recommended: leave it; it is the map's question, and the player's usual set wins 59%. If it feels like a wall in play, the Beacon Line's second round can lose a spotter a line.
+- **The latest Armory wins 8% here.** The map asks for your own shots (Quick Reload), and the latest set has none. Recommended: leave it; it is the map's question, and the player's usual set wins 53%. If it feels like a wall in play, the Beacon Line's second round can lose a spotter a line.
 - **The signature is 15% of the hits in waves 4–10, not 25%: raise it?** Recommended: keep it; the spotter's weight is the tap it asks for. Raising it means every new enemy a spotter from wave 4 (the chapter's other three gone from this map).
 - **Wave 10 just under wave 9.** Recommended: play it; if the climax feels flat, wave 10's climb back to 0.92.
 

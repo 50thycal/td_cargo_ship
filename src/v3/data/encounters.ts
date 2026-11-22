@@ -7304,7 +7304,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
 const LINE_CALL: BeaconCall = { hp: 4, calls: 3, first: 2.5, every: 4.5, charge: 2, life: 20 };
 export const CROSSING_BOSS_ROUNDS: BossRound[] = [
   { line: { at: [0, 8], beacons: 3, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }, { kind: 'guided', at: 12, base: 3, aim: 'cross' }] },
-  { line: { at: [0, 7, 14], beacons: 4, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 6, 12], beacons: 4, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
   { line: { at: [0, 6, 12], beacons: 5, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
 ];
 
