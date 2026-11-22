@@ -34,7 +34,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { crossingSpot, foeData, launchFoe, spotterLife, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, launchBoss, addFx, addPickup, branchMouth, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, launchBoss, addFx, addPickup, branchMouth, raiseShield, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -601,6 +601,38 @@ function burningDelta(g: Game, ev: EventRun, s: EventStep): void {
   }
 }
 
+/** The Citadel's Last Stand (log v60): the shield rises and the Citadel
+ *  is manned, a grand salvo's dome lights, the salvo (every launch at once
+ *  off the Citadel, under its dome, at the one ship the round aims at), or
+ *  the round's added launches. A silenced Citadel fires no salvo. */
+function lastStand(g: Game, ev: EventRun, s: EventStep): void {
+  const R = bossRound(g, ev)!;
+  if (s.op === 'fire') {
+    fireStep(g, ev, s.k);
+    return;
+  }
+  const C = R.citadel!;
+  if (s.op === 'rise') {
+    if (raiseShield(g, C.gen, C.core)) sent(ev, 'generator');
+    return;
+  }
+  const core = g.map.bases.findIndex((b, i) => !!b.core && !g.baseDown[i]);
+  if (core < 0) return;
+  const b = g.map.bases[core];
+  if (s.op === 'lit') {
+    addFx(g, 'launch', b.x, b.y, { life: C.warn, r: 110 });
+    addFx(g, 'text', b.x, b.y - 140, { life: C.warn, text: 'GRAND SALVO' });
+    cue(g, 'raid.warning', b.x, b.y);
+    return;
+  }
+  for (let k = 0; k < C.size; k++) {
+    const kind = C.kinds[k % C.kinds.length];
+    g.queue.push({ at: g.waveT + k * 0.12, kind, base: core, aim: C.aim ?? 'lead', dome: true });
+    sent(ev, kind);
+  }
+  g.queue.sort((a, b2) => a.at - b2.at);
+}
+
 /** The Coves' Fire Fleet (log v53): a sortie's cove mouths light, the
  *  sortie (a fire ship out of each cove at once, all at the ship nearest
  *  halfway along), or the round's added launches. */
@@ -621,7 +653,7 @@ function fireFleet(g: Game, ev: EventRun, s: EventStep): void {
   g.queue.sort((a, b) => a.at - b.at);
 }
 
-/** Tidewater Flats' Low Water (log v59): a strike's silos light, or the
+/** Tidewater Flats' Low Water (log v61): a strike's silos light, or the
  *  strike (every launcher listed fires its own at the crowd at once). */
 function lowWater(g: Game, ev: EventRun, s: EventStep): void {
   const S = bossRound(g, ev)?.strikes?.[s.k];
@@ -897,6 +929,21 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       return [...steps(E.at.length, (k) => E.at[k], 'beacons'), ...steps(E.swarms, (k) => 4 + k * 8, 'swarm')];
     }
     case 'siege-of-vey': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch4-citadel.md): the
+      // Citadel's Last Stand, the shield raised and the Citadel's grand
+      // salvos under its dome (MAP_BOSS `citadel`), in place of the siege.
+      const R = bossRound(g, ev);
+      if (R?.citadel) {
+        const C = R.citadel;
+        return [
+          { at: B, op: 'rise', k: 0 },
+          ...Array.from({ length: C.salvos }, (_, k) => [
+            { at: B + Math.max(0, C.first + k * C.every - C.warn), op: 'lit', k },
+            { at: B + C.first + k * C.every, op: 'salvo', k },
+          ]).flat(),
+          ...fireSteps(R),
+        ];
+      }
       // The Repair Yard on the Citadel, then a guarded heavy and beacons,
       // then firebombs from every side.
       const E = EV['siege-of-vey'];
@@ -1357,6 +1404,10 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'siege-of-vey': {
+      if (s.op === 'rise' || s.op === 'lit' || s.op === 'salvo' || s.op === 'fire') {
+        lastStand(g, ev, s);
+        return;
+      }
       const E = EV['siege-of-vey'];
       // The Citadel, or (shot down already) the base furthest from the
       // carrier.

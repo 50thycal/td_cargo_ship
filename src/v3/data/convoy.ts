@@ -165,6 +165,14 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // campaign's own schedule and no command: the fork's switch (a tap on its
   // buoy) is the map's own way to steer the convoy, and stays what it is.
   delta: { flow: 3, formation: 'spread', commands: [], dilemma: '' },
+  // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the campaign's
+  // own schedule in a Spread, no command: the fortress is fought by
+  // shooting it, its generators and its fire, not by sailing. A Spread
+  // (rule m-shape-convoy) because the Citadel's shells and heavies land a
+  // breath from its keep: in Pairs the shared waves won 4% for the bot
+  // (48 seeds, the usual Armory), in a Spread 31%, its splash halved and
+  // on one hull.
+  citadel: { flow: 1, formation: 'spread', commands: [], dilemma: '' },
   // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): flow 2 and
   // Pairs, as most of chapter 2's maps; no command (the night is read and
   // shot, not sailed round). At the campaign's step 1 its shared waves were
@@ -179,7 +187,7 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // campaign's schedule, Pairs, no command: two convoys, one each way, and
   // the beacons between them are answered by shooting, not by sailing.
   crossing: { flow: 3, formation: 'spread', commands: [], dilemma: '' },
-  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): flow step 2 in
+  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v61): flow step 2 in
   // a Box, no command: the tide steers the ships (the flats lane at high
   // water, the deep channel at low), and the fire is answered by shooting.
   // The Box (a direct hit does one less, splash ×1.8) makes the crowd at

@@ -46,6 +46,7 @@ import {
   LOCK,
   MINE,
   RIG_SHOTS,
+  CITADEL,
   SOW,
   TOW,
   FIRESHIP,
@@ -85,7 +86,7 @@ import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDo
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { TIDE_TURN, tideAt, type TideNow } from './tide';
-import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
 
@@ -182,7 +183,7 @@ export interface Ship {
   /** Distance along its lane, and its offset across it (lanes.ts). */
   d: number;
   lat: number;
-  /** Tidewater Flats (log v59): crossing from the flats to the deep channel
+  /** Tidewater Flats (log v61): crossing from the flats to the deep channel
    *  as the tide falls (sim/tide.ts): its `lat` closes on its slot at
    *  TIDE_TURN.cross px/s, not the slot's ease. */
   cross?: boolean;
@@ -294,6 +295,10 @@ export interface Threat {
    *  ebb's fire; a cluster's bomblets carry it. For the tools' counts only. */
   ebb?: boolean;
   fire?: boolean;
+  /** Log v60 (The Citadel, MAP_SIGNATURE `dome`, and its Last Stand): a
+   *  launch off the Citadel under its dome: while the shield stands it
+   *  can't be shot inside the dome (`domed`). */
+  dome?: boolean;
   /** Log v58 (Dunmar Crossing): a shell a spotter beacon called. */
   called?: boolean;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
@@ -485,6 +490,8 @@ export interface Launch {
   tow?: boolean;
   /** Log v53 (The Coves): a fast boat that comes as a fire ship. */
   fire?: boolean;
+  /** Log v60 (The Citadel): a launch off the Citadel under its dome. */
+  dome?: boolean;
   /** Log v58 (Dunmar Crossing): a Lure Beacon that rises at the crossing
    *  and calls shells (BeaconCall); a shell a beacon called; an authored
    *  launch aimed only at the ships of one lane (Beat `lane`). */
@@ -905,7 +912,7 @@ export interface Game {
   spawnT: number;
   spawnCount: number;
   channelCursor: number;
-  /** Tidewater Flats (log v59, lab only, under the encounter layer): this
+  /** Tidewater Flats (log v61, lab only, under the encounter layer): this
    *  wave's low water, from and to (s of the wave), on the tide's own clock
    *  for the wave (data/encounters.ts MAP_TIDE) or the boss round's; absent,
    *  the tide runs on the map's clock (MapDef `tide`). */
@@ -1233,6 +1240,9 @@ function startWave(g: Game): void {
     spec.guided = cut(spec.guided, len);
   }
   g.waveSpeed = spec.speed;
+  // Log v60 (The Citadel, SHIELD_RISES): the shield is raised again for
+  // every wave, and a silenced Citadel manned again.
+  if (shieldRises(g)) raiseShield(g, CITADEL.generator, CITADEL.citadel);
   const only = g.enc?.setup.only;
   const version = setupVersion(g.enc?.setup);
   const authored = g.enc ? encountersFor(g.map.id, g.wave, version, g.enc.setup.rev).filter((e) => !only || only.includes(e.id)) : [];
@@ -1249,7 +1259,7 @@ function startWave(g: Game): void {
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
-  // Tidewater Flats (log v59, MAP_TIDE): the wave's own tide, its low water
+  // Tidewater Flats (log v61, MAP_TIDE): the wave's own tide, its low water
   // at a beat's moment.
   const clock = g.enc ? tideClock(g.map.id, g.wave, g.enc.setup) : undefined;
   if (clock && g.map.tide) {
@@ -1383,7 +1393,7 @@ function startWave(g: Game): void {
         fireShips++;
       }
   }
-  // Tidewater Flats (log v59, MAP_SIGNATURE `ebb`): so many of the wave's
+  // Tidewater Flats (log v61, MAP_SIGNATURE `ebb`): so many of the wave's
   // own clusters, then its shells, are held for the ebb and come as cluster
   // missiles at the crowd, one for one (rule w-budget).
   let ebbStrike = 0;
@@ -1495,6 +1505,43 @@ function startWave(g: Game): void {
     if (hush && at < quietAt && at + size * 0.35 > quietAt - hush.calm!) at = Math.max(lead, quietAt - hush.calm! - size * 0.35);
     for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
   });
+  // The Citadel (log v60, MAP_SIGNATURE `dome`): so many of the wave's own
+  // guided missiles and shells (what is left after its encounters) the
+  // Citadel launches under its dome, spread over the wave, its keep lit as
+  // a raid's base first; one for one, so the wave sends no more (with none
+  // left, a guided missile in place of two drones).
+  const core = g.map.bases.findIndex((b, i) => !!b.core && !g.baseDown[i]);
+  if (sig?.dome && core >= 0) {
+    const want = sig.dome[Math.min(g.wave, 10) - sig.from] ?? 0;
+    const picked: ThreatKind[] = [];
+    for (const kind of ['guided', 'ballistic'] as const)
+      for (let i = queue.length - 1; i >= 0 && picked.length < want; i--) {
+        const l = queue[i];
+        if (l.kind === kind && !l.enc && !l.filler && l.base >= 0 && l.at < 1e8) {
+          queue.splice(i, 1);
+          picked.push(kind);
+        }
+      }
+    // With none of its own left (its encounter took them), a guided missile
+    // in place of two of the wave's own drones.
+    for (let n = picked.length; n < want; n++) {
+      let took = 0;
+      for (let i = queue.length - 1; i >= 0 && took < 2; i--) {
+        const l = queue[i];
+        if (l.kind === 'drone' && !l.enc && !l.filler && l.base >= 0 && l.at < 1e8) {
+          queue.splice(i, 1);
+          took++;
+        }
+      }
+      if (took < 2) break;
+      picked.push('guided');
+    }
+    picked.forEach((kind, k) => {
+      const at = lead + RAID.warn + (spec.duration * (k + 0.6)) / (picked.length + 0.4);
+      queue.push({ at, kind, base: core, dome: true });
+      g.raids.push({ at, theme: RAID_THEME[kind], bases: [core] });
+    });
+  }
   // A map's own extra fire, the same in every version (encounters rev 3:
   // The Strait's waves 5-10), on top of the wave as planned.
   const more = g.enc ? waveFire(g.map.id, g.wave, g.enc.setup.rev) : 0;
@@ -1620,7 +1667,7 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // comes from the far shore instead (rigStandIn), lit there.
         // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.fire ? { fire: true } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.fire ? { fire: true } : {}), ...(b.dome ? { dome: true } : {}) });
         // Log v55 (HIDDEN_MINES): a chute's hidden mines just come, unwarned.
         if (b.kind === 'mine' && hiddenMines(g)) {
           start = Math.min(start, at);
@@ -1763,7 +1810,7 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim, lane?: number): void 
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
 }
 
-/** Tidewater Flats (log v59, BeatAim 'flats'): the ship on a tide lane
+/** Tidewater Flats (log v61, BeatAim 'flats'): the ship on a tide lane
  *  nearest `from`; none there (low water), the ship furthest from it. */
 function flatsShip(g: Game, pool: Ship[], from: Point): Ship {
   const on = pool.filter((s) => g.map.channels[s.channel]?.tide);
@@ -1771,7 +1818,7 @@ function flatsShip(g: Game, pool: Ship[], from: Point): Ship {
   return on.length ? on.reduce((a, b) => (d(b) < d(a) ? b : a)) : pool.reduce((a, b) => (d(b) > d(a) ? b : a));
 }
 
-/** Tidewater Flats (log v59, BeatAim 'crowd'): how many other hulls are
+/** Tidewater Flats (log v61, BeatAim 'crowd'): how many other hulls are
  *  within CROWD_RADIUS px of a ship. */
 export const CROWD_RADIUS = 170;
 function crowdAround(pool: Ship[], s: Ship): number {
@@ -2479,6 +2526,8 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
   // Log v55 (round 15, SHOT_RIGS): the rigs standing take RIG_SHOTS.rig
   // shots (a rig's own hits on the map are the campaign's).
   if (shotRigs(g)) for (const th of g.threats) if (th.kind === 'rig' && th.base !== undefined && th.tow === undefined && th.hp >= (g.map.bases[th.base]?.rig?.hp ?? THREATS.rig.hp) - 1e-6) th.hp = th.maxHp = RIG_SHOTS.rig;
+  // Log v60 (The Citadel): its generators and the Citadel count shots.
+  if (shotRigs(g)) for (const th of g.threats) if ((th.kind === 'generator' || th.kind === 'citadel') && th.base !== undefined && th.hp >= THREATS[th.kind].hp - 1e-6) th.hp = th.maxHp = CITADEL[th.kind];
   replanWave(g);
 }
 
@@ -4564,7 +4613,7 @@ export function screenThreat(g: Game): boolean {
 function toughest(g: Game, not: number): Threat | undefined {
   const lure = lureIn(g, 0, 0);
   if (lure && lure.id !== not) return lure;
-  const up = g.threats.filter((t) => released(t) && t.id !== not && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !(t.kind === 'citadel' && shieldUp(g)));
+  const up = g.threats.filter((t) => released(t) && t.id !== not && t.x > 0 && t.x < VIEW.width && t.y > 0 && t.y < VIEW.height && !(t.kind === 'citadel' && shieldUp(g)) && !domed(g, t));
   const order = (a: Threat, b: Threat) => b.hp - a.hp || timeToImpact(g, a) - timeToImpact(g, b);
   return up.filter((t) => !isStructure(t.kind)).sort(order)[0] ?? up.sort(order)[0];
 }
@@ -5587,7 +5636,7 @@ function fileLat(g: Game, s: Ship, ch: Channel, d: number): number {
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
-  // Tidewater Flats (log v59): once the tide starts to fall, every ship on
+  // Tidewater Flats (log v61): once the tide starts to fall, every ship on
   // the flats crosses to the deep channel at once, from where it is, ahead
   // of the sand (sim/tide.ts): it keeps its distance along (the lanes run
   // side by side) and sails across to its slot.
@@ -5656,7 +5705,7 @@ function updateShips(g: Game, dt: number): void {
   if (arrived.length) g.ships = g.ships.filter((s) => !arrived.includes(s));
 }
 
-/** Tidewater Flats (log v59): the tide falling, every ship on a tide lane
+/** Tidewater Flats (log v61): the tide falling, every ship on a tide lane
  *  moves to the lane beside it that never dries (the deep channel), at the
  *  same distance along, its offset the way across from where it is. */
 function leaveFlats(g: Game): void {
@@ -5724,7 +5773,7 @@ function laneSpeed(g: Game, s: Ship): number {
 
 /** Tidewater Flats: is the tide in, the flats lane taking new ships? Only
  *  at high water: not while it falls, is out, or is still coming back in
- *  (sim/tide.ts). Under the encounter layer (log v59) the wave's own low
+ *  (sim/tide.ts). Under the encounter layer (log v61) the wave's own low
  *  water (`g.ebb`). (A map without a tide: always.) */
 export function highTide(g: Game): boolean {
   return tideNow(g).phase === 'high';
@@ -5892,6 +5941,10 @@ function launch(g: Game, l: Launch): void {
   // The Rig Field (log v49): an encounter's launch off a rig brought down
   // since its wave began comes from the far shore instead (rigStandIn).
   if (l.enc && !l.filler && l.base >= 0 && g.baseDown[l.base] && g.map.bases[l.base].rig) l = { ...l, base: rigStandIn(g, l.base) };
+  // The Citadel (log v60, SHIELD_RISES): what the Citadel would have fired
+  // once it is silenced comes off the far silo nearest it (a long flight),
+  // and not under the dome.
+  if (l.base >= 0 && g.baseDown[l.base] && g.map.bases[l.base].core && shieldRises(g)) l = { ...l, base: rigStandIn(g, l.base), dome: false };
   if (l.base < 0 || g.baseDown[l.base]) return;
   // Bomber Wing silenced this silo: the launch is cancelled, not delayed.
   if ((g.quietUntil[l.base] ?? 0) > g.t) return;
@@ -5904,6 +5957,9 @@ function launch(g: Game, l: Launch): void {
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
     if (l.aim === 'crowd') th.ebb = true;
+    // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
+    // first wave everything the Citadel fires leaves under its dome.
+    if (base.core && (l.dome || !!signatureOf(g.map.id, g.wave, g.enc?.setup)?.dome)) th.dome = true;
     if (l.aim) aimBeat(g, th, l.aim, l.inLane);
     if (l.called) th.called = true;
     if (l.paired) th.paired = true;
@@ -6096,8 +6152,9 @@ export function launchPlane(g: Game, l: Launch): void {
  *  launcher still standing (pickBase). Any other base: itself. */
 export function rigStandIn(g: Game, i: number): number {
   const b = g.map.bases[i];
-  if (!b?.rig || !g.baseDown[i]) return i;
-  const far = g.map.bases.map((x, k) => (!x.rig && launcher(x) && !g.baseDown[k] ? k : -1)).filter((k) => k >= 0);
+  // (Log v60: the silenced Citadel's too.)
+  if (!(b?.rig || b?.core) || !g.baseDown[i]) return i;
+  const far = g.map.bases.map((x, k) => (!x.rig && !x.core && launcher(x) && !g.baseDown[k] ? k : -1)).filter((k) => k >= 0);
   return far.sort((p, q) => Math.abs(g.map.bases[p].x - b.x) - Math.abs(g.map.bases[q].x - b.x))[0] ?? -1;
 }
 
@@ -6815,6 +6872,13 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
     cue(g, 'shield.block', th.x, th.y);
     return;
   }
+  // Log v60 (The Citadel): the Citadel's own fire is shielded while it is
+  // inside the dome and the shield stands.
+  if (domed(g, th)) {
+    if (g.steps % 3 === 0) addFx(g, 'block', th.x, th.y, { life: 0.3, r: 24 });
+    cue(g, 'shield.block', th.x, th.y);
+    return;
+  }
   // The Lure Beacon: helpers' shots pass through it; only the player's own
   // hand sinks it.
   if (th.kind === 'lure' && !g.foe.byTap) {
@@ -6822,7 +6886,8 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
     return;
   }
   // Log v55 (round 15, SHOT_RIGS): a rig counts shots, not damage.
-  if (th.kind === 'rig' && shotRigs(g)) {
+  // (Log v60: the Citadel's generators and the Citadel itself too.)
+  if ((th.kind === 'rig' || th.kind === 'generator' || th.kind === 'citadel') && shotRigs(g)) {
     amount = rigShot(g, th, amount, by);
     if (amount <= 0) return;
   }
@@ -7477,7 +7542,8 @@ export function hittable(g: Game, th: Threat): boolean {
  *  structure only when nothing else is up and the rack is all but full (or
  *  a Railgun is loaded, made for big targets). */
 export function worthShooting(g: Game, list: Threat[]): Threat[] {
-  const live = list.filter((t) => released(t) && (!isFoe(t.kind) || foeWorthShooting(g, t)));
+  // (Log v60: not the Citadel's fire while the dome shields it.)
+  const live = list.filter((t) => released(t) && (!isFoe(t.kind) || foeWorthShooting(g, t)) && !domed(g, t));
   // A relief rig on its tow (log v49) is worth a look as any threat is:
   // a few hits on the way in, before it stands; and in the Rig Barrage the
   // rigs are the boss, each firing volleys until it is brought down.
@@ -7510,6 +7576,42 @@ export function quieterBranch(g: Game): number | null {
 /** Is the Citadel's shield up? (While any generator stands.) */
 export function shieldUp(g: Game): boolean {
   return !!g.map.shield && g.threats.some((t) => t.kind === 'generator' && !t.dead);
+}
+
+/** Log v60 (The Citadel, MAP_SIGNATURE `dome`): is this the Citadel's own
+ *  fire, inside the dome while the shield stands (it can't be shot)? */
+export function domed(g: Game, th: Threat): boolean {
+  const s = g.map.shield;
+  return !!th.dome && !!s && !th.dead && dist(th.x, th.y, s.x, s.y) <= s.r && shieldUp(g);
+}
+
+/** Log v60 (SHIELD_RISES): does this run raise the Citadel's shield again
+ *  every wave (the map card under its encounter layer)? */
+export function shieldRises(g: Game): boolean {
+  return !!g.enc && shieldRisesOn(g.map.id, g.enc.setup);
+}
+
+/** Log v60 (The Citadel): the shield rises again: every generator brought
+ *  down stands again with `gen` shots, and a silenced Citadel is manned
+ *  again with `core` (the boss rounds' own numbers, or CITADEL's). The
+ *  generators and the Citadel still standing keep what they have. */
+export function raiseShield(g: Game, gen: number, core: number): boolean {
+  let rose = false;
+  g.map.bases.forEach((b, i) => {
+    const kind: ThreatKind | null = b.generator ? 'generator' : b.core ? 'citadel' : null;
+    if (!kind) return;
+    if (g.threats.some((t) => !t.dead && t.kind === kind && t.base === i)) return;
+    g.baseDown[i] = false;
+    const th = structure(g, kind, b.x, b.y, kind === 'generator' ? gen : core, i);
+    th.maxHp = th.hp;
+    g.threats.push(th);
+    if (g.tel) g.tel.spawn(g, th, 'structure');
+    addFx(g, 'emp', b.x, b.y, { life: 0.8, r: kind === 'citadel' ? 90 : 46 });
+    rose = true;
+  });
+  const s = g.map.shield;
+  if (rose && s) addFx(g, 'text', s.x, s.y - s.r - 18, { life: 2.2, text: 'SHIELD RAISED' });
+  return rose;
 }
 
 const STRUCTURE_DOWN: Partial<Record<ThreatKind, string>> = {

@@ -123,7 +123,7 @@ export interface BeaconCall {
  *  branch the fork's switch is set to (the one least far along of those);
  *  none, the ship least far along. An Incendiary Missile aimed so bursts
  *  on the water at the mouth of that branch, ahead of the next ships.
- *  Chapter 4's Tidewater Flats (log v59,
+ *  Chapter 4's Tidewater Flats (log v61,
  *  docs/design/v3-ch4-tide.md): 'crowd', the ship with the most hulls
  *  within CROWD_RADIUS of it (the ships bunched in the deep channel at low
  *  water), the one furthest along among equals; 'flats', the ship on the
@@ -169,6 +169,10 @@ export interface Beat {
   /** Dunmar Crossing (log v58): a spotter beacon (kind 'lure', from
    *  `{ water: 'cross' }`) and its calls (BeaconCall). */
   beacon?: BeaconCall;
+  /** The Citadel (log v60): a launch off the Citadel under its dome (MAP_
+   *  SIGNATURE `dome`): it can't be shot while it is inside the dome and
+   *  the shield stands. */
+  dome?: boolean;
 }
 
 /** What one filler launch counts for in a wave's budget (Beat `filler`,
@@ -6158,7 +6162,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Chapter 4, Open War (log v59, docs/design/v3-ch4-tide.md): Tidewater
+/** Chapter 4, Open War (log v61, docs/design/v3-ch4-tide.md): Tidewater
  *  Flats. Two lanes: the deep channel (y 282) under the enemy's north
  *  shore, always open, and the flats lane (y 575) out by the carrier, which
  *  floats only at high tide. Under the layer the tide keeps the wave's own
@@ -6445,6 +6449,292 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 4's finale (log v60, docs/design/v3-ch4-citadel.md): the Citadel
+ *  of Vey, the last map of the game. The fortress stands on its island
+ *  (base 0: (1250, 300), every kind of missile) over the harbour narrows,
+ *  where the lane closes from x 900 and the ships deliver, the shortest
+ *  flights on the map; its shield (a dome 175 px round it) is fed by three
+ *  generators spread round the map: the west islet (base 1: (450, 300),
+ *  over the way in), the north shore (base 2: (850, 82), far from the lane)
+ *  and the south-east shore (base 3: (1460, 812), by the delivery end). The
+ *  far silos: the north-west (base 4: (250, 72); drones, shells, a long
+ *  flight, the map's only drone launcher) and the north-east (base 5:
+ *  (1500, 78); supersonic, guided). Sub spots: off the west islet (0), off
+ *  the middle (1), in the south-west by your carrier (2). The shield rises
+ *  again every wave (SHIELD_RISES): three generators, a few shots each, to
+ *  drop it, then more on the Citadel to silence it for the wave (its fire
+ *  moves to the far silos). From wave 4 the Citadel fires some of the
+ *  wave's missiles under its dome (MAP_SIGNATURE `dome`): while the shield
+ *  stands they can't be shot until they leave it, a breath from the
+ *  narrows. The danger is the narrows (the east), the safe stretch the wide
+ *  water of the way in (the west). */
+const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'citadel-under-the-guns',
+    map: 'citadel',
+    waves: [1],
+    role: 'teach',
+    name: 'Under the guns',
+    callout: 'Drones for the narrows',
+    premise: 'Drones come off the far north-west silo over the whole map, past the north generator, at the lead ship as it sails into the narrows under the Citadel\'s dome, then at the ships coming in.',
+    decision: 'The first look at the map: the fortress over the narrows, its dome, and the three generators that feed it, a few shots each.',
+    counters: 'The drones on their long flight; a generator in the quiet.',
+    succeeds: 'Nothing is sunk on wave 1; the Citadel and its generators read as the map.',
+    notes: {
+      sites: 'The far north-west silo (250, 72; drones, the longest flight on the map, over the north generator at (850, 82) and past the dome).',
+      target: 'The lead ship, in the narrows (the first strings); the ships coming in (the last, a long flight).',
+      usesMap: 'Shows the map on wave 1: the drones fly the length of it into the narrows under the dome, past the generators that hold it up (the Citadel\'s own fire waits for wave 2: wave 1 sends drones only).',
+    },
+    beats: [
+      { at: 0.25, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.5, from: base(4), aim: 'rear' },
+    ],
+    replaces: { drones: 8 },
+  },
+  {
+    id: 'citadel-generators',
+    map: 'citadel',
+    waves: [2],
+    role: 'teach',
+    name: 'Three generators',
+    callout: 'Shells from the keep',
+    premise: 'The Citadel lobs a shell at the lead ship in the narrows and the far north-west silo one at the ship halfway along, while its drones cross the west islet\'s generator at the ships coming in.',
+    decision: 'Three generators hold the dome up; shots spent on them now are shots not spent on the shell.',
+    counters: 'The keep\'s shell as it climbs (a short flight), the far silo\'s (a long one), the drones; a generator in a quiet moment.',
+    succeeds: 'No ship lost on wave 2 in most runs; the player tries a generator.',
+    notes: {
+      sites: 'The Citadel (a shell), the far north-west silo (250, 72; a shell, drones past the west islet\'s generator).',
+      target: 'The lead ship (the keep\'s shell); the ship halfway along (the far silo\'s); the ships coming in (the drones).',
+      usesMap: 'The Citadel\'s short flight against the far silos\' long ones; the generators in view on every flight; in place of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'lead' },
+      { at: 0.6, kind: 'ballistic', count: 1, from: base(4), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(4), aim: 'rear' },
+      { at: 0.8, kind: 'drone', count: 2, gap: 0.5, from: base(4) },
+    ],
+    replaces: { ballistic: 2, drones: 6 },
+  },
+  {
+    id: 'citadel-narrows',
+    map: 'citadel',
+    waves: [3],
+    role: 'teach',
+    name: 'Into the narrows',
+    callout: 'Into the narrows',
+    premise: 'A cluster off the Citadel splits over the lead ship as it enters the narrows, a shell follows it, and the north-east silo sends a guided missile at the ship halfway along.',
+    decision: 'The first stakes: the narrows are a breath from the Citadel. Which first, the cluster or the shell?',
+    counters: 'The cluster before it splits, the shell as it climbs, then the missile.',
+    succeeds: 'A close call in the narrows in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The Citadel (a cluster, a shell), the north-east silo (a guided missile), the far north-west silo (drones in place of the subs\' shells).',
+      target: 'The lead ship, in the narrows (the danger stretch; the cluster, the shell); the ship halfway along (the missile, the drones).',
+      usesMap: 'The danger stretch: the lane closes under the Citadel; in place of the wave\'s own cluster and shells (the subs\' salvos come as drones).',
+    },
+    beats: [
+      { at: 0.3, kind: 'cluster', count: 1, from: base(0), aim: 'lead' },
+      { at: 0.3, plus: 3, kind: 'ballistic', count: 1, from: base(0), aim: 'lead' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'rear' },
+    ],
+    replaces: { ballistic: 6, extras: { cluster: 1 } },
+  },
+  {
+    id: 'citadel-dome',
+    map: 'citadel',
+    waves: [4],
+    role: 'combine',
+    name: 'Under the dome',
+    callout: 'Fire under the dome',
+    premise: 'The Citadel fires two guided missiles at the lead ship under its dome: while the shield stands they can\'t be shot until they leave it, a breath from the narrows; drones come at the ship halfway along and a supersonic off the north-east silo at the ships coming in.',
+    decision: 'Drop the shield first (three generators) so its fire can be shot as it leaves the keep, or wait at the dome\'s edge?',
+    counters: 'The generators before the missiles fly, or the missiles the moment they clear the dome; the drones; the supersonic.',
+    succeeds: 'At most a ship lost in most runs; the player sees why the shield matters.',
+    notes: {
+      sites: 'The Citadel (two guided missiles under its dome), the far north-west silo (drones), the north-east silo (a supersonic).',
+      target: 'The lead ship in the narrows (the missiles); the ship halfway along (the drones); the ships coming in (the supersonic).',
+      usesMap: 'The signature\'s first wave: the dome shields the Citadel\'s own fire, so the generators are worth the shots; in place of the wave\'s own shells and supersonic.',
+    },
+    beats: [
+      { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 0.35, plus: 4, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.6, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
+      { at: 0.7, kind: 'supersonic', count: 1, from: base(5), aim: 'rear' },
+    ],
+    replaces: { ballistic: 8, extras: { supersonic: 1, heavy: 1 } },
+  },
+  {
+    id: 'citadel-two-ends',
+    map: 'citadel',
+    waves: [5],
+    role: 'combine',
+    name: 'Both ends',
+    callout: 'Shells and the keep',
+    premise: 'Shells from the far north-west silo fall on the ships coming in while the Citadel fires under its dome at the lead ship in the narrows: the two ends of the convoy at once.',
+    decision: 'The shells at the back, or the generators so the keep\'s fire can be stopped at the front?',
+    counters: 'The shells as they climb (long warning); the generators, or the missile as it leaves the dome (short).',
+    succeeds: 'A close call at one end in most runs; a good player loses under a ship.',
+    notes: {
+      sites: 'The far north-west silo (shells, drones), the Citadel (a guided missile under its dome).',
+      target: 'The ships coming in (the shells); the lead ship in the narrows (the missile); the ship halfway along (the drones).',
+      usesMap: 'The far silo\'s long flight against the Citadel\'s short one under the dome, at the two ends of the convoy; in place of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'rear' },
+      { at: 0.3, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
+      { at: 0.65, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
+      { at: 0.1, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'rear' },
+    ],
+    replaces: { ballistic: 9, extras: { cluster: 1, heavy: 1 } },
+  },
+  {
+    id: 'citadel-periscope',
+    map: 'citadel',
+    waves: [6],
+    role: 'combine',
+    name: 'Periscope by the carrier',
+    callout: 'Periscope in the west',
+    premise: 'A sub surfaces in the south-west by your carrier and lobs shells at the ships coming in, while the Citadel sends a heavy cruise missile at the ship halfway along, slow and tough, a long way from its keep.',
+    decision: 'The safe stretch is not safe for long: the periscope at the back, or the heavy before it reaches the lane?',
+    counters: 'The salvo as it climbs, the heavy on its long flight (eight hits), the drones.',
+    succeeds: 'A close call in the west in most runs; a good player loses under a ship.',
+    notes: {
+      sites: 'Sub spot 2 (300, 752; a periscope, 2 shells), the Citadel (a heavy cruise missile), the far north-west silo (drones).',
+      target: 'The ships coming in (the salvo); the ship halfway along (the heavy); the lead ship (the drones).',
+      usesMap: 'Brings the fire to the wide water of the way in for a wave (the climb\'s change of place); in place of the wave\'s own heavy and sub salvos.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: sub(2), aim: 'rear' },
+      { at: 0.5, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.9, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
+    ],
+    replaces: { ballistic: 12, guided: 2, extras: { heavy: 1, cluster: 1, mothership: 1 } },
+  },
+  {
+    id: 'citadel-keep',
+    map: 'citadel',
+    waves: [7],
+    role: 'escalate',
+    name: 'The keep\'s battery',
+    callout: 'The keep\'s battery',
+    premise: 'The Citadel fires two shells under its dome at the lead ship in the narrows and a cluster at the ship halfway along, while the north-east silo sends a guided missile at the ships coming in.',
+    decision: 'The keep fires three ways at once: drop its shield, or take what leaves the dome?',
+    counters: 'The generators, then the shells as they clear the dome; the cluster before it splits; the missile.',
+    succeeds: 'A ship lost in most runs, rarely two.',
+    notes: {
+      sites: 'The Citadel (two shells under its dome, a cluster), the north-east silo (a guided missile), the far north-west silo (drones in place of the subs\' shells).',
+      target: 'The lead ship in the narrows (the shells); the ship halfway along (the cluster); the ships coming in (the missile).',
+      usesMap: 'The danger stretch under the keep, the signature twice; in place of the wave\'s own shells, cluster and guided missile.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 0.5, kind: 'cluster', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.6, kind: 'guided', count: 1, from: base(5), aim: 'rear' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.9, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'lead' },
+    ],
+    replaces: { ballistic: 13, guided: 1, extras: { cluster: 1, heavy: 1, mothership: 1, supersonic: 1 } },
+  },
+  {
+    id: 'citadel-crossfire',
+    map: 'citadel',
+    waves: [8],
+    role: 'escalate',
+    name: 'Crossfire at the narrows',
+    callout: 'Crossfire at the narrows',
+    premise: 'Supersonics off the north-east silo and guided missiles off the Citadel, under its dome, converge on the lead ship in the narrows, and the Citadel sends a heavy at the ship halfway along.',
+    decision: 'Two launchers at one ship, one of them shielded: which can you stop in time?',
+    counters: 'The supersonics the moment they launch, the generators so the missiles can be shot, the heavy on its long flight.',
+    succeeds: 'A ship lost in most runs; the narrows feel like a gauntlet, not a wall.',
+    notes: {
+      sites: 'The north-east silo (two supersonics), the Citadel (two guided missiles under its dome, a heavy), the far north-west silo (drones).',
+      target: 'The lead ship in the narrows (the supersonics, the missiles); the ship halfway along (the heavy, the drones).',
+      usesMap: 'The narrows from two sides at once; in place of the wave\'s own supersonics, guided missiles, a heavy and the subs\' shells.',
+    },
+    beats: [
+      { at: 0.35, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.35, plus: 1, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 0.35, plus: 3, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.6, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.65, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
+    ],
+    replaces: { ballistic: 13, guided: 2, extras: { supersonic: 2, heavy: 2, mothership: 1, cluster: 1 } },
+  },
+  {
+    id: 'citadel-fortress',
+    map: 'citadel',
+    waves: [9],
+    role: 'escalate',
+    name: 'The whole fortress',
+    callout: 'The whole fortress',
+    premise: 'Everything on the island fires: a heavy, a cluster and two guided missiles under the dome off the Citadel at the ships in and near the narrows, while the far north-west silo shells the ships coming in.',
+    decision: 'The fortress at full strength: is this the wave to break the shield and silence the keep?',
+    counters: 'The generators and then the Citadel (its fire this wave moves to the far silos), or every missile as it clears the dome; the shells.',
+    succeeds: 'A ship or two lost in most runs; silencing the keep is worth it.',
+    notes: {
+      sites: 'The Citadel (a heavy, a cluster, two guided missiles under its dome), the far north-west silo (shells, drones).',
+      target: 'The lead ship and the ship halfway along (the keep\'s fire); the ships coming in (the shells).',
+      usesMap: 'The whole fortress at once, the case for silencing it; in place of the wave\'s own heavies, clusters, guided missiles and shells.',
+    },
+    beats: [
+      { at: 0.25, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
+      { at: 0.4, kind: 'cluster', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.55, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 0.55, plus: 2, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.7, kind: 'ballistic', count: 2, gap: 0.8, from: base(4), aim: 'rear' },
+      { at: 0.1, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.3, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.65, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'mid' },
+    ],
+    replaces: { ballistic: 15, guided: 2, extras: { heavy: 2, cluster: 1, mothership: 1 } },
+  },
+  {
+    id: 'citadel-grand-salvo',
+    map: 'citadel',
+    waves: [10],
+    role: 'climax',
+    name: 'Grand salvo',
+    callout: 'The Citadel\'s grand salvo',
+    premise: 'Once the wave\'s own fire is spent, a breath, then the Citadel fires a grand salvo under its dome, four missiles at once at the lead ship in the narrows, while supersonics off the north-east silo and drones off the far silo come at the ships behind it.',
+    decision: 'Everything the keep has at one ship: drop the shield before the salvo, or catch what clears the dome?',
+    counters: 'The generators in the calm, then the salvo as it leaves the keep; the supersonics; the drones.',
+    succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'The Citadel (a grand salvo: two guided missiles and two shells under its dome), the north-east silo (two supersonics), the far north-west silo (drones, before the calm and after), after the wave\'s own fire and a calm.',
+      target: 'The lead ship in the narrows (the salvo); the ship halfway along and the ships coming in (the supersonics, the drones).',
+      usesMap: 'The map\'s problem at its hardest, the boss in miniature; in place of the wave\'s own guided missiles, shells and supersonics.',
+    },
+    beats: [
+      { at: 1, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 1, plus: 2.05, kind: 'guided', count: 1, from: base(0), aim: 'mid', dome: true },
+      { at: 1, plus: 2.1, kind: 'ballistic', count: 2, gap: 0.15, from: base(0), aim: 'mid', dome: true },
+      { at: 1, plus: 4, kind: 'supersonic', count: 2, gap: 1.2, from: base(5), aim: 'mid' },
+      { at: 1, plus: 1, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'rear' },
+      { at: 0.1, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
+      { at: 0.3, kind: 'drone', count: 6, gap: 0.4, from: base(4), aim: 'mid' },
+      { at: 0.55, kind: 'drone', count: 6, gap: 0.4, from: base(4), aim: 'lead' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
+    ],
+    replaces: { ballistic: 16, guided: 3, extras: { supersonic: 2, heavy: 3, mothership: 1, cluster: 1 } },
+    calm: 6,
+  },
+];
+
 /** Busier early waves (log v47, docs/design/v3-playtest-fixes.md "Busier
  *  early waves"). The player's chapter 2 playtests rated waves 1-6 fun 1-2,
  *  intensity 1 on every map, and wave 1 the weakest every time; their
@@ -6551,6 +6841,9 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // drone silos, waves 1-6 (the north-west one over the river is a short
   // flight from the ships coming in down it); wave 1 one late string.
   ['delta-three-ways', [fill(0.7, 2, 3)]],
+  // The Citadel (log v60): the far north-west silo, the map's only drone
+  // launcher, a long flight to the lane, waves 1-6.
+  ...busy(['citadel-under-the-guns', 'citadel-generators', 'citadel-narrows', 'citadel-dome', 'citadel-two-ends', 'citadel-periscope'], 4, 4),
   ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
   // Dunmar Crossing (log v58): the north-west and north-east silos, the
   // map's two drone silos on the far (north) shore, waves 1-6.
@@ -6560,7 +6853,7 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Armory on wave 1).
   ['crossing-two-fronts', [fill(0.75, 2, 2)]],
   ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2, [1]),
-  // Tidewater Flats (log v59): the west and east silos, the map's two drone
+  // Tidewater Flats (log v61): the west and east silos, the map's two drone
   // launchers, a long flight to the flats lane, waves 1-6.
   ...busy(['tide-first-ebb', 'tide-far-flats', 'tide-low-water', 'tide-ebb-cluster', 'tide-the-flood', 'tide-both-lanes'], 0, 3),
 ]);
@@ -6601,6 +6894,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...CROSSING_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-tide.md)
   ...TIDE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch4-citadel.md: the game's last map)
+  ...CITADEL_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
 
 /** The rev an encounter came in. */
@@ -6657,10 +6952,12 @@ export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadn
 /** Chapter 4, Open War, a map at a time as chapter 3's: so far the Coves
  *  (log v53, docs/design/v3-ch4-coves.md), the chapter's first, where its
  *  new enemies debut; the Delta (log v57, docs/design/v3-ch4-delta.md);
- *  Dunmar Crossing (log v58, docs/design/v3-ch4-crossing.md); and
- *  Tidewater Flats (log v59, docs/design/v3-ch4-tide.md). */
-export type ChapterFourMap = 'coves' | 'delta' | 'crossing' | 'tide';
-export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'crossing', 'tide'];
+ *  Dunmar Crossing (log v58, docs/design/v3-ch4-crossing.md); Tidewater
+ *  Flats (log v61, docs/design/v3-ch4-tide.md); and the Citadel of Vey (log
+ *  v60, docs/design/v3-ch4-citadel.md: the chapter's and the game's last
+ *  map). */
+export type ChapterFourMap = 'coves' | 'delta' | 'crossing' | 'tide' | 'citadel';
+export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'crossing', 'tide', 'citadel'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS, ...CHAPTER_FOUR_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -6779,12 +7076,16 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
  *  four waves and then climb to a wave 10 of 1.2 ships, so waves 2-4 send
  *  a little more and waves 9-10 a little less, within ±15% of each wave
  *  and never more than the ten. */
+/** The Citadel (log v60): its shared waves are heavy with sub salvos, so
+ *  the climb sends a little less than the shared wave from wave 2 (within
+ *  rule w-budget's ±15%). */
+const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9];
 const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 /** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
 const CROSSING_CLIMB = [0.85, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
-/** Tidewater Flats (log v59): within ±15% of each shared wave. */
+/** Tidewater Flats (log v61): within ±15% of each shared wave. */
 const TIDE_CLIMB = [1, 0.9, 0.88, 0.92, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
@@ -6804,6 +7105,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   dreadnought: { v1: { name: 'Original', idea: 'One encounter a wave, built on the battleship that steams down the deep channel against the convoy firing broadsides: fifty hits sink it, or its broadsides can be shot down one by one; spotter planes lay its guns on a ship from wave 4.', callouts: false, scale: DREAD_CLIMB } },
   // Chapter 4.
   coves: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four smugglers\' coves two seconds from the lane, three on the north shore and one on the south by the delivery end: their fast boats come at the ship passing each cove mouth; fire ships that burn where they are sunk from wave 4.', callouts: false, scale: COVES_CLIMB } },
+  citadel: { v1: { name: 'Original', idea: 'One encounter a wave, built on the Citadel over the narrows: its fire is the shortest on the map, its shield rises again every wave on three generators spread round the map, and from wave 4 it fires under its dome, where nothing can be shot until the shield is down.', callouts: false, scale: CITADEL_CLIMB } },
   delta: { v1: { name: 'Original', idea: 'One encounter a wave, built on the fork: the switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, and the enemy fires at the branch it is set to; incendiaries burst on that branch\'s mouth from wave 4.', callouts: false, scale: DELTA_CLIMB } },
   crossing: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two convoys that pass each other in the middle of the strait, outbound east in the north lane under the north shore and inbound west in the south lane under the south shore: spotter beacons rise between the lanes where the next ships cross and call shells on both from wave 4.', callouts: false, scale: CROSSING_CLIMB } },
   tide: { v1: { name: 'Original', idea: 'One encounter a wave, built on the tide: the flats lane by the carrier floats only at high water, so when the tide goes out mid-wave every ship crowds into the deep channel under the guns, and the enemy saves its fire for the crowd; cluster missiles at the ebb from wave 4.', callouts: false, scale: TIDE_CLIMB } },
@@ -6921,6 +7223,13 @@ export interface MapSignature {
    *  wave from `from` (data/config.ts FIRESHIP), one for one, so the wave
    *  sends no more (rule w-budget). */
   fireShips?: number[];
+  /** The Citadel (log v60): how many of the wave's own guided missiles and
+   *  shells (what is left of them after its encounters took theirs; with
+   *  none left, a guided missile in place of two of its drones) the
+   *  Citadel launches under its dome, wave by wave from `from` (rule
+   *  w-budget): while the shield stands, each can't be shot until it has
+   *  left the dome (data/config.ts CITADEL). */
+  dome?: number[];
   /** The Delta (log v57): the wave's Incendiary Missiles fly at this
    *  ('switch': they burst on the mouth of the branch the fork's switch is
    *  set to, ahead of the next ships). */
@@ -6929,7 +7238,7 @@ export interface MapSignature {
    *  the crossing and call shells (BeaconCall); each one's calls come out
    *  of the wave's own shells, one for one (rule w-budget). */
   beacons?: BeaconCall;
-  /** Tidewater Flats (log v59): at each wave's ebb (MAP_TIDE) so many
+  /** Tidewater Flats (log v61): at each wave's ebb (MAP_TIDE) so many
    *  cluster missiles at the crowd in the deep channel, wave by wave from
    *  `from`, out of `ebbBase`, one for one out of the wave's own clusters
    *  and then its shells (a shell comes as a cluster), so the wave sends no
@@ -7024,11 +7333,19 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // pass and call shells on the ship nearest them (SPOTTER), the Beacon
   // Line's own; each one's shells come out of the wave's own.
   crossing: { from: 4, foe: 'lure', foeShare: 0.5, beacons: SPOTTER },
-  // Tidewater Flats (log v59, docs/design/v3-ch4-tide.md): "the ebb
+  // Tidewater Flats (log v61, docs/design/v3-ch4-tide.md): "the ebb
   // strike", from wave 4. At each wave's low water so many of the wave's own
   // clusters (then shells, as clusters) fly off the middle silo at the crowd
   // in the deep channel, one for one, the Low Water's own.
   tide: { from: 4, ebb: [0, 1, 1, 0, 0, 1, 0], ebbBase: 1 },
+  // The Citadel (log v60, docs/design/v3-ch4-citadel.md): "under the dome",
+  // from wave 4. Everything the Citadel fires leaves under its dome, and so
+  // many more of the wave's own guided missiles and shells come off the
+  // Citadel itself: while the shield stands, each can't be shot until it
+  // has left the dome, a breath from the narrows.
+  // The shield rises again every wave (SHIELD_RISES), so the generators are
+  // the price of shooting the keep's fire early, every wave.
+  citadel: { from: 4, dome: [1, 1, 1, 1, 1, 1, 1] },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -7042,11 +7359,25 @@ export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Rec
   tide: { tender: 'lure', bodyguard: 'lure' },
 };
 
+/** A map's new enemies that come as another on its early waves only (log
+ *  v60, lab only, under the encounter layer as MAP_FOE_SWAP). The Citadel:
+ *  a Bodyguard Ring's heavy comes off the Citadel itself, a breath from
+ *  the narrows, behind its guards, and on waves 2-5 it sank a third of a
+ *  ship a run for the bot on its own (waves 1-5 lost 1.16 against the asked
+ *  0.4-0.8), and on wave 6 it made a cliff (2.4x wave 5 on tough runs);
+ *  there the planner's Bodyguard comes as a Lure Beacon, another of
+ *  chapter 4's own. From wave 7 the Bodyguard comes as drawn. */
+export const MAP_FOE_SWAP_EARLY: Partial<Record<EncounterMap | RebuiltMap, { until: number; swap: Partial<Record<FoeId, FoeId>> }>> = {
+  citadel: { until: 6, swap: { bodyguard: 'lure' } },
+};
+
 /** The enemy a drawn one comes as on this map, under a run's encounter
  *  setup (itself with no layer, before rev 4, on the shared wave or past
  *  wave 10). */
 export function swapFoe(map: MapId, wave: number, id: FoeId, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): FoeId {
   if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return id;
+  const early = (MAP_FOE_SWAP_EARLY as Partial<Record<MapId, { until: number; swap: Partial<Record<FoeId, FoeId>> }>>)[map];
+  if (early && wave <= early.until && early.swap[id]) return early.swap[id]!;
   return (MAP_FOE_SWAP as Partial<Record<MapId, Partial<Record<FoeId, FoeId>>>>)[map]?.[id] ?? id;
 }
 
@@ -7058,7 +7389,7 @@ export function signatureOf(map: MapId, wave: number, setup: Pick<EncounterSetup
   return sig && wave >= sig.from ? sig : undefined;
 }
 
-/** Tidewater Flats (log v59, docs/design/v3-ch4-tide.md): under the
+/** Tidewater Flats (log v61, docs/design/v3-ch4-tide.md): under the
  *  encounter layer the tide keeps each wave's own clock instead of running
  *  on through the waves: the wave opens on high water, the tide goes out at
  *  its `ebb` (as a beat's `at`: a share of the wave after its lead-in and a
@@ -7092,7 +7423,15 @@ export const HIDDEN_MINES: readonly MapId[] = ['sowers'];
  *  amount of your ammo to be destroyed"): on these maps, under the
  *  encounter layer, a rig's hits count the player's shots, not their
  *  damage (sim/game.ts `rigShot`). */
-export const SHOT_RIGS: readonly MapId[] = ['rigs'];
+export const SHOT_RIGS: readonly MapId[] = ['rigs', 'citadel'];
+
+/** Log v60 (The Citadel, lab only, under the encounter layer): the shield
+ *  rises again at the start of every wave: a generator brought down stands
+ *  again, and a silenced Citadel is manned again (data/config.ts CITADEL).
+ *  On these maps the generators and the Citadel count shots too
+ *  (SHOT_RIGS). A campaign run, a rev 3 log and the shared wave keep the
+ *  campaign's: brought down, they stay down. */
+export const SHIELD_RISES: readonly MapId[] = ['citadel'];
 
 type LayerSetup = Pick<EncounterSetup, 'rev' | 'only'> | null | undefined;
 const layerOn = (setup: LayerSetup) => !!setup && setup.rev >= 4 && !(setup.only && !setup.only.length);
@@ -7100,6 +7439,11 @@ const layerOn = (setup: LayerSetup) => !!setup && setup.rev >= 4 && !(setup.only
 /** Do this map's mines drift hidden until a ship comes close (log v55)? */
 export function hiddenMinesOn(map: MapId, setup: LayerSetup): boolean {
   return HIDDEN_MINES.includes(map) && layerOn(setup);
+}
+
+/** Does this map's shield rise again every wave (log v60)? */
+export function shieldRisesOn(map: MapId, setup: LayerSetup): boolean {
+  return SHIELD_RISES.includes(map) && layerOn(setup);
 }
 
 /** Do this map's rigs count shots, not damage (log v55)? */
@@ -7266,6 +7610,15 @@ export interface BossRound {
    *  fire ship out at once (data/config.ts FIRESHIP), all at the ship
    *  nearest halfway along, the coves' mouths lit `warn` s before. */
   fleet?: { coves: number[]; first: number; every: number; sorties: number; warn: number };
+  /** The Citadel's Last Stand (log v60), in place of the Siege of Vey's
+   *  Repair Yard, guarded heavy and firebombs: as the round opens the shield
+   *  rises (each generator `gen` shots) and the Citadel is manned (`core`
+   *  shots, only while the shield is down); then `salvos` grand salvos
+   *  `every` s apart from `first` s in, the Citadel's dome lit `warn` s
+   *  before each: `size` launches at once (`kinds` in turn) under the dome
+   *  at the one ship `aim` names, converging on it. A silenced Citadel fires
+   *  no more salvos that round. */
+  citadel?: { gen: number; core: number; first: number; every: number; salvos: number; size: number; warn: number; kinds: ('guided' | 'ballistic' | 'heavy' | 'cluster' | 'supersonic')[]; aim?: BeatAim };
   /** The Delta's Burning Delta (log v57), in place of the Escort Run's
    *  guarded heavy: burning oil across the mouths of the fork's branches.
    *  Each burn, `at` s into the round (its mouths lit DELTA_BURN.warn s
@@ -7281,7 +7634,7 @@ export interface BossRound {
    *  the ship nearest it at the same moment, and at the call a volley of
    *  shells comes off both shores). */
   line?: { at: number[]; beacons: number; call: BeaconCall };
-  /** Tidewater Flats' Low Water (log v59), in place of the Firestorm: the
+  /** Tidewater Flats' Low Water (log v61), in place of the Firestorm: the
    *  round's own tide, the flats dry from `ebb.at` s for `ebb.low` s (every
    *  ship in the deep channel), and `strikes`: at each, every base listed
    *  launcher in `from` lights `warn` s before `at` s and then fires its
@@ -7636,6 +7989,32 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
+/** The Citadel's Last Stand (log v60, docs/design/v3-ch4-citadel.md), the
+ *  game's last boss, in place of the Siege of Vey (before: a Repair Yard on
+ *  the Citadel, a guarded heavy and lure beacons, then firebombs from every
+ *  side, every round; all three are chapter 4's regulars by now). Each
+ *  round the shield rises and the Citadel is manned, and the Citadel fires
+ *  grand salvos under its dome, every missile at once at the lead ship in
+ *  the narrows, its keep lit first, while the far silos send the round's
+ *  own fire at the ships behind; drop the shield (three generators) and the
+ *  salvos can be shot as they leave the keep, and the Citadel itself can be
+ *  silenced, ending its salvos for the round. Rising: tougher generators,
+ *  more and bigger salvos, more fire round them. */
+export const CITADEL_BOSS_ROUNDS: BossRound[] = [
+  {
+    citadel: { gen: 3, core: 12, first: 6, every: 8, salvos: 2, size: 3, warn: 2.5, kinds: ['guided', 'ballistic', 'ballistic'] },
+    fire: [{ kind: 'drone', at: 2, count: 2, gap: 4, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 11, count: 1, base: 5, aim: 'mid' }],
+  },
+  {
+    citadel: { gen: 4, core: 14, first: 5, every: 7, salvos: 3, size: 3, warn: 2.5, kinds: ['guided', 'ballistic', 'ballistic'] },
+    fire: [{ kind: 'drone', at: 2, count: 3, gap: 4, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 9, count: 2, gap: 6, base: 5, aim: 'mid' }, { kind: 'strafer', at: 12, count: 2, gap: 3 }],
+  },
+  {
+    citadel: { gen: 4, core: 16, first: 5, every: 7, salvos: 3, size: 3, warn: 2.5, kinds: ['guided', 'guided', 'ballistic'] },
+    fire: [{ kind: 'drone', at: 2, count: 4, gap: 3.5, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 8, count: 2, gap: 6, base: 5, aim: 'mid' }, { kind: 'strafer', at: 10, count: 2, gap: 3 }],
+  },
+];
+
 /** Dunmar Crossing's Beacon Line (log v58; docs/design/v3-ch4-crossing.md),
  *  in place of Beacon Strike's pairs by the lanes (the Lure Beacon is a
  *  regular of the Crossing's waves, and its spotters call one at a time
@@ -7651,7 +8030,7 @@ export const CROSSING_BOSS_ROUNDS: BossRound[] = [
   { line: { at: [0, 6, 12], beacons: 5, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
 ];
 
-/** Tidewater Flats' Low Water (log v59, docs/design/v3-ch4-tide.md), in
+/** Tidewater Flats' Low Water (log v61, docs/design/v3-ch4-tide.md), in
  *  place of the Firestorm (before: firebombs from every side, every round;
  *  the Incendiary Missile is a regular of chapter 4's waves by now, debuted
  *  on the Coves). Each round the tide runs out early and stays out: the
@@ -7736,6 +8115,8 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Burning Delta' },
   crossing: { rounds: CROSSING_BOSS_ROUNDS, name: 'Beacon Line' },
   tide: { rounds: TIDE_BOSS_ROUNDS, name: 'Low Water' },
+  // The game's finale (CITADEL_BOSS_ROUNDS above).
+  citadel: { rounds: CITADEL_BOSS_ROUNDS, name: 'The Last Stand' },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or

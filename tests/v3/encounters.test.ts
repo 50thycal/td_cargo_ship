@@ -49,7 +49,7 @@ import {
   type EncounterVersion,
 } from '../../src/v3/data/encounters';
 import { BOSS_FOES, FOE, FOES, FOES_BUILT, FOE_ORDER, HEAVY_FOES, foeCount, foeDebutTag, foesUpTo, type FoeId } from '../../src/v3/data/foes';
-import { MAPS, chapterOf } from '../../src/v3/data/maps';
+import { MAPS, MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
@@ -180,10 +180,11 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide', 'citadel']);
     // Chapter 4, Open War (log v53): its own table, as chapter 3's; the
-    // Delta (log v57), Dunmar Crossing (log v58) and the Tide (log v59) join it.
-    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'delta', 'crossing', 'tide']);
+    // Delta (log v57), Dunmar Crossing (log v58), the Citadel (log v60) and the
+    // Tide (log v61) join it.
+    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'delta', 'crossing', 'tide', 'citadel']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -257,6 +258,11 @@ describe('a campaign run has no encounter layer', () => {
       'crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges',
       'crossing-periscopes', 'crossing-two-spotters', 'crossing-crossfire', 'crossing-passing-fire', 'crossing-the-crossing',
     ]);
+    // The Citadel (docs/design/v3-ch4-citadel.md, log v60), the game's last map: the same.
+    expect(arc('citadel').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'citadel-under-the-guns', 'citadel-generators', 'citadel-narrows', 'citadel-dome', 'citadel-two-ends',
+      'citadel-periscope', 'citadel-keep', 'citadel-crossfire', 'citadel-fortress', 'citadel-grand-salvo',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -271,9 +277,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v1')!.idea.length, map).toBeGreaterThan(30);
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
-    // The other maps have none yet.
-    expect(hasEncounters('citadel')).toBe(false);
-    expect(encountersFor('citadel', 5)).toEqual([]);
+    // Every map has its own since the Tide and the Citadel (log v61, v60).
+    expect(MAP_ORDER.filter((m) => !hasEncounters(m))).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -785,7 +790,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide', 'citadel'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -2463,7 +2468,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait', 'crossing', 'tide'].sort());
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait', 'crossing', 'tide', 'citadel'].sort());
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -2483,12 +2488,15 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // The Delta (log v57): waves 1-6 out of the island's west silo, the far
     // one of its drone silos; wave 1 one late string.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('delta', w))).toEqual([1, 2, 3, 4, 5, 6]);
-    // Tidewater Flats (log v59): waves 1-6, out of the west and east silos.
+    // Tidewater Flats (log v61): waves 1-6, out of the west and east silos.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('tide', w))).toEqual([1, 2, 3, 4, 5, 6]);
     expect(BUSY['delta-three-ways'].length).toBe(1);
     for (const id of Object.keys(BUSY).filter((k) => k.startsWith('delta-'))) for (const b of BUSY[id]) expect(b.from, id).toEqual({ base: 3 });
     // Dunmar Crossing (log v58): waves 1-6, out of the north-west and north-east silos.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('crossing', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // The Citadel (log v60): waves 1-6, out of its one drone silo (the far north-west).
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('citadel', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    for (const id of Object.keys(BUSY).filter((k) => k.startsWith('citadel-'))) for (const b of BUSY[id]) expect(b.from, id).toEqual({ base: 4 });
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
@@ -2758,8 +2766,8 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
   });
 });
 
-// Chapter 4, Open War: Tidewater Flats (docs/design/v3-ch4-tide.md, log v59).
-describe('Tidewater Flats (log v59): the tide\'s clock a wave, the crowd, the ebb strike and Low Water', () => {
+// Chapter 4, Open War: Tidewater Flats (docs/design/v3-ch4-tide.md, log v61).
+describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the ebb strike and Low Water', () => {
   // The player: "the ships did not navigate off the low tide area, so just
   // make sure that mechanic actually works". Every step of whole bot runs
   // (the card's production setup, the boss rounds too, and the campaign's

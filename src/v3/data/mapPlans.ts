@@ -387,6 +387,32 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-citadel.md (chapter 4's last map and the game's)
+  citadel: {
+    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map; from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then more on the Citadel to silence it for the wave, or every shot on what is coming?',
+    // The fire is the Citadel's, a breath from its keep over the narrows
+    // and from wave 4 shielded under its dome, and drones on the long
+    // flight off the far silo; the shield rises every wave, so the
+    // player's own shots are wanted on the generators and the keep. What
+    // pays is fire that works on its own while the finger is on the
+    // generators: the Gunship Pair over the lane, Point Defense round the
+    // carrier, the Flak Cannon's clouds waiting where the drones converge.
+    // The Thermobaric Shell and the Seeker Pod want the finger on what is
+    // in the air, and the Tesla Arc's chain wants strings the dome breaks
+    // up (forced, the combo sweep's singles at log v60: Gunship Pair 5.8,
+    // Flak 6.9, Point Defense 6.9 against Thermobaric 9.2, Seeker 9.3,
+    // Tesla 9.7; docs/design/v3-ch4-citadel.md, The counters). The Air
+    // Strike is the best alone (5.7) and is left out of both. Every weapon
+    // is in chapter 4's draft.
+    counters: ['gunships', 'aegis', 'flak'],
+    offCounter: ['thermo', 'seeker', 'tesla'],
+    convoy: 'The map\'s own convoy, no commands: the campaign\'s schedule in a Spread, west to east down wide water past the carrier, then into the narrows under the Citadel, where the lane closes and the ships deliver; a Spread keeps the Citadel\'s shells and heavies to one hull at half their splash.',
+    stretches: { danger: 'late', safe: 'early' },
+    boss: {
+      plan: 'The Last Stand (in place of the Siege of Vey: its Repair Ships, Bodyguard Ring, Lure Beacons and firebombs are chapter 4\'s regulars by now): each round the shield rises and the Citadel is manned, and it fires grand salvos under its dome, three missiles at once at the lead ship in the narrows, its keep lit 2.5 s before (two salvos in round 1, three in rounds 2 and 3, round 3\'s with more guided missiles), while drones, supersonics and strike jets come at the ships behind; drop the shield and the salvos can be shot as they leave the keep, and the Citadel silenced ends them for the round (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Siege of Vey).',
+      botTarget: 2,
+    },
+  },
   // docs/design/v3-ch4-delta.md
   delta: {
     problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
@@ -456,7 +482,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // channel. The Tesla Arc wants strings, not a short sharp strike; the
     // Grapnel takes one threat at a time; Full Steam sails the convoy faster
     // but the tide still bunches it (forced, the combo sweep's singles at
-    // log v59: Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4 against
+    // log v61: Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4 against
     // Tesla 10.0, Grapnel 11.8, Full Steam 8.8; docs/design/v3-ch4-tide.md,
     // The counters). Every weapon is in chapter 4's draft.
     counters: ['well', 'aegis', 'bomberWing'],

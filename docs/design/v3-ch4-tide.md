@@ -1,6 +1,6 @@
 # Tidewater Flats: map card (map rebuild, chapter 4)
 
-**Date:** 2026-11-22. Tidewater Flats (`tide`, "The Tide", chapter 4 "Open War", the 19th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way the Coves (`docs/design/v3-ch4-coves.md`, #222) and the Delta (`docs/design/v3-ch4-delta.md`, #223) were. Encounter rev 4; play log **v59** (57 is the Delta, 58 Dunmar Crossing, built alongside).
+**Date:** 2026-11-22. Tidewater Flats (`tide`, "The Tide", chapter 4 "Open War", the 19th map) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way the Coves (`docs/design/v3-ch4-coves.md`, #222) and the Delta (`docs/design/v3-ch4-delta.md`, #223) were. Encounter rev 4; play log **v61** (built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60, which shipped first).
 
 There is no player run of the Tide to start from. The starting point is the map as it was (the Test Lab card: today's convoy controls, the shared waves, the Firestorm as its boss) and what the player asked of every rebuild: a question of its own and kits of its own, busier early waves ("more drones and easy things to kill", "less is more"), the climb from wave 4 to 9, no single-wave cliff, wave 10 the climax and not a wall, big and distinct boss set pieces, readable on an iPhone in landscape (874×402), anything that can sink a ship warned.
 
@@ -12,7 +12,7 @@ Code:
 - `src/v3/sim/game.ts`: Game `ebb` (the wave's low water), `highTide` and `tideNow` (read `tideAt`), `leaveFlats` and Ship `cross` (the ships on the flats cross to the deep channel as the tide falls); `aimBeat` takes `'crowd'` (`crowdShip`, `CROWD_RADIUS`: a ship of the most bunched hulls, each launch a different one of them by its id) and `'flats'` (`flatsShip`); the wave planner holds the signature's clusters for the ebb; Threat `ebb` (launched at the crowd; for the tools' counts);
 - `src/v3/sim/events.ts`: the Firestorm under the Tide's boss tuning is Low Water (`lowWater`: the round's own tide, the strikes' silos lit, then the strikes); with no boss tuning it plays as it did;
 - `src/v3/sim/telemetry.ts`, `src/v3/ui/render.ts`, `src/v3/ui/features.ts`: the tide's env events, the dimmed flats lane and the gauge read the tide's phase; the sand comes up from the shore with a moving surf line; the gauge sits mid-map between the lanes, larger (28 px; 36 px in gold, "THE TIDE TURNS" and "TIDE GOING OUT");
-- `src/v3/data/convoy.ts`: `MAP_CONVOY.tide` (flow step 2, the Box, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.tide`; `src/v3/data/lab.ts`: "Ready to test" lists the Tide at v59; `src/v3/sim/playlog.ts`: `LOG_VERSION` 59;
+- `src/v3/data/convoy.ts`: `MAP_CONVOY.tide` (flow step 2, the Box, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.tide`; `src/v3/data/lab.ts`: "Ready to test" lists the Tide at v61; `src/v3/sim/playlog.ts`: `LOG_VERSION` 61;
 - tools: `tools/v3/tide/` (`readall.sh` and `final.sh`: the tuning reads for every Armory, `tools/v3/rigs/read.py` on the Tide; `reports.sh`: the record reports; `waves.ts`: what each wave plans, by kind and aim; `budget.ts`: each wave's launches against the shared wave; `early.ts`: what sinks the ships in the first waves, high or low water; `convoys.sh`: the read with each flow and formation in turn); `tools/v3/combo-sweep/mixwaves.ts` counts the Tide's signature (`ebbStrike`).
 
 Bot reports: `tools/v3/map-report/results/tide-player.md` (the usual Armory: Quick Reload 5, Damage Control 4, Stockpile 5), `tide-latest.md` (Wide Warhead 5, Point Defense 4, Supply Lines 3), `tide-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4), `tide.md` (no Armory); each with a heat map and the counter and off-counter kits. Tuning reads: 192 seeds (900–1091), `tools/v3/tide/final.sh <dir>`. "Before" was read on this branch before any Tide change (the base, #221 + the Coves; the Tide's card then was the base's), on the same seeds; as on the Delta there are no 24-seed "before" report files.
@@ -46,7 +46,7 @@ The player, on the map as it was: "the map didn't have a great tide animation or
 - **You see it coming.** The gauge (mid-map between the lanes, 28 px) counts down at high water and turns gold, "THE TIDE TURNS · N s", 5 s before the tide starts to fall; then "TIDE GOING OUT", "LOW TIDE · flats dry", "TIDE COMING IN".
 
 **Proof.**
-- `tests/v3/encounters.test.ts` ("Tidewater Flats (log v59)"): every step of whole bot runs (the card's production setup, waves 1–10 and the three boss rounds, seeds 3, 11 and 29; the campaign's own clock, waves 1–6, seeds 5 and 17): no hull, its whole width, ever overlaps exposed sand; no hull is in the flats band at low water; no hull's progress along its lane stalls for 5 s (300 ticks); and in each run the tide fell, was out and rose for many seconds and ships crossed. The same test fails on the old behaviour. A third test checks the water level never changes by more than one step's share of the turn.
+- `tests/v3/encounters.test.ts` ("Tidewater Flats (log v61)"): every step of whole bot runs (the card's production setup, waves 1–10 and the three boss rounds, seeds 3, 11 and 29; the campaign's own clock, waves 1–6, seeds 5 and 17): no hull, its whole width, ever overlaps exposed sand; no hull is in the flats band at low water; no hull's progress along its lane stalls for 5 s (300 ticks); and in each run the tide fell, was out and rose for many seconds and ships crossed. The same test fails on the old behaviour. A third test checks the water level never changes by more than one step's share of the turn.
 - `e2e/v3-encounters.mjs`: wave 1 played through its ebb at the phone's own size, with shots at high water (ships on both lanes), as the tide goes out (a box crossing from the flats, the sand coming up from the shore) and at low water (the flats dry, no ship on them): `e2e/shots/v3-encounters/tide-high.png`, `tide-falling.png`, `tide-low.png` (and `tide-boss.png`).
 
 ## Sites and their jobs
@@ -98,7 +98,7 @@ Under the asked quarter, as on the Coves (7%), the Rigs (9%) and the Sowers (19%
 
 - **Counter kit: Gravity Well, Point Defense, Bomber Wing.** At the ebb everything converges on one bunch of ships in the deep channel: the weapons that hold the sky over one spot answer it. The Well pulls the converging fire into its core, Point Defense guards the bunched boxes, the Bomber Wing lays its run along the crowded channel.
 - **Off-counter kit: Tesla Arc, Grapnel, Full Steam.** The Tesla's chain wants long strings, not a short sharp strike from four silos; the Grapnel takes one threat at a time while the strike lands together; Full Steam sails the convoy faster but the tide still bunches it.
-- Both chosen from the combo sweep's singles at log v59 (Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4; Tesla 10.0, Grapnel 11.8, Full Steam 8.8), avoiding the Air Strike (6.1 alone, 7th). Every weapon is in chapter 4's draft. A design note for the bots only: nothing in the game nudges the player towards it.
+- Both chosen from the combo sweep's singles at log v61 (Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4; Tesla 10.0, Grapnel 11.8, Full Steam 8.8), avoiding the Air Strike (6.1 alone, 7th). Every weapon is in chapter 4's draft. A design note for the bots only: nothing in the game nudges the player towards it.
 
 How they compare: the record reports (24 seeds, the kit as the bot's taste), below.
 
@@ -240,9 +240,9 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 - **The map-cards e2e fails one check on the base as on this branch**: "the Strait's card (not its debut): no card for an enemy met before" sees "NEW: Helicopter missile" (the forced Attack Helicopter's rockets get their own first-sight card). Not the Tide's; reproduced on a clean build of the base (#223).
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
 
-## The play log (v59)
+## The play log (v61)
 
-`LOG_VERSION` 59, `LOG_REPLAYS` `[59]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer: the campaign plays as at 57, and a 57 Tide card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 59 (`python3 tools/v3/playtest-fixes/pins.py 57 59`, and `tests/v3/scorecard.test.ts`). 58 is Dunmar Crossing, built alongside. The Test Lab's "Ready to test" lists the Tide at v59. The combo sweep's results are in `tools/v3/combo-sweep/results/v59-ch4`.
+`LOG_VERSION` 61, `LOG_REPLAYS` `[61]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer: the other maps play as at 60, and a 60 Tide card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 61 (`python3 tools/v3/playtest-fixes/pins.py 57 59`, then after merging Dunmar Crossing (58) and the Citadel (60) `pins.py 59 61` and `pins.py 60 61`, and `tests/v3/scorecard.test.ts`). The Test Lab's "Ready to test" lists the Tide at v61. The combo sweep's results are in `tools/v3/combo-sweep/results/v59-ch4`.
 
 ## Questions for the player
 
@@ -258,7 +258,7 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 
 ## Tests
 
-- `tests/v3/encounters.test.ts` ("Tidewater Flats (log v59)"):
+- `tests/v3/encounters.test.ts` ("Tidewater Flats (log v61)"):
   - the tide's turn (the player's note): every step of whole bot runs, the card (waves 1–10 and the boss, three seeds) and the campaign's clock (waves 1–6, two seeds): no hull on exposed sand, none in the flats at low water, none stalled for 5 s, ships crossed; the water level never jumps;
   - the tide's clock: under the layer each wave's low water is its ebb and `TIDE_LOW`, every crowd-aimed launch leaves at low water; the campaign, a rev 3 log and the shared wave keep the map's clock (no `ebb`);
   - at low water no new ship takes the flats lane; at high water both lanes take ships;

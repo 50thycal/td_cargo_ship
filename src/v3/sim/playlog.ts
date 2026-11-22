@@ -460,7 +460,25 @@ import type { EncounterSetup } from '../data/encounters';
  *      Crossing card log before v58 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
  *      plays as it did.
- *  59: chapter 4's Tidewater Flats rebuilt to the map and wave rules
+ *  60: chapter 4's last map and the game's, the Citadel of Vey, rebuilt to
+ *      the map and wave rules (docs/design/v3-ch4-citadel.md; lab, under the
+ *      encounter layer): ten encounters (CITADEL_R4) with their filler, a
+ *      climb (CITADEL_CLIMB); the shield rises again every wave
+ *      (SHIELD_RISES: a generator brought down stands again, a silenced
+ *      Citadel is manned again; its fire, once silenced, comes off the far
+ *      silos); the generators and the Citadel count shots (SHOT_RIGS,
+ *      CITADEL); the signature (MAP_SIGNATURE.citadel `dome`: from wave 4
+ *      some of the wave's guided missiles and shells come off the Citadel
+ *      under its dome and can't be shot inside it while the shield stands,
+ *      game.ts `domed`; Beat `dome`); the map's own convoy, the campaign's
+ *      schedule in a Spread (MAP_CONVOY.citadel); and a new boss on the
+ *      Siege of Vey, the Last Stand (MAP_BOSS.citadel: the shield raised,
+ *      the Citadel's grand salvos under its dome). The bots leave the
+ *      Citadel's shielded fire alone until it leaves the dome
+ *      (worthShooting). A Citadel card log before v60 played today's convoy
+ *      controls and the shared waves and no longer replays to the same
+ *      game; the campaign plays as it did. (59: the Tide, built alongside.)
+ *  61: chapter 4's Tidewater Flats rebuilt to the map and wave rules
  *      (docs/design/v3-ch4-tide.md; lab, under the encounter layer): the
  *      tide keeps each wave's own clock (MAP_TIDE, Game `ebb`: one ebb a
  *      wave, game.ts highTide, tideGauge), ten encounters (TIDE_R4) with
@@ -477,13 +495,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      navigate off the low tide area"): the tide falls over 4 s and rises
  *      over 3 s instead of snapping, the flats lane takes ships only at high
  *      water, and as the tide falls every ship on the flats crosses to the
- *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v59
+ *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
  *      (the card or the campaign) no longer replays to the same game; the
- *      other maps play as they did. (58: Dunmar Crossing, built alongside.) */
-export const LOG_VERSION = 59;
+ *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.) */
+export const LOG_VERSION = 61;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [59];
+export const LOG_REPLAYS: readonly number[] = [61];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
