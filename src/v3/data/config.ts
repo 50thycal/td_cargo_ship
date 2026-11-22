@@ -274,6 +274,18 @@ export const TOW = { hp: 10, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 }
  *  a flak cloud did many of them at once. */
 export const RIG_SHOTS = { rig: 32 } as const;
 
+/** Log v60 (The Citadel, lab only, under the encounter layer): the Citadel
+ *  of Vey's structures count shots, as the Rig Field's rigs (SHOT_RIGS):
+ *  each shield generator takes `generator` of the player's shots, the
+ *  Citadel itself `citadel` (only while the shield is down). At the start
+ *  of every wave the shield is raised again: a generator brought down
+ *  stands again with its shots, and a silenced Citadel is manned again
+ *  (SHIELD_RISES). Fire the Citadel launches as the map's signature (`dome`)
+ *  can't be shot while it is inside the dome (`r` px round the Citadel) and
+ *  the shield stands. Before (the campaign), 10 hits of damage a generator
+ *  and 40 the Citadel, and brought down they stayed down. */
+export const CITADEL = { generator: 3, citadel: 14 } as const;
+
 /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet; lab
  *  only): a fire ship is a fast boat set alight, `hp` hits, at `speed` × a
  *  fast boat's. Sunk, or where it rams a ship, it bursts into a fireball on

@@ -134,6 +134,10 @@ export interface Beat {
    *  (data/config.ts FIRESHIP): more hits, and where one is sunk or rams,
    *  its fireball burns on the water. */
   fire?: boolean;
+  /** The Citadel (log v60): a launch off the Citadel under its dome (MAP_
+   *  SIGNATURE `dome`): it can't be shot while it is inside the dome and
+   *  the shield stands. */
+  dome?: boolean;
 }
 
 /** What one filler launch counts for in a wave's budget (Beat `filler`,
@@ -6016,6 +6020,12 @@ export interface MapSignature {
    *  wave from `from` (data/config.ts FIRESHIP), one for one, so the wave
    *  sends no more (rule w-budget). */
   fireShips?: number[];
+  /** The Citadel (log v60): how many of the wave's own guided missiles and
+   *  shells (what is left of them after its encounters took theirs) the
+   *  Citadel launches under its dome, wave by wave from `from`, one for one
+   *  (rule w-budget): while the shield stands, each can't be shot until it
+   *  has left the dome (data/config.ts CITADEL). */
+  dome?: number[];
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -6132,7 +6142,15 @@ export const HIDDEN_MINES: readonly MapId[] = ['sowers'];
  *  amount of your ammo to be destroyed"): on these maps, under the
  *  encounter layer, a rig's hits count the player's shots, not their
  *  damage (sim/game.ts `rigShot`). */
-export const SHOT_RIGS: readonly MapId[] = ['rigs'];
+export const SHOT_RIGS: readonly MapId[] = ['rigs', 'citadel'];
+
+/** Log v60 (The Citadel, lab only, under the encounter layer): the shield
+ *  rises again at the start of every wave: a generator brought down stands
+ *  again, and a silenced Citadel is manned again (data/config.ts CITADEL).
+ *  On these maps the generators and the Citadel count shots too
+ *  (SHOT_RIGS). A campaign run, a rev 3 log and the shared wave keep the
+ *  campaign's: brought down, they stay down. */
+export const SHIELD_RISES: readonly MapId[] = ['citadel'];
 
 type LayerSetup = Pick<EncounterSetup, 'rev' | 'only'> | null | undefined;
 const layerOn = (setup: LayerSetup) => !!setup && setup.rev >= 4 && !(setup.only && !setup.only.length);
@@ -6140,6 +6158,11 @@ const layerOn = (setup: LayerSetup) => !!setup && setup.rev >= 4 && !(setup.only
 /** Do this map's mines drift hidden until a ship comes close (log v55)? */
 export function hiddenMinesOn(map: MapId, setup: LayerSetup): boolean {
   return HIDDEN_MINES.includes(map) && layerOn(setup);
+}
+
+/** Does this map's shield rise again every wave (log v60)? */
+export function shieldRisesOn(map: MapId, setup: LayerSetup): boolean {
+  return SHIELD_RISES.includes(map) && layerOn(setup);
 }
 
 /** Do this map's rigs count shots, not damage (log v55)? */
@@ -6306,6 +6329,15 @@ export interface BossRound {
    *  fire ship out at once (data/config.ts FIRESHIP), all at the ship
    *  nearest halfway along, the coves' mouths lit `warn` s before. */
   fleet?: { coves: number[]; first: number; every: number; sorties: number; warn: number };
+  /** The Citadel's Last Stand (log v60), in place of the Siege of Vey's
+   *  Repair Yard, guarded heavy and firebombs: as the round opens the shield
+   *  rises (each generator `gen` shots) and the Citadel is manned (`core`
+   *  shots, only while the shield is down); then `salvos` grand salvos
+   *  `every` s apart from `first` s in, the Citadel's dome lit `warn` s
+   *  before each: `size` launches at once (`kinds` in turn) under the dome
+   *  at the one ship `aim` names, converging on it. A silenced Citadel fires
+   *  no more salvos that round. */
+  citadel?: { gen: number; core: number; first: number; every: number; salvos: number; size: number; warn: number; kinds: ('guided' | 'ballistic' | 'heavy' | 'cluster' | 'supersonic')[]; aim?: BeatAim };
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
