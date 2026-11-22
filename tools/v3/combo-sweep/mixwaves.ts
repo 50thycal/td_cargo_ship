@@ -9,7 +9,7 @@
 // 4), since a few big threats can be
 // a large part of a wave's work while a small part of its count.
 //
-//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers,rigs,lantern] [--seeds=4]
+//   npx vite-node tools/v3/combo-sweep/mixwaves.ts -- [--maps=island,behemoth,needle,archipelago,saltgate,battery,sowers,rigs,lantern,coves] [--seeds=4]
 
 import { VERSION_DEFAULT } from '../../../src/v3/data/encounters';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
@@ -55,6 +55,9 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // on the enemy's dark bank (a gun counts once, by its hits, however many
   // times it rises).
   lantern: ['siege'],
+  // The Coves (log v53): fire ships, fast boats set alight (counted apart
+  // from the plain boats, the map's mechanic, as `fireShip`).
+  coves: ['fireShip'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -81,7 +84,8 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         // A relief rig on its tow and its rack (log v49) are the Rig
         // Field's; its rigs standing from the start are its mechanic.
         // A broadside of the Dreadnought's (log v51) is its signature's.
-        const kind = th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
+        // A fire ship (log v53) is the Coves' signature; a plain boat its mechanic.
+        const kind = th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
