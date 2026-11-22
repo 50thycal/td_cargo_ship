@@ -6012,6 +6012,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.5, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(4) },
+      { at: 0.65, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
     ],
     replaces: { ballistic: 9, extras: { cluster: 1, heavy: 1 } },
   },
@@ -6032,7 +6033,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Brings the fire to the wide water of the way in for a wave (the climb\'s change of place); in place of the wave\'s own heavy and sub salvos.',
     },
     beats: [
-      { at: 0.3, kind: 'ballistic', count: 2, from: sub(2), aim: 'rear' },
+      { at: 0.3, kind: 'ballistic', count: 1, from: sub(2), aim: 'rear' },
       { at: 0.5, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
