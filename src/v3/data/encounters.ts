@@ -6079,7 +6079,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [8],
     role: 'escalate',
     name: 'Crossfire',
-    callout: 'Crossfire',
+    callout: 'Crossfire both ways',
     premise: 'Each shore fires at the far lane: guided missiles off the north shore at the inbound ships and off the south shore at the outbound ships, crossing over the carrier, while a beacon rises at the crossing.',
     decision: 'Missiles over your own lane at the other one, and a beacon calling: which first?',
     counters: 'The missiles as they cross the water between the lanes; the beacon with your own shots.',

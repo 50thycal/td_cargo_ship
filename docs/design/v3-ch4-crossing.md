@@ -50,7 +50,9 @@ Bases are counted from 1, as the pause screen counts them.
 
 ## The stretches
 
-TOUGH-STRETCHES
+- **Danger: the middle**, where the two convoys pass each other and the spotters rise: 39% of the hull damage in waves 1–9 on the outbound lane and 38% on the inbound (the usual Armory's record report; pooled 39%). Before the rebuild it was the middle too (40% / 43%).
+- **Safe: the ends**, each lane's way in or way out: the outbound lane's coldest stretch is its early third (27%), the inbound's its late third (27%). The report flags both (a lane's coldest stretch at 27% against a 25% line), as it flagged the map before (29% / 26%): with every edge of the screen a front, no end of a lane is quiet, and the waves aim some fire at each convoy's way in on purpose (waves 5, 6, 10: "both edges are a front").
+- Rule `m-carrier`: the carrier sits in the water between the lanes in the middle (800, 455), so the danger stretch is also the carrier's closest, as on the Rigs, the Sowers and the Delta. The middle is where the map's question is (the crossing), so it stays.
 
 ## The convoy
 
@@ -79,7 +81,9 @@ Under the asked quarter, but twice the Coves' (7%) and the Delta's (6%). Most sp
 
 ## The counters
 
-COUNTERS
+- **Counter kit: Thermobaric Shell, Gravity Well, Railgun.** The spotters rise between the lanes and only your own shots sink them; the shells they call and the waves' own fire come at both lanes at once. Weapons you fire that hit hard where you put them answer both: a Thermobaric burst or a Railgun beam through a spotter as it rises, a Gravity Well holding the drones and shells over the water between the lanes.
+- **Off-counter kit: Drone Screen, Full Steam, Bomber Wing.** The Drone Screen's drones are helpers (a spotter's ring draws them and they shoot it in vain); Full Steam hurries the convoys through the crossing but not past the spotters; the Bomber Wing silences a silo, not the spotter calling its shells.
+- Both chosen from the combo sweep's singles at log v58 (Thermobaric 5.8, Gravity Well 5.9, Railgun 6.0; Drone Screen 8.2, Full Steam 9.6, Bomber Wing 10.0), leaving out the Air Strike (the best alone, 4.7, and in three of the five best kits) and the Wild Card (4.8). Every weapon is in chapter 4's draft. A design note for the bots only: nothing in the game nudges the player towards it.
 
 ## Loadouts on this map (combo sweep singles)
 
@@ -89,7 +93,22 @@ Each weapon alone, forced at every draft (12 seeds, the player's usual Armory, v
 - **Middling:** Tesla 6.9, the Cadence Gun 7.0, Frigate Escort 7.2, Flak and Supply Run 7.3, Gunship Pair 7.4, Overdrive and Orbital Strike 7.8, Seeker and Drone Screen 8.2, Point Defense 8.4, Scattergun 8.5.
 - **Weak:** Full Steam 9.6, Bomber Wing 10.0, Focus Fire, Grapnel and the Charge Lance 10.8, Dual Wield 11.8, the Laser Cutter 35.2. The plain gun 11.8 (won 17%); the bot drafting for itself: 6.7 (won 67%).
 
-DIVERSITY
+## Diversity: are the Crossing's best kits its own?
+
+Swept the chapter 2 way (singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16), and compared with the five chapter 2 maps, the five chapter 3 maps, the Coves and the Delta from their last sweeps (`docs/design/v3-combo-diversity.md`, "Dunmar Crossing"; `python3 tools/v3/crossing/compare.py`).
+
+| | Result |
+| --- | --- |
+| Top 5 kits | **Air Strike + Scattergun + Dual Wield** 4.7 (won 81%), Air Strike + Shrapnel Shell + Supply Run 5.2, Boomerang + Gravity Well + Wild Card 5.4, Flak Cannon + Railgun + Supply Run 5.6, Air Strike + Shrapnel Shell + Tesla Arc 5.9 |
+| Jaccard of the top-5 kits, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | **0** against all twelve |
+| The same, the Crossing against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Air Strike** 4.7 (the best single on the Island, the Behemoth, the Archipelago and the Delta too) |
+| Rank correlation of the weapons alone, against the same twelve | 0.37 / 0.46 / 0.37 / 0.56 / 0.40 / 0.68 / 0.65 / 0.76 / 0.68 / 0.62 / 0.57 / 0.59 |
+| Air Strike + Flak Cannon | **in none of the five best kits** (the Flak Cannon in one, with the Railgun) |
+
+- **All five of the Crossing's best kits are its own.**
+- **The Air Strike leads alone and is in three of the five best kits**: a weapon you fire, so it sinks a spotter, which your helpers cannot. The pair the brief asked to keep from the core of every top kit, Air Strike + Flak Cannon, is in none of them.
 
 ## Debuts: "New on Open War"
 
@@ -112,7 +131,9 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 | 9 | escalate | Passing fire (`crossing-passing-fire`) | **two spotters**; clusters off both shores; a supersonic | the passing ships; the lead ship |
 | 10 | climax | The crossing (`crossing-the-crossing`), after a 6 s calm | **three spotters**, 3 s apart; a cluster; guided missiles at both entries; 12 drones before the calm | the crossing and both fronts |
 
-WAVE-NOTES
+Wave 1 loses 0.02 ships a run with the usual Armory (192 seeds, normal; 0.00 on the 24-seed record report); with no Armory, as the wave-1 test plays it (`tools/v3/crossing/wave1.ts`, seeds 11–50), the "you" bot loses none and the casual bot 0.08 a run: its shared drones reach the ships coming in at both ends, so the wave sends 15% less and its filler is one late string of two (an early string of three off the north-west silo sank 0.2–0.3 ships a run for the bots with no Armory).
+
+**Wave 10, the climax:** after a 6 s calm, three spotters rise one after another at the crossing while clusters and guided missiles come at the passing ships and both ends. On normal runs it costs the usual Armory 0.62 ships (wave 9: 0.73), on tough runs 0.78 (0.93): **not the hardest regular wave**, wave 9 is (its two spotters and two clusters land on the ships passing). In tuning, wave 10 with both of its drone strings at the ships coming in cost 1.58 ships on 192 tough seeds (twice wave 9, a cliff), with both at the ships halfway along 0.55; the build keeps one of each (0.78). A question for the player.
 
 ## The boss plan: the Beacon Line
 
@@ -171,7 +192,17 @@ REPORTS
 
 ## What is not satisfied, or uncertain
 
-UNSATISFIED
+- **The latest Armory (Wide Warhead 5, Point Defense 4, Supply Lines 3) wins 10%** (before 41%), far under the band: the spotters ask for your own shots, and a line of four or five a round is more than a set with no Quick Reload taps down before it calls (boss rounds 1.14 / 3.30 / 2.42 on normal runs, 1.29 / 5.52 / 7.84 tough). The usual and plating sets win 59% and 60%. No single tuning put all three in the band: a lighter Beacon Line (lines of three, three, four) won the usual set 81% and the latest 15%.
+- **The signature is 15% of the hits in waves 4–10**, under the asked quarter (twice the Coves' and the Delta's): most spotters are tapped down before their second call.
+- **Wave 10 is not the hardest regular wave** for the usual Armory (0.62 against wave 9's 0.73 normal; 0.78 against 0.93 tough); see "The ten waves".
+- **No safe stretch under 25%** on either lane (27% each, the ends); the map was flagged the same before (29% / 26%). Every end of a lane is a front.
+- **The danger stretch is the carrier's closest** (rule `m-carrier`): the carrier sits in the middle between the lanes, where the convoys cross.
+- **The 24-seed report flags the budget on wave 10 (×0.74 of the no-encounter wave)**: what flies, not what is planned. A spotter's calls come out of the wave's own shells, and a spotter tapped down before it calls never fires them. Counting each spotter's calls as planned (`tools/v3/crossing/budget.ts`, 8 seeds) every wave is ×0.87–×1.05 of the wave with no layer (wave 10 ×0.91).
+- **The convoy change.** The card played today's convoy controls before; on the campaign's own schedule (step 1, Pairs) the shared waves won 10%, so the map's own convoy is step 3 in a Spread (as the Delta's).
+- **Boss rounds 1–2 under the asked 1.5 / 2** for the usual Armory (0.38 / 1.08), round 3 at 2.47, as on every rebuilt map (the loss limit is six).
+- **The none Armory's wave 5 is 3.0× its wave 4** on tough runs (0.54 → 1.63): a cliff with no Armory (the player Armories pass).
+- **Losses to a spotter's shells are blamed on the shell** (a ballistic missile) in the logs and the end screen's "what sank you", not on the spotter.
+- **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
 
 ## The play log (v58)
 
@@ -179,7 +210,12 @@ UNSATISFIED
 
 ## Questions for the player
 
-QUESTIONS
+- **Does a spotter read as "tap it now" on the phone?** It rises between the lanes, draws a dashed line to the ship it marks and a bracket closing on it 1.6 s before each shell. Recommended: play waves 4, 7 and the boss; if the line is lost among the two convoys, make the spotter's ring brighter, not bigger.
+- **The boss: the Beacon Line, on Beacon Strike's slot.** The spotting beacon is the map's signature from wave 4, so the boss is lines of them between the lanes, calling together. Recommended: keep the name "Beacon Line"; say if you would rather it kept "Beacon Strike".
+- **The convoy: step 3 in a Spread, no command.** On the campaign's own schedule (Pairs, step 1) the Crossing's heavy shared waves won 10%. Recommended: keep it (heavy two-way traffic is the map), as the Delta's.
+- **The latest Armory wins 10% here.** The map asks for your own shots (Quick Reload), and the latest set has none. Recommended: leave it; it is the map's question, and the player's usual set wins 59%. If it feels like a wall in play, the Beacon Line's second round can lose a spotter a line.
+- **The signature is 15% of the hits in waves 4–10, not 25%: raise it?** Recommended: keep it; the spotter's weight is the tap it asks for. Raising it means every new enemy a spotter from wave 4 (the chapter's other three gone from this map).
+- **Wave 10 just under wave 9.** Recommended: play it; if the climax feels flat, wave 10's climb back to 0.92.
 
 ## Checks run
 
