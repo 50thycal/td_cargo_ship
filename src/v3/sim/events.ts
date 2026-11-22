@@ -33,7 +33,7 @@ import { bossTune, type BossFire, type BossRound, type TruckRun } from '../data/
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
-import { foeData, launchFoe, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
+import { crossingSpot, foeData, launchFoe, spotterLife, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
 import { CARRIER_TARGET, launchBoss, addFx, addPickup, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
@@ -409,7 +409,9 @@ function openingDry(g: Game): boolean {
 /** Beacon Strike (round 8): the ship a beacon has marked for its next
  *  call, if it has one now (the renderer draws the line). */
 export function beaconMark(g: Game, th: Threat): Ship | undefined {
-  if (!g.event || !hasRule(g, 'beaconCall') || th.kind !== 'lure' || th.dead) return undefined;
+  if (th.kind !== 'lure' || th.dead) return undefined;
+  // Log v58 (Dunmar Crossing): a spotter beacon marks its ship in any wave.
+  if (!th.foe?.spot && (!g.event || !hasRule(g, 'beaconCall'))) return undefined;
   const id = th.foe?.marked;
   return id === undefined || id < 0 ? undefined : g.ships.find((s) => s.id === id);
 }
@@ -801,6 +803,15 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'beacon-strike': {
+      // Encounters rev 4 (lab only; docs/design/v3-ch4-crossing.md): Dunmar
+      // Crossing's boss is the Beacon Line, spotter beacons in a line down
+      // the water between the lanes calling volleys together (MAP_BOSS
+      // `line`), in place of the pairs by the lanes.
+      const R = bossRound(g, ev);
+      if (R?.line) {
+        const L = R.line;
+        return [...steps(L.at.length, (k) => L.at[k], 'line'), ...steps(R.swarms ?? 0, (k) => (R.swarmAt ?? 4) + k * (R.swarmGap ?? 8), 'swarm'), ...fireSteps(R)];
+      }
       // Round 8: pairs of beacons by the lanes, each calling missiles on
       // the ship nearest it (tick does the calls).
       const E = EV['beacon-strike'];
@@ -1253,7 +1264,9 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
     }
     case 'beacon-strike': {
       if (s.op === 'beacons') laneBeacons(g, ev, s.k);
-      else swarm(g, ev, EV['beacon-strike'].size);
+      else if (s.op === 'line') beaconLine(g, ev);
+      else if (s.op === 'fire') fireStep(g, ev, s.k);
+      else swarm(g, ev, bossRound(g, ev)?.size ?? EV['beacon-strike'].size);
       return;
     }
     case 'siege-of-vey': {
@@ -1493,6 +1506,23 @@ function laneBeacons(g: Game, ev: EventRun, k: number): void {
     th.foe = foeData({ life: E.life, call: E.first, marked: -1 });
     sent(ev, 'lure');
   });
+}
+
+/** Dunmar Crossing's Beacon Line (log v58): the round's spotter beacons
+ *  rise at once, spread along the water between the two lanes (clear of
+ *  the carrier and the frigate), all on the same count, so they mark their
+ *  ships together and call one volley of shells off both shores. */
+function beaconLine(g: Game, ev: EventRun): void {
+  const L = bossRound(g, ev)!.line!;
+  const n = L.beacons;
+  for (let k = 0; k < n; k++) {
+    const x = VIEW.width * (0.1 + (0.8 * (k + 0.5)) / n);
+    const p = crossingSpot(g, k, x);
+    const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
+    th.target = CARRIER_TARGET;
+    th.foe = foeData({ life: spotterLife(L.call), call: L.call.first, marked: -1, calls: L.call.calls, spot: L.call });
+    sent(ev, 'lure');
+  }
 }
 
 /** Every point openWater picks from: the map's sub spots, then points along
@@ -1834,7 +1864,7 @@ function tick(g: Game, ev: EventRun): void {
       const E = EV['beacon-strike'];
       for (const t of g.threats) {
         const f = t.foe;
-        if (t.kind !== 'lure' || t.dead || !f || f.state < 1 || f.call === undefined) continue;
+        if (t.kind !== 'lure' || t.dead || !f || f.state < 1 || f.call === undefined || f.spot) continue;
         if ((f.marked ?? -1) >= 0 && !g.ships.some((s) => s.id === f.marked)) f.marked = -1;
         if ((f.marked ?? -1) < 0 && f.t >= f.call - E.charge) {
           const s = targetable(g).sort((a, b) => dist(a.x, a.y, t.x, t.y) - dist(b.x, b.y, t.x, t.y))[0];

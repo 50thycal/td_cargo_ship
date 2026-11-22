@@ -10,7 +10,7 @@ import { THREATS, VIEW, type ThreatKind } from '../data/config';
 import { DEBUT_SLOTS, FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
-import { signatureOf, type BeatAim } from '../data/encounters';
+import { signatureOf, type BeaconCall, type BeatAim } from '../data/encounters';
 import { EV } from '../data/events';
 import { hydraDartPace, hydraDarts, walkingBarrage } from './events';
 import type { TelImpact } from './telemetry';
@@ -226,6 +226,10 @@ export interface FoeData {
    *  and the ship it has marked for it (-1: none yet). */
   call?: number;
   marked?: number;
+  /** Log v58 (Dunmar Crossing): a spotter beacon's calls (BeaconCall),
+   *  and how many it has left. */
+  calls?: number;
+  spot?: BeaconCall;
   /** A dive bomber's flight in: the length of its dive (px), and the
    *  seconds it flies level before it (from off screen). */
   dive?: { len: number; app: number };
@@ -480,6 +484,16 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       return;
     }
     case 'lure': {
+      // Log v58 (Dunmar Crossing): a spotter beacon rises at the crossing,
+      // in the water between the lanes where the next two ships pass.
+      if (l.beacon) {
+        const p = crossingSpot(g, 0);
+        const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
+        th.target = CARRIER_TARGET;
+        if (l.enc) th.enc = l.enc;
+        th.foe = data({ life: spotterLife(l.beacon), call: l.beacon.first, marked: -1, calls: l.beacon.calls, spot: l.beacon });
+        return;
+      }
       // It rises out of the water (state 0), clear of the other boats.
       const p = boatSpot(g, rng);
       const th = spawnThreat(g, 'lure', p.x, p.y, 'sub');
@@ -990,7 +1004,8 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
         f.t = 0;
         cue(g, 'foe.paint', th.x, th.y, { gain: 0.6 });
       }
-      if ((f.state === 1 && f.t >= (f.life ?? FOE.lure.life)) || alone(g, th)) leave(g, th);
+      if (f.state === 1 && f.spot) spotterCalls(g, th, f, f.spot);
+      if ((f.state === 1 && f.t >= (f.life ?? FOE.lure.life)) || (!f.spot && alone(g, th))) leave(g, th);
       return;
     }
     case 'cloud': {
@@ -2309,6 +2324,10 @@ function splitHydra(g: Game, th: Threat): void {
 export function foeEta(g: Game, th: Threat): number | null {
   const f = th.foe;
   switch (th.kind) {
+    case 'lure':
+      // Log v58: a spotter beacon is as urgent as its next call's shell.
+      if (!f?.spot || (f.calls ?? 0) <= 0) return null;
+      return Math.max(0.3, (f.state === 0 ? FOE.lure.rise - f.t + (f.call ?? 0) : (f.call ?? 0) - f.t) + 1.2);
     case 'rocketTruck': {
       if (!f) return null;
       const R = FOE.rocketTruck;
@@ -2418,4 +2437,98 @@ export function foeHarmed(th: Threat): boolean {
     default:
       return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Dunmar Crossing (log v58): spotter beacons at the crossing.
+
+/** A lane's heading along x (+1: west to east). */
+function laneDir(ch: Game['map']['channels'][number]): number {
+  return Math.sign(laneAt(ch, laneLength(ch), 0).x - laneAt(ch, 0, 0).x) || 1;
+}
+
+/** The next two ships to pass each other, one in each of the first two
+ *  lanes when they run opposite ways (Dunmar Crossing): the closing pair
+ *  at least `gap` px apart that meets first, and where they meet (half way
+ *  between them). None on a map without two opposite lanes. */
+export function crossingPair(g: Game, gap = 0): { a: Ship; b: Ship; x: number; y: number } | undefined {
+  const chs = g.map.channels;
+  if (chs.length < 2 || laneDir(chs[0]) === laneDir(chs[1])) return undefined;
+  const d0 = laneDir(chs[0]);
+  const A = g.ships.filter((s) => s.channel === 0 && s.d > 0);
+  const B = g.ships.filter((s) => s.channel === 1 && s.d > 0);
+  let best: { a: Ship; b: Ship; x: number; y: number } | undefined;
+  let bestGap = Infinity;
+  for (const a of A)
+    for (const b of B) {
+      const sep = (b.x - a.x) * d0;
+      if (sep < gap || sep >= bestGap) continue;
+      bestGap = sep;
+      best = { a, b, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+  return best;
+}
+
+/** Where a spotter beacon rises: at the crossing (the meeting of the next
+ *  two ships far enough apart to meet after it is up), in the water half
+ *  way between the lanes, clear of the carrier and the frigate; with no
+ *  such pair, `k`'s point along the water between the lanes. */
+export function crossingSpot(g: Game, k: number, x0?: number): Point {
+  const chs = g.map.channels;
+  const c = x0 === undefined ? crossingPair(g, 260) : undefined;
+  let x = x0 ?? c?.x ?? VIEW.width * [0.35, 0.65, 0.5][k % 3];
+  x = clamp(x, 150, VIEW.width - 150);
+  const mid = (xx: number) => (chs.length >= 2 ? (laneY(chs[0], xx) + laneY(chs[1], xx)) / 2 : laneY(chs[0], xx) + chs[0].halfWidth + 40);
+  for (const p of [g.map.carrier, ...(g.map.frigate ? [g.map.frigate] : [])])
+    if (Math.abs(x - p.x) < 70 && Math.abs(mid(x) - p.y) < 70) x = p.x + (x >= p.x ? 70 : -70);
+  return { x, y: mid(x) };
+}
+
+/** A lane's centre line's y at this x (straight lanes; a bent one, the
+ *  nearest of its points). */
+function laneY(ch: Game['map']['channels'][number], x: number): number {
+  const L = laneLength(ch);
+  let best = laneAt(ch, 0, 0);
+  for (let d = 0; d <= L; d += 20) {
+    const p = laneAt(ch, d, 0);
+    if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p;
+  }
+  return best.y;
+}
+
+/** How long a spotter beacon stays up: till a little after its last call. */
+export function spotterLife(c: BeaconCall): number {
+  return Math.min(c.life, c.first + c.every * Math.max(0, c.calls - 1) + 1);
+}
+
+/** A spotter beacon that is up: it marks the ship nearest it `charge` s
+ *  before each call, and at the call a shell is lobbed at that ship from
+ *  the shell silo nearest the ship (a shell with nowhere to come from is
+ *  not called). */
+function spotterCalls(g: Game, th: Threat, f: FoeData, c: BeaconCall): void {
+  if ((f.calls ?? 0) <= 0 || f.call === undefined) return;
+  if ((f.marked ?? -1) >= 0 && !g.ships.some((s) => s.id === f.marked)) f.marked = -1;
+  if ((f.marked ?? -1) < 0 && f.t >= f.call - c.charge) {
+    const s = targetable(g).sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
+    if (s) {
+      f.marked = s.id;
+      cue(g, 'foe.paint', th.x, th.y, { gain: 0.7 });
+    }
+  }
+  if (f.t < f.call) return;
+  f.call += c.every;
+  const id = f.marked ?? -1;
+  f.marked = -1;
+  const ship = g.ships.find((s) => s.id === id);
+  if (!ship) return;
+  f.calls = (f.calls ?? 0) - 1;
+  const bs = g.map.bases.map((b, i) => (b.kinds.includes('ballistic') && !g.baseDown[i] ? i : -1)).filter((i) => i >= 0);
+  if (!bs.length) return;
+  const b = bs.reduce((m, i) => (dist(g.map.bases[i].x, g.map.bases[i].y, ship.x, ship.y) < dist(g.map.bases[m].x, g.map.bases[m].y, ship.x, ship.y) ? i : m), bs[0]);
+  g.queue.push({ at: g.waveT, kind: 'ballistic', base: b, target: ship.id, called: true });
+  g.queue.sort((a, q) => a.at - q.at);
+  if (g.event) g.event.sent.ballistic = (g.event.sent.ballistic ?? 0) + 1;
+  addFx(g, 'burst', th.x, th.y, { life: 0.35, r: 30 });
+  // Its last call made, it sinks back a moment later.
+  if ((f.calls ?? 0) <= 0) f.life = Math.min(f.life ?? FOE.lure.life, f.t + 1);
 }
