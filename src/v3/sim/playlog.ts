@@ -397,11 +397,26 @@ import type { EncounterSetup } from '../data/encounters';
  *      `guns`, `gunGap`, `gunSalvos`, `dark`, `supply`, `fire`). A Black Strait
  *      card log before v52 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
- *      plays as it did. */
-export const LOG_VERSION = 52;
+ *      plays as it did.
+ *  53: chapter 4's first map, the Coves, rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-coves.md; lab, under the encounter layer): ten
+ *      encounters (COVES_R4) with their filler, a climb (COVES_CLIMB), the
+ *      map's own convoy at the campaign's schedule (MAP_CONVOY.coves), fire
+ *      ships (data/config.ts FIRESHIP; Beat, Launch, Unit and Threat
+ *      `fire`, game.ts lightFireShip: a fast boat set alight that burns
+ *      where it is sunk or rams, foes.ts burstCloud's `burn`), the
+ *      signature (MAP_SIGNATURE.coves `fireShips`: so many of the wave's own
+ *      fast boats come out of the coves as fire ships from wave 4), and a
+ *      new boss on the Repair Yard, the Fire Fleet (MAP_BOSS.coves `fleet`:
+ *      sorties of fire ships out of more coves each round; BossFire
+ *      `fastboat`). Chapter 4's table, CHAPTER_FOUR_MAPS, in REBUILT_MAPS.
+ *      A Coves card log before v53 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did. (Log v54 is the Delta's, built alongside.) */
+export const LOG_VERSION = 53;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [52];
+export const LOG_REPLAYS: readonly number[] = [53];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
