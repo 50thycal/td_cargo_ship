@@ -4379,7 +4379,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Both ends at once, in place of the wave\'s own mines, its cluster and most of its shells.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(5) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.4, from: base(5) },
       { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
       { at: 0.3, plus: 6, kind: 'drone', count: 3, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
