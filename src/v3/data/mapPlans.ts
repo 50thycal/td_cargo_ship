@@ -420,13 +420,19 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // What the waves send: drones over the long flight to the flats lane at
     // high water, then at the ebb shells, cluster missiles, guided missiles
     // and supersonics at the crowd in the deep channel, a short flight from
-    // the north shore's four silos. Splash weapons at bunched ships: the
-    // counters are the weapons that stop a missile as it lifts or burst
-    // over the crowd's sky (see docs/design/v3-ch4-tide.md, The counters,
-    // for the sweep's numbers). Every weapon is in chapter 4's draft.
-    counters: ['aegis', 'flak', 'shrapnel'],
-    offCounter: ['grapnel', 'fullSteam', 'gunships'],
-    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east, over the flats lane by the carrier and the deep channel under the shore at high water, all of them in the deep channel at low water; the tide steers the ships, and the fire is answered by shooting.',
+    // the north shore's four silos, all converging on one bunch of ships.
+    // The weapons that hold the sky over one spot answer it: the Gravity
+    // Well pulls the converging fire into its core, Point Defense guards
+    // the bunched ships, the Bomber Wing lays its run along the crowded
+    // channel. The Tesla Arc wants strings, not a short sharp strike; the
+    // Grapnel takes one threat at a time; Full Steam sails the convoy faster
+    // but the tide still bunches it (forced, the combo sweep's singles at
+    // log v59: Gravity Well 4.7, Bomber Wing 4.9, Point Defense 5.4 against
+    // Tesla 10.0, Grapnel 11.8, Full Steam 8.8; docs/design/v3-ch4-tide.md,
+    // The counters). Every weapon is in chapter 4's draft.
+    counters: ['well', 'aegis', 'bomberWing'],
+    offCounter: ['tesla', 'grapnel', 'fullSteam'],
+    convoy: 'The map\'s own convoy, no commands: a Box (three tight abreast: a direct hit does a hit less, splash ×1.8) at flow step 2, west to east over the flats lane by the carrier and the deep channel under the shore at high water, all of them in the deep channel at low water; the tide steers the ships, and the fire is answered by shooting.',
     stretches: { danger: 'early', safe: 'late' },
     boss: {
       plan: 'Low Water (in place of the Firestorm: the Incendiary Missile is a regular of chapter 4\'s waves): each round the tide runs out early and stays out, every ship crowds into the deep channel, and the whole north shore fires at the crowd at once, strike after strike, its silos lit first: two strikes in round 1, three in rounds 2 and 3, more silos and longer low water each round (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Firestorm). Rising, below the asked 1.5 / 2 / 2.5 a round where the loss limit needs it, as on every rebuilt map.',
