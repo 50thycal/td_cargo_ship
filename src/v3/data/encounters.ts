@@ -4607,18 +4607,18 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Rig or volley',
     callout: 'Clusters from the rig',
-    premise: 'The west-middle rig fires a cluster missile at the ships coming in, then another a few seconds later, while swarms come off both drone rigs.',
-    decision: 'Bring the cluster rig down before its second, or shoot each cluster before it splits?',
-    counters: 'Each cluster before it splits, the swarms; the rig if there is time.',
+    premise: 'The west-middle rig fires a cluster missile at the ships coming in, then a shell a few seconds later, while swarms come off both drone rigs.',
+    decision: 'Bring the rig down before it fires again, or shoot the cluster before it splits and then the shell?',
+    counters: 'The cluster before it splits, the shell as it climbs, the swarms; the rig if there is time.',
     succeeds: 'A close call on the way in in most runs; a run that brought the rig down earlier sends no clusters.',
     notes: {
-      sites: 'The west-middle rig (690, 270; clusters), the west and east rigs (swarms).',
-      target: 'The ships coming in (the clusters, a swarm); the lead ship (a swarm).',
+      sites: 'The west-middle rig (690, 270; a cluster, then a shell), the west and east rigs (swarms).',
+      target: 'The ships coming in (the cluster, the shell, a swarm); the lead ship (a swarm).',
       usesMap: 'A rig that fires twice: knocked out before its second, it is quiet for the rest of the run, in place of the wave\'s own cluster, a guided missile and most of its shells.',
     },
     beats: [
       { at: 0.25, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.25, plus: 7, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.25, plus: 7, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
     ],
@@ -4671,7 +4671,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { ballistic: 12, guided: 1, extras: { supersonic: 1, cluster: 1, rig: 1 } },
+    replaces: { ballistic: 12, guided: 4, extras: { supersonic: 1, cluster: 1, rig: 1 } },
   },
   {
     id: 'rigs-two-tows',
@@ -4695,7 +4695,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
       { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { ballistic: 15, guided: 1, extras: { cluster: 1, rig: 2 } },
+    replaces: { ballistic: 15, guided: 5, extras: { cluster: 1, rig: 2 } },
   },
   {
     id: 'rigs-whole-field',
@@ -4704,24 +4704,24 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'The whole field',
     callout: 'Every rig at once',
-    premise: 'Every rig still standing fires at once at the ship halfway along: a guided missile off each missile rig, shells off the west-middle one, drones off the drone rigs, converging on the convoy.',
-    decision: 'The rigs you left standing all fire together: how many are still up?',
-    counters: 'The missiles first, the shells as they climb, the swarms; fewer rigs, fewer to shoot.',
-    succeeds: 'Most of the volley is shot down; a run with rigs down meets less of it.',
+    premise: 'Every rig fires at once at the ship halfway along: a guided missile off each missile rig, shells off the west-middle one, drones off the east one, converging on the convoy (what a rig brought down would fire comes off the far shore, a longer flight).',
+    decision: 'All four rigs fire together: the ones still standing fire from point-blank, the far shore for the rest.',
+    counters: 'The missiles first, the shells as they climb, the swarms.',
+    succeeds: 'Most of the volley is shot down; a run with rigs down meets it with more warning.',
     notes: {
       sites: 'All four rigs at once (guided off the west and east-middle, shells off the west-middle, drones off the west and east), a cluster off the west-middle rig after.',
       target: 'The ship halfway along (every rig\'s volley converges); the cluster at the ships coming in.',
-      usesMap: 'What the rigs left standing cost, all at once (a preview of the boss), in place of the wave\'s own shells, two guided missiles and a cluster.',
+      usesMap: 'What the rigs left standing cost, all at once, from point-blank (a preview of the boss), in place of the wave\'s own shells, two guided missiles and a cluster.',
     },
     beats: [
-      { at: 0.35, kind: 'guided', count: 2, gap: 0.3, from: base(0), aim: 'mid' },
-      { at: 0.35, kind: 'ballistic', count: 3, gap: 0.3, from: base(1), aim: 'mid' },
-      { at: 0.35, kind: 'guided', count: 2, gap: 0.3, from: base(2), aim: 'mid' },
-      { at: 0.35, kind: 'drone', count: 5, gap: 0.25, from: base(3), aim: 'mid' },
+      { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.3, from: base(1), aim: 'mid' },
+      { at: 0.35, kind: 'guided', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.35, kind: 'drone', count: 4, gap: 0.25, from: base(3), aim: 'mid' },
       { at: 0.35, plus: 6, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
     ],
-    replaces: { ballistic: 15, guided: 2, extras: { cluster: 1 } },
+    replaces: { ballistic: 15, guided: 6, extras: { cluster: 1 } },
   },
   {
     id: 'rigs-last-tow',
@@ -4735,20 +4735,20 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     counters: 'The rigs\' missiles first, a tow on its way in, the shells as they climb.',
     succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
     notes: {
-      sites: 'Relief rigs towed in from the west edge and the east edge, the west rig (a guided missile), the west-middle rig (a cluster), the far shore\'s east silo (shells), the west and east rigs (swarms), after the wave\'s own fire and a calm.',
+      sites: 'Relief rigs towed in from the west edge and the east edge, the west rig (a guided missile), the west-middle rig (a shell), the far shore\'s east silo (a shell), the west and east rigs (swarms), after the wave\'s own fire and a calm.',
       target: 'The ships coming in (the rigs\' fire); downed stations (the tows) and the ships nearest them; the lead ship (the shells); any ship.',
       usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, two guided missiles and a cluster; the climax may reach the safe stretch.',
     },
     beats: [
       { at: 1, plus: 1, kind: 'rig', count: 1, from: { air: 1 } },
       { at: 1, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'rear' },
-      { at: 1, plus: 3, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
+      { at: 1, plus: 3, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
       { at: 1, plus: 4, kind: 'rig', count: 1, from: { air: -1 } },
       { at: 1, plus: 6, kind: 'ballistic', count: 1, from: base(5), aim: 'lead' },
       { at: 1, plus: 4, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
     ],
-    replaces: { ballistic: 19, guided: 2, extras: { cluster: 1, rig: 2 } },
+    replaces: { ballistic: 19, guided: 8, extras: { cluster: 3, rig: 2 } },
     calm: 6,
   },
 ];
@@ -5014,7 +5014,7 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
-const RIGS_CLIMB = [0.9, 0.95, 0.95, 1, 1, 1, 1, 1, 1, 1];
+const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.95, 0.92, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -5536,9 +5536,9 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  missiles, shells and drones converging on the convoy. A rig brought down
  *  fires no more. Rising: more rigs, more volleys, bigger ones. */
 export const RIGS_BOSS_ROUNDS: BossRound[] = [
-  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 7.5, count: 3, size: 1, warn: 1.5 } },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

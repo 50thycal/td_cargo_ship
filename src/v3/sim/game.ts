@@ -1474,8 +1474,11 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
       const aim = b.aim && b.aim !== 'any' ? { aim: b.aim } : {};
       if ('base' in b.from) {
         const gap = b.gap ?? 0.35;
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: b.from.base, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
-        g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [b.from.base] });
+        // The Rig Field (log v49): a beat out of a rig already brought down
+        // comes from the far shore instead (rigStandIn), lit there.
+        const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
+        g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [from] });
         start = Math.min(start, at - RAID.warn);
       } else if ('road' in b.from) {
         // Log v42 (Saltgate Canal): a Rocket Truck down a pop-up road; the
@@ -5616,6 +5619,9 @@ function launch(g: Game, l: Launch): void {
     launchFoe(g, l);
     return;
   }
+  // The Rig Field (log v49): an encounter's launch off a rig brought down
+  // since its wave began comes from the far shore instead (rigStandIn).
+  if (l.enc && !l.filler && l.base >= 0 && g.baseDown[l.base] && g.map.bases[l.base].rig) l = { ...l, base: rigStandIn(g, l.base) };
   if (l.base < 0 || g.baseDown[l.base]) return;
   // Bomber Wing silenced this silo: the launch is cancelled, not delayed.
   if ((g.quietUntil[l.base] ?? 0) > g.t) return;
@@ -5804,6 +5810,18 @@ export function launchPlane(g: Game, l: Launch): void {
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : l.kind === 'stealthBomber' ? FOE.stealthBomber.bombs : 0;
   th.dropT = 99;
   if (l.sow) sowMines(th, l.sow);
+}
+
+/** Log v49 (The Rig Field): where an encounter's launch off rig station
+ *  `i` comes from: the rig while it stands; brought down, the far shore's
+ *  silo nearest it (a launcher with no rig: a long flight, so more
+ *  warning), as most of the wave's own launches off a downed rig move to a
+ *  launcher still standing (pickBase). Any other base: itself. */
+export function rigStandIn(g: Game, i: number): number {
+  const b = g.map.bases[i];
+  if (!b?.rig || !g.baseDown[i]) return i;
+  const far = g.map.bases.map((x, k) => (!x.rig && launcher(x) && !g.baseDown[k] ? k : -1)).filter((k) => k >= 0);
+  return far.sort((p, q) => Math.abs(g.map.bases[p].x - b.x) - Math.abs(g.map.bases[q].x - b.x))[0] ?? -1;
 }
 
 /** The Rig Field's rig stations (its bases with a rig), west to east. */
