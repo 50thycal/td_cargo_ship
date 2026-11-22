@@ -6621,10 +6621,11 @@ export interface MapSignature {
    *  sends no more (rule w-budget). */
   fireShips?: number[];
   /** The Citadel (log v60): how many of the wave's own guided missiles and
-   *  shells (what is left of them after its encounters took theirs) the
-   *  Citadel launches under its dome, wave by wave from `from`, one for one
-   *  (rule w-budget): while the shield stands, each can't be shot until it
-   *  has left the dome (data/config.ts CITADEL). */
+   *  shells (what is left of them after its encounters took theirs; with
+   *  none left, a guided missile in place of two of its drones) the
+   *  Citadel launches under its dome, wave by wave from `from` (rule
+   *  w-budget): while the shield stands, each can't be shot until it has
+   *  left the dome (data/config.ts CITADEL). */
   dome?: number[];
   /** The Delta (log v57): the wave's Incendiary Missiles fly at this
    *  ('switch': they burst on the mouth of the branch the fork's switch is

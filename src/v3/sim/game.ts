@@ -1439,10 +1439,17 @@ function startWave(g: Game): void {
       g.raids.push({ at, theme: RAID_THEME.fastboat, bases: [base] });
     }
   }
+  trickled.forEach((size, k) => {
+    const base = pickBase(g, 'drone', rng);
+    let at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
+    if (hush && at < quietAt && at + size * 0.35 > quietAt - hush.calm!) at = Math.max(lead, quietAt - hush.calm! - size * 0.35);
+    for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
+  });
   // The Citadel (log v60, MAP_SIGNATURE `dome`): so many of the wave's own
   // guided missiles and shells (what is left after its encounters) the
   // Citadel launches under its dome, spread over the wave, its keep lit as
-  // a raid's base first; one for one, so the wave sends no more.
+  // a raid's base first; one for one, so the wave sends no more (with none
+  // left, a guided missile in place of two drones).
   const core = g.map.bases.findIndex((b, i) => !!b.core && !g.baseDown[i]);
   if (sig?.dome && core >= 0) {
     const want = sig.dome[Math.min(g.wave, 10) - sig.from] ?? 0;
@@ -1455,18 +1462,26 @@ function startWave(g: Game): void {
           picked.push(kind);
         }
       }
+    // With none of its own left (its encounter took them), a guided missile
+    // in place of two of the wave's own drones.
+    for (let n = picked.length; n < want; n++) {
+      let took = 0;
+      for (let i = queue.length - 1; i >= 0 && took < 2; i--) {
+        const l = queue[i];
+        if (l.kind === 'drone' && !l.enc && !l.filler && l.base >= 0 && l.at < 1e8) {
+          queue.splice(i, 1);
+          took++;
+        }
+      }
+      if (took < 2) break;
+      picked.push('guided');
+    }
     picked.forEach((kind, k) => {
       const at = lead + RAID.warn + (spec.duration * (k + 0.6)) / (picked.length + 0.4);
       queue.push({ at, kind, base: core, dome: true });
       g.raids.push({ at, theme: RAID_THEME[kind], bases: [core] });
     });
   }
-  trickled.forEach((size, k) => {
-    const base = pickBase(g, 'drone', rng);
-    let at = lead + (spec.duration * (k + 0.5)) / Math.max(1, trickled.length) + rng.range(-2, 2);
-    if (hush && at < quietAt && at + size * 0.35 > quietAt - hush.calm!) at = Math.max(lead, quietAt - hush.calm! - size * 0.35);
-    for (let d = 0; d < size; d++) queue.push({ at: at + d * 0.35, kind: 'drone', base });
-  });
   // A map's own extra fire, the same in every version (encounters rev 3:
   // The Strait's waves 5-10), on top of the wave as planned.
   const more = g.enc ? waveFire(g.map.id, g.wave, g.enc.setup.rev) : 0;
