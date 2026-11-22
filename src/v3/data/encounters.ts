@@ -5658,7 +5658,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.25, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
       { ...ebb(2, 1.5), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
-      { ...ebb(2, 4), kind: 'ballistic', count: 1, from: base(3), aim: 'crowd' },
+      { ...ebb(2, 4), kind: 'ballistic', count: 1, from: base(3), aim: 'flats' },
       ...swapIn(6),
     ],
     replaces: { drones: 9, ballistic: 2 },
@@ -5860,9 +5860,8 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { ...ebb(10, 0.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
       { ...ebb(10, 1.5), kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'crowd' },
       { ...ebb(10, 3), kind: 'guided', count: 1, from: base(2), aim: 'crowd' },
-      { ...ebb(10, 7), kind: 'supersonic', count: 1, from: base(2), aim: 'crowd' },
       { ...ebb(10, 2), kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
-      ...swapIn(30),
+      ...swapIn(31),
     ],
     replaces: { drones: 26, ballistic: 15, guided: 9, extras: { cluster: 1, supersonic: 1 } },
     calm: 6,
@@ -6960,14 +6959,14 @@ export const TIDE_BOSS_ROUNDS: BossRound[] = [
     ebb: { at: 2, low: 18 },
     strikes: [
       { at: 6, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }] },
-      { at: 13, warn: 2.5, from: [{ base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
+      { at: 13, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
     ],
   },
   {
     ebb: { at: 2, low: 22 },
     strikes: [
       { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }] },
-      { at: 12, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 0, kind: 'guided', count: 2, gap: 0.8 }] },
+      { at: 12, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 2, kind: 'supersonic', count: 1 }] },
       { at: 18, warn: 2.5, from: [{ base: 0, kind: 'drone', count: 5, gap: 0.35 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 1 }] },
     ],
   },
