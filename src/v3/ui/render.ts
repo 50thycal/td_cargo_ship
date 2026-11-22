@@ -4,7 +4,7 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, beatClock, domed, boostLevel, held, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
@@ -1547,6 +1547,21 @@ function drawBallisticGround(ctx: CanvasRenderingContext2D, g: Game, th: Threat)
 function drawThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   // Log v55: a hidden mine is out of sight until a ship comes close.
   if (th.hidden) return;
+  // Log v60 (The Citadel): its own fire, shielded inside the dome, ringed
+  // in the dome's cyan (it can't be shot until it leaves the dome).
+  if (domed(g, th)) {
+    ctx.strokeStyle = 'rgba(127,232,255,0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const a = (i * Math.PI) / 3 + g.t * 2;
+      const px = th.x + Math.cos(a) * 22;
+      const py = th.y + Math.sin(a) * 22;
+      if (i) ctx.lineTo(px, py);
+      else ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+  }
   if (drawNewThreat(ctx, g, th)) return;
   if (drawFoe(ctx, g, th)) return;
   const heading = Math.atan2(th.vy, th.vx) || th.heading;

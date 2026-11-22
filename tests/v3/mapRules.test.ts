@@ -201,6 +201,8 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
     // Chapter 4 (docs/design/v3-ch4-delta.md).
     delta: [],
     crossing: [],
+    // The game's last map (docs/design/v3-ch4-citadel.md).
+    citadel: [],
   };
 
   it('the back-to-back repeats are exactly the known ones', () => {
@@ -219,7 +221,7 @@ describe('w-variety: no encounter two waves in a row (v1)', () => {
 
 describe('w-encounter: an encounter on each of waves 1-10 (v1)', () => {
   /** Waves with no v1 encounter, per map (none today). */
-  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [], needle: [], archipelago: [], saltgate: [], battery: [], sowers: [], rigs: [], dreadnought: [], lantern: [], coves: [], delta: [], crossing: [] };
+  const EXPECTED_GAPS: Record<string, number[]> = { strait: [], gauntlet: [], harbor: [], kesh: [], marrow: [], island: [], behemoth: [], needle: [], archipelago: [], saltgate: [], battery: [], sowers: [], rigs: [], dreadnought: [], lantern: [], coves: [], delta: [], crossing: [], citadel: [] };
 
   it('the waves without one are exactly the known gaps', () => {
     const found: Record<string, number[]> = {};
@@ -272,6 +274,8 @@ describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
     expect(MAP_PLANS.delta!.boss.botTarget).toBe(2);
     // Dunmar Crossing (log v58): the same.
     expect(MAP_PLANS.crossing!.boss.botTarget).toBe(2);
+    // The Citadel (log v60), the game's last map: the same.
+    expect(MAP_PLANS.citadel!.boss.botTarget).toBe(2);
   });
 });
 

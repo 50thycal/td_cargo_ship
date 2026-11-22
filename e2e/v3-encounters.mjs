@@ -471,6 +471,43 @@ try {
     await one.close();
   }
 
+  // ---- The Citadel (log v60): the game's last map, the shield that rises
+  // every wave, fire under the dome, and the Last Stand ----
+  await open(page, 'lab=map-citadel&seed=7');
+  const ct = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: document.querySelectorAll('.v3-command').length, gens: window.__v3.game().threats.filter((t) => t.kind === 'generator').map((t) => t.hp) }));
+  check(ct.map === 'citadel' && ct.rev === ENCOUNTER_REV && ct.cmds === 0 && ct.gens.join() === '3,3,3', `the Citadel's card opens with its encounters, no command, and three generators that count shots (${JSON.stringify(ct)})`);
+  await labMenu(page);
+  const ctArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: The Last Stand/.test(ctArc) && /Under the guns/.test(ctArc), `the Citadel's script names its first encounter and its boss, the Last Stand (${ctArc.slice(0, 120)})`);
+  await page.screenshot({ path: `${OUT_DIR}/citadel-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): the shield up, the keep lit, a grand salvo under the dome.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-citadel&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let st = { domed: 0, shield: false, event: '' };
+    for (let k = 0; k < 500 && !(st.domed >= 2 && st.shield); k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      st = await one.evaluate(() => {
+        const g = window.__v3.game();
+        const s = g.map.shield;
+        return {
+          domed: g.threats.filter((t) => !t.dead && t.dome && Math.hypot(t.x - s.x, t.y - s.y) <= s.r).length,
+          shield: g.threats.some((t) => !t.dead && t.kind === 'generator'),
+          event: g.event?.id ?? '',
+        };
+      });
+    }
+    check(st.event === 'siege-of-vey' && st.domed >= 2 && st.shield, `the Last Stand: the shield is up and a grand salvo leaves the keep under the dome (${JSON.stringify(st)})`);
+    await one.screenshot({ path: `${OUT_DIR}/citadel-boss.png` });
+    await one.close();
+  }
+
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-tide', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3, the Coves, the Delta and Dunmar Crossing since chapter 4)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);

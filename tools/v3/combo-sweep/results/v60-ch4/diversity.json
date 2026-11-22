@@ -1,0 +1,945 @@
+{
+ "about": "Each map's own best kits (tools/v3/combo-sweep/diversity.ts).",
+ "logVersion": 60,
+ "botRev": 3,
+ "persona": "you",
+ "top": 6,
+ "screenSeeds": 6,
+ "confirmSeeds": 16,
+ "maps": {
+  "citadel": {
+   "pairs": [
+    {
+     "key": "airstrike+gunships",
+     "lostAll": 5.167
+    },
+    {
+     "key": "scatter+dualWield",
+     "lostAll": 5.167
+    },
+    {
+     "key": "well+wildCard",
+     "lostAll": 5.333
+    },
+    {
+     "key": "gunships+orbital",
+     "lostAll": 5.333
+    },
+    {
+     "key": "seeker+cadence",
+     "lostAll": 5.5
+    },
+    {
+     "key": "aegis+supplyRun",
+     "lostAll": 5.5
+    }
+   ],
+   "screened": [
+    {
+     "key": "airstrike+gunships+supplyRun",
+     "lostAll": 4.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "airstrike+frigate+gunships",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "airstrike+boomerang+gunships",
+     "lostAll": 5,
+     "won": 1
+    },
+    {
+     "key": "airstrike+gunships+dualWield",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "well+gunships+orbital",
+     "lostAll": 5.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+droneScreen+gunships",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "aegis+well+supplyRun",
+     "lostAll": 5.5,
+     "won": 1
+    },
+    {
+     "key": "aegis+droneScreen+supplyRun",
+     "lostAll": 5.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+tesla+gunships",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+gunships+shield",
+     "lostAll": 5.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+aegis+supplyRun",
+     "lostAll": 6,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+seeker+gunships",
+     "lostAll": 6,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "gunships+orbital+wildCard",
+     "lostAll": 6.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "well+railgun+wildCard",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+wildCard+supplyRun",
+     "lostAll": 6.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+well+gunships",
+     "lostAll": 6.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "well+droneScreen+wildCard",
+     "lostAll": 6.333333333333333,
+     "won": 1
+    },
+    {
+     "key": "airstrike+cadence+gunships",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+tesla+wildCard",
+     "lostAll": 6.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+orbital+dualWield",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "flak+gunships+orbital",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+aegis+supplyRun",
+     "lostAll": 6.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+gunships+orbital",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+cadence+dualWield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+droneScreen+dualWield",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+gunships+orbital",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+railgun+supplyRun",
+     "lostAll": 6.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+scatter+gunships",
+     "lostAll": 6.666666666666667,
+     "won": 1
+    },
+    {
+     "key": "airstrike+gunships+wildCard",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+well+wildCard",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+dualWield",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+shield",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "cadence+gunships+orbital",
+     "lostAll": 6.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+aegis+gunships",
+     "lostAll": 6.833333333333333,
+     "won": 1
+    },
+    {
+     "key": "gunships+orbital+supplyRun",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+aegis+supplyRun",
+     "lostAll": 6.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+railgun+gunships",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+supplyRun",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+aegis+cadence",
+     "lostAll": 7,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "flak+well+wildCard",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+gunships+orbital",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "gunships+orbital+shield",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+gunships+supplyRun",
+     "lostAll": 7,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+well+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "aegis+supplyRun+overdrive",
+     "lostAll": 7.166666666666667,
+     "won": 1
+    },
+    {
+     "key": "seeker+gunships+orbital",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+seeker+cadence",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "aegis+supplyRun+dualWield",
+     "lostAll": 7.166666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+thermo+gunships",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+well+wildCard",
+     "lostAll": 7.166666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+aegis+supplyRun",
+     "lostAll": 7.166666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+gunships+overdrive",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+dualWield+focus",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "frigate+well+wildCard",
+     "lostAll": 7.333333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "airstrike+shrapnel+gunships",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+seeker+cadence",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+aegis+supplyRun",
+     "lostAll": 7.333333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "gunships+orbital+focus",
+     "lostAll": 7.333333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+gunships+orbital",
+     "lostAll": 7.5,
+     "won": 1
+    },
+    {
+     "key": "scatter+supplyRun+dualWield",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+well+cadence",
+     "lostAll": 7.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+well+wildCard",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+gunships+wildCard",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "well+orbital+wildCard",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+cadence+shield",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+supplyRun+shield",
+     "lostAll": 7.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+railgun+dualWield",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+orbital+dualWield",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+aegis+supplyRun",
+     "lostAll": 7.5,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+scatter+dualWield",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+well+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+cadence+wildCard",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "gunships+orbital+fullSteam",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "seeker+cadence+gunships",
+     "lostAll": 7.666666666666667,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+fullSteam",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+lance+supplyRun",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+grapnel+supplyRun",
+     "lostAll": 7.666666666666667,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+wildCard+dualWield",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "aegis+bomberWing+supplyRun",
+     "lostAll": 7.666666666666667,
+     "won": 0.5
+    },
+    {
+     "key": "well+wildCard+overdrive",
+     "lostAll": 7.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "droneScreen+gunships+orbital",
+     "lostAll": 7.833333333333333,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+bomberWing+dualWield",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+seeker+cadence",
+     "lostAll": 7.833333333333333,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+gunships+orbital",
+     "lostAll": 7.833333333333333,
+     "won": 0.5
+    },
+    {
+     "key": "thermo+scatter+dualWield",
+     "lostAll": 8,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "boomerang+gunships+orbital",
+     "lostAll": 8,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "tesla+gunships+orbital",
+     "lostAll": 8,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "scatter+gunships+dualWield",
+     "lostAll": 8,
+     "won": 0.5
+    },
+    {
+     "key": "railgun+gunships+orbital",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+cadence+orbital",
+     "lostAll": 8.166666666666666,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+flak+gunships",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "frigate+scatter+dualWield",
+     "lostAll": 8.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+aegis+dualWield",
+     "lostAll": 8.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "flak+aegis+supplyRun",
+     "lostAll": 8.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "scatter+seeker+dualWield",
+     "lostAll": 8.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+gunships+fullSteam",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+gunships+orbital",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+seeker+cadence",
+     "lostAll": 8.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "aegis+tesla+supplyRun",
+     "lostAll": 8.333333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "aegis+orbital+supplyRun",
+     "lostAll": 8.5,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "gunships+orbital+overdrive",
+     "lostAll": 8.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+dualWield+shield",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+cadence+droneScreen",
+     "lostAll": 8.5,
+     "won": 0.5
+    },
+    {
+     "key": "shrapnel+well+wildCard",
+     "lostAll": 8.666666666666666,
+     "won": 0.8333333333333334
+    },
+    {
+     "key": "well+wildCard+focus",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "gunships+bomberWing+orbital",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+railgun+cadence",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+cadence+wildCard",
+     "lostAll": 8.666666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "aegis+cadence+supplyRun",
+     "lostAll": 8.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "airstrike+gunships+bomberWing",
+     "lostAll": 8.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "boomerang+seeker+cadence",
+     "lostAll": 8.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+aegis+supplyRun",
+     "lostAll": 8.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "aegis+supplyRun+focus",
+     "lostAll": 8.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "thermo+well+wildCard",
+     "lostAll": 8.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+dualWield+overdrive",
+     "lostAll": 9,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "airstrike+gunships+focus",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+cadence+bomberWing",
+     "lostAll": 9,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+lance+gunships",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "airstrike+grapnel+gunships",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "flak+seeker+cadence",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+cadence+overdrive",
+     "lostAll": 9.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "lance+gunships+orbital",
+     "lostAll": 9.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "grapnel+gunships+orbital",
+     "lostAll": 9.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "scatter+well+dualWield",
+     "lostAll": 9.333333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "scatter+flak+dualWield",
+     "lostAll": 9.5,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "seeker+cadence+dualWield",
+     "lostAll": 9.666666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+cadence+supplyRun",
+     "lostAll": 9.833333333333334,
+     "won": 0.6666666666666666
+    },
+    {
+     "key": "shrapnel+seeker+cadence",
+     "lostAll": 9.833333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+tesla+dualWield",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+cadence+focus",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "aegis+supplyRun+fullSteam",
+     "lostAll": 9.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "shrapnel+scatter+dualWield",
+     "lostAll": 10,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+tesla+cadence",
+     "lostAll": 10.166666666666666,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+boomerang+dualWield",
+     "lostAll": 10.166666666666666,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "seeker+cadence+fullSteam",
+     "lostAll": 10.333333333333334,
+     "won": 0.5
+    },
+    {
+     "key": "well+lance+wildCard",
+     "lostAll": 10.333333333333334,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "well+grapnel+wildCard",
+     "lostAll": 10.333333333333334,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "well+bomberWing+wildCard",
+     "lostAll": 10.666666666666666,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "scatter+dualWield+fullSteam",
+     "lostAll": 10.833333333333334,
+     "won": 0.3333333333333333
+    },
+    {
+     "key": "scatter+lance+dualWield",
+     "lostAll": 11,
+     "won": 0.5
+    },
+    {
+     "key": "scatter+grapnel+dualWield",
+     "lostAll": 11,
+     "won": 0.5
+    },
+    {
+     "key": "seeker+lance+cadence",
+     "lostAll": 13.666666666666666,
+     "won": 0.16666666666666666
+    },
+    {
+     "key": "seeker+grapnel+cadence",
+     "lostAll": 13.666666666666666,
+     "won": 0.16666666666666666
+    }
+   ],
+   "best": [
+    {
+     "key": "airstrike+gunships+supplyRun",
+     "name": "Air Strike + Gunship Pair + Supply Run",
+     "lostAll": 5.375,
+     "won": 0.9375,
+     "lost10": 2.875,
+     "boss": 0.8333333333333333,
+     "se": 0.5144399260360728,
+     "halves": [
+      4.75,
+      6
+     ]
+    },
+    {
+     "key": "airstrike+frigate+gunships",
+     "name": "Air Strike + Frigate Escort + Gunship Pair",
+     "lostAll": 6.75,
+     "won": 0.75,
+     "lost10": 3.5625,
+     "boss": 1.0625,
+     "se": 0.6155536126122565,
+     "halves": [
+      5.125,
+      8.375
+     ]
+    },
+    {
+     "key": "airstrike+gunships+dualWield",
+     "name": "Air Strike + Gunship Pair + Dual Wield",
+     "lostAll": 6.875,
+     "won": 0.8125,
+     "lost10": 3.75,
+     "boss": 1.0416666666666665,
+     "se": 0.5854685623498498,
+     "halves": [
+      5.75,
+      8
+     ]
+    },
+    {
+     "key": "well+gunships+orbital",
+     "name": "Gravity Well + Gunship Pair + Orbital Strike",
+     "lostAll": 6.875,
+     "won": 0.6875,
+     "lost10": 3.5625,
+     "boss": 1.1041666666666665,
+     "se": 0.6487668591258342,
+     "halves": [
+      6.75,
+      7
+     ]
+    },
+    {
+     "key": "airstrike+gunships+shield",
+     "name": "Air Strike + Gunship Pair + Shield",
+     "lostAll": 6.9375,
+     "won": 0.75,
+     "lost10": 4.125,
+     "boss": 0.9375,
+     "se": 0.7779618302815376,
+     "halves": [
+      6.875,
+      7
+     ]
+    },
+    {
+     "key": "airstrike+boomerang+gunships",
+     "name": "Air Strike + Boomerang + Gunship Pair",
+     "lostAll": 7.125,
+     "won": 0.8125,
+     "lost10": 3.5625,
+     "boss": 1.1875000000000002,
+     "se": 0.5510997527671374,
+     "halves": [
+      5.625,
+      8.625
+     ]
+    },
+    {
+     "key": "aegis+well+supplyRun",
+     "name": "Point Defense + Gravity Well + Supply Run",
+     "lostAll": 7.25,
+     "won": 0.75,
+     "lost10": 3.375,
+     "boss": 1.2916666666666665,
+     "se": 0.6817945071647321,
+     "halves": [
+      6.375,
+      8.125
+     ]
+    },
+    {
+     "key": "airstrike+droneScreen+gunships",
+     "name": "Air Strike + Drone Screen + Gunship Pair",
+     "lostAll": 7.25,
+     "won": 0.6875,
+     "lost10": 3.6875,
+     "boss": 1.1875,
+     "se": 0.6465050270492876,
+     "halves": [
+      6.375,
+      8.125
+     ]
+    },
+    {
+     "key": "airstrike+tesla+gunships",
+     "name": "Air Strike + Tesla Arc + Gunship Pair",
+     "lostAll": 7.3125,
+     "won": 0.625,
+     "lost10": 3.9375,
+     "boss": 1.125,
+     "se": 0.5844251315395326,
+     "halves": [
+      6,
+      8.625
+     ]
+    },
+    {
+     "key": "aegis+droneScreen+supplyRun",
+     "name": "Point Defense + Drone Screen + Supply Run",
+     "lostAll": 7.625,
+     "won": 0.6875,
+     "lost10": 4.1875,
+     "boss": 1.1458333333333335,
+     "se": 0.7997802432543579,
+     "halves": [
+      5.75,
+      9.5
+     ]
+    }
+   ]
+  }
+ },
+ "overlap": {
+  "jaccardTop5": {
+   "citadel": {
+    "citadel": 1
+   }
+  },
+  "sameMapHalves": {
+   "citadel": 0.25
+  },
+  "spearmanSingles": {
+   "citadel": {
+    "citadel": 1
+   }
+  },
+  "firstKit": {
+   "citadel": "airstrike+gunships+supplyRun"
+  },
+  "firstKitShare": {
+   "most": "airstrike+gunships+supplyRun",
+   "maps": 1,
+   "of": 1
+  },
+  "firstSingle": {
+   "citadel": "airstrike"
+  },
+  "firstSingleShare": {
+   "most": "airstrike",
+   "maps": 1,
+   "of": 1
+  },
+  "inTop5": {
+   "airstrike": {
+    "citadel": 4
+   },
+   "gunships": {
+    "citadel": 5
+   },
+   "supplyRun": {
+    "citadel": 1
+   },
+   "frigate": {
+    "citadel": 1
+   },
+   "dualWield": {
+    "citadel": 1
+   },
+   "well": {
+    "citadel": 1
+   },
+   "orbital": {
+    "citadel": 1
+   },
+   "shield": {
+    "citadel": 1
+   }
+  }
+ }
+}
