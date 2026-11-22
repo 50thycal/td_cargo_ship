@@ -467,7 +467,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish('quit');
-    expect(log.v).toBe(52);
+    expect(log.v).toBe(55);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);
     expect(again.steps).toBe(g.steps);

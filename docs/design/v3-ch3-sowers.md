@@ -17,6 +17,24 @@ Code:
 
 Bot reports: `tools/v3/map-report/results/sowers-player.md` (the usual Armory: Quick Reload 5, Damage Control 4, Stockpile 5), `sowers-latest.md` (Wide Warhead 5, Point Defense 4, Supply Lines 3), `sowers-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4), `sowers.md` (no Armory); each with a heat map and the counter and off-counter kits; the map as it was: `sowers-before*.md`. Tuning reads: the record report's bot on 192 seeds (900–1091), four processes at a time (`python3 tools/v3/sowers/read.py --seeds=192 --armory=...`).
 
+## Round 15 (log v55): hidden mines and the big Hold button
+
+Your run of 2026-11-22 (v49, won, fun 4, boss 5: "Great boss, it gave a lot more use for the mines"; `tools/v3/bot-fit/logs/v3-20261122034709-18316.json`) asked for mines that surface only when a ship is close, no chute warning, and a big Hold button that glows when it is the moment. Built (details: `docs/design/v3-playtest-fixes.md`, "Round 15"):
+
+- **Hidden mines** (`HIDDEN_MINES`): every mine on this card (the chutes', the sown ones, the boss rounds') drifts out of sight and cannot be shot, by you, the helpers or the bots, until a ship's course would bring it onto the mine within `MINE.surface` = 2.5 s; then it surfaces in that ship's path with a splash and a red ring. The chutes light no warning; a sowing bomber's mine goes in with a small splash under it. A hidden mine that drifts past the lane sinks unseen.
+- **The big Hold button** at the foot of the left rail, which pulses gold and reads "NOW!" when a surfaced mine is about to meet a hull or a shell is coming down where a ship is about to be (`commandAdvised`). The rail's note button and the old command buttons are gone (notes are on the pause menu).
+- **The waves** drop fewer mines, to keep waves 1-5 near their band now that each one is far more dangerous: wave 2's curtain three (was four), wave 3 two (three), wave 4's chute one (two), wave 5 two (three), wave 6's west chute two (three). The boss rounds are as they were.
+- **The bot** now holds when the button glows (`--pilot=sharp`). With the mines hidden, Hold is the answer to a mine that comes up in front of a ship, and the tuning reads use it. Without Hold the bot wins 16% (the usual Armory, 192 seeds): it cannot shoot a mine it sees 2.5 s out in time.
+
+| Armory (192 seeds, normal) | v48 (mines in sight, no Hold) won / waves 1-5 | v55 (hidden, the bot holds) won / waves 1-5 | v55 boss r1 / r2 / r3 |
+| --- | --- | --- | --- |
+| usual | 59% / 0.72 | **53% / 0.94** | 0.97 / 1.23 / 1.71 |
+| latest | 56% / 0.90 | 48% / 0.98 | 0.74 / 0.89 / 1.29 |
+| plating | 83% / 0.47 | 82% / 0.58 | 0.58 / 0.62 / 0.90 |
+| usual, the bot never holds | 59% / 0.72 | 16% / 1.67 | 1.38 / 1.13 / 1.76 |
+
+Tough runs, the usual Armory, the bot holding: .02 .20 .21 .36 .25 .53 .55 .80 .83 1.38, boss .96 1.27 1.75; one step a little over double, wave 5 to 6 (0.25 to 0.53, 2.1x), the rest under (wave 10 1.66x). The latest, plating and never-holds rows were read before the last trim (wave 6, one mine less; on the usual Armory it moved waves 1-10 by 0.02). The sections below are the v48 build's and stand as they were measured.
+
 ## How it is gated (lab vs campaign)
 
 As every rebuild: **lab only, under the encounter layer.** The Test Lab's map card (`?lab=map-sowers`) opens on its production setup, policy D with Hold (as before) and now the authored encounters rev 4, because Sowers is in `REBUILT_MAPS` (via `CHAPTER_THREE_MAPS`). The hub card reads "Commands: Hold · encounters v1 Original". Everything new reads the run's encounter setup (`signatureOf`, `bossTune`, a launch's `sow`), so the campaign, a run with no layer, a rev 3 log and the shared wave (`only: []`) play Sowers exactly as before: the shared waves, the planner's own new enemies (a stealth bomber drops its three missiles) and the Carpet Run's two vees of missile-dropping bombers. The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version.

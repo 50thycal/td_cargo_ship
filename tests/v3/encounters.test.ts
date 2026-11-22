@@ -34,6 +34,7 @@ import {
   dreadPasses,
   MAP_FOE_SWAP,
   signatureOf,
+  hiddenMinesOn,
   swapFoe,
   type BossRound,
   versionDef,
@@ -470,6 +471,8 @@ describe('every authored launch is warned of', () => {
         expect(trucks.length, `${e.id}: its ${b.kind} came`).toBe(b.count);
       }
       for (const l of mine) {
+        // (Log v55: the Sowers' mines drift hidden, unwarned: HIDDEN_MINES.)
+        if (l.kind === 'mine' && hiddenMinesOn(e.map, { rev: lastRev(e) })) continue;
         if (l.o === 'base') {
           const warn = sc.events.filter((o): o is Extract<TelEvent, { k: 'warn' }> => o.k === 'warn' && o.what === 'raid' && !!o.bases?.includes(l.base!) && o.t <= l.t);
           const first = Math.max(...warn.map((o) => o.t));
@@ -1416,10 +1419,11 @@ describe('Sowers\' Reach\'s boss rounds (log v48, MAP_BOSS): the Carpet Run sows
 describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rises; a rev 3 log and the campaign play the Dive Circus as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   it('the downed rigs rise again each round, more of them, and every rig standing fires its volley together at the ship halfway along', () => {
-    // (Seed 219: the tryhard bot plays all three rounds there, every rig
-    // still standing from the start; tools/v3/rigs/probe-boss.ts.)
-    const off = playMimic('rigs', 219, opts);
-    const old = playMimic('rigs', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // (Seed 220: the tryhard bot plays all three rounds there, every rig
+    // still standing from the start; tools/v3/rigs/probe-boss.ts. Since log
+    // v55 the rigs count shots, and seed 219's run ends in round 2.)
+    const off = playMimic('rigs', 220, opts);
+    const old = playMimic('rigs', 220, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own dive bombers and missile pairs.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
     expect(old.log.commands).toEqual(off.log.commands);
@@ -1428,7 +1432,7 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
       expect(e.sent.diveBomber).toBe(8);
       expect(e.sent.rig ?? 0).toBe(0);
     }
-    const on = playMimic('rigs', 219, { ...opts, encounters: VER('v1') });
+    const on = playMimic('rigs', 220, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.rigs!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['dive-circus', 1], ['dive-circus', 2], ['dive-circus', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
@@ -1464,7 +1468,7 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
     // Every rig down but the east one, worn to 30 hits.
     for (const i of st.slice(0, 3)) {
       const r = rigAt(g, i)!;
-      damageThreat(g, r, r.hp, false);
+      damageThreat(g, r, r.hp, false, 'nuke'); // (log v55: rigs count shots; a nuke's hits count whole)
     }
     rigAt(g, st[3])!.hp = 30;
     expect(st.map((i) => g.baseDown[i])).toEqual([true, true, true, false]);
@@ -1936,7 +1940,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     g.raiderQueue = [];
     const st = rigStations(g);
     const west = rigAt(g, st[0])!;
-    damageThreat(g, west, west.hp, false);
+    damageThreat(g, west, west.hp, false, 'nuke');
     expect(g.baseDown[st[0]]).toBe(true);
     towRig(g, 1);
     const tow = g.threats.find((t) => t.tow !== undefined)!;
@@ -1974,12 +1978,13 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     for (let i = 0; i < 20 / DT && !mend.dead; i++) step(g, DT);
     expect(east.hp).toBe(10 + TOW.dock);
     // A third, sunk on its way in: no pickup, and the station stays down.
-    damageThreat(g, rigAt(g, st[1])!, 40, false);
+    damageThreat(g, rigAt(g, st[1])!, 99, false, 'nuke');
     towRig(g);
     const sunk = g.threats.find((t) => t.tow !== undefined)!;
     const pickups = g.pickups.length;
     for (let i = 0; i < 2 / DT; i++) step(g, DT);
-    damageThreat(g, sunk, sunk.hp, true);
+    // (Log v55: the Rig Field's rigs count shots: one a shot.)
+    for (let k = 0; k < 99 && !sunk.dead; k++) damageThreat(g, sunk, 1, true, 'gun');
     expect(sunk.dead).toBe(true);
     expect(g.pickups.length).toBe(pickups);
     expect(g.baseDown[st[1]]).toBe(true);
@@ -2287,10 +2292,11 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('sowers', w))).toEqual([1, 2, 3, 4, 5, 6]);
-    // The Rig Field (log v49): waves 1-2 and 4-6, out of its two drone rigs
-    // (a short flight: wave 1 one late string, wave 3 none).
-    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('rigs', w))).toEqual([1, 2, 4, 5, 6]);
-    expect(BUSY['rigs-point-blank'].length).toBe(1);
+    // The Rig Field (log v49): out of its two drone rigs; since log v55
+    // (round 15: the player rated waves 1-3 at 1, 2 and 1) waves 1-6, wave
+    // 1 two strings off the east rig.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('rigs', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(BUSY['rigs-point-blank'].length).toBe(2);
     // Dreadnought Pass (log v51): the same, out of its one drone silo.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('dreadnought', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // The Black Strait (log v52): every one of waves 1-6, out of the far

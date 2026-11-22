@@ -14,7 +14,7 @@ import { makeRng, type RNG } from '../../sim/rng';
 import { RAID } from '../data/config';
 import type { CommandId } from '../data/convoy';
 import { commandState, convoyCommands, type CommandResult } from './convoy';
-import type { Game } from './game';
+import { commandAdvised, type Game } from './game';
 
 export type PilotSkill = 'never' | 'sharp' | 'random' | 'spam';
 export const PILOT_SKILLS: PilotSkill[] = ['never', 'sharp', 'random', 'spam'];
@@ -58,7 +58,8 @@ export function incomingSplash(g: Game): number {
 export function minesCrossing(g: Game): number {
   let n = 0;
   for (const th of g.threats) {
-    if (th.dead || th.kind !== 'mine') continue;
+    // Log v55: a hidden mine is not seen until it surfaces (HIDDEN_MINES).
+    if (th.dead || th.hidden || th.kind !== 'mine') continue;
     if (g.ships.some((s) => !s.vip && th.x - s.x > 0 && th.x - s.x < 150 && Math.abs(th.y - s.y) < 70)) n++;
   }
   return n;
@@ -98,7 +99,8 @@ export class ConvoyPilot {
           give(id);
           this.due[id] = undefined;
         }
-      } else if (raidOpening(g) || minesCrossing(g) > 0) give(id);
+      // Log v55: when the big button glows (commandAdvised), as a player would.
+      } else if (commandAdvised(g, id)) give(id);
     }
   }
 }
