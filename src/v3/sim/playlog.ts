@@ -359,7 +359,8 @@ import type { EncounterSetup } from '../data/encounters';
  *      layer): ten encounters (DREAD_R4) with their filler, the
  *      battleship's passes each with numbers of its own and a glimpse on
  *      wave 1 (DREAD_PASSES: hits, speed, cadence, broadside, aim, a turn
- *      or a spell on station; a pass is a launch at its own moment), the
+ *      or a spell on station; a pass is a launch at its own moment; drones
+ *      off its deck in a broadside go for the carrier), the
  *      signature (MAP_SIGNATURE.dreadnought: the wave's new enemies are
  *      Spotter Planes from wave 4, and a spotter's shells come from the
  *      battleship's hull while it is on the map, `guns`), and the boss is

@@ -46,7 +46,7 @@ import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { applyEncounters, createGame, damageThreat, step, vipRoute, type Game } from '../../src/v3/sim/game';
+import { CARRIER_TARGET, applyEncounters, createGame, damageThreat, step, vipRoute, type Game } from '../../src/v3/sim/game';
 import { isFoe, onLand, truckMark } from '../../src/v3/sim/foes';
 import { bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
@@ -1820,6 +1820,8 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
       let lastX = 0;
       let broadside = 0;
       let aimed = 0;
+      let guns = 0;
+      let deck = 0;
       const seen = new Set<number>();
       for (let i = 0; i < 150 / DT && g.wave === w; i++) {
         step(g, DT);
@@ -1834,12 +1836,18 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
           seen.add(t.id);
           if (t.parent === 'dreadnought') {
             broadside++;
+            // The drones off its deck go for the carrier; its guns at a ship.
+            if (t.kind === 'drone') {
+              if (t.target === CARRIER_TARGET) deck++;
+              continue;
+            }
+            guns++;
             const lead = g.ships.reduce((a, b) => (b.d > a.d ? b : a), g.ships[0]);
             if (t.target === lead?.id) aimed++;
           }
         }
       }
-      return { first, minX, lastX, broadside, aimed };
+      return { first, minX, lastX, broadside, aimed, guns, deck };
     };
     // The campaign and the shared wave: the map's own pass, as the wave
     // starts, 50 hits, its broadsides untagged.
@@ -1858,8 +1866,10 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
       const P = DREAD_PASSES[w];
       const p = passOf(w, true);
       expect(p.first, `wave ${w}`).toMatchObject({ hp: P.hp, speed: P.speed });
-      expect(p.broadside, `wave ${w}`).toBeGreaterThan(0);
-      if (P.aim === 'lead') expect(p.aimed, `wave ${w}`).toBeGreaterThanOrEqual(p.broadside * 0.8);
+      expect(p.guns, `wave ${w}`).toBeGreaterThan(0);
+      expect(p.deck, `wave ${w}`).toBe(p.broadside - p.guns);
+      expect(p.deck, `wave ${w}`).toBeGreaterThan(0);
+      if (P.aim === 'lead') expect(p.aimed, `wave ${w}`).toBeGreaterThanOrEqual(p.guns * 0.8);
     }
     // Wave 10's pass comes after the wave's own fire (the climax).
     expect(passOf(10, true).first!.t).toBeGreaterThan(30);

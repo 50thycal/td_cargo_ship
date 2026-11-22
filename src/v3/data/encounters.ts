@@ -4498,8 +4498,9 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  v3-ch3-dreadnought.md): a battleship steams down the deep channel north
  *  of the lane against the convoy, east to west, firing broadsides across
  *  the water at the ships (MapDef `boss`, its passes: DREAD_PASSES under the
- *  layer). Fifty hits sink it; until then every broadside is two or three
- *  more launches with a short flight. From wave 4 its spotter planes lay
+ *  layer). Fifty hits sink it; until then every broadside is a shell or a
+ *  guided missile with a short flight at a ship, and from wave 3 a flight
+ *  of drones off its deck at the carrier. From wave 4 its spotter planes lay
  *  its guns on a ship between passes (MAP_SIGNATURE `guns`). The east of
  *  the lane is the danger: the battleship comes in there and its first
  *  broadsides fall on the ships about to deliver. Bases counted from 0
@@ -4558,13 +4559,13 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'The first pass',
     callout: 'Battleship broadsides',
-    premise: 'The Dreadnought steams the whole deep channel from east to west, firing a broadside of two shells every few seconds at the lead ship; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
+    premise: 'The Dreadnought steams the whole deep channel from east to west, firing a broadside every few seconds, a shell at the lead ship and drones off its deck at the carrier; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
     decision: 'Sink it (fifty hits) and silence its broadsides, or shoot each broadside down as it comes?',
-    counters: 'Each broadside\'s shells as they climb, the missile; any shots spare into the hull.',
+    counters: 'Each broadside\'s shell as it climbs, its drones, the missile; any shots spare into the hull.',
     succeeds: 'A close call in the east as the broadsides open; a good player loses no ship.',
     notes: {
       sites: 'The Dreadnought in the deep channel (275 px north of the lane, east to west), a submarine between the deep channel and the lane in the east (1300, 410), the east silo (1250, 70; a guided missile), the west silo (a swarm).',
-      target: 'The lead ship (the broadsides, the salvo, the missile), the swarm at any ship.',
+      target: 'The lead ship (the broadsides\' shells, the salvo, the missile), the carrier (the drones off its deck), the swarm at any ship.',
       usesMap: 'The mechanic\'s first full pass: its broadsides in place of the wave\'s own shells, and the shortest flight on the map (the sub spot just off the lane).',
     },
     beats: [
@@ -4637,7 +4638,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
     notes: {
       sites: 'The Dreadnought in the deep channel, a spotter plane from the east edge, a submarine between the deep channel and the lane in the east (1300, 410), the west silo (swarms).',
-      target: 'The ship the spotter paints (the battleship\'s guns, from its hull), the convoy (the broadsides), the lead ship (the salvo), the rear (a swarm).',
+      target: 'The ship the spotter paints (the battleship\'s guns, from its hull), any ship (the broadsides\' shells), the carrier (the drones off its deck), the lead ship (the salvo), the rear (a swarm).',
       usesMap: 'The mechanic and the signature together: the battleship\'s guns laid by a spotter, in place of the wave\'s own shells and a guided missile.',
     },
     beats: [
@@ -4707,13 +4708,13 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'The gunline',
     callout: 'Broadsides and spotters',
-    premise: 'The Dreadnought\'s third pass, firing a shell and a guided missile at a time, while a spotter calls its guns on a ship, a guided missile comes off the east silo at the lead ship and swarms come at the rear and the middle.',
+    premise: 'The Dreadnought\'s third pass, firing a guided missile and a flight of drones off its deck at a time, while a spotter calls its guns on a ship, a guided missile comes off the east silo at the lead ship and swarms come at the rear and the middle.',
     decision: 'Everything the battleship has: sink it this time, or ride it out?',
     counters: 'The spotter, each broadside, the missile; the hull while it is in reach.',
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
     notes: {
       sites: 'The Dreadnought in the deep channel, a spotter plane from the west edge, the east silo (a guided missile), the west silo (swarms).',
-      target: 'The convoy (the broadsides), the lead ship (the missile), the ship the spotter paints, the rear and the middle (the swarms).',
+      target: 'Any ship (the broadsides\' missiles), the carrier (the drones off its deck), the lead ship (the missile), the ship the spotter paints, the rear and the middle (the swarms).',
       usesMap: 'The mechanic and the signature at their heaviest before the climax, in place of the wave\'s own shells, guided missiles and a cluster.',
     },
     beats: [
@@ -4737,7 +4738,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
     notes: {
       sites: 'The Dreadnought in the deep channel (at speed), a spotter plane from the east edge, a strike jet from the east edge, the west silo (swarms), after the wave\'s own fire and a calm.',
-      target: 'The convoy (the broadsides, the jet), the ship the spotter paints, the lead ship and the ships coming in (the swarms).',
+      target: 'Any ship (the broadsides\' shell and missile, the jet), the carrier (the drones off its deck), the ship the spotter paints, the lead ship and the ships coming in (the swarms).',
       usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles and a cluster; the climax may reach the safe stretch.',
     },
     beats: [
@@ -5551,7 +5552,11 @@ export interface DreadPass {
  *  1 (rule w-first: the map's own place, in miniature), then its own waves
  *  3, 6, 9 and 10 (MapDef `boss.waves`, the campaign's), each its own
  *  numbers. Before: 50 hits, two shells and a guided missile every 9 s at
- *  24 px/s, as the wave starts. */
+ *  24 px/s, as the wave starts. Each broadside fires fewer shells than the
+ *  campaign's and drones off its deck at the carrier in their place (game.ts
+ *  updateBoss), so the wave sends what the campaign's does (rule w-budget:
+ *  the broadsides are the bulk of a pass wave's launches) but the ships take
+ *  fewer shells with a short flight. */
 export const DREAD_PASSES: Record<number, DreadPass> = {
   1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
   3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
