@@ -255,7 +255,7 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 
 ## Checks run
 
-`tsc`; `vitest --exclude '.claude/**'` (81 files, 1921 tests: all pass but one timing check, `tests/v3/mapReport.test.ts` "a quick real report" at 20.7 s against 20 s on a machine shared with two other agents' runs, which passes on its own (13/13); and one table fixed after the run, the map with no encounters yet is the Citadel); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs`, `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass on the merged build; `v3-map-cards.mjs`'s check "the Strait's card (not its debut)" failed twice under load before the merge, on a clean build of the base too, and passed after it); the map-lab baseline replays exactly.
+`tsc`; `vitest --exclude '.claude/**'` (82 files, 1929 tests, all pass, on the final merged build at v61); `vite build`, then `vite preview` and the e2e scripts `v3-encounters.mjs` (with the tide's high, falling and low shots), `v3-map-cards.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs`, `v3.mjs` (all pass on the final build; `v3-map-cards.mjs`'s check "the Strait's card (not its debut)" failed twice under load earlier, on a clean build of the base too, and passes now); the map-lab baseline replays exactly.
 
 ## Tests
 
