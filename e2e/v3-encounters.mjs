@@ -471,6 +471,46 @@ try {
     await one.screenshot({ path: `${OUT_DIR}/tide-boss.png` });
     await one.close();
   }
+  // The tide turning (log v59, the player: "the ships did not navigate off
+  // the low tide area"): wave 1 played through its ebb at the phone's own
+  // size, a shot at high water with ships on both lanes, one as the tide
+  // goes out (the flats ships crossing to the deep channel, the sand coming
+  // up from the shore), and one at low water (the flats dry, no ship on
+  // them).
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-tide&seed=7');
+    const tideAt = () =>
+      one.evaluate(() => {
+        const g = window.__v3.game();
+        const [a, b] = g.ebb ?? [Infinity, Infinity];
+        const t = g.waveT;
+        const phase = t < a - 4 ? 'high' : t < a ? 'falling' : t < b ? 'low' : t < b + 3 ? 'rising' : 'high';
+        const flats = g.map.channels.find((c) => c.tide);
+        const inBand = g.ships.filter((s) => s.y > flats.y - flats.halfWidth - 50 && s.y < flats.y + flats.halfWidth + 50).length;
+        return { wave: g.wave, phase, t: Math.round(t * 10) / 10, a, ships: g.ships.length, inBand, crossing: g.ships.filter((s) => s.cross).length };
+      });
+    const shots = {};
+    let st = await tideAt();
+    for (let k = 0; k < 900 && !shots.low; k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      st = await tideAt();
+      if (st.wave < 1) continue;
+      if (!shots.high && st.phase === 'high' && st.t > st.a - 8 && st.inBand > 0) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-high.png` });
+        shots.high = st;
+      } else if (shots.high && !shots.mid && st.phase === 'falling' && st.t >= st.a - 3.3) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-falling.png` });
+        shots.mid = st;
+      } else if (shots.mid && !shots.low && st.phase === 'low' && st.t >= st.a + 2) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-low.png` });
+        shots.low = st;
+      }
+    }
+    check(!!shots.high && !!shots.mid && !!shots.low && shots.low.inBand === 0, `the tide turns: ships on the flats at high water, crossing as it falls, none on the dry flats at low water (${JSON.stringify(shots)})`);
+    await one.close();
+  }
 
   // ---- Where the choice is not offered ----
   for (const [card, why] of [['map-crossing', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3, the Coves and the Tide since chapter 4)'], ['ev-rush', 'an event card']]) {

@@ -8,6 +8,7 @@ import { THREATS } from '../data/config';
 import { FOE } from '../data/foes';
 import { FORK_RADIUS, tideGauge, lockCountdown, reticleVisible, shieldUp, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
+import { flatsBand, sandEdge } from '../sim/tide';
 
 const RED = '#ff5a3d';
 const RIM = '#d94a3a';
@@ -64,36 +65,58 @@ export function drawMapUnder(ctx: CanvasRenderingContext2D, g: Game): void {
 function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
   const lane = g.map.channels.find((c) => c.tide);
   if (!lane) return;
-  // Log v59: under the encounter layer the tide keeps each wave's clock
-  // (sim/game.ts tideGauge): one ebb a wave, then the flood to its end.
-  const { high, left, frac } = tideGauge(g);
-  // The flats: sand showing at low water, a wet sheen at high.
-  const top = lane.y - lane.halfWidth - 50;
-  const bot = lane.y + lane.halfWidth + 50;
-  ctx.fillStyle = high ? 'rgba(201,183,138,0.07)' : 'rgba(201,183,138,0.42)';
-  ctx.fillRect(0, top, 1600, bot - top);
-  if (!high) {
-    ctx.strokeStyle = 'rgba(120,96,60,0.35)';
+  // Log v59 (sim/tide.ts): the tide falls and rises over a few seconds
+  // instead of snapping; the water leaves the flats from the shore side up
+  // to the deep channel, so the sand grows from the bottom of the band and
+  // its edge, a line of surf, moves as the water does. Under the encounter
+  // layer the tide keeps each wave's clock: one ebb a wave.
+  const tide = tideGauge(g);
+  const { phase, left, frac, level } = tide;
+  const { top, bottom } = flatsBand(lane);
+  // The shallows: a wet sheen over the whole band, whatever the tide.
+  ctx.fillStyle = 'rgba(201,183,138,0.08)';
+  ctx.fillRect(0, top, 1600, bottom - top);
+  const edge = sandEdge(lane, level);
+  if (edge < bottom - 0.5) {
+    // The exposed flats read as land: sand, ribbed by the ebb.
+    ctx.fillStyle = 'rgba(206,186,136,0.72)';
+    ctx.fillRect(0, edge, 1600, bottom - edge);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, edge, 1600, bottom - edge);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(120,96,60,0.4)';
     ctx.lineWidth = 2;
-    for (let x = -40; x < 1640; x += 46) {
+    for (let x = -60; x < 1660; x += 46) {
       ctx.beginPath();
       ctx.moveTo(x, top + 10);
-      ctx.lineTo(x + 30, bot - 10);
+      ctx.lineTo(x + 30, bottom - 10);
       ctx.stroke();
     }
+    ctx.restore();
+    // The water's edge: a line of surf that moves with the tide.
+    ctx.strokeStyle = 'rgba(235,245,250,0.85)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let x = 0; x <= 1600; x += 20) {
+      const y = edge + 4 * Math.sin(x / 55 + g.t * 2.2);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
-  // The gauge: time to the turn of the tide.
-  // In the open water between the two lanes, mid-map and large enough to
-  // read on a phone held sideways (log v59: at the right edge, at 18 px, it
-  // was clipped and about 8 px tall on an iPhone).
+  // The gauge between the lanes, mid-map and large enough to read on a
+  // phone held sideways (log v59: at the right edge, at 18 px, it was
+  // clipped and about 8 px tall on an iPhone). Gold while the tide is about
+  // to turn and while it goes out.
   const gx = 800;
   const gy = top - 16;
-  bar(ctx, gx, gy, 260, frac, high ? CYAN : '#d8c08a');
   const secs = Number.isFinite(left) ? ` · ${Math.ceil(left)} s` : '';
-  // The last seconds before the ebb read larger, in gold: the crowd is
-  // coming (log v59).
-  const ebbing = high && left <= 5;
-  label(ctx, ebbing ? `THE TIDE TURNS${secs}` : high ? `HIGH TIDE${secs}` : `LOW TIDE · flats closed${secs}`, gx, gy - 10, ebbing ? GOLD : high ? CYAN : '#ead7a4', ebbing ? 36 : 28);
+  const warn = (phase === 'high' && left <= 5) || phase === 'falling';
+  const col = warn ? GOLD : phase === 'high' ? CYAN : '#ead7a4';
+  bar(ctx, gx, gy, 260, frac, col);
+  const text = phase === 'falling' ? `TIDE GOING OUT${secs}` : phase === 'low' ? `LOW TIDE · flats dry${secs}` : phase === 'rising' ? `TIDE COMING IN${secs}` : warn ? `THE TIDE TURNS${secs}` : `HIGH TIDE${secs}`;
+  label(ctx, text, gx, gy - 10, col, warn ? 36 : 28);
 }
 
 function drawLock(ctx: CanvasRenderingContext2D, g: Game, i: number, x0: number, x1: number): void {

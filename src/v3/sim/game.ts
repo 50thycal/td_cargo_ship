@@ -84,6 +84,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
+import { TIDE_TURN, tideAt, type TideNow } from './tide';
 import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
@@ -181,6 +182,10 @@ export interface Ship {
   /** Distance along its lane, and its offset across it (lanes.ts). */
   d: number;
   lat: number;
+  /** Tidewater Flats (log v59): crossing from the flats to the deep channel
+   *  as the tide falls (sim/tide.ts): its `lat` closes on its slot at
+   *  TIDE_TURN.cross px/s, not the slot's ease. */
+  cross?: boolean;
   /** The way its bow points (radians). */
   heading: number;
   hp: number;
@@ -5547,6 +5552,11 @@ function fileLat(g: Game, s: Ship, ch: Channel, d: number): number {
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
+  // Tidewater Flats (log v59): once the tide starts to fall, every ship on
+  // the flats crosses to the deep channel at once, from where it is, ahead
+  // of the sand (sim/tide.ts): it keeps its distance along (the lanes run
+  // side by side) and sails across to its slot.
+  if (g.map.tide && g.ships.length) leaveFlats(g);
   // Keep station on the rails: a hull eases off when the one ahead in its lane
   // is too close. This is what turns two ships abreast into a single file when
   // a formation change merges their lanes, instead of stacking them. "Ahead"
@@ -5585,7 +5595,15 @@ function updateShips(g: Game, dt: number): void {
       const off = Math.abs((o.x - aim[i].x) * nx + (o.y - aim[i].y) * ny);
       return along >= SHIP.minGap || off >= SHIP.laneMatch;
     });
-    if (clear) {
+    if (s.cross) {
+      const step = TIDE_TURN.cross * dt;
+      const off = want[i] - s.lat;
+      if (Math.abs(off) <= step) {
+        s.lat = want[i];
+        s.cross = false;
+      } else s.lat += Math.sign(off) * step;
+      placeShip(g, s);
+    } else if (clear) {
       s.lat += (want[i] - s.lat) * ease;
       placeShip(g, s);
     }
@@ -5601,6 +5619,26 @@ function updateShips(g: Game, dt: number): void {
   }
   if (arrived.length) cue(g, 'ship.delivered', clamp(arrived[0].x, 0, VIEW.width), arrived[0].y);
   if (arrived.length) g.ships = g.ships.filter((s) => !arrived.includes(s));
+}
+
+/** Tidewater Flats (log v59): the tide falling, every ship on a tide lane
+ *  moves to the lane beside it that never dries (the deep channel), at the
+ *  same distance along, its offset the way across from where it is. */
+function leaveFlats(g: Game): void {
+  if (tideNow(g).phase === 'high') return;
+  const chans = g.map.channels;
+  const deep = chans.findIndex((c) => !c.tide && !c.vip);
+  if (deep < 0) return;
+  for (const s of g.ships) {
+    if (!chans[s.channel].tide) continue;
+    const to = laneAt(chans[deep], s.d, 0);
+    s.channel = deep;
+    // Across the deep lane's own normal, from its centre to the hull.
+    const t = lanePoint(chans[deep], s.d);
+    s.lat = (s.x - to.x) * -t.ty + (s.y - to.y) * t.tx;
+    s.cross = true;
+    placeShip(g, s);
+  }
 }
 
 /** The supertanker came through: every hull gets a point back and a weapon
@@ -5649,32 +5687,23 @@ function laneSpeed(g: Game, s: Ship): number {
   return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
-/** Tidewater Flats: is the tide in? (A map without a tide: always.) Under
- *  the encounter layer (log v59) the wave's own low water (`g.ebb`). */
+/** Tidewater Flats: is the tide in, the flats lane taking new ships? Only
+ *  at high water: not while it falls, is out, or is still coming back in
+ *  (sim/tide.ts). Under the encounter layer (log v59) the wave's own low
+ *  water (`g.ebb`). (A map without a tide: always.) */
 export function highTide(g: Game): boolean {
-  const t = g.map.tide;
-  if (!t) return true;
-  if (g.ebb) return !(g.waveT >= g.ebb[0] && g.waveT < g.ebb[1]);
-  return g.t % (t.high + t.low) < t.high;
+  return tideNow(g).phase === 'high';
 }
 
-/** The tide gauge (Tidewater Flats): high or low water now, the seconds to
- *  the turn (Infinity: no more turns this wave, the flood is in), and the
- *  share of this phase left. */
-export function tideGauge(g: Game): { high: boolean; left: number; frac: number } {
-  const t = g.map.tide;
-  const high = highTide(g);
-  if (!t) return { high, left: Infinity, frac: 1 };
-  if (g.ebb) {
-    const [a, b] = g.ebb;
-    if (g.waveT < a) return { high, left: a - g.waveT, frac: (a - g.waveT) / Math.max(1, a) };
-    if (g.waveT < b) return { high, left: b - g.waveT, frac: (b - g.waveT) / Math.max(1, b - a) };
-    return { high, left: Infinity, frac: 1 };
-  }
-  const cycle = t.high + t.low;
-  const into = g.t % cycle;
-  const left = high ? t.high - into : cycle - into;
-  return { high, left, frac: high ? left / t.high : left / t.low };
+/** The tide now (sim/tide.ts tideAt): its phase, the water over the flats
+ *  (1 high, 0 low), the seconds to the next turn. */
+export function tideNow(g: Game): TideNow {
+  return tideAt(g.map, g.t, g.waveT, g.ebb);
+}
+
+/** The tide gauge (Tidewater Flats): the tide now, as the gauge reads it. */
+export function tideGauge(g: Game): TideNow {
+  return tideNow(g);
 }
 
 // Bomblets are blamed on the cluster that dropped them.
