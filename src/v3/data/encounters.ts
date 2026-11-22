@@ -4640,7 +4640,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'A submarine between the west rigs and the lane (500, 405), the far shore\'s east silo (1250, 68; shells), the west and east rigs (swarms).',
       target: 'The ships coming in (the salvo, a swarm); the lead ship (the far shells); the ship halfway along (a swarm).',
-      usesMap: 'Short warning under the rigs and long warning from the far shore at once (rule g-split), in place of the wave\'s own clusters and most of its shells.',
+      usesMap: 'Short warning under the rigs and long warning from the far shore at once (rule g-split), in place of the wave\'s own clusters and its shells.',
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 0.9, from: sub(0), aim: 'rear' },
@@ -4664,7 +4664,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'The east-middle rig (a supersonic), the west-middle rig (a cluster), a relief rig towed in from the east edge, the west and east rigs (swarms).',
       target: 'The ship halfway along (the supersonic); the ships coming in (the cluster, a swarm); a downed station (the tow) and the ship nearest it; any ship.',
-      usesMap: 'The rigs\' fastest and their widest at once, and a tow to stand in for one already brought down, in place of the wave\'s own supersonic, a cluster, a guided missile and most of its shells.',
+      usesMap: 'The rigs\' fastest and their widest at once, and a tow to stand in for one already brought down, in place of the wave\'s own supersonic, a cluster, its guided missiles and its shells (drones in their place).',
     },
     beats: [
       { at: 0.3, kind: 'supersonic', count: 1, from: base(2), aim: 'mid' },
@@ -4691,7 +4691,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'A relief rig towed in from the west edge, then one from the east edge, the west and east rigs (swarms).',
       target: 'Two downed stations (else the most damaged rigs) and the ships nearest them; any ship (the swarms).',
-      usesMap: 'The signature twice over, a preview of the boss (the rigs risen again), in place of the wave\'s own shells, a guided missile and a cluster.',
+      usesMap: 'The signature twice over, a preview of the boss (the rigs risen again), in place of the wave\'s own shells, guided missiles and a cluster (drones in their place).',
     },
     beats: [
       { at: 0.25, kind: 'rig', count: 1, from: { air: 1 } },
@@ -4717,7 +4717,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     notes: {
       sites: 'All four rigs at once (guided off the west and east-middle, a shell off the west-middle, drones off the east), swarms off the west and east rigs.',
       target: 'The ship halfway along (every rig\'s volley converges); the swarms at any ship and the ships coming in.',
-      usesMap: 'What the rigs left standing cost, all at once, from point-blank (a preview of the boss), in place of the wave\'s own shells, two guided missiles and a cluster.',
+      usesMap: 'What the rigs left standing cost, all at once, from point-blank (a preview of the boss), in place of the wave\'s own shells, guided missiles and a cluster (drones in their place).',
     },
     beats: [
       { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
@@ -4737,14 +4737,14 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'The last relief',
     callout: 'The field fires',
-    premise: 'Once the wave\'s own fire is spent, a breath, then relief rigs are towed in from both edges while every rig standing fires at the ships coming in and shells come off the far shore at the lead ship.',
+    premise: 'Once the wave\'s own fire is spent, a breath, then relief rigs are towed in from both edges while the west rigs fire a shell and a swarm at the ships coming in, a shell comes off the far shore at the lead ship and the east rig sends a swarm.',
     decision: 'Everything the field has: the tows, the rigs, the shells. The map\'s question at its hardest.',
-    counters: 'The rigs\' missiles first, a tow on its way in, the shells as they climb.',
+    counters: 'A tow on its way in, the shells as they climb, the swarms.',
     succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
     notes: {
-      sites: 'Relief rigs towed in from the west edge and the east edge, the west rig (a guided missile), the west-middle rig (a shell), the far shore\'s east silo (a shell), the west and east rigs (swarms), after the wave\'s own fire and a calm.',
+      sites: 'Relief rigs towed in from the west edge and the east edge, the west-middle rig (a shell), the far shore\'s east silo (a shell), the west and east rigs (swarms, three of them before the calm), after the wave\'s own fire and a calm.',
       target: 'The ships coming in (the rigs\' fire); downed stations (the tows) and the ships nearest them; the lead ship (the shells); any ship.',
-      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, two guided missiles and a cluster; the climax may reach the safe stretch.',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles and clusters (drones in their place); the climax may reach the safe stretch.',
     },
     beats: [
       { at: 1, plus: 1, kind: 'rig', count: 1, from: { air: 1 } },
