@@ -409,6 +409,39 @@ function drawBoat(ctx: CanvasRenderingContext2D, th: Threat): void {
 
 function drawRig(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {
   const { x, y } = th;
+  // Log v49 (The Rig Field): a relief rig on its tow, a tug ahead of it on
+  // a line and a white wake behind, so it reads as on its way in.
+  if (th.tow !== undefined) {
+    const dir = th.vx < 0 ? -1 : 1;
+    const tx = x + dir * 92;
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(x - dir * 36, y + 30);
+    ctx.lineTo(x - dir * 110, y + 18);
+    ctx.lineTo(x - dir * 110, y + 42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#e8d9c8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x + dir * 36, y + 4);
+    ctx.lineTo(tx - dir * 14, y + 18);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#3a3f46';
+    ctx.strokeStyle = RIM;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tx - dir * 16, y + 10);
+    ctx.lineTo(tx + dir * 10, y + 10);
+    ctx.lineTo(tx + dir * 20, y + 18);
+    ctx.lineTo(tx + dir * 10, y + 26);
+    ctx.lineTo(tx - dir * 16, y + 26);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
   // Legs into the water, a deck, a derrick and a flare stack.
   ctx.strokeStyle = '#6b5a50';
   ctx.lineWidth = 5;
@@ -447,7 +480,7 @@ function drawRig(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {
   ctx.beginPath();
   ctx.arc(x + 18, y + 1, 6, 0, Math.PI * 2);
   ctx.fill();
-  bar(ctx, x, y - 62, 70, th.hp / (THREATS.rig.hp || 1), '#ff8a7a');
+  bar(ctx, x, y - 62, 70, th.hp / (th.maxHp ?? (THREATS.rig.hp || 1)), '#ff8a7a');
 }
 
 function drawGenerator(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {

@@ -284,6 +284,33 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch3-rigs.md
+  rigs: {
+    problem: 'Four enemy oil rigs stand in the sea just above the lane and fire at the ships from point-blank, the shortest flights on the map: each takes forty hits and one brought down stays down (its fire moves to the far shore, a long flight), but every shot at a rig is one not at a missile, and from wave 4 the enemy tows relief rigs in to stand where one fell.',
+    // The fire is point-blank missiles, shells and clusters off the rigs
+    // over the lane, swarms off the two drone rigs, relief rigs on tows (8
+    // hits on the way in) and, in the boss, every rig standing firing its
+    // volley together at one ship. Everything the rigs fire comes in a short
+    // flight and meets at one place: the Shrapnel Shell's burst takes a
+    // volley as it converges, the Gravity Well pulls it and the swarms off
+    // the ships, and the Flak Cannon's cloud sits where the rigs' short
+    // flights cross the lane. The Tesla Arc's chain wants strings of small
+    // things in a line, not a volley from four rigs, Point Defense waits at
+    // the carrier for what comes near it, and Full Steam sails the convoy
+    // under the rigs faster, not past them (forced, the combo sweep's
+    // singles at log v49: Shrapnel 4.8, Gravity Well 5.1, Flak 5.5 against
+    // Tesla 7.4, Full Steam 8.0, Point Defense 8.5;
+    // docs/design/v3-ch3-rigs.md, The counters). Every weapon is in chapter
+    // 3's draft.
+    counters: ['shrapnel', 'well', 'flak'],
+    offCounter: ['tesla', 'fullSteam', 'aegis'],
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, no commands: pairs west to east down one lane under the four rigs, past the carrier in the middle, delivering in the east; the rigs are answered by shooting, not by sailing.',
+    stretches: { danger: 'middle', safe: 'late' },
+    boss: {
+      plan: 'The Rig Barrage (in place of the Dive Circus: the Dive Bomber is a regular of the Battery\'s waves by now): as each round opens, the downed rigs rise again (the middle two first, then the west and the east) until 2, 3, then 4 stand, 8 hits each (a rig still standing keeps its own), and every rig standing fires its volley together at the ship halfway along, its deck lit 1.5 s first: a guided missile off each missile rig, two shells off the west-middle rig, four drones off the east rig, converging on the convoy; 3 volleys a round, 6.5, 7 and 8 s apart. A rig brought down fires no more (encounters rev 4, MAP_BOSS; lab only: the campaign plays the Dive Circus). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery and the Sowers, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {

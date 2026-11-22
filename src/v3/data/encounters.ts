@@ -4494,6 +4494,274 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 3's Rig Field (log v49, docs/design/v3-ch3-rigs.md): four enemy
+ *  oil rigs stand in the sea just above the lane, the shortest flights on
+ *  the map, each a launcher of 40 hits; one brought down stays down, and
+ *  what it would have fired moves to the far shore's silos (a long flight)
+ *  or is lost. Every shot at a rig is one not at a missile, and from wave 4
+ *  the enemy tows relief rigs in to stand where one fell (MAP_SIGNATURE:
+ *  eight hits on the way in). The way in, the west, is the danger: the west
+ *  rigs over the ships as they come in bunched. Bases counted from 0 here:
+ *  0 the west rig (300, 298; drones, guided), 1 the west-middle rig (690,
+ *  270; clusters, shells), 2 the east-middle rig (1080, 298; supersonic,
+ *  guided), 3 the east rig (1440, 270; drones, motherships), 4 the far
+ *  shore's west silo (500, 68; shells, heavies), 5 its east silo (1250, 68;
+ *  heavies, shells). Sub spots: 0 (500, 405) and 1 (1260, 405) between the
+ *  rigs and the lane, 2 (250, 742) and 3 (1400, 742) on the near side. A
+ *  beat out of a rig that is down comes from the far shore's silo nearest
+ *  it instead (game.ts rigStandIn), a longer flight. */
+const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'rigs-point-blank',
+    map: 'rigs',
+    waves: [1],
+    role: 'teach',
+    name: 'Point-blank',
+    callout: 'Drones off the rigs',
+    premise: 'The east rig, standing in the sea right above the lane, sends drones at the lead ship, and the west rig a few more once the ships are past it.',
+    decision: 'The first look at the map: the rigs are launchers in the sea a short flight from the ships, and each can be brought down.',
+    counters: 'The drones before they reach the ships; a rig when the sky is clear.',
+    succeeds: 'Nothing is sunk on wave 1; the rigs read as launchers you can shoot.',
+    notes: {
+      sites: 'The east rig (1440, 270; drones), the west rig (300, 298; drones).',
+      target: 'The lead ship (both): the west rig\'s once the convoy is past it, a short flight but not point-blank on wave 1.',
+      usesMap: 'Shows the map on wave 1: the rigs fire from the sea right over the lane, the shortest flights on the map.',
+    },
+    beats: [
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(3), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'lead' },
+    ],
+    replaces: { drones: 5 },
+  },
+  {
+    id: 'rigs-bring-down',
+    map: 'rigs',
+    waves: [2],
+    role: 'teach',
+    name: 'Bring one down',
+    callout: 'Shells from the rig',
+    premise: 'The west-middle rig lobs shells at the ships coming in while drones come off the west rig: a rig is forty hits, and one brought down stays down.',
+    decision: 'Spend shots on the rig now for a quieter lane later, or only on what it fires?',
+    counters: 'The shells as they climb, the drones, then the rig when the sky is clear.',
+    succeeds: 'No ship lost on wave 2; some runs start on a rig.',
+    notes: {
+      sites: 'The west-middle rig (690, 270; shells), the west rig (drones).',
+      target: 'The ships coming in, in the west (the way in).',
+      usesMap: 'The map\'s question on wave 2: what a rig fires comes from point-blank, and the rig itself can be brought down for good.',
+    },
+    beats: [
+      { at: 0.25, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.6, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { drones: 4, ballistic: 2 },
+  },
+  {
+    id: 'rigs-under',
+    map: 'rigs',
+    waves: [3],
+    role: 'teach',
+    name: 'Under the rigs',
+    callout: 'A missile from point-blank',
+    premise: 'A guided missile off the west rig comes at the ship halfway along, a short flight from the sea right over the lane, and a swarm comes off the east rig at it too.',
+    decision: 'The first stakes: a missile from a rig with hardly any warning; the missile first, or the swarm?',
+    counters: 'The missile as it leaves the rig, the swarm last; the west rig when the sky is clear.',
+    succeeds: 'A close call on the way in in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The west rig (a guided missile), the east rig (a swarm).',
+      target: 'The ship halfway along (the missile); the same ship (the swarm, the long way from the east).',
+      usesMap: 'A rig\'s shortest flight, a missile with hardly any warning, in place of the wave\'s own guided missile and most of its shells (a rig brought down on wave 2 sends it off the far shore, with long warning).',
+    },
+    beats: [
+      { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+    ],
+    replaces: { ballistic: 7, guided: 1 },
+  },
+  {
+    id: 'rigs-relief',
+    map: 'rigs',
+    waves: [4],
+    role: 'combine',
+    name: 'The relief tow',
+    callout: 'A rig under tow',
+    premise: 'A tug tows a relief rig in from the west edge along the rigs to stand where one fell (or mend one that stands), its rack loaded; shells come off the far shore\'s west silo at the ships coming in, and swarms off the west and east rigs.',
+    decision: 'Eight hits sink the tow on its way in; let it dock and it stands, a rig again, and fires its rack. Which is worth the shots?',
+    counters: 'The tow on its way in, the shells as they climb, the swarms.',
+    succeeds: 'The tow is sunk in some runs; no ship lost in most runs.',
+    notes: {
+      sites: 'A relief rig towed in from the west edge along the rig line; the far shore\'s west silo (500, 68; shells), the west and east rigs (swarms).',
+      target: 'A downed rig station (else the most damaged rig); its rack at the ship nearest it; the shells and a swarm at the ships coming in, a swarm at the ship halfway along.',
+      usesMap: 'The signature\'s first wave: a rig brought down does not stay quiet for free, in place of the wave\'s own cluster and most of its shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'rig', count: 1, from: { air: 1 } },
+      { at: 0.45, kind: 'ballistic', count: 1, from: base(4), aim: 'rear' },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.9, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
+    ],
+    replaces: { ballistic: 9, extras: { cluster: 1, rig: 1 } },
+  },
+  {
+    id: 'rigs-rig-or-volley',
+    map: 'rigs',
+    waves: [5],
+    role: 'combine',
+    name: 'Rig or volley',
+    callout: 'Clusters from the rig',
+    premise: 'The west-middle rig fires a cluster missile at the ship halfway along, then a shell a few seconds later, while swarms come off both drone rigs.',
+    decision: 'Bring the rig down before it fires again, or shoot the cluster before it splits and then the shell?',
+    counters: 'The cluster before it splits, the shell as it climbs, the swarms; the rig if there is time.',
+    succeeds: 'A close call in the middle in most runs; a run that brought the rig down earlier meets the cluster with more warning.',
+    notes: {
+      sites: 'The west-middle rig (690, 270; a cluster, then a shell), the west and east rigs (swarms).',
+      target: 'The ship halfway along (the cluster, the shell, a swarm); any ship (a swarm).',
+      usesMap: 'A rig that fires twice: knocked out before its second, the shell comes off the far shore with long warning, and it stays down for the rest of the run; in place of the wave\'s own cluster, a guided missile and its shells.',
+    },
+    beats: [
+      { at: 0.25, kind: 'cluster', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.25, plus: 7, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
+    ],
+    replaces: { ballistic: 9, guided: 1, extras: { cluster: 1 } },
+  },
+  {
+    id: 'rigs-periscope',
+    map: 'rigs',
+    waves: [6],
+    role: 'combine',
+    name: 'Periscope among the rigs',
+    callout: 'A periscope by the rigs',
+    premise: 'A periscope rises between the west rigs and the lane and fires shells at the ships coming in, while shells off the far shore\'s east silo come at the lead ship and swarms off the drone rigs at the ships coming in and the ship halfway along.',
+    decision: 'Both ends of the lane at once, and the periscope\'s salvo has the shortest flight of all: which end first?',
+    counters: 'The salvo\'s shells as they climb, then the far shells, the swarms between.',
+    succeeds: 'A close call on the way in in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A submarine between the west rigs and the lane (500, 405), the far shore\'s east silo (1250, 68; shells), the west and east rigs (swarms).',
+      target: 'The ships coming in (the salvo, a swarm); the lead ship (the far shells); the ship halfway along (a swarm).',
+      usesMap: 'Short warning under the rigs and long warning from the far shore at once (rule g-split), in place of the wave\'s own clusters and its shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.9, from: sub(0), aim: 'rear' },
+      { at: 0.3, plus: 4, kind: 'ballistic', count: 1, from: base(5), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
+    ],
+    replaces: { ballistic: 12, extras: { cluster: 2 } },
+  },
+  {
+    id: 'rigs-supersonic',
+    map: 'rigs',
+    waves: [7],
+    role: 'escalate',
+    name: 'Lock from the rig',
+    callout: 'Supersonic from the rig',
+    premise: 'The east-middle rig locks a supersonic missile on the ship halfway along while the west-middle rig fires a cluster at the ships coming in; a relief rig is towed in from the east, and swarms come off both drone rigs.',
+    decision: 'The supersonic, the cluster and the tow at once: which rig do you wish you had brought down?',
+    counters: 'The supersonic as it lifts off, the cluster before it splits, then the tow.',
+    succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The east-middle rig (a supersonic), the west-middle rig (a cluster), a relief rig towed in from the east edge, the west and east rigs (swarms).',
+      target: 'The ship halfway along (the supersonic); the ships coming in (the cluster, a swarm); a downed station (the tow) and the ship nearest it; any ship.',
+      usesMap: 'The rigs\' fastest and their widest at once, and a tow to stand in for one already brought down, in place of the wave\'s own supersonic, a cluster, its guided missiles and its shells (drones in their place).',
+    },
+    beats: [
+      { at: 0.3, kind: 'supersonic', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.3, plus: 3, kind: 'cluster', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.5, kind: 'rig', count: 1, from: { air: -1 } },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.9, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { ballistic: 12, guided: 9, extras: { supersonic: 1, cluster: 1, rig: 1 } },
+  },
+  {
+    id: 'rigs-two-tows',
+    map: 'rigs',
+    waves: [8],
+    role: 'escalate',
+    name: 'Two tows',
+    callout: 'Rigs under tow',
+    premise: 'Relief rigs are towed in from both edges at once while swarms come off both drone rigs.',
+    decision: 'Two tows and the fire: sink one and let the other dock, or neither?',
+    counters: 'A tow on its way in, the swarms between.',
+    succeeds: 'One tow is sunk in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A relief rig towed in from the west edge, then one from the east edge, the west and east rigs (swarms).',
+      target: 'Two downed stations (else the most damaged rigs) and the ships nearest them; any ship (the swarms).',
+      usesMap: 'The signature twice over, a preview of the boss (the rigs risen again), in place of the wave\'s own shells, guided missiles and a cluster (drones in their place).',
+    },
+    beats: [
+      { at: 0.25, kind: 'rig', count: 1, from: { air: 1 } },
+      { at: 0.25, plus: 5, kind: 'rig', count: 1, from: { air: -1 } },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.7, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.45, kind: 'drone', count: 7, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.9, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+    ],
+    replaces: { ballistic: 15, guided: 10, extras: { cluster: 1, rig: 2 } },
+  },
+  {
+    id: 'rigs-whole-field',
+    map: 'rigs',
+    waves: [9],
+    role: 'escalate',
+    name: 'The whole field',
+    callout: 'Every rig at once',
+    premise: 'Every rig fires at once at the ship halfway along: a guided missile off each missile rig, shells off the west-middle one, drones off the east one, converging on the convoy (what a rig brought down would fire comes off the far shore, a longer flight).',
+    decision: 'All four rigs fire together: the ones still standing fire from point-blank, the far shore for the rest.',
+    counters: 'The missiles first, the shells as they climb, the swarms.',
+    succeeds: 'Most of the volley is shot down; a run with rigs down meets it with more warning.',
+    notes: {
+      sites: 'All four rigs at once (guided off the west and east-middle, a shell off the west-middle, drones off the east), swarms off the west and east rigs.',
+      target: 'The ship halfway along (every rig\'s volley converges); the swarms at any ship and the ships coming in.',
+      usesMap: 'What the rigs left standing cost, all at once, from point-blank (a preview of the boss), in place of the wave\'s own shells, guided missiles and a cluster (drones in their place).',
+    },
+    beats: [
+      { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.35, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.35, kind: 'guided', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.35, kind: 'drone', count: 4, gap: 0.25, from: base(3), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+    ],
+    replaces: { ballistic: 15, guided: 12, extras: { cluster: 1 } },
+  },
+  {
+    id: 'rigs-last-tow',
+    map: 'rigs',
+    waves: [10],
+    role: 'climax',
+    name: 'The last relief',
+    callout: 'The field fires',
+    premise: 'Once the wave\'s own fire is spent, a breath, then relief rigs are towed in from both edges while the west rigs fire a shell and a swarm at the ships coming in, a shell comes off the far shore at the lead ship and the east rig sends a swarm.',
+    decision: 'Everything the field has: the tows, the rigs, the shells. The map\'s question at its hardest.',
+    counters: 'A tow on its way in, the shells as they climb, the swarms.',
+    succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'Relief rigs towed in from the west edge and the east edge, the west-middle rig (a shell), the far shore\'s east silo (a shell), the west and east rigs (swarms, three of them before the calm), after the wave\'s own fire and a calm.',
+      target: 'The ships coming in (the rigs\' fire); downed stations (the tows) and the ships nearest them; the lead ship (the shells); any ship.',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles and clusters (drones in their place); the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'rig', count: 1, from: { air: 1 } },
+      { at: 1, plus: 3, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
+      { at: 1, plus: 4, kind: 'rig', count: 1, from: { air: -1 } },
+      { at: 1, plus: 6, kind: 'ballistic', count: 1, from: base(5), aim: 'lead' },
+      { at: 1, plus: 4, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 1, plus: 8, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.5, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+    ],
+    replaces: { ballistic: 19, guided: 15, extras: { cluster: 3, rig: 2 } },
+    calm: 6,
+  },
+];
+
 /** Busier early waves (log v47, docs/design/v3-playtest-fixes.md "Busier
  *  early waves"). The player's chapter 2 playtests rated waves 1-6 fun 1-2,
  *  intensity 1 on every map, and wave 1 the weakest every time; their
@@ -4572,6 +4840,13 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Sowers' Reach (log v48): the west silo and the east-middle one, the
   // map's two drone silos on the far shore, waves 1-6.
   ...busy(['sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold', 'sowers-two-fields'], 0, 2),
+  // The Rig Field (log v49): its two drone rigs, the west and the east, the
+  // map's only drone launchers, waves 1-6 (a rig brought down sends none).
+  // Wave 1 one late string out of the east rig only: the drone rigs stand a
+  // short flight from the lane, and the wave's own drones already cost the
+  // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
+  ['rigs-point-blank', [fill(0.7, 2, 3)]],
+  ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 3]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -4596,6 +4871,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...BATTERY_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch3-sowers.md)
   ...SOWERS_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch3-rigs.md)
+  ...RIGS_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
 
 /** The rev an encounter came in. */
@@ -4643,9 +4920,10 @@ export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | '
 export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 /** Chapter 3, Dark Water, a map at a time as chapter 2's were: so far Battery
  *  Point (log v45, docs/design/v3-ch3-battery.md) and Sowers' Reach (log
- *  v48, docs/design/v3-ch3-sowers.md). */
-export type ChapterThreeMap = 'battery' | 'sowers';
-export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers'];
+ *  v48, docs/design/v3-ch3-sowers.md) and the Rig Field (log v49,
+ *  docs/design/v3-ch3-rigs.md). */
+export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs';
+export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -4741,6 +5019,11 @@ const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  waves 4-10 send a little less, within ±15% of each wave and never more
  *  than the ten. */
 const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
+/** The Rig Field (log v49): its shared waves are the heaviest of any map
+ *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
+ *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
+ *  of each wave and never more than the ten. */
+const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -4754,6 +5037,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   saltgate: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two locks: the ships wait in each chamber while it fills, and the silos over the locks fire at them with little warning; rocket trucks drive down to the locks from wave 4.', callouts: false, scale: SALTGATE_CLIMB } },
   // Chapter 3.
   battery: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two allied shore guns on the headland: they cover the ships about to deliver while they stand, and the enemy\'s shells and heavies go for them first; jets come in dark from wave 4.', callouts: false, scale: BATTERY_CLIMB } },
+  rigs: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four enemy oil rigs in the sea just above the lane: each fires from point-blank and takes forty hits, and one brought down stays down; relief rigs are towed in to stand where one fell from wave 4.', callouts: false, scale: RIGS_CLIMB } },
   sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
 };
 
@@ -4900,6 +5184,14 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // up-current edge of the lane: a mine with the shortest warning on the
   // map, from a bomber that takes six hits to stop.
   sowers: { from: 4, foe: 'stealthBomber', foeShare: 1, sow: 3 },
+  // The Rig Field (log v49, docs/design/v3-ch3-rigs.md): "relief rigs", from
+  // wave 4. The wave's new enemies come as relief rigs, towed in from an edge
+  // along the rig line (TOW: eight hits on the way in) to stand where a rig
+  // was brought down, its station launching again, or, with none down, to
+  // mend the most damaged rig standing; either way it comes loaded and fires
+  // its rack at the ship nearest it as it docks. A rig brought down does not
+  // stay quiet for free.
+  rigs: { from: 4, kind: 'rig', foeShare: 1 },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -5045,6 +5337,18 @@ export interface BossRound {
   veeGap?: number;
   veeHp?: number;
   sow?: number;
+  /** The Rig Field's Rig Barrage (log v49), in place of the Dive Circus's
+   *  dive bombers and missile pairs: as the round opens, downed rig stations
+   *  rise again (the middle two first, then the west and the east) until
+   *  `rigs` stand, each risen one `rigHp` hits (a rig still standing keeps
+   *  its own); then every rig standing fires a volley together, `count`
+   *  volleys `every` s apart from `first` s in, each rig `size` launches of
+   *  its own kind (BARRAGE_KIND: `size` guided missiles, one shell more,
+   *  or twice that many drones) at the one ship nearest halfway along, its deck lit
+   *  `warn` s before. A rig brought down fires no more volleys. */
+  rigs?: number;
+  rigHp?: number;
+  barrage?: { first: number; every: number; count: number; size: number; warn: number };
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -5232,6 +5536,20 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
   { vees: 3, veeAt: 1, veeGap: 7, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 9, count: 2, gap: 3, base: 4, aim: 'lead' }] },
 ];
 
+/** The Rig Field's Rig Barrage (log v49, docs/design/v3-ch3-rigs.md), in
+ *  place of the Dive Circus (before: 8 dive bombers on a 2.3 s beat and 3
+ *  pairs of guided missiles, every round; the Dive Bomber is a regular of
+ *  the Battery's waves by now). As each round opens the downed rigs rise
+ *  again until so many stand, and every rig standing fires its volley
+ *  together at the ship halfway along, its deck lit first: a barrage of
+ *  missiles, shells and drones converging on the convoy. A rig brought down
+ *  fires no more. Rising: more rigs, more volleys, bigger ones. */
+export const RIGS_BOSS_ROUNDS: BossRound[] = [
+  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -5274,6 +5592,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // Chapter 3 (BATTERY_BOSS_ROUNDS above).
   battery: { rounds: BATTERY_BOSS_ROUNDS },
   sowers: { rounds: SOWERS_BOSS_ROUNDS },
+  rigs: { rounds: RIGS_BOSS_ROUNDS, name: 'Rig Barrage' },
 };
 
 /** A map's boss tuning for a run's encounter rev (none before rev 4, or
@@ -5316,6 +5635,7 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   cluster: ['cluster missile', 'cluster missiles'],
   mine: ['drifting mine', 'drifting mines'],
   stealthBomber: ['stealth bomber', 'stealth bombers'],
+  rig: ['relief rig under tow', 'relief rigs under tow'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
