@@ -13,8 +13,8 @@ mine = sys.argv[1] if len(sys.argv) > 1 else f'{R}/v60-ch4'
 ME = 'citadel'
 # Each map from its last sweep: four chapter 2 maps at version 37, Saltgate
 # at 42; Battery Point at 43, Sowers' Reach at 48, the Rig Field at 49,
-# and the Black Strait and Dreadnought Pass from theirs; the Coves at 53 and the Delta at 54.
-OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3', 'rigs': f'{R}/v49-ch3', 'lantern': f'{R}/v50-ch3', 'dreadnought': f'{R}/v51-ch3', 'coves': f'{R}/v53-ch4', 'delta': f'{R}/v54-ch4'}
+# and the Black Strait and Dreadnought Pass from theirs; the Coves at 53, the Delta at 54, Dunmar Crossing at 58.
+OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3', 'rigs': f'{R}/v49-ch3', 'lantern': f'{R}/v50-ch3', 'dreadnought': f'{R}/v51-ch3', 'coves': f'{R}/v53-ch4', 'delta': f'{R}/v54-ch4', 'crossing': f'{R}/v58-ch4'}
 
 
 def load(d):
