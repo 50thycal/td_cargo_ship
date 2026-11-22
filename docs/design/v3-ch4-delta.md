@@ -250,7 +250,7 @@ The 24-seed record and the 192-seed reads disagree by up to 13 points on a win r
 
 ## Checks run
 
-`tsc`; `vitest --exclude '.claude/**'` (81 files, 1903 tests, all pass); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass); the map-lab baseline replays exactly. Run on the merged base (round 15 notes, log v55).
+`tsc`; `vitest --exclude '.claude/**'` (81 files, 1907 tests, all pass); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass); the map-lab baseline replays exactly. Run on the merged base (the Coves, log v56).
 
 ## Tests
 
