@@ -6785,7 +6785,7 @@ const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
  *  than the ten. */
 const CROSSING_CLIMB = [0.85, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
 /** Tidewater Flats (log v59): within ±15% of each shared wave. */
-const TIDE_CLIMB = [1, 0.9, 0.88, 0.88, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
+const TIDE_CLIMB = [1, 0.9, 0.88, 0.92, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {

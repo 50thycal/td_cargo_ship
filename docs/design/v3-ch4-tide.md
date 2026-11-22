@@ -78,17 +78,17 @@ The Box (three tight abreast: a direct hit does a hit less, splash ×1.8) is the
 
 The player's round 9: each map gets a threat of its own in waves 4–10, tied to its identity and its boss. The Tide's identity is the ebb; its boss is Low Water. The signature (`MAP_SIGNATURE.tide`, `ebb` from wave 4):
 
-- at each wave's low water, **so many of the wave's own clusters (then its shells, each as a cluster) fly off the middle silo at the crowd** (one a wave on waves 5–9; none on 4, whose encounter already sends one, nor on 10, whose climax does), one for one (rule `w-budget`), 3 s into the low water, the silo lit as a raid's;
+- at each wave's low water, **so many of the wave's own clusters (then its shells, each as a cluster) fly off the middle silo at the crowd** (one a wave on waves 5, 6 and 9; none on 4, 7, 8 and 10, whose encounters already send one: more made a cliff on wave 7), one for one (rule `w-budget`), 3 s into the low water, the silo lit as a raid's;
 - with the encounters' own fire at the crowd at the ebb (shells, clusters, guided missiles, supersonics, drones), aimed `'crowd'`.
 
 How much of waves 4–10 it is (`tools/v3/combo-sweep/mixwaves.ts`, 8 seeds, the "you" bot drafting for itself, tough; everything launched at the crowd counts, `ebbStrike`, a cluster's bomblets with it):
 
 | | Waves 4–10 | Waves 6–10 | Boss rounds |
 | --- | --- | --- | --- |
-| Share of the threats that show | 15% | 15% | 100% |
-| Share of the hits it takes to clear them | **13%** | 13% | 100% |
+| Share of the threats that show | 14% | 14% | 100% |
+| Share of the hits it takes to clear them | **12%** | 12% | 100% |
 
-Under the asked quarter, as on the Coves (7%), the Rigs (9%) and the Sowers (19%): the rest is mostly drones (59%), which is what keeps the waves in the band (below).
+Under the asked quarter, as on the Coves (7%), the Rigs (9%) and the Sowers (19%): the rest is mostly drones (61%), which is what keeps the waves in the band (below).
 
 ## The counters
 
@@ -134,29 +134,29 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 
 | Wave | Role | Encounter (`id`) | Low water | At high water | At the ebb (the crowd) |
 | --- | --- | --- | --- | --- | --- |
-| 1 | teach | The first ebb (`tide-first-ebb`) | 9 s | west silo, 3 drones to the flats | east silo, 3 drones |
+| 1 | teach | The first ebb (`tide-first-ebb`) | 9 s, at the end of the wave | west silo, 3 drones to the flats | east silo, 3 drones the long way |
 | 2 | teach | Far over the flats (`tide-far-flats`) | 11 s | east silo, 3 drones to the flats | west silo, a shell; east silo, a shell (to the flats) |
 | 3 | teach | Low water (`tide-low-water`) | 13 s | east silo, 3 drones to the flats | west silo, a guided missile, then a shell |
 | 4 | combine | Cluster on the crowd (`tide-ebb-cluster`) | 15 s | east-middle silo, a supersonic; drones to the flats | middle silo, a **cluster**; west silo, 4 drones |
 | 5 | combine | The flood (`tide-the-flood`) | 16 s | east silo, 4 drones; **at the flood** a sub off the east between the lanes, 2 shells at the ships nearest it | west silo, a shell; east silo, 3 drones; the signature's cluster |
-| 6 | combine | Both lanes (`tide-both-lanes`; "Before the ebb and after") | 16 s | east-middle silo, a guided missile at the lead ship; east silo, 2 shells at the ships coming in | middle silo, a cluster; west silo, 5 drones; the signature's cluster |
-| 7 | escalate | Fast at the ebb (`tide-supersonic-ebb`) | 17 s | east-middle silo, a supersonic to the flats; east silo, drones | east-middle silo, a supersonic; middle silo, a cluster; west silo, 5 drones; the signature's cluster |
-| 8 | escalate | The whole shore (`tide-whole-shore`) | 17 s | east silo, 6 drones to the flats | west silo, 2 shells; middle silo, a cluster; east-middle silo, 2 guided missiles; the signature's cluster |
+| 6 | combine | Both lanes (`tide-both-lanes`; "Before the ebb and after") | 16 s | east-middle silo, a guided missile at the lead ship; east silo, 2 shells at the ships coming in | middle silo, a cluster; west silo, 5 drones, then a shell; the signature's cluster |
+| 7 | escalate | Fast at the ebb (`tide-supersonic-ebb`) | 17 s | east-middle silo, a supersonic to the flats; east silo, drones | middle silo, a cluster; west silo, 5 drones |
+| 8 | escalate | The whole shore (`tide-whole-shore`) | 17 s | east silo, 6 drones to the flats | west silo, 2 shells; middle silo, a cluster; east-middle silo, 2 guided missiles |
 | 9 | escalate | Before the ebb (`tide-before-ebb`) | 18 s | east silo, a mothership to the flats (the long flight) | middle silo, a cluster; east-middle silo, a supersonic; west silo, 6 drones; the signature's cluster |
 | 10 | climax | Spring low (`tide-spring-low`), after a 6 s calm | 20 s | the wave's own | middle silo, a cluster; west silo, 2 shells; east-middle silo, a guided missile; east silo, 6 drones to the flats |
 
-**Wave 10, the climax:** after a 6 s calm the tide runs out for the longest low water of the waves and the whole shore fires at the crowd; the hardest regular wave for every player Armory (192 seeds, normal: 1.00 usual, 1.10 latest, 0.61 plating; tough 1.58, 2.48, 0.90), and no step to it doubles the wave before (×1.8 usual).
+**Wave 10, the climax:** after a 6 s calm the tide runs out for the longest low water of the waves and the whole shore fires at the crowd; the hardest regular wave for the usual and plating Armories (192 seeds, normal: 1.07 usual, 1.09 latest, 0.81 plating; tough 1.52, 2.67, 1.32), and no step to it doubles the wave before (×1.7 usual).
 
 ## The boss plan: Low Water
 
-The Tide's event was the Firestorm: six firebombs at once from every side, three more 9 s later, their fires burning 13 s, every round. It was the hardest boss round of any map for the bot (2.65 ships in round 1 with the usual Armory), and its Incendiary Missile is a regular of chapter 4's waves by now (debuted on the Coves' wave 5, the Delta's signature), so the player has met it as a regular threat. The boss under encounter rev 4 is new (`TIDE_BOSS_ROUNDS`, lab only; the event's id stays `firestorm`): **Low Water**. Each round the tide runs out 2 s in and stays out (`ebb`: 18, 22, then 26 s), every new ship crowds into the deep channel under the shore, and the whole shore fires at the crowd in **strikes**: every silo listed lights at once (2.5 s, a raid's warning), then fires its own at the crowd together, so the shells, clusters, missiles and drones converge on the bunched boxes.
+The Tide's event was the Firestorm: six firebombs at once from every side, three more 9 s later, their fires burning 13 s, every round. It was the hardest boss round of any map for the bot (2.65 ships in round 1 with the usual Armory), and its Incendiary Missile is a regular of chapter 4's waves by now (debuted on the Coves' wave 5, the Delta's signature), so the player has met it as a regular threat. The boss under encounter rev 4 is new (`TIDE_BOSS_ROUNDS`, lab only; the event's id stays `firestorm`): **Low Water**. Each round the tide starts to fall as the round opens, is out 2 s in and stays out (`ebb`: 18, 22, then 26 s), the ships on the flats crossing to the deep channel as it falls, every new ship crowds into the deep channel under the shore, and the whole shore fires at the crowd in **strikes**: every silo listed lights at once (2.5 s, a raid's warning), then fires its own at the crowd together, so the shells, clusters, missiles and drones converge on the bunched boxes.
 
 | Round | Low water | Strikes | What each strike fires |
 | --- | --- | --- | --- |
 | before (every round) | – | – | 6 firebombs from every side, 3 more 9 s later; fires burn 13 s |
 | 1 | 18 s | 2 (6, 13 s) | west 2 shells + middle a cluster; east-middle 2 guided + east 2 shells |
-| 2 | 22 s | 3 (5, 12, 18 s) | west 2 shells + middle a cluster + east-middle a supersonic + east 2 drones; middle a cluster + east 2 shells + west 2 guided + east-middle a supersonic; west 5 drones + middle a cluster + east-middle a guided |
-| 3 | 26 s | 3 (5, 13, 20 s) | all four: west 2 shells, middle a cluster, east-middle 2 guided, east a shell; middle a cluster + east-middle a supersonic + west 6 drones; west 2 guided + east 5 drones |
+| 2 | 22 s | 3 (5, 12, 18 s) | west 2 shells + middle a cluster + east-middle a supersonic; middle a cluster + east 2 shells + west 2 guided + east-middle a supersonic; west 5 drones + middle a cluster + east-middle a guided |
+| 3 | 26 s | 3 (5, 13, 20 s) | all four: west 2 shells, middle a cluster, east-middle 2 guided, east a shell; middle a cluster + east-middle a supersonic + west 4 drones; west 2 guided + east 5 drones |
 
 The intro is the shared cards (log v30): "Boss round", "Convoy restored", "The boss: Low Water", "Round 1 of 3", then "Round 2 of 3" and "Round 3 of 3". Each round lasts 15–30 s (test, seed 219). The map's whole question is in it: the tide is out, the ships are bunched, and the shore fires at the bunch.
 
@@ -164,11 +164,11 @@ How it reads (192 seeds, normal runs that reached it):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 2.65 / 1.88 / 1.77 (130, 116, 77 runs) | **0.67 / 1.36 / 1.93** (143, 143, 134) |
-| latest | – (no run reached it) | **0.70 / 2.61 / 2.04** (88, 88, 70) |
-| plating | 0.38 / 1.23 / 3.31 (13 runs) | **0.30 / 1.16 / 1.28** (160, 160, 158) |
+| usual | 2.65 / 1.88 / 1.77 (130, 116, 77 runs) | **0.72 / 1.31 / 2.02** (133, 133, 123) |
+| latest | – (no run reached it) | **0.84 / 2.53 / 1.98** (62, 62, 50) |
+| plating | 0.38 / 1.23 / 3.31 (13 runs) | **0.30 / 1.19 / 1.40** (145, 145, 144) |
 
-Rising for the usual and plating Armories (the latest set's round 3 is reached by its stronger runs only; tough, every seed plays every round: 0.83 / 3.10 / 2.81). Under the asked 1.5 / 2 / 2.5 for the usual Armory, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so the boss's three rounds share one limit; an earlier build at 1.27 / 1.57 / 2.65 won 31%, one at 0.93 / 0.82 / 2.24 won 48%. Tough runs: usual 0.63 / 1.62 / 2.10, plating 0.30 / 1.25 / 1.38.
+Rising for the usual and plating Armories (the latest set's round 3 is reached by its stronger runs only; tough, every seed plays every round: 0.95 / 3.01 / 3.18). Under the asked 1.5 / 2 / 2.5 for the usual Armory, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so the boss's three rounds share one limit; heavier builds (1.27 / 1.57 / 2.65; after the tide fix 0.57 / 2.14 / 2.04) won 31% and 42%. Tough runs: usual 0.77 / 1.37 / 2.19, plating 0.39 / 1.24 / 1.59.
 
 ## Bot results, before and after
 
@@ -176,22 +176,24 @@ Rising for the usual and plating Armories (the latest set's round 3 is reached b
 
 ### The headline (192 seeds, normal runs)
 
+The final build (the tide's turn fixed, the retune after it, the base merged with Dunmar Crossing). The usual Armory's read is on the merged build; the other three on the build just before the merge (the Crossing's changes do not touch the Tide: the usual set's read is the same, 51% → 50%, on the same seeds).
+
 | Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 8 | Wave 10 |
 | --- | --- | --- | --- | --- | --- |
-| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 16% → **54%** | 0.59 → **0.83** | 4.16 → 3.38 | 0.74 → 0.55 | 1.30 → 1.00 |
-| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 0% → **18%** | 3.43 → **1.44** | 5.98 → 4.48 | 2.07 → 0.70 | 1.00 (1 run) → 1.10 |
-| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 4% → **77%** | 1.68 → **0.57** | 5.75 → 2.51 | 1.77 → 0.31 | 1.28 → 0.61 |
-| none | 0% → 2% | 5.09 → 2.46 | 5.91 → 5.77 | 1.50 → 1.25 | – → 1.59 |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 16% → **50%** | 0.59 → **0.87** | 4.16 → 3.46 | 0.74 → 0.56 | 1.30 → 1.07 |
+| latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 0% → **15%** | 3.43 → **1.76** | 5.98 → 5.17 | 2.07 → 1.19 | 1.00 (1 run) → 1.09 |
+| plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 4% → **68%** | 1.68 → **0.76** | 5.75 → 3.11 | 1.77 → 0.42 | 1.28 → 0.81 |
+| none | 0% → 1% | 5.09 → 2.90 | 5.91 → 5.92 | 1.50 → 1.53 | – → 1.37 |
 
 Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 
 | Armory | Before | After |
 | --- | --- | --- |
-| usual | .01 .01 .24 .22 .10 .40 .47 .74 1.00 1.30 · boss 2.65 1.88 1.77 | .03 .11 .19 .18 .32 .25 .46 .55 .55 1.00 · boss .67 1.36 1.93 |
-| latest | .03 .21 1.20 .77 1.42 1.67 1.62 2.07 1.67 1.00 · boss – | .02 .19 .41 .28 .56 .75 .28 .70 1.09 1.10 · boss .70 2.61 2.04 |
-| plating | .02 .07 .46 .42 .73 1.09 1.16 1.77 1.25 1.28 · boss .38 1.23 3.31 | .02 .10 .14 .06 .27 .32 .27 .31 .60 .61 · boss .30 1.16 1.28 |
+| usual | .01 .01 .24 .22 .10 .40 .47 .74 1.00 1.30 · boss 2.65 1.88 1.77 | .03 .03 .39 .05 .38 .35 .47 .56 .51 1.07 · boss .72 1.31 2.02 |
+| latest | .03 .21 1.20 .77 1.42 1.67 1.62 2.07 1.67 1.00 · boss – | .02 .22 .58 .24 .75 .99 .48 1.19 1.29 1.09 · boss .84 2.53 1.98 |
+| plating | .02 .07 .46 .42 .73 1.09 1.16 1.77 1.25 1.28 · boss .38 1.23 3.31 | .02 .05 .26 .15 .29 .52 .39 .42 .46 .81 · boss .30 1.19 1.40 |
 
-Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .07 .11 .96 .60 1.33 2.12 2.44 4.44 3.91 5.54 (21.5 ships in waves 1–10); latest .05 .18 1.55 .95 1.10 2.17 1.89 2.83 3.67 4.95; plating .03 .05 .49 .45 .43 .89 .85 1.53 1.51 3.47; none .16 .40 2.38 1.90 1.41 3.81 3.39 3.64 5.64 6.16. After: usual .03 .11 .20 .21 .35 .31 .58 .72 .88 1.58 (4.98); latest .02 .20 .45 .40 .69 1.05 .63 1.12 1.69 2.48; plating .02 .10 .16 .10 .29 .42 .34 .50 .93 .90; none .06 .34 .95 .71 1.22 2.22 1.82 2.59 4.34 4.50 (before 28.9 ships, after 18.8). **The largest step: ×1.8 on wave 10 for the usual Armory (0.88 → 1.58), within the line**; latest ×1.5 (waves 6 and 9, 10), plating ×1.9 (wave 9, floored).
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .07 .11 .96 .60 1.33 2.12 2.44 4.44 3.91 5.54 (21.5 ships in waves 1–10); latest .05 .18 1.55 .95 1.10 2.17 1.89 2.83 3.67 4.95; plating .03 .05 .49 .45 .43 .89 .85 1.53 1.51 3.47; none .16 .40 2.38 1.90 1.41 3.81 3.39 3.64 5.64 6.16 (28.9). After: usual .03 .03 .39 .07 .40 .48 .52 .78 .90 1.52 (5.10); latest .02 .22 .61 .35 .95 1.62 .84 2.00 2.33 2.67 (11.6); plating .02 .05 .26 .16 .27 .64 .48 .58 .72 1.32 (4.5); none .05 .20 1.25 .72 1.52 3.12 2.13 3.39 5.09 5.32 (22.8). **The usual Armory's largest step: ×1.7 on wave 10 (0.90 → 1.52), within the line** (wave 3 ×1.6 and wave 5 ×1.6 over the floor of 0.25); plating ×2.4 on wave 6 (0.27 → 0.64), **over the line**; the latest set ×2.4 on wave 8 (0.84 → 2.00), **over the line**.
 
 ### The record reports (24 seeds, 900–923)
 
@@ -199,19 +201,22 @@ RECORD
 
 ### Tide difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
-- **The usual Armory wins 54%**, in the band (before 16%: the hardest map of the chapter for the bot). **The latest set 18%**, under it (before 0%); **the plating set 77%**, over it, as on the Coves (22% / 77%) and every chapter 3 map: no single tuning puts the three in 50–70% together.
-- **Waves 1–5:** 0.83 for the usual Armory, a hair over the asked 0.8 (before 0.59, but 0.0–0.2 a wave until wave 3); the plating set 0.57, the latest 1.44.
-- **The climb from wave 4 to 9** rises for the usual Armory (.18 .32 .25 .46 .55 .55), then wave 10's 1.00; on the tough runs .21 .35 .31 .58 .72 .88, then 1.58.
-- **Wave 10** is the hardest regular wave for every player Armory, and no step to it doubles.
+- **The usual Armory wins 50%**, at the bottom of the band (before 16%: the hardest map of the chapter for the bot). **The latest set 15%**, under it (before 0%); **the plating set 68%**, in it. The tide's fix (ships crossing to the deep channel as it falls) made the map harder by about 10 points for every Armory; the retune after it won back most of it for the usual set.
+- **Waves 1–5:** 0.87 for the usual Armory, over the asked 0.8 (before 0.59, but 0.0–0.2 a wave until wave 3); the plating set 0.76, the latest 1.76.
+- **The climb from wave 4 to 9** rises for the usual Armory (.05 .38 .35 .47 .56 .51), then wave 10's 1.07; on the tough runs .07 .40 .48 .52 .78 .90, then 1.52.
+- **Wave 10** is the hardest regular wave for the usual and plating Armories, and no step to it doubles.
 
 ## What is not satisfied, or uncertain
 
 - **The convoy change.** The card played today's convoy controls before; on the map's own convoy (Pairs at the campaign's step 1, as most rebuilt maps) the rebuilt waves won 2–10%. The Tide sails a Box at step 2, which takes a hit less from each direct hit and ×1.8 from splash: it makes the drones nearly harmless and the crowd's shells and clusters the danger, which suits the map's question, but it is a big lever and the player has not seen it here.
 - **The Repair Ship and the Bodyguard Ring come as Lure Beacons** on the Tide's waves (their heavies sink a ship outright on the deep channel's short flights): two of chapter 4's four enemies do not show on this map under the layer.
 - **The waves are mostly drones** (59% of what shows in waves 4–10): the shared waves' shells, missiles and clusters come as drone strings to the flats, as on the Coves (67%) and the Rigs (72%), to bring a map the bot won 16% of the time into the band.
-- **The signature is 13% of the hits in waves 4–10**, under the asked quarter (the Coves 7%, the Rigs 9%, the Sowers 19%): each cluster more at the crowd cost about 0.3 of a ship a wave on the Box.
-- **The boss is under the asked 1.5 / 2 / 2.5** for the usual Armory (0.67 / 1.36 / 1.93): heavier builds (1.27 / 1.57 / 2.65) won 31%.
-- **Waves 1–5 lose 0.83**, a hair over the asked 0.8; wave 2's ebb shell at the crowd is most of wave 2's 0.11.
+- **The signature is 12% of the hits in waves 4–10**, under the asked quarter (the Coves 7%, the Rigs 9%, the Sowers 19%): each cluster more at the crowd cost about 0.3 of a ship a wave on the Box, and one more on wave 7 made a cliff.
+- **The boss is under the asked 1.5 / 2 / 2.5** for the usual Armory (0.72 / 1.31 / 2.02): heavier builds won 31–42%.
+- **The win rate is at the band's floor** (50% for the usual set) after the tide fix; the latest set 15%.
+- **Cliffs for the other Armories:** the latest set's wave 8 is ×2.4 its wave 7 and the plating set's wave 6 ×2.4 its wave 5 (floored) on the tough runs; the usual set's climb passes.
+- **The combo sweep and the diversity check ran on the build before the tide fix and the retune** (the best kits may have moved; the sweep takes about two hours).
+- **Waves 1–5 lose 0.87**, over the asked 0.8; wave 3's low water (a guided missile and a shell at the crowd) is most of it (0.39).
 - **The tide's turn changed for the campaign too**: the falling and rising tide, the ships crossing off the flats and the drawing are the mechanic itself (the player's note), so a campaign Tide run plays differently from v57 (its log does not replay).
 - **The map-cards e2e fails one check on the base as on this branch**: "the Strait's card (not its debut): no card for an enemy met before" sees "NEW: Helicopter missile" (the forced Attack Helicopter's rockets get their own first-sight card). Not the Tide's; reproduced on a clean build of the base (#223).
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
@@ -222,7 +227,7 @@ RECORD
 
 ## Questions for the player
 
-- **Does the tide read as the wave's clock, and is "the crowd at low water" the question you feel?** The gauge now sits mid-map between the lanes and turns gold ("THE TIDE TURNS") in the last 5 s before the ebb. Recommended: play waves 3, 8 and the boss; say if the gauge still reads small on the phone.
+- **Does the tide work now?** The water falls and rises over a few seconds, the sand comes up from the shore with a line of surf, the ships on the flats cross to the deep channel as soon as it starts to fall, and the gauge between the lanes turns gold ("THE TIDE TURNS", then "TIDE GOING OUT") before it does. Recommended: play waves 1, 3 and 8 and watch a box leave the flats; say if the crossing looks too quick or the sand too strong.
 - **The convoy: a Box at flow step 2.** It makes drones nearly harmless and the shells and clusters over the crowd the danger, which is the map's question; on Pairs at the campaign's schedule the bot won 2–10%. Recommended: keep the Box; if it feels slow or the boxes look odd, the next build can try Pairs at step 2 with lighter waves.
 - **The Repair Ship and the Bodyguard Ring as Lure Beacons on this map.** Their heavies sink a ship outright at the deep channel's range. Recommended: keep the swap; the chapter's enemies all show on the Coves and the Delta.
 - **The boss: Low Water, a new boss on the Firestorm's slot.** Recommended: keep the name; it is under the asked 1.5 / 2 / 2.5 to keep the win rate in the band.
