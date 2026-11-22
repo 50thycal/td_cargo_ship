@@ -55,6 +55,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // on the enemy's dark bank (a gun counts once, by its hits, however many
   // times it rises).
   lantern: ['siege'],
+  // The Delta (log v54): fire on the branch, the incendiary missiles at the
+  // switch's branch (every one the map sends from wave 4 is the
+  // signature's).
+  delta: ['cloud'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit

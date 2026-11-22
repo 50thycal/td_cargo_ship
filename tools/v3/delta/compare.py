@@ -1,5 +1,5 @@
-# The Rig Field against the five chapter 2 maps, Battery Point and Sowers' Reach (docs/
-# design/v3-combo-diversity.md, "The Rig Field"): Jaccard of the top-5 kits,
+# The Delta against the five chapter 2 maps and the rebuilt chapter 3 maps (docs/
+# design/v3-combo-diversity.md, "The Delta"): Jaccard of the top-5 kits,
 # rank correlation of the weapons alone (over the weapons both drafts deal),
 # each map's #1 kit and best single, and how much the Air Strike leads (as
 # tools/v3/battery/compare.py).
@@ -8,11 +8,12 @@ import json
 import sys
 
 R = 'tools/v3/combo-sweep/results'
-mine = sys.argv[1] if len(sys.argv) > 1 else f'{R}/v49-ch3'
+mine = sys.argv[1] if len(sys.argv) > 1 else f'{R}/v54-ch4'
 ME = 'delta'
-# Each chapter 2 map from its last sweep: four at version 37, Saltgate at
-# 42; Battery Point at 43, Sowers' Reach at 48.
-OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3'}
+# Each map from its last sweep: four chapter 2 maps at version 37, Saltgate
+# at 42; Battery Point at 43, Sowers' Reach at 48, the Rig Field at 49,
+# and the Black Strait and Dreadnought Pass from theirs.
+OTHERS = {'island': f'{R}/v37-ch2', 'behemoth': f'{R}/v37-ch2', 'needle': f'{R}/v37-ch2', 'archipelago': f'{R}/v37-ch2', 'saltgate': f'{R}/v42-ch2', 'battery': f'{R}/v43-ch3', 'sowers': f'{R}/v48-ch3', 'rigs': f'{R}/v49-ch3', 'lantern': f'{R}/v50-ch3', 'dreadnought': f'{R}/v51-ch3'}
 
 
 def load(d):
@@ -60,10 +61,10 @@ for m, d in OTHERS.items():
     names.update(n)
     other[m] = (b[m], s[m])
 bat = sb[ME]
-print('Rigs top 5:', ' | '.join(f'{names[k]} {lb[ME][k]:.1f}' for k in bb[ME]))
-print('Rigs singles (best 8):', ', '.join(f'{k} {v:.1f}' for k, v in sorted(bat.items(), key=lambda x: x[1])[:8]))
+print('Delta top 5:', ' | '.join(f'{names[k]} {lb[ME][k]:.1f}' for k in bb[ME]))
+print('Delta singles (best 8):', ', '.join(f'{k} {v:.1f}' for k, v in sorted(bat.items(), key=lambda x: x[1])[:8]))
 air = sorted(bat, key=bat.get).index('airstrike') + 1 if 'airstrike' in bat else None
-print(f'Air Strike alone on Rigs: {bat.get("airstrike", float("nan")):.1f}, #{air} of {len(bat)}; in {sum("airstrike" in k for k in bb[ME])} of its top-5 kits')
+print(f'Air Strike alone on the Delta: {bat.get("airstrike", float("nan")):.1f}, #{air} of {len(bat)}; in {sum("airstrike" in k for k in bb[ME])} of its top-5 kits')
 for m, (top, sing) in other.items():
     a, b = set(bb[ME]), set(top)
     shared = a & b
@@ -71,6 +72,6 @@ for m, (top, sing) in other.items():
     rho = spearman([bat[k] for k in common], [sing[k] for k in common])
     first = min(sing, key=sing.get)
     print(f'{m}: jaccard {len(shared) / len(a | b):.2f} shared {[names[k] for k in shared]}; spearman {rho:.2f} over {len(common)}; #1 kit {names[top[0]]}; best single {first}')
-print('Rigs #1 kit in another top 5:', any(bb[ME][0] in top for top, _ in other.values()))
-print('Rigs best single:', min(bat, key=bat.get), '; the other maps\':', [min(s, key=s.get) for _, s in other.values()])
-print('Rigs top-5 kits in any other top 5:', [names[k] for k in bb[ME] if any(k in top for top, _ in other.values())])
+print('Delta #1 kit in another top 5:', any(bb[ME][0] in top for top, _ in other.values()))
+print('Delta best single:', min(bat, key=bat.get), '; the other maps\':', [min(s, key=s.get) for _, s in other.values()])
+print('Delta top-5 kits in any other top 5:', [names[k] for k in bb[ME] if any(k in top for top, _ in other.values())])
