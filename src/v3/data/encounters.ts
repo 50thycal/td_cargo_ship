@@ -5370,7 +5370,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(2), aim: 'near' },
       { at: 0.6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.5, from: base(3) },
     ],
     replaces: { ballistic: 6, guided: 1 },
   },
@@ -5394,8 +5394,8 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
       { at: 0.45, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
       { at: 0.6, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
-      { at: 0.65, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
-      { at: 0.85, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.5, from: base(0) },
+      { at: 0.85, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
     ],
     replaces: { ballistic: 8, guided: 1, extras: { cloud: 1 } },
   },
@@ -5405,21 +5405,21 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [5],
     role: 'combine',
     name: 'Both ends',
-    callout: 'Shells and a cluster',
-    premise: 'Shells off the north-west silo come at the ships coming down the river while a cluster missile off the island and a guided missile off its east silo go for the lead ship at the far end.',
+    callout: 'A shell and a cluster',
+    premise: 'A shell off the north-west silo comes at the ships coming down the river while a cluster missile off the island and a guided missile off its east silo go for the lead ship at the far end.',
     decision: 'The river or the far end: which first?',
-    counters: 'The shells as they climb, the cluster before it splits, the missile.',
+    counters: 'The shell as it climbs, the cluster before it splits, the missile.',
     succeeds: 'A close call at the fork in most runs; one ship lost at most.',
     notes: {
-      sites: 'The north-west silo (shells), the island\'s west silo (a cluster), the island\'s east silo (a guided missile).',
-      target: 'The ships coming in (the shells); the lead ship (the cluster, the missile).',
+      sites: 'The north-west silo (a shell, drones), the island\'s west silo (a cluster, drones), the island\'s east silo (a guided missile).',
+      target: 'The ships coming in (the shell); the lead ship (the cluster, the missile); any ship (the drones).',
       usesMap: 'Front and rear of the convoy at once (rule g-split), across the whole delta.',
     },
     beats: [
-      { at: 0.3, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'rear' },
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
       { at: 0.3, plus: 2, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 0.7, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.5, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.5, kind: 'drone', count: 5, gap: 0.5, from: base(0) },
       { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
     ],
     replaces: { ballistic: 8, guided: 2, extras: { cluster: 1 } },
@@ -5875,7 +5875,7 @@ const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
  *  four waves and then climb to a wave 10 of 1.2 ships, so waves 2-4 send
  *  a little more and waves 9-10 a little less, within ±15% of each wave
  *  and never more than the ten. */
-const DELTA_CLIMB = [1, 0.92, 0.88, 0.88, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
+const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
