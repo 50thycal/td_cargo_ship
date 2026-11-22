@@ -421,7 +421,7 @@ export class Mimic {
     // The Delta: a glance at the fork now and then, and a tap on the buoy if
     // another branch is clearly quieter.
     const fork = g.map.fork;
-    // Log v54: fire burning on the switch's own branch (the Delta's
+    // Log v57: fire burning on the switch's own branch (the Delta's
     // incendiaries, its boss's oil) is seen at once, as a player does, and
     // the switch thrown.
     const burning = !!fork && branchBurning(g, switchLane(g));

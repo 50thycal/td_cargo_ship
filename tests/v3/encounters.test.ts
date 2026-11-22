@@ -230,7 +230,7 @@ describe('a campaign run has no encounter layer', () => {
       'lantern-first-light', 'lantern-from-behind', 'lantern-both-banks', 'lantern-gun-in-the-dark', 'lantern-periscope',
       'lantern-front-and-back', 'lantern-two-guns', 'lantern-dark-water', 'lantern-crossfire', 'lantern-last-light',
     ]);
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): the same.
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
     expect(arc('delta').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends',
       'delta-island', 'delta-lock-fork', 'delta-every-branch', 'delta-funnel', 'delta-burns',
@@ -314,7 +314,7 @@ describe('every beat is legal on its map at its wave', () => {
           // enemy's dark bank (the signature's `beside`), an enemy of the
           // map's chapter or before, from the signature's first wave.
           const gun = 'base' in b.from && b.kind === 'siege' && foesUpTo(chapterOf(e.map)).includes('siege') && w >= (sig?.from ?? 99) && !!sig?.beside?.includes(b.from.base);
-          // Log v54 (the Delta): an Incendiary Missile out of a base, an
+          // Log v57 (the Delta): an Incendiary Missile out of a base, an
           // enemy of the map's chapter or before, from its signature's first
           // wave (the wave's own new enemies come as incendiaries from then).
           const firebomb = 'base' in b.from && b.kind === 'cloud' && foesUpTo(chapterOf(e.map)).includes('cloud') && MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.foe === 'cloud' && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
@@ -874,7 +874,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(rigged).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     const towed = arc('rigs').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'rig'))).map((a) => a.wave);
     expect(towed).toEqual([4, 7, 8, 10]);
-    // The Delta (log v54): the switch is the stake in every wave from 2 (a
+    // The Delta (log v57): the switch is the stake in every wave from 2 (a
     // beat at the branch it is set to), and its incendiaries burst on that
     // branch's mouth in waves 4 and 6-10.
     const switched = arc('delta').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'switch'))).map((a) => a.wave);
@@ -1641,7 +1641,7 @@ describe('the Black Strait\'s boss rounds (log v52, MAP_BOSS): the Bombardment w
   });
 });
 
-describe('the Delta\'s boss rounds (log v54, MAP_BOSS): the Burning Delta rises; a rev 3 log and the campaign play the Escort Run as it was', () => {
+describe('the Delta\'s boss rounds (log v57, MAP_BOSS): the Burning Delta rises; a rev 3 log and the campaign play the Escort Run as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   it('burning oil closes the fork\'s branches (more of them each round) and the raid comes at the ships on the way in; no guarded heavy', () => {
     // (Seed DELTA_BOSS_SEED: the tryhard bot plays all three rounds there;
@@ -2074,7 +2074,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(g.baseDown[st[1]]).toBe(true);
   });
 
-  it('the Delta (log v54): from wave 4 the wave\'s new enemies are incendiary missiles at the switch\'s branch; the campaign and the shared wave keep the planner\'s own', () => {
+  it('the Delta (log v57): from wave 4 the wave\'s new enemies are incendiary missiles at the switch\'s branch; the campaign and the shared wave keep the planner\'s own', () => {
     expect(MAP_SIGNATURE.delta).toMatchObject({ from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' });
     let fires = 0;
     for (let w = 1; w <= 10; w++)
@@ -2436,7 +2436,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // The Black Strait (log v52): every one of waves 1-6, out of the far
     // shore's drone silos under the beam.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
-    // The Delta (log v54): waves 1-6 out of the island's west silo, the far
+    // The Delta (log v57): waves 1-6 out of the island's west silo, the far
     // one of its drone silos; wave 1 one late string.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('delta', w))).toEqual([1, 2, 3, 4, 5, 6]);
     expect(BUSY['delta-three-ways'].length).toBe(1);

@@ -233,7 +233,7 @@ describe('Test Lab round 11', () => {
     expect(mapProduction('rigs')).toEqual({ convoy: 'tactical', encounters: true });
     // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md): the same.
     expect(mapProduction('dreadnought')).toEqual({ convoy: 'tactical', encounters: true });
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): the same.
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
     expect(mapProduction('delta')).toEqual({ convoy: 'tactical', encounters: true });
     expect(mapProduction('crossing')).toEqual({ convoy: 'current', encounters: false });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");

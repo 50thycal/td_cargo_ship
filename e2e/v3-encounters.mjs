@@ -370,7 +370,7 @@ try {
     await one.close();
   }
 
-  // ---- The Delta (log v54): chapter 4's second map, the fork's switch,
+  // ---- The Delta (log v57): chapter 4's second map, the fork's switch,
   // incendiaries on the switch's branch, and the Burning Delta ----
   await open(page, 'lab=map-delta&seed=7');
   const dl = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: document.querySelectorAll('.v3-command').length }));

@@ -80,7 +80,7 @@ export interface EventRun {
   bossSpeed: number;
   /** Firestorm: how long its fireballs burn. */
   linger?: number;
-  /** The Delta's Burning Delta (log v54): the branches (lane indices) each
+  /** The Delta's Burning Delta (log v57): the branches (lane indices) each
    *  burn of the round sets alight, picked as its mouths are lit. */
   burning?: number[][];
   /** Shield Wall: the block's ids. */
@@ -562,7 +562,7 @@ function rigBarrage(g: Game, ev: EventRun, s: EventStep): void {
   g.queue.sort((a, b) => a.at - b.at);
 }
 
-/** The Delta's Burning Delta (log v54): how long a branch's mouth is lit
+/** The Delta's Burning Delta (log v57): how long a branch's mouth is lit
  *  before its oil burns (the readable warning: anything that can sink a
  *  ship is warned at least 2.5 s ahead). */
 export const DELTA_BURN = { warn: 2.5 };

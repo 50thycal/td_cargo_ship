@@ -236,7 +236,7 @@ try {
   check(hub.dreadnought === enc1, `Dreadnought Pass says it opens with its encounters (${hub.dreadnought})`);
   // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): the same.
   check(hub.lantern === enc1, `the Black Strait says it opens with its encounters (${hub.lantern})`);
-  // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): the same.
+  // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
   check(hub.delta === enc1, `the Delta says it opens with its encounters (${hub.delta})`);
   check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.crossing ?? ''), `a map with no commands or encounters yet says so ("${hub.crossing}")`);
   await shot(page, 'hub-card');
@@ -348,7 +348,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 54 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 57 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });

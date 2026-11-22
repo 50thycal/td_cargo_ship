@@ -398,7 +398,7 @@ import type { EncounterSetup } from '../data/encounters';
  *      card log before v52 played today's convoy controls and the
  *      shared waves and no longer replays to the same game; the campaign
  *      plays as it did.
- *  54: chapter 4's second map, the Delta, rebuilt to the map and wave rules
+ *  57: chapter 4's second map, the Delta, rebuilt to the map and wave rules
  *      (docs/design/v3-ch4-delta.md; lab, under the encounter layer): ten
  *      encounters (DELTA_R4) with their filler, a climb (DELTA_CLIMB), a new
  *      aim ('switch': the branch the fork's switch is set to), the signature
@@ -409,14 +409,14 @@ import type { EncounterSetup } from '../data/encounters';
  *      Run, the Burning Delta (MAP_BOSS.delta: `burn`: burning oil closes
  *      the fork's branches, the switch's own first, and a raid comes at the
  *      ships bunched on the way in). The bots throw the switch away from a
- *      burning branch (quieterBranch). A v53 Delta card log played today's
+ *      burning branch (quieterBranch). A Delta card log before v57 played today's
  *      convoy controls and the shared waves and no longer replays to the
- *      same game; the campaign plays as it did. (53: the Coves,
- *      built alongside.) */
-export const LOG_VERSION = 54;
+ *      same game; the campaign plays as it did. (55: the chapter 3 notes; 56: the
+ *      Coves, built alongside.) */
+export const LOG_VERSION = 57;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [54];
+export const LOG_REPLAYS: readonly number[] = [57];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

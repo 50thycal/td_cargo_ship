@@ -263,7 +263,7 @@ describe('q-card: every rebuilt map has its plan (data/mapPlans.ts)', () => {
     expect(MAP_PLANS.rigs!.boss.botTarget).toBe(2);
     // Dreadnought Pass (log v51), the chapter finale: the same.
     expect(MAP_PLANS.dreadnought!.boss.botTarget).toBe(2);
-    // Chapter 4's Delta (log v54): the same.
+    // Chapter 4's Delta (log v57): the same.
     expect(MAP_PLANS.delta!.boss.botTarget).toBe(2);
   });
 });

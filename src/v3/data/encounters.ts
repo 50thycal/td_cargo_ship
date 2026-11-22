@@ -101,7 +101,7 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { 
  *  'lock', the ship held at a lock (in its chamber, or queued at its shut
  *  entry gate), the lock nearest the launcher first; with none held there,
  *  the ship nearest the launcher. Chapter 4's Delta (docs/design/
- *  v3-ch4-delta.md, log v54): 'switch', the newest ship bound for the
+ *  v3-ch4-delta.md, log v57): 'switch', the newest ship bound for the
  *  branch the fork's switch is set to (the one least far along of those);
  *  none, the ship least far along. An Incendiary Missile aimed so bursts
  *  on the water at the mouth of that branch, ahead of the next ships. */
@@ -5290,7 +5290,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Chapter 4's Delta (log v54, docs/design/v3-ch4-delta.md): the river
+/** Chapter 4's Delta (log v57, docs/design/v3-ch4-delta.md): the river
  *  forks three ways at the buoy, and the switch sends the next ships north
  *  (under the enemy bank, the shortest flights), middle (past the carrier,
  *  under the island's silos) or south (out of reach, the long flights).
@@ -5669,7 +5669,7 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // and the east, under the beam (the dark bank's drones are the
   // encounters'), waves 1-6.
   ...busy(['lantern-first-light', 'lantern-from-behind', 'lantern-both-banks', 'lantern-gun-in-the-dark', 'lantern-periscope', 'lantern-front-and-back'], 0, 3),
-  // The Delta (log v54): the island's west silo, the far one of its two
+  // The Delta (log v57): the island's west silo, the far one of its two
   // drone silos, waves 1-6 (the north-west one over the river is a short
   // flight from the ships coming in down it); wave 1 one late string.
   ['delta-three-ways', [fill(0.7, 2, 3)]],
@@ -5760,7 +5760,7 @@ export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archi
 export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs' | 'dreadnought' | 'lantern';
 export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadnought', 'lantern'];
 /** Chapter 4, Open War, a map at a time as chapter 3's were: so far the
- *  Delta (log v54, docs/design/v3-ch4-delta.md). */
+ *  Delta (log v57, docs/design/v3-ch4-delta.md). */
 export type ChapterFourMap = 'delta';
 export const CHAPTER_FOUR_MAPS: MapId[] = ['delta'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS, ...CHAPTER_FOUR_MAPS];
@@ -5871,7 +5871,7 @@ const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
  *  1.45), so waves 4-10 send a little less, within ±15% of each wave and
  *  never more than the ten. */
 const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
-/** The Delta (log v54): its shared waves (threat scale 1.5) are flat for
+/** The Delta (log v57): its shared waves (threat scale 1.5) are flat for
  *  four waves and then climb to a wave 10 of 1.2 ships, so waves 2-4 send
  *  a little more and waves 9-10 a little less, within ±15% of each wave
  *  and never more than the ten. */
@@ -6003,7 +6003,7 @@ export interface MapSignature {
   /** The Black Strait (log v52): and fire this many salvos each (a siege
    *  gun's own: 3). */
   salvos?: number;
-  /** The Delta (log v54): the wave's Incendiary Missiles fly at this
+  /** The Delta (log v57): the wave's Incendiary Missiles fly at this
    *  ('switch': they burst on the mouth of the branch the fork's switch is
    *  set to, ahead of the next ships). */
   clouds?: BeatAim;
@@ -6076,7 +6076,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // reaches, right behind the ships as they deliver: their circles on the
   // lane show; the gun that fires them is a glow, five hits while it is up.
   lantern: { from: 4, foe: 'siege', foeShare: 1, beside: [4, 5], salvos: 1 },
-  // The Delta (log v54, docs/design/v3-ch4-delta.md): "fire on the branch",
+  // The Delta (log v57, docs/design/v3-ch4-delta.md): "fire on the branch",
   // from wave 4. The wave's new enemies come as Incendiary Missiles, chapter
   // 4's own, each flying for the mouth of the branch the fork's switch is
   // set to as it leaves (aim 'switch') and bursting there, its fireball
@@ -6264,7 +6264,7 @@ export interface BossRound {
   gunSalvos?: number;
   dark?: number;
   supply?: number;
-  /** The Delta's Burning Delta (log v54), in place of the Escort Run's
+  /** The Delta's Burning Delta (log v57), in place of the Escort Run's
    *  guarded heavy: burning oil across the mouths of the fork's branches.
    *  Each burn, `at` s into the round (its mouths lit DELTA_BURN.warn s
    *  before), sets `n` branches alight for `dur` s, the branch the switch
@@ -6550,7 +6550,7 @@ export const LANTERN_BOSS_ROUNDS: BossRound[] = [
   { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 5, aim: 'lead' }] },
 ];
 
-/** The Delta's Burning Delta (log v54, docs/design/v3-ch4-delta.md), in
+/** The Delta's Burning Delta (log v57, docs/design/v3-ch4-delta.md), in
  *  place of the Escort Run (one heavy in three rings of Bodyguard drones:
  *  the Bodyguard Ring is a regular of chapter 4's waves, and the Delta's
  *  own debut). Burning oil closes branches of the fork, the switch's own

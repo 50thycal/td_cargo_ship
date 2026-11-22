@@ -219,7 +219,7 @@ describe('a map card is the full production map', () => {
     expect(productionText('rigs')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md): the same.
     expect(productionText('dreadnought')).toBe("The map's own convoy (no commands) · encounters v1 Original");
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): the same
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same
     // (its fork's switch is the map's own, not a convoy command).
     expect(productionText('delta')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('crossing')).toMatch(/^Today's convoy controls/);

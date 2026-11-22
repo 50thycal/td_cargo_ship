@@ -496,7 +496,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       const th = spawnThreat(g, 'cloud', at.x, at.y, 'base');
       th.foe = data();
       if (l.enc) th.enc = l.enc;
-      // The Delta (log v54, aim 'switch'): it flies for the mouth of the
+      // The Delta (log v57, aim 'switch'): it flies for the mouth of the
       // branch the fork's switch is set to as it leaves, and bursts there,
       // ahead of the next ships (its ship is the newest bound there).
       if (l.aim === 'switch' && g.map.fork) {
@@ -1017,7 +1017,7 @@ export function updateFoe(g: Game, th: Threat, dt: number, aim: (th: Threat) => 
       // not up the wake. At the ship it bursts, doing no harm itself (Test
       // Lab round 4): its fireball does it all.
       const C = FOE.cloud;
-      // The Delta (log v54): one for a branch's mouth flies there and
+      // The Delta (log v57): one for a branch's mouth flies there and
       // bursts on the water, whatever its ship does.
       if (f.aim === 'switch') {
         steer(th, f.px, f.py, th.speed, C.turn * 3, dt);

@@ -70,7 +70,7 @@ describe('a campaign run has no convoy layer', () => {
     expect(mapConvoy('lantern')).toMatchObject({ flow: 2, formation: 'pairs', commands: [] });
     // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
     expect(mapConvoy('rigs')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): heavy river
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): heavy river
     // traffic, spread across the river (flow step 3, the Spread: the player's
     // own habit in the campaign), and no command (the fork's switch is the
     // map's own).

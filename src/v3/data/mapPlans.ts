@@ -375,7 +375,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // sits at the carrier beside the middle branch, where the river's ships
     // come out. Thermobaric Shell and the Cadence Gun are for a few big
     // targets, not strings of small ones, and the Seeker Pod chases them
-    // one at a time (forced, the combo sweep's singles at log v54: Gravity
+    // one at a time (forced, the combo sweep's singles at log v57: Gravity
     // Well 6.4, Tesla 6.4, Point Defense 6.8 against Seeker 7.7, Thermobaric
     // 8.1, Cadence 8.6; the best singles, Air Strike and Wild Card, and the
     // weapons in the map's five best kits left out; docs/design/

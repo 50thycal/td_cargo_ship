@@ -1361,7 +1361,7 @@ function startWave(g: Game): void {
       if (base >= 0 && !raid.bases.includes(base)) raid.bases.push(base);
       // Saltgate Canal (log v38, MAP_SIGNATURE `clusters`): the wave's own
       // cluster missiles go for the ships held at the locks.
-      // The Delta (log v54, MAP_SIGNATURE `clouds`): the wave's
+      // The Delta (log v57, MAP_SIGNATURE `clouds`): the wave's
       // Incendiary Missiles burst on the switch's branch.
       const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : u.kind === 'cloud' && sig?.clouds ? { aim: sig.clouds } : {};
       for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim });
@@ -1599,7 +1599,7 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
     const near = (a: Ship, b: Ship) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a);
     pick = held.length ? held.reduce(near) : pool.reduce(near);
   }
-  // Chapter 4's Delta (log v54): the newest ship bound for the branch the
+  // Chapter 4's Delta (log v57): the newest ship bound for the branch the
   // fork's switch is set to; none, the ship least far along.
   if (aim === 'switch') {
     const lane = switchLane(g);
@@ -7191,7 +7191,7 @@ export function worthShooting(g: Game, list: Threat[]): Threat[] {
 export function quieterBranch(g: Game): number | null {
   const fork = g.map.fork;
   if (!fork) return null;
-  // Log v54: a branch burning at its mouth (the Delta's incendiaries and its
+  // Log v57: a branch burning at its mouth (the Delta's incendiaries and its
   // boss's oil) is as hot as a raid on it: a player sends the ships round.
   const heat = fork.lanes.map((lane) => g.threats.filter((t) => !t.dead && g.ships.some((s) => s.id === t.target && s.channel === lane)).length + (branchBurning(g, lane) ? 6 : 0));
   const cur = g.forkLane % fork.lanes.length;
@@ -7428,7 +7428,7 @@ export function switchLane(g: Game): number {
 }
 
 /** How far past the buoy, along a branch, its mouth is: where the Delta's
- *  incendiaries burst and its boss's burning oil lies (log v54), clear of
+ *  incendiaries burst and its boss's burning oil lies (log v57), clear of
  *  the river the three branches share. */
 export const FORK_MOUTH = 270;
 

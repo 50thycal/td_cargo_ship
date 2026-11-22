@@ -712,7 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'delta', log: 54, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
+  { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
   { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
   { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
   { map: 'rigs', log: 49, tag: 'New', note: 'Rigs fire from point-blank; bring one down for good, or tows bring it back. Worth it?' },
