@@ -4596,7 +4596,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'rig', count: 1, from: { air: 1 } },
       { at: 0.45, kind: 'ballistic', count: 1, from: base(4), aim: 'rear' },
-      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
       { at: 0.9, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
     ],
@@ -4622,7 +4622,7 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.25, kind: 'cluster', count: 1, from: base(1), aim: 'mid' },
       { at: 0.25, plus: 7, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
-      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
     ],
     replaces: { ballistic: 9, guided: 1, extras: { cluster: 1 } },
   },
@@ -5108,10 +5108,10 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Log v55 (round 15: the player rated the Rigs' waves 1-3 1, 2 and 1):
   // a little more on each, easy strings of drones off the two drone rigs:
   // wave 1 a string off the west rig too, wave 2 a third string, wave 3
-  // two (it had none).
+  // one (it had none).
   ['rigs-point-blank', [fill(0.35, 2, 0), fill(0.7, 2, 3)]],
   ['rigs-bring-down', [fill(0.1, 3, 0), fill(0.45, 2, 3), fill(0.8, 2, 3)]],
-  ['rigs-under', [fill(0.15, 3, 3), fill(0.85, 2, 0)]],
+  ['rigs-under', [fill(0.15, 3, 3)]],
   ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 2, 3]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
@@ -5871,9 +5871,9 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  missiles, shells and drones converging on the convoy. A rig brought down
  *  fires no more. Rising: more rigs, more volleys, bigger ones. */
 export const RIGS_BOSS_ROUNDS: BossRound[] = [
-  { rigs: 2, rigHp: 10, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 3, rigHp: 10, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 4, rigHp: 10, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6.5, count: 2, size: 1, warn: 1.5 } },
+  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
 ];
 
 /** Dreadnought Pass (log v51, docs/design/v3-ch3-dreadnought.md): one pass

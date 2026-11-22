@@ -265,14 +265,14 @@ export const SOW = { near: 110, far: 340, across: 190, every: 0.55, line: 0.6 } 
  *  over a rig's own); either way it comes loaded: `rack` guided missiles off
  *  the station at the ship nearest it, `gap` s apart, `fire` s after it
  *  docks (its deck lit as the warning). */
-export const TOW = { hp: 10, speed: 48, dock: 25, rack: 1, gap: 0.5, fire: 1.5 } as const;
+export const TOW = { hp: 10, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 } as const;
 
 /** Log v55 (round 15, SHOT_RIGS, lab only): on a map whose rigs count
  *  shots, each rig standing from the start takes `rig` of the player's
  *  shots (a relief rig: TOW.hp on its tow, TOW.dock docked; a risen one:
  *  MAP_BOSS `rigHp`). Before, 40 hits of damage, and a power-up's shot or
  *  a flak cloud did many of them at once. */
-export const RIG_SHOTS = { rig: 50 } as const;
+export const RIG_SHOTS = { rig: 40 } as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
