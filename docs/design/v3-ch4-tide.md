@@ -149,7 +149,7 @@ One encounter a wave, none repeated, with filler on waves 1–6 (strings of two 
 | 9 | escalate | Before the ebb (`tide-before-ebb`) | 18 s | east silo, a mothership to the flats (the long flight) | middle silo, a cluster; east-middle silo, a supersonic; west silo, 6 drones; the signature's cluster |
 | 10 | climax | Spring low (`tide-spring-low`), after a 6 s calm | 20 s | the wave's own | middle silo, a cluster; west silo, 2 shells; east-middle silo, a guided missile; east silo, 6 drones to the flats |
 
-**Wave 10, the climax:** after a 6 s calm the tide runs out for the longest low water of the waves and the whole shore fires at the crowd; the hardest regular wave for the usual and plating Armories (192 seeds, normal: 1.07 usual, 1.09 latest, 0.81 plating; tough 1.52, 2.67, 1.32), and no step to it doubles the wave before (×1.7 usual).
+**Wave 10, the climax:** after a 6 s calm the tide runs out for the longest low water of the waves and the whole shore fires at the crowd; the hardest regular wave for the usual and plating Armories (192 seeds, normal: 0.88 usual, 1.09 latest, 0.81 plating; tough 1.23, 2.67, 1.32), and no step to it doubles the wave before (×1.5 usual).
 
 ## The boss plan: Low Water
 
@@ -168,11 +168,11 @@ How it reads (192 seeds, normal runs that reached it):
 
 | Armory | Before r1 / r2 / r3 | After r1 / r2 / r3 |
 | --- | --- | --- |
-| usual | 2.65 / 1.88 / 1.77 (130, 116, 77 runs) | **0.72 / 1.31 / 2.02** (133, 133, 123) |
+| usual | 2.65 / 1.88 / 1.77 (130, 116, 77 runs) | **0.67 / 1.33 / 2.11** (141, 141, 135) |
 | latest | – (no run reached it) | **0.84 / 2.53 / 1.98** (62, 62, 50) |
 | plating | 0.38 / 1.23 / 3.31 (13 runs) | **0.30 / 1.19 / 1.40** (145, 145, 144) |
 
-Rising for the usual and plating Armories (the latest set's round 3 is reached by its stronger runs only; tough, every seed plays every round: 0.95 / 3.01 / 3.18). Under the asked 1.5 / 2 / 2.5 for the usual Armory, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so the boss's three rounds share one limit; heavier builds (1.27 / 1.57 / 2.65; after the tide fix 0.57 / 2.14 / 2.04) won 31% and 42%. Tough runs: usual 0.77 / 1.37 / 2.19, plating 0.39 / 1.24 / 1.59.
+Rising for the usual and plating Armories (the latest set's round 3 is reached by its stronger runs only; tough, every seed plays every round: 0.95 / 3.01 / 3.18). Under the asked 1.5 / 2 / 2.5 for the usual Armory, as on every rebuilt map: the convoy is restored before the boss and the loss limit is six, so the boss's three rounds share one limit; heavier builds (1.27 / 1.57 / 2.65; after the tide fix 0.57 / 2.14 / 2.04) won 31% and 42%. Tough runs: usual 0.70 / 1.51 / 2.25, plating 0.39 / 1.24 / 1.59.
 
 ## Bot results, before and after
 
@@ -180,11 +180,11 @@ Rising for the usual and plating Armories (the latest set's round 3 is reached b
 
 ### The headline (192 seeds, normal runs)
 
-The final build (the tide's turn fixed, the retune after it, the base merged with Dunmar Crossing). The usual Armory's read is on the merged build; the other three on the build just before the merge (the Crossing's changes do not touch the Tide: the usual set's read is the same, 51% → 50%, on the same seeds).
+The final build (the tide's turn fixed, the retune after it, the base merged with Dunmar Crossing and the Citadel). The usual Armory's reads are on the final build (the same before and after merging the Citadel, on the same seeds); the other three on the build just before wave 4's last climb change (×0.88 → ×0.92: the usual set moved 50% → 52%) and the merges.
 
 | Armory | Won before → after | Waves 1–5 lost | Waves 1–10 lost | Wave 8 | Wave 10 |
 | --- | --- | --- | --- | --- | --- |
-| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 16% → **50%** | 0.59 → **0.87** | 4.16 → 3.46 | 0.74 → 0.56 | 1.30 → 1.07 |
+| **usual** (Quick Reload 5, Damage Control 4, Stockpile 5) | 16% → **52%** | 0.59 → **0.83** | 4.16 → 3.44 | 0.74 → 0.43 | 1.30 → 0.88 |
 | latest (Wide Warhead 5, Point Defense 4, Supply Lines 3) | 0% → **15%** | 3.43 → **1.76** | 5.98 → 5.17 | 2.07 → 1.19 | 1.00 (1 run) → 1.09 |
 | plating (Quick Reload 5, Armor Plating 5, Big Magazine 4) | 4% → **68%** | 1.68 → **0.76** | 5.75 → 3.11 | 1.77 → 0.42 | 1.28 → 0.81 |
 | none | 0% → 1% | 5.09 → 2.90 | 5.91 → 5.92 | 1.50 → 1.53 | – → 1.37 |
@@ -193,36 +193,36 @@ Normal-run curves, waves 1–10 then the boss rounds (runs that reached each):
 
 | Armory | Before | After |
 | --- | --- | --- |
-| usual | .01 .01 .24 .22 .10 .40 .47 .74 1.00 1.30 · boss 2.65 1.88 1.77 | .03 .03 .39 .05 .38 .35 .47 .56 .51 1.07 · boss .72 1.31 2.02 |
+| usual | .01 .01 .24 .22 .10 .40 .47 .74 1.00 1.30 · boss 2.65 1.88 1.77 | .03 .03 .39 .09 .31 .41 .66 .43 .55 .88 · boss .67 1.33 2.11 |
 | latest | .03 .21 1.20 .77 1.42 1.67 1.62 2.07 1.67 1.00 · boss – | .02 .22 .58 .24 .75 .99 .48 1.19 1.29 1.09 · boss .84 2.53 1.98 |
 | plating | .02 .07 .46 .42 .73 1.09 1.16 1.77 1.25 1.28 · boss .38 1.23 3.31 | .02 .05 .26 .15 .29 .52 .39 .42 .46 .81 · boss .30 1.19 1.40 |
 
-Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .07 .11 .96 .60 1.33 2.12 2.44 4.44 3.91 5.54 (21.5 ships in waves 1–10); latest .05 .18 1.55 .95 1.10 2.17 1.89 2.83 3.67 4.95; plating .03 .05 .49 .45 .43 .89 .85 1.53 1.51 3.47; none .16 .40 2.38 1.90 1.41 3.81 3.39 3.64 5.64 6.16 (28.9). After: usual .03 .03 .39 .07 .40 .48 .52 .78 .90 1.52 (5.10); latest .02 .22 .61 .35 .95 1.62 .84 2.00 2.33 2.67 (11.6); plating .02 .05 .26 .16 .27 .64 .48 .58 .72 1.32 (4.5); none .05 .20 1.25 .72 1.52 3.12 2.13 3.39 5.09 5.32 (22.8). **The usual Armory's largest step: ×1.7 on wave 10 (0.90 → 1.52), within the line** (wave 3 ×1.6 and wave 5 ×1.6 over the floor of 0.25); plating ×2.4 on wave 6 (0.27 → 0.64), **over the line**; the latest set ×2.4 on wave 8 (0.84 → 2.00), **over the line**.
+Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Before: usual .07 .11 .96 .60 1.33 2.12 2.44 4.44 3.91 5.54 (21.5 ships in waves 1–10); latest .05 .18 1.55 .95 1.10 2.17 1.89 2.83 3.67 4.95; plating .03 .05 .49 .45 .43 .89 .85 1.53 1.51 3.47; none .16 .40 2.38 1.90 1.41 3.81 3.39 3.64 5.64 6.16 (28.9). After: usual .03 .03 .39 .10 .34 .52 .78 .64 .81 1.23 (4.86); latest .02 .22 .61 .35 .95 1.62 .84 2.00 2.33 2.67 (11.6); plating .02 .05 .26 .16 .27 .64 .48 .58 .72 1.32 (4.5); none .05 .20 1.25 .72 1.52 3.12 2.13 3.39 5.09 5.32 (22.8). **The usual Armory's largest step: ×1.6 on wave 3 over the floor of 0.25 (wave 7 ×1.5, wave 10 ×1.5), within the line**; plating ×2.4 on wave 6 (0.27 → 0.64), **over the line**; the latest set ×2.4 on wave 8 (0.84 → 2.00), **over the line**.
 
 ### The record reports (24 seeds, 900–923)
 
 | | latest / plating / usual / none |
 | --- | --- |
-| Won (normal) | 13% / 83% / 63% / 0% |
-| Waves 1–5 lost (normal) | 1.08 / 0.33 / 0.50 / 2.04 |
-| Boss r1 / r2 / r3 (normal, reached) | 1.10 / 2.80 / 1.86 (10, 10, 7); 0.33 / 1.10 / 1.14 (21); 0.71 / 1.06 / 2.31 (17, 17, 16); – |
-| `w-cliff` (tough) | FLAG (w3, w6) / FLAG (w8) / **PASS** / FLAG (w3, w5, w6): 24 seeds; on 192 seeds the usual set passes, the latest set doubles on w8, plating on w6 |
+| Won (normal) | 13% / 83% / 54% / 0% |
+| Waves 1–5 lost (normal) | 1.08 / 0.33 / 0.58 / 2.04 |
+| Boss r1 / r2 / r3 (normal, reached) | 1.10 / 2.80 / 1.86 (10, 10, 7); 0.33 / 1.10 / 1.14 (21); 0.38 / 1.69 / 2.06 (16); – |
+| `w-cliff` (tough) | FLAG (w3, w6) / FLAG (w8) / FLAG (w7, w9) / FLAG (w3, w5, w6): 24 seeds; on 192 seeds the usual set passes (largest step ×1.6), the latest set doubles on w8, plating on w6 |
 | `w-early` close calls from wave 3 | **PASS** for all four (fewest 1.75–2.50 a run, wave 4) |
-| `w-budget` ±15% | FLAG on wave 4 (×0.82–0.83) for all four, on the build before wave 4's climb went from ×0.88 to ×0.92 (the final build; the usual set's report re-run on it below) |
-| `m-stretches` | **PASS**: hot late 38–43%, cold early 22–24% (deep channel); none: early 26% |
+| `w-budget` ±15% | FLAG on wave 4 for all four: ×0.82–0.83 on the build before wave 4's climb went from ×0.88 to ×0.92, ×0.84 on the final build (the usual set's report); every other wave within |
+| `m-stretches` | **PASS**: hot late 40–43%, cold early 19–24% (deep channel); none: early 26% |
 | `g-warning` | PASS: 10.6 s → 7.5 s |
 | `w-first` | PASS (0.00; none 0.04) |
-| Kits (counter / off-counter): lost in waves 1–10 (tough) | latest 10.2 / 10.0; plating 4.2 / 3.4; usual 4.3 / 3.8; none 18.7 / 20.0 |
+| Kits (counter / off-counter): lost in waves 1–10 (tough) | latest 10.2 / 10.0; plating 4.2 / 3.4; usual 4.8 / 4.3; none 18.7 / 20.0 |
 
 **The counters do not do clearly better** (rule `m-kits`, 24 seeds, the kit as the bot's taste): the forced singles rank the Gravity Well, the Bomber Wing and Point Defense the best and the Tesla, the Grapnel and Full Steam among the worst, but with the bot drafting toward them the two kits come out level (the counter a few tenths of a ship worse with the usual and plating sets). Neither is trivial. A question for the player and for the next sweep.
 
-**Busier early waves** (the usual Armory's record): threats on the board at a moment 2.3, 1.6, 2.4 on waves 1–3, kills a minute 50, 43, 47.
+**Busier early waves** (the usual Armory's record): threats on the board at a moment 1.8, 1.5, 2.1 on waves 1–3, kills a minute 41, 42, 48 (the final build).
 
 ### Tide difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
 
-- **The usual Armory wins 50%**, at the bottom of the band (before 16%: the hardest map of the chapter for the bot). **The latest set 15%**, under it (before 0%); **the plating set 68%**, in it. The tide's fix (ships crossing to the deep channel as it falls) made the map harder by about 10 points for every Armory; the retune after it won back most of it for the usual set.
-- **Waves 1–5:** 0.87 for the usual Armory, over the asked 0.8 (before 0.59, but 0.0–0.2 a wave until wave 3); the plating set 0.76, the latest 1.76.
-- **The climb from wave 4 to 9** rises for the usual Armory (.05 .38 .35 .47 .56 .51), then wave 10's 1.07; on the tough runs .07 .40 .48 .52 .78 .90, then 1.52.
+- **The usual Armory wins 52%**, near the bottom of the band (before 16%: the hardest map of the chapter for the bot). **The latest set 15%**, under it (before 0%); **the plating set 68%**, in it. The tide's fix (ships crossing to the deep channel as it falls) made the map harder by about 10 points for every Armory; the retune after it won back most of it for the usual set.
+- **Waves 1–5:** 0.83 for the usual Armory, a hair over the asked 0.8 (before 0.59, but 0.0–0.2 a wave until wave 3); the plating set 0.76, the latest 1.76.
+- **The climb from wave 4 to 9** rises for the usual Armory (.09 .31 .41 .66 .43 .55), then wave 10's 0.88; on the tough runs .10 .34 .52 .78 .64 .81, then 1.23.
 - **Wave 10** is the hardest regular wave for the usual and plating Armories, and no step to it doubles.
 
 ## What is not satisfied, or uncertain
@@ -231,11 +231,12 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 - **The Repair Ship and the Bodyguard Ring come as Lure Beacons** on the Tide's waves (their heavies sink a ship outright on the deep channel's short flights): two of chapter 4's four enemies do not show on this map under the layer.
 - **The waves are mostly drones** (59% of what shows in waves 4–10): the shared waves' shells, missiles and clusters come as drone strings to the flats, as on the Coves (67%) and the Rigs (72%), to bring a map the bot won 16% of the time into the band.
 - **The signature is 12% of the hits in waves 4–10**, under the asked quarter (the Coves 7%, the Rigs 9%, the Sowers 19%): each cluster more at the crowd cost about 0.3 of a ship a wave on the Box, and one more on wave 7 made a cliff.
-- **The boss is under the asked 1.5 / 2 / 2.5** for the usual Armory (0.72 / 1.31 / 2.02): heavier builds won 31–42%.
-- **The win rate is at the band's floor** (50% for the usual set) after the tide fix; the latest set 15%.
+- **The boss is under the asked 1.5 / 2 / 2.5** for the usual Armory (0.67 / 1.33 / 2.11): heavier builds won 31–42%.
+- **The win rate is near the band's floor** (52% for the usual set) after the tide fix; the latest set 15%.
+- **Wave 4's budget is ×0.84** of the no-encounter wave (the line is ×0.85): it gives up most of its shells to keep the climb.
 - **Cliffs for the other Armories:** the latest set's wave 8 is ×2.4 its wave 7 and the plating set's wave 6 ×2.4 its wave 5 (floored) on the tough runs; the usual set's climb passes.
 - **The combo sweep and the diversity check ran on the build before the tide fix and the retune** (the best kits may have moved; the sweep takes about two hours).
-- **Waves 1–5 lose 0.87**, over the asked 0.8; wave 3's low water (a guided missile and a shell at the crowd) is most of it (0.39).
+- **Waves 1–5 lose 0.83**, a hair over the asked 0.8; wave 3's low water (a guided missile and a shell at the crowd) is most of it (0.39).
 - **The tide's turn changed for the campaign too**: the falling and rising tide, the ships crossing off the flats and the drawing are the mechanic itself (the player's note), so a campaign Tide run plays differently from v57 (its log does not replay).
 - **The map-cards e2e fails one check on the base as on this branch**: "the Strait's card (not its debut): no card for an enemy met before" sees "NEW: Helicopter missile" (the forced Attack Helicopter's rockets get their own first-sight card). Not the Tide's; reproduced on a clean build of the base (#223).
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.

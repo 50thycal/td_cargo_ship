@@ -127,7 +127,7 @@ Read on the normal runs' logs, over the runs that reached each wave (docs/design
 | shape (most runs) | flat 87% | flat 100% | flat 54% | flat 75% | one peak 46% | one peak 75% | one peak 46% | flat 50% | one peak 42% | one peak 55% | one peak 88% | sawtooth 63% | sawtooth 63% |
 | taps follow tension (r) | 0.39 | 0.38 | 0.39 | 0.29 | 0.39 | 0.38 | 0.26 | 0.28 | 0.33 | 0.34 | 0.72 | 0.51 | 0.59 |
 
-saves a run: waves 1–7 0.0, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 319 s of forks and replays.
+saves a run: waves 1–7 0.0, 8–10 + boss 0.2; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 298 s of forks and replays.
 
 ## Kits
 
