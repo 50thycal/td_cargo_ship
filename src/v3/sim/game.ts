@@ -1355,6 +1355,7 @@ function startWave(g: Game): void {
   }
   g.raiderQueue = planVectors(g, raids, raidUnits, rng);
   const hidden = hiddenMines(g);
+  let besides = 0;
   raids.forEach((raid, r) => {
     for (const u of raidUnits[r]) {
       const at = raid.at + rng.range(0, RAID.window);
@@ -1374,7 +1375,11 @@ function startWave(g: Game): void {
         // Rocket Trucks fire at the ships held at the locks.
         // Sowers' Reach (log v48, MAP_SIGNATURE `sow`): its stealth bombers
         // sow mines ahead of the ships in place of their missiles.
-        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
+        // The Black Strait (log v52, MAP_SIGNATURE `beside`): its siege
+        // guns rise beside the bases of the enemy's dark bank, in turn.
+        const beside = u.kind === 'siege' && sig?.beside?.length ? sig.beside[besides++ % sig.beside.length] : -1;
+        const salvos = beside >= 0 && sig?.salvos !== undefined ? { salvos: sig.salvos } : {};
+        queue.push({ at, kind: u.kind, base: beside, ...salvos, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1513,8 +1518,9 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         const gap = b.gap ?? 0.35;
         // The Rig Field (log v49): a beat out of a rig already brought down
         // comes from the far shore instead (rigStandIn), lit there.
+        // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
         // Log v55 (HIDDEN_MINES): a chute's hidden mines just come, unwarned.
         if (b.kind === 'mine' && hiddenMines(g)) {
           start = Math.min(start, at);

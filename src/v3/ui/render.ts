@@ -11,7 +11,7 @@ import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
 import { drawEventOver, drawEventUnder } from './events';
-import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, isFoeAircraft } from './foes';
+import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, drawWarningMarks, isFoeAircraft } from './foes';
 import { pickupLocked } from '../sim/foes';
 import { laneSamples } from '../sim/lanes';
 import { holdable } from '../sim/convoy';
@@ -141,7 +141,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   for (const b of g.bombs) drawBomb(ctx, b);
   for (const a of g.allies) drawAlly(ctx, g, a);
   drawEventOver(ctx, g);
-  drawNight(ctx, g, (th) => drawBallisticGround(ctx, g, th));
+  drawNight(ctx, g, (th) => drawBallisticGround(ctx, g, th), () => drawWarningMarks(ctx, g));
   drawBoosts(ctx, g);
   drawPlaneWarnings(ctx, g);
   drawTimedPickups(ctx, g);

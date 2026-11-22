@@ -161,6 +161,13 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // schedule, as the Battery's, and no command: the rigs are answered by
   // shooting them, not by sailing.
   rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
+  // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): flow 2 and
+  // Pairs, as most of chapter 2's maps; no command (the night is read and
+  // shot, not sailed round). At the campaign's step 1 its shared waves were
+  // the hardest of any rebuilt map for the bot (won 9% with the usual
+  // Armory on the map's own convoy, no encounters); step 2 spreads the
+  // same fire over more hulls.
+  lantern: { flow: 2, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {

@@ -239,6 +239,38 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
+## The Black Strait (the Lantern): chapter 3's fourth map (game version 52; swept at 50)
+
+> 2026-11-21. The Black Strait rebuilt to the map rules (docs/design/v3-ch3-lantern.md): night, and the fire comes out of the enemy's dark bank behind the ships, the one shore the lighthouse beam never sweeps; its signature is "guns in the dark" (from wave 4 the wave's new enemies are Siege Batteries rising beside that bank, one salvo each), and its convoy sails at flow 2. Swept the same way at version 50, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, Sowers `results/v48-ch3`, the Rig Field `results/v49-ch3`, Dreadnought Pass `results/v51-ch3`). Results: `tools/v3/combo-sweep/results/v50-ch3`; the comparison: `python3 tools/v3/lantern/compare.py`. (Boss rounds 1 and 3 were made a shell lighter after the sweep; the waves are the swept ones.)
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| The Black Strait (v50) | **Air Strike + Frigate Escort + Supply Run** 2.9 ±0.6, won 100% | Air Strike + Gunship Pair + Supply Run 3.1 | Air Strike + Drone Screen + Shield 3.5 | Air Strike + Railgun + Supply Run 3.6 | Air Strike + Scattergun + Flak Cannon 3.6 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Black Strait against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field / Dreadnought | 0 / 0 / 0 / 0 / **0.11** / **0.11** / 0 / 0 / 0 (its #1 is the Battery's #1; its #2 is in Saltgate's top 5) |
+| The same, against itself (two halves of its seeds) | 0.67 |
+| #1 kit | **not its own**: the Battery's #1 |
+| Best weapon alone | **Scattergun** 3.8 (Air Strike 4.5, Gunship Pair 4.6, Shield 4.7, Orbital Strike 5.0): the best single on no other rebuilt map |
+| Rank correlation of the weapons alone, against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rig Field / Dreadnought | 0.50 / 0.76 / 0.38 / 0.59 / 0.32 / 0.62 / 0.59 / 0.75 / 0.67 |
+| Air Strike | second alone (4.5); in **all five** of the best kits |
+| The bot drafting for itself; the plain gun | 9.9 lost, won 33%; 18.1, won 0% |
+
+### Reading
+
+- **Its best weapon alone is its own: the Scattergun** (3.8), the best single on no other rebuilt map: the fire from the dark bank arrives close to the ships on short flights, where a short-range burst catches it.
+- **Its best kits are not all its own**: three of the five are, but its #1 (Air Strike + Frigate Escort + Supply Run) is the Battery's #1 and its #2 is in Saltgate's top 5 (Jaccard 0.11 against each). The five are within about a standard error of each other (2.9–3.6, ±0.5–0.6), so the order is noise; the self-split agreement (0.67) is the highest of the chapter, so the set itself is fairly stable.
+- **Air Strike leans hard here**: second alone and in all five best kits, the most of any rebuilt map (chapter 2 and the other chapter 3 maps: two to four of five). The rule says Air Strike should not be over-dominant; by the kits it is on this map. A question for the player (docs/design/v3-ch3-lantern.md).
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=lantern --out=tools/v3/combo-sweep/results/v50-ch3
+npm run v3:combo-sweep -- --stage=pairs --maps=lantern --out=tools/v3/combo-sweep/results/v50-ch3
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v50-ch3 --maps=lantern --json=tools/v3/combo-sweep/results/v50-ch3/diversity.json
+python3 tools/v3/lantern/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=lantern --seeds=8
+```
+
 ## Dreadnought Pass: chapter 3's finale (game version 51)
 
 > 2026-11-22. Dreadnought Pass rebuilt to the map rules (docs/design/v3-ch3-dreadnought.md): its signature is "laying the guns" (from wave 4 the wave's new enemies are Spotter Planes, whose calls are the battleship's guns), its battleship's passes each have their own numbers, and its boss is the Dreadnought itself. Swept the same way at version 51, with chapter 3's draft (25 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The chapter 2 maps, the Battery and Sowers' Reach are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, Sowers `results/v48-ch3`); the Rig Field and the Black Strait, rebuilt at the same time, are not in it. Results: `tools/v3/combo-sweep/results/v51-ch3`; the comparison: `python3 tools/v3/dreadnought/compare.py`.
