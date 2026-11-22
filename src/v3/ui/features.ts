@@ -5,6 +5,7 @@
 // Like render.ts it reads the game and mutates nothing.
 
 import { THREATS } from '../data/config';
+import { FOE } from '../data/foes';
 import { FORK_RADIUS, highTide, lockCountdown, reticleVisible, shieldUp, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 
@@ -403,8 +404,39 @@ function drawBoat(ctx: CanvasRenderingContext2D, th: Threat): void {
   ctx.stroke();
   ctx.fillStyle = '#c9d2db';
   ctx.fillRect(-8, -4, 8, 8);
+  // Log v53 (The Coves): a fire ship burns, its deck in flames and a ring
+  // of fire round it the size of the fireball it leaves where it goes
+  // down, so it reads as "sink it far out" on a phone.
+  if (th.fire) {
+    const t = th.age * 9;
+    ctx.fillStyle = '#ff7a1a';
+    for (let k = 0; k < 3; k++) {
+      const fx = -10 + k * 9;
+      const h = 14 + 5 * Math.sin(t + k * 2.1);
+      ctx.beginPath();
+      ctx.moveTo(fx - 5, 0);
+      ctx.quadraticCurveTo(fx - 3, -h * 0.6, fx - 6, -h);
+      ctx.quadraticCurveTo(fx + 4, -h * 0.5, fx + 5, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = '#ffd34a';
+    ctx.beginPath();
+    ctx.arc(-2, -2, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
-  if (th.hp < THREATS.fastboat.hp) bar(ctx, th.x, th.y - 26, 30, th.hp / THREATS.fastboat.hp, '#ff8a7a');
+  if (th.fire) {
+    ctx.strokeStyle = 'rgba(255,122,26,0.55)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([7, 6]);
+    ctx.beginPath();
+    ctx.arc(th.x, th.y, FOE.cloud.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  const full = th.maxHp ?? THREATS.fastboat.hp;
+  if (th.hp < full) bar(ctx, th.x, th.y - 26, 30, th.hp / full, th.fire ? '#ff9a3a' : '#ff8a7a');
 }
 
 function drawRig(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {

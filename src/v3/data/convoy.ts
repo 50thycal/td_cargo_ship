@@ -157,6 +157,9 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // schedule, as the Battery's, and no command: the rigs are answered by
   // shooting them, not by sailing.
   rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
+  // The Coves (docs/design/v3-ch4-coves.md, log v53): the same, no command:
+  // the boats are answered by shooting them, not by sailing.
+  coves: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
 };
 
 export function mapConvoy(map: MapId): MapConvoy {
