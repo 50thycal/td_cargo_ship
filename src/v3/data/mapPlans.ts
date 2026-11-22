@@ -365,23 +365,23 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   // docs/design/v3-ch4-delta.md
   delta: {
     problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
-    // The fire is strings of drones down the river and at the fork, short
-    // flights off the north bank and the island at the ships bunched on the
-    // way in, incendiaries at the switch's branch and, in the boss, a raid
-    // off every silo at the ships funnelled into the branch left open.
-    // Everything comes to the river and the fork, in strings and bunches:
-    // the Tesla Arc's chain runs down a string of drones, the Gravity Well
-    // pulls the raid off the bunched ships at the fork, and Point Defense
-    // sits at the carrier beside the middle branch, where the river's ships
-    // come out. Thermobaric Shell and the Cadence Gun are for a few big
-    // targets, not strings of small ones, and the Seeker Pod chases them
-    // one at a time (forced, the combo sweep's singles at log v57: Gravity
-    // Well 6.4, Tesla 6.4, Point Defense 6.8 against Seeker 7.7, Thermobaric
-    // 8.1, Cadence 8.6; the best singles, Air Strike and Wild Card, and the
-    // weapons in the map's five best kits left out; docs/design/
+    // The fire is threats at single ships, one after another: drones down
+    // the river and at the fork, short flights off the north bank and the
+    // island, incendiaries at the switch's branch and, in the boss, a raid
+    // off every silo. The ships sail in a Spread, one at a time across the
+    // river, so they are seldom bunched for an area weapon to cover: what
+    // pays is picking each threat off far out, the Seeker Pod homing on the
+    // slow incendiaries before they reach a branch, the Thermobaric Shell's
+    // burst on a string as it closes, the Cadence Gun's steady shots. The
+    // area weapons (Gravity Well, Tesla Arc, Point Defense at the carrier)
+    // wait for bunches the convoy rarely makes. Chosen on the bots' kit
+    // runs (the bot's taste set to the kit, 32 seeds, the usual Armory:
+    // won 84% against 66%), not the forced singles, which rank the area
+    // weapons higher (Gravity Well 6.4, Tesla 6.4, Point Defense 6.8
+    // against Seeker 7.7, Thermobaric 8.1, Cadence 8.6; docs/design/
     // v3-ch4-delta.md, The counters). Every weapon is in chapter 4's draft.
-    counters: ['well', 'tesla', 'aegis'],
-    offCounter: ['seeker', 'thermo', 'cadence'],
+    counters: ['seeker', 'thermo', 'cadence'],
+    offCounter: ['well', 'tesla', 'aegis'],
     convoy: 'The map\'s own convoy, no commands: heavy river traffic (flow step 3) in a Spread, one ship at a time across the river (the player\'s own habit in the campaign), down to the fork, where the switch (a tap on its buoy) sends the next ships down one of three branches; the ships bunch in the river and at the fork, and spread out across the branches.',
     stretches: { danger: 'early', safe: 'late' },
     boss: {
