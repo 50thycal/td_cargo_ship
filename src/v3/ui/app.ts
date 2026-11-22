@@ -194,6 +194,9 @@ const HINT: AlertOpts = { kind: 'hint' };
 /** Something to react to now: shown at Call-outs: Essential too. */
 const WARN: AlertOpts = { kind: 'warn' };
 
+/** Dunmar Crossing (log v58): a spotter beacon's first-sight line. */
+const SPOTTER_HINT = 'Marks the ship nearest it (the dashed line) and calls a shell on it. Your helpers can\'t sink it; four hits of your own do.';
+
 const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   drone: 'Slow, in swarms. Tap each one, or hold on the swarm.',
   ballistic: 'Fast arc. The red circle is where it lands.',
@@ -1946,7 +1949,10 @@ export class App {
         // re-taught all of map 1). Pause-menu round: the same memory in the
         // campaign, Free Play and the Test Lab (the player, in the lab: "so
         // drones isn't said every time"); Settings → Show tips again.
-        case 'debut':
+        case 'debut': {
+          // Log v58 (Dunmar Crossing): a spotter beacon (a Lure Beacon that
+          // calls shells, four hits) says so, not a plain beacon's two hits.
+          const hint = ev.threat === 'lure' && g.threats.some((t) => t.kind === 'lure' && t.foe?.spot) ? SPOTTER_HINT : (DEBUT_HINT[ev.threat] ?? '');
           // Rule m-debut-tag: a chapter's new enemy says which chapter
           // brought it, as its new weapons' cards do.
           // Round 8: on a Test Lab map card, the map's own new enemies
@@ -1955,12 +1961,13 @@ export class App {
           if (g.lab?.full && !this.playback && mapDebutsFoe(g.map.id, ev.threat)) {
             meet(`threat:${ev.threat}`);
             const tag = foeDebutTag(ev.threat);
-            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', WARN, null);
+            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, hint, WARN, null);
           } else if (this.explain(`threat:${ev.threat}`)) {
             const tag = foeDebutTag(ev.threat);
-            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, DEBUT_HINT[ev.threat] ?? '', HINT, null);
+            this.showBanner(tag ? `${tag}: ${THREATS[ev.threat].label}` : `NEW: ${THREATS[ev.threat].label}`, hint, HINT, null);
           }
           break;
+        }
         case 'vector':
           if (this.explain(`launcher:${ev.vector}`)) this.showBanner(...VECTOR_HINT[ev.vector], HINT, null);
           break;
