@@ -272,7 +272,7 @@ export const TOW = { hp: 10, speed: 48, dock: 20, rack: 1, gap: 0.5, fire: 1.5 }
  *  shots (a relief rig: TOW.hp on its tow, TOW.dock docked; a risen one:
  *  MAP_BOSS `rigHp`). Before, 40 hits of damage, and a power-up's shot or
  *  a flak cloud did many of them at once. */
-export const RIG_SHOTS = { rig: 40 } as const;
+export const RIG_SHOTS = { rig: 32 } as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;

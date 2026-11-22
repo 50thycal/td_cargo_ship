@@ -1464,7 +1464,7 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
     // Every rig down but the east one, worn to 30 hits.
     for (const i of st.slice(0, 3)) {
       const r = rigAt(g, i)!;
-      damageThreat(g, r, r.hp, false);
+      damageThreat(g, r, r.hp, false, 'nuke'); // (log v55: rigs count shots; a nuke's hits count whole)
     }
     rigAt(g, st[3])!.hp = 30;
     expect(st.map((i) => g.baseDown[i])).toEqual([true, true, true, false]);
@@ -1936,7 +1936,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     g.raiderQueue = [];
     const st = rigStations(g);
     const west = rigAt(g, st[0])!;
-    damageThreat(g, west, west.hp, false);
+    damageThreat(g, west, west.hp, false, 'nuke');
     expect(g.baseDown[st[0]]).toBe(true);
     towRig(g, 1);
     const tow = g.threats.find((t) => t.tow !== undefined)!;
@@ -1974,7 +1974,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     for (let i = 0; i < 20 / DT && !mend.dead; i++) step(g, DT);
     expect(east.hp).toBe(10 + TOW.dock);
     // A third, sunk on its way in: no pickup, and the station stays down.
-    damageThreat(g, rigAt(g, st[1])!, 40, false);
+    damageThreat(g, rigAt(g, st[1])!, 99, false, 'nuke');
     towRig(g);
     const sunk = g.threats.find((t) => t.tow !== undefined)!;
     const pickups = g.pickups.length;

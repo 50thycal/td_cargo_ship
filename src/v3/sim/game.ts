@@ -1685,7 +1685,9 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
     return got;
   };
   const surfaceKind = (u: Unit) => u.kind === 'ballistic' || u.kind === 'drone';
-  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind);
+  // (Log v55: never a structure: a relief rig a truck took was fired off
+  // its rail at a ship, a rig flying over the far shore.)
+  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind) && !isStructure(u.kind);
   // Submarines: a salvo of ballistics back to back, or a drone swarm.
   const spots = rng.shuffle([...g.map.subSpots]);
   for (let k = 0; k < cut(vectorCount(g.wave, vp.subs, 2, 3), g.tempo.waveLen) && spots.length; k++) {
