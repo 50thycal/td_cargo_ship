@@ -5960,7 +5960,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'cluster', count: 1, from: base(0), aim: 'lead' },
-      { at: 0.3, plus: 3, kind: 'ballistic', count: 1, from: base(0), aim: 'lead' },
+      { at: 0.3, plus: 3, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
       { at: 0.45, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
@@ -6034,7 +6034,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, from: sub(2), aim: 'rear' },
-      { at: 0.5, kind: 'guided', count: 1, from: base(5), aim: 'mid' },
+      { at: 0.5, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
@@ -6062,12 +6062,13 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.5, kind: 'cluster', count: 1, from: base(0), aim: 'mid' },
       { at: 0.6, kind: 'guided', count: 1, from: base(5), aim: 'rear' },
+      { at: 0.7, kind: 'supersonic', count: 1, from: base(5), aim: 'mid' },
       { at: 0.2, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'mid' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
       { at: 0.45, kind: 'drone', count: 5, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.9, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'lead' },
     ],
-    replaces: { ballistic: 13, guided: 1, extras: { cluster: 1, heavy: 1, mothership: 1 } },
+    replaces: { ballistic: 13, guided: 1, extras: { cluster: 1, heavy: 1, mothership: 1, supersonic: 1 } },
   },
   {
     id: 'citadel-crossfire',
@@ -6086,7 +6087,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The narrows from two sides at once; in place of the wave\'s own supersonics, guided missiles, a heavy and the subs\' shells.',
     },
     beats: [
-      { at: 0.35, kind: 'supersonic', count: 1, from: base(5), aim: 'lead' },
+      { at: 0.35, kind: 'drone', count: 2, gap: 0.4, from: base(4), aim: 'lead' },
       { at: 0.35, plus: 1, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 0.35, plus: 3, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.6, kind: 'drone', count: 3, gap: 0.4, from: base(4), aim: 'mid' },
@@ -6144,7 +6145,7 @@ const CITADEL_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 1, plus: 2, kind: 'guided', count: 1, from: base(0), aim: 'lead', dome: true },
       { at: 1, plus: 2.05, kind: 'guided', count: 1, from: base(0), aim: 'mid', dome: true },
-      { at: 1, plus: 2.1, kind: 'ballistic', count: 1, from: base(0), aim: 'lead', dome: true },
+      { at: 1, plus: 2.1, kind: 'ballistic', count: 2, gap: 0.15, from: base(0), aim: 'mid', dome: true },
       { at: 1, plus: 4, kind: 'supersonic', count: 2, gap: 1.2, from: base(5), aim: 'mid' },
       { at: 1, plus: 1, kind: 'drone', count: 4, gap: 0.4, from: base(4), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.4, from: base(4) },
@@ -7326,7 +7327,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
  *  more and bigger salvos, more fire round them. */
 export const CITADEL_BOSS_ROUNDS: BossRound[] = [
   {
-    citadel: { gen: 3, core: 12, first: 6, every: 9, salvos: 2, size: 2, warn: 2.5, kinds: ['guided', 'ballistic'] },
+    citadel: { gen: 3, core: 12, first: 6, every: 8, salvos: 2, size: 3, warn: 2.5, kinds: ['guided', 'ballistic', 'ballistic'] },
     fire: [{ kind: 'drone', at: 2, count: 2, gap: 4, base: 4, aim: 'rear' }, { kind: 'supersonic', at: 11, count: 1, base: 5, aim: 'mid' }],
   },
   {
