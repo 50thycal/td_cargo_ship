@@ -72,9 +72,9 @@ describe('a campaign run has no convoy layer', () => {
     expect(mapConvoy('rigs')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
     // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
     expect(mapConvoy('coves')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
-    // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): the campaign's
-    // schedule, no command (the tide steers the ships).
-    expect(mapConvoy('tide')).toMatchObject({ flow: DEFAULT_FLOW, commands: [] });
+    // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): flow step 2 in
+    // a Box, no command (the tide steers the ships).
+    expect(mapConvoy('tide')).toMatchObject({ flow: 2, formation: 'box', commands: [] });
     expect(mapConvoy('sowers').commands).toEqual(['hold']);
     // Sowers' Reach keeps the campaign's own schedule and formation.
     expect(mapConvoy('sowers')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });

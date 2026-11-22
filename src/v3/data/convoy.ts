@@ -171,10 +171,13 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // The Coves (docs/design/v3-ch4-coves.md, log v53): the same, no command:
   // the boats are answered by shooting them, not by sailing.
   coves: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
-  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): the campaign's
-  // schedule and Pairs, no command: the tide steers the ships (the flats
-  // lane at high water, the deep channel at low), and the fire is answered
-  // by shooting.
+  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v59): flow step 2 in
+  // a Box, no command: the tide steers the ships (the flats lane at high
+  // water, the deep channel at low), and the fire is answered by shooting.
+  // The Box (a direct hit does one less, splash ×1.8) makes the crowd at
+  // low water the danger: shells and bomblets over bunched ships. On Pairs
+  // at the campaign's schedule the same waves won 2-10% (48 seeds), the Box
+  // at step 2 33%.
   tide: { flow: 2, formation: 'box', commands: [], dilemma: '' },
 };
 
