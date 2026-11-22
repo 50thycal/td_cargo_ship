@@ -4766,6 +4766,530 @@ const RIGS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 3's The Black Strait, "the Lantern" (log v52, docs/design/
+ *  v3-ch3-lantern.md): night. A threat is a faint glow until the lighthouse
+ *  beam on your own headland (652, 702), the carrier's lamp or a star shell
+ *  lights it; the beam sweeps the far shore and the lane every 8 s, but
+ *  never the enemy's own bank in the south-east, behind the ships as they
+ *  deliver, a short flight from the lane. The east of the lane, under that
+ *  dark bank, is the danger; the west, the early third, under the beam and
+ *  far from it, the safe stretch. Bases counted from 0 here: 0 the west
+ *  silo (250, 95), 1 the west-middle (650, 90), 2 the east-middle (1050,
+ *  95), 3 the east (1420, 95), 4 the dark bank (1150, 835), 5 the dark
+ *  bank's east end (1460, 825); sub spots 0 off the far shore west (180,
+ *  240), 1 off the far shore east (1460, 240), 2 off the dark bank (1260,
+ *  650). A siege gun "from" a base rises beside it (MAP_SIGNATURE
+ *  `beside`). */
+const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'lantern-first-light',
+    map: 'lantern',
+    waves: [1],
+    role: 'teach',
+    name: 'Glows in the dark',
+    callout: 'Lights in the dark',
+    premise: 'A string of drones comes off the far east silo at the lead ship, and then two more out of the dark, off the enemy\'s bank behind the ships.',
+    decision: 'The first look at the map\'s problem: a glow is a threat, lit or not, and the ones behind you are never in the beam.',
+    counters: 'Tap each glow as it comes; the two from behind are closer than they look.',
+    succeeds: 'Nothing is sunk on wave 1; the drones from behind are shot before they reach the lead ship.',
+    notes: {
+      sites: 'The east silo on the far shore (1420, 95; drones), then the dark bank\'s east end (1460, 825; drones).',
+      target: 'The lead ship, in the east.',
+      usesMap: 'Shows the map\'s problem in miniature: the beam lights the far shore\'s drones as it sweeps, never the dark bank\'s.',
+    },
+    beats: [
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.55, kind: 'drone', count: 2, gap: 0.35, from: base(5), aim: 'lead' },
+    ],
+    replaces: { drones: 5 },
+  },
+  {
+    id: 'lantern-from-behind',
+    map: 'lantern',
+    waves: [2],
+    role: 'teach',
+    name: 'Shells from behind',
+    callout: 'Shells from the dark bank',
+    premise: 'Two shells climb out of the dark bank behind the ships at the lead ship, and a small swarm comes off the west silo at the ship halfway along.',
+    decision: 'The shortest flight on the map: two shells from behind, with their landing circles the only light.',
+    counters: 'The shells as they climb, then the drones.',
+    succeeds: 'No ship lost on wave 2; the shells are shot before they land in most runs.',
+    notes: {
+      sites: 'The dark bank (1150, 835; shells), the west silo (250, 95; a swarm).',
+      target: 'The lead ship (the shells); the ship halfway along (the swarm).',
+      usesMap: 'The dark bank, never in the beam, a short flight from the lead ship, in place of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 1.2, from: base(4), aim: 'lead' },
+      { at: 0.65, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { drones: 3, ballistic: 2 },
+  },
+  {
+    id: 'lantern-both-banks',
+    map: 'lantern',
+    waves: [3],
+    role: 'teach',
+    name: 'Both banks',
+    callout: 'Shells from both banks',
+    premise: 'Shells come off the far shore at the ship halfway along and, a beat later, out of the dark bank at the lead ship; a swarm follows off the east silo.',
+    decision: 'The first stakes: the beam lights the far shore\'s shells; the dark bank\'s are only a glow and a circle. Which first?',
+    counters: 'The shells from behind first (the shorter flight), then the far shore\'s, then the swarm.',
+    succeeds: 'A close call in the east in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The west-middle silo (650, 90; shells), the dark bank (1150, 835; shells), the east silo (1420, 95; a swarm).',
+      target: 'The ship halfway along (the far shore\'s shells); the lead ship (the dark bank\'s shells and the swarm).',
+      usesMap: 'Both banks at once: one lit by the sweep, one never, in place of most of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 1, from: base(1), aim: 'mid' },
+      { at: 0.3, plus: 1.5, kind: 'ballistic', count: 2, gap: 1, from: base(4), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+    ],
+    replaces: { drones: 1, ballistic: 6 },
+  },
+  {
+    id: 'lantern-gun-in-the-dark',
+    map: 'lantern',
+    waves: [4],
+    role: 'combine',
+    name: 'A gun in the dark',
+    callout: 'A siege gun behind you',
+    premise: 'A siege gun rises out of a hatch on the dark bank behind the ships and marks its circles on the lane; a cluster missile comes off the far shore at the ship halfway along, and swarms at the ships coming in and the lead ship.',
+    decision: 'The gun is a glow on the dark bank: hit it while it is up (five hits), or shoot its shells and the rest?',
+    counters: 'The gun while it is up, the cluster before it splits, the swarms between.',
+    succeeds: 'The gun is knocked out in some runs; no ship lost in most runs.',
+    notes: {
+      sites: 'A siege gun beside the dark bank (1150, 835); the east-middle silo (1050, 95; a cluster); the west silo (250, 95) and the dark bank\'s east end (1460, 825; swarms).',
+      target: 'The ships its circles fall on; the ship halfway along (the cluster); the ships coming in; the lead ship.',
+      usesMap: 'The signature\'s first wave: a gun where the beam never reaches, in place of the wave\'s own shells, its cluster and a swarm.',
+    },
+    beats: [
+      { at: 0.3, kind: 'siege', count: 1, from: base(4), salvos: 1 },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.75, kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 7, extras: { cluster: 1, strafer: 1 } },
+  },
+  {
+    id: 'lantern-periscope',
+    map: 'lantern',
+    waves: [5],
+    role: 'combine',
+    name: 'Periscope in the dark',
+    callout: 'A periscope behind you',
+    premise: 'A periscope rises in the dark water off the enemy\'s bank and fires at the lead ship; a guided missile comes off the west silo at the ship halfway along, and swarms off the east silo and the dark bank.',
+    decision: 'The salvo from behind, or the missile the beam shows you: there is time for one first.',
+    counters: 'The shells as they climb, the missile before it reaches its ship, then the swarms.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A submarine off the dark bank (1260, 650; shells), the west silo (250, 95; a guided missile), the east silo (1420, 95) and the dark bank\'s east end (1460, 825; swarms).',
+      target: 'The lead ship (the salvo, a swarm); the ship halfway along (the missile); any ship.',
+      usesMap: 'Short warning from the dark water behind the convoy, in place of the wave\'s own shells and a guided missile.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.8, from: sub(2), aim: 'lead' },
+      { at: 0.5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.6, kind: 'siege', count: 1, from: base(5), salvos: 1 },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.7, kind: 'drone', count: 4, gap: 0.35, from: base(5), aim: 'lead' },
+    ],
+    replaces: { ballistic: 7, guided: 1 },
+  },
+  {
+    id: 'lantern-front-and-back',
+    map: 'lantern',
+    waves: [6],
+    role: 'combine',
+    name: 'Front and back',
+    callout: 'Fire at both ends',
+    premise: 'Shells come off the far shore at the ships coming in while the dark bank shells the lead ship and lobs a cluster at it; swarms come at both ends.',
+    decision: 'Both ends of the convoy at once, one under the beam and one in the dark: which end first?',
+    counters: 'The cluster before it splits, the shells from behind, then the far shore\'s; the swarms between.',
+    succeeds: 'A close call at one end in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The west-middle silo (650, 90; shells), the dark bank (1150, 835; shells), its east end (1460, 825; a cluster), the west and east silos (swarms).',
+      target: 'The ships coming in (the far shore\'s shells, a swarm); the lead ship (the dark bank\'s shells, the cluster, a swarm).',
+      usesMap: 'Splits the player between the lit far shore and the dark bank, in place of the wave\'s own shells and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.3, plus: 2, kind: 'ballistic', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.6, kind: 'cluster', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.5, kind: 'siege', count: 1, from: base(5), salvos: 1 },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 11, extras: { cluster: 1, mothership: 1 } },
+  },
+  {
+    id: 'lantern-two-guns',
+    map: 'lantern',
+    waves: [7],
+    role: 'escalate',
+    name: 'Two guns',
+    callout: 'Two siege guns in the dark',
+    premise: 'Two siege guns rise on the dark bank, one after the other, while a guided missile comes off the west silo at the ship halfway along and swarms off both far drone silos.',
+    decision: 'Two guns in the dark and fire from the lit shore: knock one out, or ride out its circles?',
+    counters: 'A gun while it is up, the missile before it reaches its ship, the swarms between.',
+    succeeds: 'One gun is knocked out in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Siege guns beside the dark bank (1150, 835) and its east end (1460, 825); the west silo (a guided missile, a swarm), the east silo (a swarm).',
+      target: 'The ships their circles fall on; the ship halfway along (the missile); the lead ship (a swarm); any ship.',
+      usesMap: 'The signature twice, where the beam never reaches, in place of the wave\'s own shells, a guided missile and two swarms.',
+    },
+    beats: [
+      { at: 0.25, kind: 'siege', count: 1, from: base(5), salvos: 1 },
+      { at: 0.5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      { at: 0.4, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 11, guided: 1, extras: { mothership: 1 } },
+  },
+  {
+    id: 'lantern-dark-water',
+    map: 'lantern',
+    waves: [8],
+    role: 'escalate',
+    name: 'Dark water',
+    callout: 'Fire from behind',
+    premise: 'Everything comes from behind: a periscope off the dark bank fires at the lead ship, a guided missile and a cluster come out of the dark bank at it, while swarms come off the far shore.',
+    decision: 'The whole raid out of the dark behind the ships: which glow is the one that sinks a ship?',
+    counters: 'The cluster before it splits, the salvo as it climbs, the missile, then the swarms.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'A submarine off the dark bank (1260, 650; shells), the dark bank (1150, 835; a guided missile), its east end (1460, 825; a cluster), the west and east silos (swarms).',
+      target: 'The lead ship (the salvo, the missile, the cluster); any ship (the swarms).',
+      usesMap: 'The dark side of the map at its fullest, in place of the wave\'s own shells, guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 0.8, from: sub(2), aim: 'lead' },
+      { at: 0.3, plus: 4, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.55, kind: 'cluster', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.4, kind: 'siege', count: 1, from: base(4), salvos: 1 },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 16, guided: 1, extras: { cluster: 1, mothership: 1 } },
+  },
+  {
+    id: 'lantern-crossfire',
+    map: 'lantern',
+    waves: [9],
+    role: 'escalate',
+    name: 'Crossfire',
+    callout: 'Both banks and a gun',
+    premise: 'The far shore shells the ship halfway along and the dark bank the lead ship, a siege gun rises on the dark bank\'s east end, a cluster comes off the far shore at the middle, and swarms off both far silos.',
+    decision: 'Both banks and a gun at once: the lit fire, the dark fire, or the gun?',
+    counters: 'The gun while it is up, the cluster before it splits, the shells, the swarms.',
+    succeeds: 'The gun is knocked out in some runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The west-middle silo (shells), the dark bank (shells), a siege gun beside its east end (1460, 825), the east-middle silo (1050, 95; a cluster), the west and east silos (swarms).',
+      target: 'The ship halfway along (the far shore\'s shells, the cluster, a swarm); the lead ship (the dark bank\'s shells); the gun\'s circles; any ship.',
+      usesMap: 'The crossfire of the lit and the dark shore at its hardest before the climax, in place of the wave\'s own shells, guided missiles, a cluster and a swarm.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(1), aim: 'mid' },
+      { at: 0.3, plus: 1, kind: 'ballistic', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.6, kind: 'cluster', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.5, kind: 'siege', count: 1, from: base(5), salvos: 1 },
+      { at: 0.15, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 6, gap: 0.35, from: base(3) },
+      { at: 0.4, kind: 'drone', count: 7, gap: 0.35, from: base(3), aim: 'rear' },
+    ],
+    replaces: { ballistic: 16, guided: 2, extras: { cluster: 1, mothership: 2 } },
+  },
+  {
+    id: 'lantern-last-light',
+    map: 'lantern',
+    waves: [10],
+    role: 'climax',
+    name: 'Last light',
+    callout: 'Everything out of the dark',
+    premise: 'Once the wave\'s own fire is spent, a breath; then a siege gun rises on the dark bank, a cluster and shells come out of it at the lead ship, a guided missile off the west silo at the middle, and swarms at the lead ship and the ships coming in.',
+    decision: 'Everything at once, most of it from behind: the map\'s question at its hardest.',
+    counters: 'The cluster before it splits, the gun while it is up, the shells and the missile, then the swarms.',
+    succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'A siege gun beside the dark bank (1150, 835), its east end (1460, 825; a cluster), the dark bank (shells), the west silo (a guided missile, a swarm), the east silo (a swarm), after the wave\'s own fire and a calm.',
+      target: 'The lead ship (the cluster, the shells, a swarm); the ship halfway along (the missile); the ships coming in (a swarm); the gun\'s circles.',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles, a cluster and a swarm; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'siege', count: 1, from: base(4), salvos: 1 },
+      { at: 1, plus: 2, kind: 'cluster', count: 1, from: base(2), aim: 'lead' },
+      { at: 1, plus: 5, kind: 'guided', count: 1, from: base(0), aim: 'mid' },
+      { at: 1, plus: 6, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+      { at: 1, plus: 8, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.5, kind: 'drone', count: 8, gap: 0.35, from: base(3) },
+    ],
+    replaces: { ballistic: 16, guided: 1, extras: { cluster: 2, mothership: 2 } },
+    calm: 6,
+  },
+];
+
+/** Chapter 3's Dreadnought Pass, the chapter finale (log v51, docs/design/
+ *  v3-ch3-dreadnought.md): a battleship steams down the deep channel north
+ *  of the lane against the convoy, east to west, firing broadsides across
+ *  the water at the ships (MapDef `boss`, its passes: DREAD_PASSES under the
+ *  layer). Fifty hits sink it; until then every broadside is a shell or a
+ *  guided missile with a short flight at a ship, and from wave 3 a flight
+ *  of drones off its deck at the carrier. From wave 4 its spotter planes lay
+ *  its guns on a ship between passes (MAP_SIGNATURE `guns`). The east of
+ *  the lane is the danger: the battleship comes in there and its first
+ *  broadsides fall on the ships about to deliver. Bases counted from 0
+ *  here: 0 the west silo (350, 70; drones, shells), 1 the east silo (1250,
+ *  70; guided, supersonic); sub spots 0 (300, 410) and 1 (1300, 410) between
+ *  the deep channel and the lane, 2 (200, 742) and 3 (1400, 742) off your
+ *  own shore; the pop-up roads 0 (x 800) and 1 (x 1500). */
+const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'dread-smoke',
+    map: 'dreadnought',
+    waves: [1],
+    role: 'teach',
+    name: 'Smoke in the east',
+    callout: 'A battleship',
+    premise: 'The Dreadnought shows itself in the east of the deep channel, fires two single shells at the lead ship and turns away; a few drones come off the west silo.',
+    decision: 'The first look at the map\'s problem: a battleship you cannot sink in one wave, and what it fires, which you can shoot down.',
+    counters: 'The shells as they climb, then the drones; a few shots into the hull if there is time.',
+    succeeds: 'Nothing is sunk on wave 1; both shells are shot down.',
+    notes: {
+      sites: 'The Dreadnought in the deep channel (a short pass from the east edge to x 1150 and back), the west silo (350, 70; drones).',
+      target: 'The lead ship (the shells, the drones).',
+      usesMap: 'Shows the map\'s mechanic on wave 1, in miniature: the battleship and its broadside, from the map\'s own place (rule w-first).',
+    },
+    beats: [
+      { at: 0.4, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lead' },
+    ],
+    replaces: { drones: 7 },
+  },
+  {
+    id: 'dread-long-reach',
+    map: 'dreadnought',
+    waves: [2],
+    role: 'teach',
+    name: 'Long reach',
+    callout: 'Shells and drones',
+    premise: 'The west silo lobs two shells at the ship halfway along, and a swarm follows them off the same silo at the lead ship.',
+    decision: 'The far shore\'s fire has a long flight: time to take the shells first and the swarm after.',
+    counters: 'The shells as they climb, then the swarm.',
+    succeeds: 'No ship lost on wave 2.',
+    notes: {
+      sites: 'The west silo (350, 70; shells, a swarm).',
+      target: 'The ship halfway along (the shells), the lead ship (the swarm).',
+      usesMap: 'The far silos\' long warning, the calm before the battleship\'s first full pass.',
+    },
+    beats: [
+      { at: 0.25, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
+      { at: 0.55, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'lead' },
+    ],
+    replaces: { drones: 4, ballistic: 2 },
+  },
+  {
+    id: 'dread-first-pass',
+    map: 'dreadnought',
+    waves: [3],
+    role: 'teach',
+    name: 'The first pass',
+    callout: 'Battleship broadsides',
+    premise: 'The Dreadnought steams the whole deep channel from east to west, firing a broadside every few seconds, a shell at the lead ship and drones off its deck at the carrier; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
+    decision: 'Sink it (fifty hits) and silence its broadsides, or shoot each broadside down as it comes?',
+    counters: 'Each broadside\'s shell as it climbs, its drones, the missile; any shots spare into the hull.',
+    succeeds: 'A close call in the east as the broadsides open; a good player loses no ship.',
+    notes: {
+      sites: 'The Dreadnought in the deep channel (275 px north of the lane, east to west), a submarine between the deep channel and the lane in the east (1300, 410), the east silo (1250, 70; a guided missile), the west silo (a swarm).',
+      target: 'The lead ship (the broadsides\' shells, the salvo, the missile), the carrier (the drones off its deck), the swarm at any ship.',
+      usesMap: 'The mechanic\'s first full pass: its broadsides in place of the wave\'s own shells, and the shortest flight on the map (the sub spot just off the lane).',
+    },
+    beats: [
+      { at: 0.5, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 0.6, from: sub(1), aim: 'lead' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 4, guided: 1 },
+  },
+  {
+    id: 'dread-spotted',
+    map: 'dreadnought',
+    waves: [4],
+    role: 'combine',
+    name: 'Spotted',
+    callout: 'A spotter plane',
+    premise: 'A spotter plane flies in and circles over the far side of the lane, paints a ship and calls the Dreadnought\'s guns on it from over the horizon; two guided missiles from the east silo, a periscope just off the lane and swarms come while it circles.',
+    decision: 'The plane before it calls the guns (four hits), or the missile and the swarm first?',
+    counters: 'The spotter as it circles, the missile, the swarms.',
+    succeeds: 'The spotter is shot down before its call in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'A spotter plane from the west edge (circling off the lane\'s far side), the east silo (guided missiles), a submarine at (1300, 410), the west silo (swarms).',
+      target: 'The ship it paints (its shells), the lead ship (the missiles, the salvo), any ship (the swarms).',
+      usesMap: 'The signature\'s first wave: the battleship\'s guns laid on a ship by a spotter, with the battleship out of sight, in place of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.3, kind: 'spotter', count: 1, from: { air: 1 } },
+      { at: 0.45, kind: 'guided', count: 2, gap: 1, from: base(1), aim: 'lead' },
+      { at: 0.45, kind: 'ballistic', count: 3, gap: 0.6, from: sub(1), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 8, ballistic: 5, guided: 1 },
+  },
+  {
+    id: 'dread-both-sides',
+    map: 'dreadnought',
+    waves: [5],
+    role: 'combine',
+    name: 'Both sides',
+    callout: 'A periscope astern',
+    premise: 'A periscope rises off your own shore in the south-west and fires at the ships coming in, while the east silo fires a guided missile at the lead ship, a strike jet runs in from the east and a swarm comes at the ship halfway along.',
+    decision: 'Front or rear of the convoy first: the salvo behind, or the missile and the jet ahead?',
+    counters: 'The salvo as it climbs, the jet as it runs in, the missile before it reaches the lead ship, the swarm.',
+    succeeds: 'A close call at one end in most runs; the losses are not all in the east.',
+    notes: {
+      sites: 'A submarine off your own shore in the south-west (200, 742), the east silo (a guided missile), a strike jet from the east edge, the west silo (a swarm).',
+      target: 'The ships coming in (the salvo), the lead ship (the missile), the convoy under the jet\'s run, the ship halfway along (the swarm).',
+      usesMap: 'Front and rear at once (rule g-split), from the one spot on your own side, in place of the wave\'s own shells and guided missiles.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(2), aim: 'rear' },
+      { at: 0.35, kind: 'guided', count: 2, gap: 1.2, from: base(1), aim: 'lead' },
+      { at: 0.35, plus: 1, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 0.55, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 5, guided: 2 },
+  },
+  {
+    id: 'dread-gun-laying',
+    map: 'dreadnought',
+    waves: [6],
+    role: 'combine',
+    name: 'Laying the guns',
+    callout: 'Battleship and spotter',
+    premise: 'The Dreadnought\'s second pass, and a spotter plane over the far side of the lane calls its guns on a ship while it steams through; a periscope off the deep channel in the east fires at the lead ship, and swarms come.',
+    decision: 'The spotter, the battleship, or its broadsides: the guns are now aimed.',
+    counters: 'The spotter before it calls, each broadside, the salvo; the hull with what is left.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The Dreadnought in the deep channel, a spotter plane from the east edge, a submarine between the deep channel and the lane in the east (1300, 410), the west silo (swarms).',
+      target: 'The ship the spotter paints (the battleship\'s guns, from its hull), any ship (the broadsides\' shells), the carrier (the drones off its deck), the lead ship (the salvo), the rear (a swarm).',
+      usesMap: 'The mechanic and the signature together: the battleship\'s guns laid by a spotter, in place of the wave\'s own shells and a guided missile.',
+    },
+    beats: [
+      { at: 0.35, kind: 'spotter', count: 1, from: { air: -1 } },
+      { at: 0.55, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lead' },
+      { at: 0.2, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 2, ballistic: 7, guided: 1, extras: { cluster: 1 } },
+  },
+  {
+    id: 'dread-crossfire',
+    map: 'dreadnought',
+    waves: [7],
+    role: 'escalate',
+    name: 'Crossfire',
+    callout: 'Periscopes both sides',
+    premise: 'Periscopes rise on both sides of the lane in the east, one between the deep channel and the lane, one off your own shore, and fire at the lead ship together; a guided missile off the east silo follows them, another comes at the middle, and swarms come.',
+    decision: 'Two salvos at the lead ship from both sides: which first, with a missile behind them?',
+    counters: 'The salvos as they climb, the missiles, the swarms last.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Submarines at (1300, 410) and (1400, 742), the east silo (guided missiles), the west silo (swarms).',
+      target: 'The lead ship (the salvos, a missile, a swarm), the ship halfway along (a missile), any ship (a swarm).',
+      usesMap: 'Short warning from both sides of the danger stretch, in place of the wave\'s own shells, guided missiles and its cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(1), aim: 'lead' },
+      { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(3), aim: 'lead' },
+      { at: 0.3, plus: 1, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.6, kind: 'guided', count: 2, gap: 1.2, from: base(1), aim: 'mid' },
+      { at: 0.25, kind: 'drone', count: 8, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 0.7, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+    ],
+    replaces: { drones: 4, ballistic: 7, guided: 3, extras: { cluster: 1 } },
+  },
+  {
+    id: 'dread-two-spotters',
+    map: 'dreadnought',
+    waves: [8],
+    role: 'escalate',
+    name: 'Two spotters',
+    callout: 'Spotters both ways',
+    premise: 'Two spotter planes fly in from both edges and paint two ships for the guns over the horizon, while a rocket truck drives down the pop-up road in the east, guided missiles come at the middle and swarms come off the west silo.',
+    decision: 'Two planes painting at once: one before its call, and the shells on the other\'s ship?',
+    counters: 'A spotter before it calls, the truck as it raises, the missiles, the swarms.',
+    succeeds: 'One spotter is shot down before its call in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'Spotter planes from the west edge and the east edge, the pop-up road in the east (x 1500; a rocket truck), the east silo (guided missiles), the west silo (swarms).',
+      target: 'The two ships they paint, the lead ship (the truck, a swarm), the ship halfway along (the missiles), any ship (a swarm).',
+      usesMap: 'The signature twice over, a preview of the boss\'s gun-laying, in place of the wave\'s own shells, guided missiles and its heavy.',
+    },
+    beats: [
+      { at: 0.25, kind: 'spotter', count: 1, from: { air: 1 } },
+      { at: 0.25, plus: 3, kind: 'spotter', count: 1, from: { air: -1 } },
+      { at: 0.45, kind: 'rocketTruck', count: 1, from: road(1), aim: 'lead', salvos: 2 },
+      { at: 0.6, kind: 'guided', count: 3, gap: 1, from: base(1), aim: 'mid' },
+      { at: 0.1, kind: 'drone', count: 7, gap: 0.35, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'lead' },
+    ],
+    replaces: { ballistic: 9, guided: 4, extras: { heavy: 1 } },
+  },
+  {
+    id: 'dread-gunline',
+    map: 'dreadnought',
+    waves: [9],
+    role: 'escalate',
+    name: 'The gunline',
+    callout: 'Broadsides and spotters',
+    premise: 'The Dreadnought\'s third pass, firing a guided missile and a flight of drones off its deck at a time, while a spotter calls its guns on a ship, a guided missile comes off the east silo at the lead ship and swarms come at the rear and the middle.',
+    decision: 'Everything the battleship has: sink it this time, or ride it out?',
+    counters: 'The spotter, each broadside, the missile; the hull while it is in reach.',
+    succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The Dreadnought in the deep channel, a spotter plane from the west edge, the east silo (a guided missile), the west silo (swarms).',
+      target: 'Any ship (the broadsides\' missiles), the carrier (the drones off its deck), the lead ship (the missile), the ship the spotter paints, the rear and the middle (the swarms).',
+      usesMap: 'The mechanic and the signature at their heaviest before the climax, in place of the wave\'s own shells, guided missiles and a cluster.',
+    },
+    beats: [
+      { at: 0.3, kind: 'spotter', count: 1, from: { air: 1 } },
+      { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
+    ],
+    replaces: { ballistic: 9, guided: 4, extras: { cluster: 1, heavy: 1 } },
+  },
+  {
+    id: 'dread-full-ahead',
+    map: 'dreadnought',
+    waves: [10],
+    role: 'climax',
+    name: 'Full ahead',
+    callout: 'The Dreadnought at speed',
+    premise: 'Once the wave\'s own fire is spent, a breath, then the Dreadnought comes back at speed with its broadsides, a spotter over the lane, a strike jet from the east and swarms converging on the convoy.',
+    decision: 'Everything at once in the east: the map\'s question at its hardest.',
+    counters: 'The spotter, each broadside, the jet, the swarms.',
+    succeeds: 'A close call in the east in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'The Dreadnought in the deep channel (at speed), a spotter plane from the east edge, a strike jet from the east edge, the west silo (swarms), after the wave\'s own fire and a calm.',
+      target: 'Any ship (the broadsides\' shell and missile, the jet), the carrier (the drones off its deck), the ship the spotter paints, the lead ship and the ships coming in (the swarms).',
+      usesMap: 'The map\'s problem at its hardest, in place of the wave\'s own shells, guided missiles and a cluster; the climax may reach the safe stretch.',
+    },
+    beats: [
+      { at: 1, plus: 2, kind: 'spotter', count: 1, from: { air: -1 } },
+      { at: 1, plus: 5, kind: 'strafer', count: 1, from: { air: -1 } },
+      { at: 1, plus: 3, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'lead' },
+      { at: 1, plus: 8, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'rear' },
+    ],
+    replaces: { drones: 4, ballistic: 11, guided: 6, extras: { cluster: 1 } },
+    calm: 6,
+  },
+];
+
 /** Chapter 4, Open War (log v53, docs/design/v3-ch4-coves.md): the Coves.
  *  Four smugglers' coves hide fast boats two seconds from the lane: three in
  *  the enemy's north shore (bases 4-6: the north-west (381, 150), the
@@ -5129,6 +5653,8 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Sowers' Reach (log v48): the west silo and the east-middle one, the
   // map's two drone silos on the far shore, waves 1-6.
   ...busy(['sowers-current', 'sowers-gap', 'sowers-crossing', 'sowers-sown', 'sowers-hold', 'sowers-two-fields'], 0, 2),
+  // Dreadnought Pass (log v51): the west silo, the map's one drone silo.
+  ...busy(['dread-smoke', 'dread-long-reach', 'dread-first-pass', 'dread-spotted', 'dread-both-sides', 'dread-gun-laying'], 0, 0),
   // The Rig Field (log v49): its two drone rigs, the west and the east, the
   // map's only drone launchers, waves 1-6 (a rig brought down sends none).
   // Wave 1 one late string out of the east rig only: the drone rigs stand a
@@ -5136,6 +5662,10 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
   ['rigs-point-blank', [fill(0.7, 2, 3)]],
   ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 3]),
+  // The Black Strait (log v52): the far shore's two drone silos, the west
+  // and the east, under the beam (the dark bank's drones are the
+  // encounters'), waves 1-6.
+  ...busy(['lantern-first-light', 'lantern-from-behind', 'lantern-both-banks', 'lantern-gun-in-the-dark', 'lantern-periscope', 'lantern-front-and-back'], 0, 3),
   // Chapter 4. The Coves (log v53): the far north-west silo, the map's only
   // drone launcher, a long flight to the lane, waves 1-6.
   ...busy(['coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends', 'coves-periscope'], 0, 0),
@@ -5165,6 +5695,10 @@ export const ENCOUNTERS: Encounter[] = [
   ...SOWERS_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch3-rigs.md)
   ...RIGS_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch3-lantern.md)
+  ...LANTERN_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch3-dreadnought.md)
+  ...DREAD_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // Chapter 4, Open War (docs/design/v3-ch4-coves.md).
   ...COVES_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
@@ -5214,10 +5748,12 @@ export type ChapterTwoMap = 'island' | 'behemoth' | 'needle' | 'archipelago' | '
 export const CHAPTER_TWO_MAPS: MapId[] = ['island', 'behemoth', 'needle', 'archipelago', 'saltgate'];
 /** Chapter 3, Dark Water, a map at a time as chapter 2's were: so far Battery
  *  Point (log v45, docs/design/v3-ch3-battery.md) and Sowers' Reach (log
- *  v48, docs/design/v3-ch3-sowers.md) and the Rig Field (log v49,
- *  docs/design/v3-ch3-rigs.md). */
-export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs';
-export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs'];
+ *  v48, docs/design/v3-ch3-sowers.md), the Rig Field (log v49,
+ *  docs/design/v3-ch3-rigs.md), Dreadnought Pass (log v51,
+ *  docs/design/v3-ch3-dreadnought.md) and the Black Strait, the Lantern
+ *  (log v52, docs/design/v3-ch3-lantern.md). */
+export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs' | 'dreadnought' | 'lantern';
+export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadnought', 'lantern'];
 /** Chapter 4, Open War, a map at a time as chapter 3's: so far the Coves
  *  (log v53, docs/design/v3-ch4-coves.md), the chapter's first, where its
  *  new enemies debut. */
@@ -5308,6 +5844,10 @@ const MARROW_CLIMB = [1, 1, 1.06, 1.04, 1, 1.05, 1, 1, 1, 0.85];
  *  difficulty and fun, intensity 1): a little of waves 6-10's fire moves to
  *  waves 1-5, within ±15% of each wave and never more than the ten. */
 const SALTGATE_CLIMB = [1.08, 1.1, 1.1, 1.06, 1.04, 0.88, 0.9, 0.94, 0.88, 0.96];
+/** Dreadnought Pass (log v51): its shared waves are light (threat scale
+ *  0.85) but its battleship's broadsides come on top on waves 3, 6, 9 and
+ *  10, so the waves keep the table, within ±15% of each wave. */
+const DREAD_CLIMB = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 /** Battery Point (log v45; the player's three v40 runs: the bot lost two
  *  ships in waves 1-5 and won 8% with the player's Armory): waves 5-10
  *  send a little less, within ±15% of each wave and never more than the
@@ -5323,6 +5863,10 @@ const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
  *  of each wave and never more than the ten. */
 const RIGS_CLIMB = [0.9, 0.95, 0.95, 0.9, 0.86, 0.94, 0.95, 0.92, 0.86, 0.96];
+/** The Black Strait (log v52): its shared waves are heavy (threat scale
+ *  1.45), so waves 4-10 send a little less, within ±15% of each wave and
+ *  never more than the ten. */
+const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
 /** The Coves (log v53): its shared waves sink more on the map's own convoy
  *  (Pairs at the campaign's schedule; the card played today's convoy
  *  controls before, where a Box takes a hit less from every ram), so every
@@ -5343,6 +5887,8 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   // Chapter 3.
   battery: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two allied shore guns on the headland: they cover the ships about to deliver while they stand, and the enemy\'s shells and heavies go for them first; jets come in dark from wave 4.', callouts: false, scale: BATTERY_CLIMB } },
   rigs: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four enemy oil rigs in the sea just above the lane: each fires from point-blank and takes forty hits, and one brought down stays down; relief rigs are towed in to stand where one fell from wave 4.', callouts: false, scale: RIGS_CLIMB } },
+  lantern: { v1: { name: 'Original', idea: 'One encounter a wave, built on the night: a threat is a glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the enemy\'s own bank in the south-east, behind the ships as they deliver, is never in the beam; siege guns rise on that dark bank from wave 4.', callouts: false, scale: LANTERN_CLIMB } },
+  dreadnought: { v1: { name: 'Original', idea: 'One encounter a wave, built on the battleship that steams down the deep channel against the convoy firing broadsides: fifty hits sink it, or its broadsides can be shot down one by one; spotter planes lay its guns on a ship from wave 4.', callouts: false, scale: DREAD_CLIMB } },
   // Chapter 4.
   coves: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four smugglers\' coves two seconds from the lane, three on the north shore and one on the south by the delivery end: their fast boats come at the ship passing each cove mouth; fire ships that burn where they are sunk from wave 4.', callouts: false, scale: COVES_CLIMB } },
   sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
@@ -5442,6 +5988,18 @@ export interface MapSignature {
    *  water just ahead of the ships, from a line along the up-current edge
    *  of the lane (data/config.ts SOW). */
   sow?: number;
+  /** Dreadnought Pass (log v51): a spotter's call is the battleship's
+   *  guns: its shells come from the Dreadnought's hull while it steams on
+   *  the map (a flash there as each one fires), and from over the horizon
+   *  otherwise, as any spotter's. */
+  guns?: boolean;
+  /** The Black Strait (log v52): the wave's siege guns rise beside these
+   *  bases in turn (the enemy's dark bank, never in the lighthouse beam),
+   *  not beside any base. */
+  beside?: number[];
+  /** The Black Strait (log v52): and fire this many salvos each (a siege
+   *  gun's own: 3). */
+  salvos?: number;
   /** The Coves (log v53): how many of the wave's own fast boats (the map's
    *  extras, after its encounters took theirs) come as fire ships, wave by
    *  wave from `from` (data/config.ts FIRESHIP), one for one, so the wave
@@ -5496,6 +6054,11 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // up-current edge of the lane: a mine with the shortest warning on the
   // map, from a bomber that takes six hits to stop.
   sowers: { from: 4, foe: 'stealthBomber', foeShare: 1, sow: 3 },
+  // Dreadnought Pass (log v51, docs/design/v3-ch3-dreadnought.md): "laying
+  // the guns", from wave 4. The wave's new enemies are Spotter Planes (the
+  // Fire Mission's own), one for one, and a spotter's call is the
+  // battleship's guns: from its hull while it is on the map.
+  dreadnought: { from: 4, foe: 'spotter', foeShare: 1, guns: true },
   // The Rig Field (log v49, docs/design/v3-ch3-rigs.md): "relief rigs", from
   // wave 4. The wave's new enemies come as relief rigs, towed in from an edge
   // along the rig line (TOW: eight hits on the way in) to stand where a rig
@@ -5504,6 +6067,13 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // its rack at the ship nearest it as it docks. A rig brought down does not
   // stay quiet for free.
   rigs: { from: 4, kind: 'rig', foeShare: 1 },
+  // The Black Strait (log v52, docs/design/v3-ch3-lantern.md): "guns in the
+  // dark", from wave 4. The wave's new enemies are Siege Batteries, the
+  // Bombardment's own, and they rise beside the enemy's bank in the south-
+  // east (bases 4 and 5, in turn), the one shore the lighthouse beam never
+  // reaches, right behind the ships as they deliver: their circles on the
+  // lane show; the gun that fires them is a glow, five hits while it is up.
+  lantern: { from: 4, foe: 'siege', foeShare: 1, beside: [4, 5], salvos: 1 },
   // The Coves (log v53, docs/design/v3-ch4-coves.md): "fire ships", from
   // wave 4. So many of the wave's own fast boats come out of the coves as
   // fire ships (FIRESHIP: four hits; sunk, or where it rams, its fireball
@@ -5667,6 +6237,30 @@ export interface BossRound {
   rigs?: number;
   rigHp?: number;
   barrage?: { first: number; every: number; count: number; size: number; warn: number };
+  /** Dreadnought Pass's boss, the Dreadnought (log v51): the battleship
+   *  itself in the round (`dread`: its pass, which may heave to broadside-on
+   *  to the convoy), `spotters` spotter planes taking `turns` turns each,
+   *  `spotEvery` s apart (the Fire Mission's own: 3, 2, 4.4), each calling
+   *  the battleship's guns while it is afloat (once it is sunk, a spotter
+   *  has no guns to call and its turns go); `swarms` of `size` from
+   *  `swarmAt`, `swarmGap` apart. */
+  dread?: DreadPass;
+  spotters?: number;
+  turns?: number;
+  spotEvery?: number;
+  spotAt?: number;
+  swarmAt?: number;
+  swarmGap?: number;
+  /** The Black Strait's Bombardment (log v52): `guns` siege hatches along
+   *  the far shore (the event's own: 3), opening `gunGap` s apart (the
+   *  event's: 3) from west to east, `gunSalvos` salvos each (the event's:
+   *  2); then `dark` more on the enemy's dark bank in the south-east, in
+   *  turn after them; and `supply` supply swarms (the event's: 4). */
+  guns?: number;
+  gunGap?: number;
+  gunSalvos?: number;
+  dark?: number;
+  supply?: number;
   /** The Coves' Fire Fleet (log v53), in place of the Repair Yard's
    *  mothership and repair ships: `sorties` sorties `every` s apart from
    *  `first` s in; in each, every cove in `coves` (base indices) sends a
@@ -5874,6 +6468,83 @@ export const RIGS_BOSS_ROUNDS: BossRound[] = [
   { rigs: 4, rigHp: 8, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
 ];
 
+/** Dreadnought Pass (log v51, docs/design/v3-ch3-dreadnought.md): one pass
+ *  of the battleship down the deep channel (MapDef `boss`), under the
+ *  encounter layer. It steams in from the east edge `at` (a share of the
+ *  wave, as a beat's, plus `plus` s; absent, as the wave starts, as the
+ *  campaign's) at `speed` px/s (absent: its own, 24), with `hp` hits; its
+ *  first broadside `first` s after it comes in, then one every `every` s
+ *  (absent: BOSS, 6 and 9), each firing `broadside` (absent: BOSS's two
+ *  shells and a guided missile), aimed `aim` (absent: the sim's own pick).
+ *  `turn`: it turns back at that x and leaves the way it came (a glimpse).
+ *  `hold`: it heaves to at x `hold[0]` for `hold[1]` s, broadside-on, then
+ *  goes on west at `dash` × its speed. */
+export interface DreadPass {
+  hp: number;
+  at?: number;
+  plus?: number;
+  speed?: number;
+  first?: number;
+  every?: number;
+  broadside?: ('ballistic' | 'guided' | 'supersonic' | 'heavy' | 'cluster' | 'drone')[];
+  aim?: BeatAim;
+  turn?: number;
+  hold?: [x: number, t: number];
+  dash?: number;
+}
+
+/** Dreadnought Pass's passes under the layer, by wave: a glimpse on wave
+ *  1 (rule w-first: the map's own place, in miniature), then its own waves
+ *  3, 6, 9 and 10 (MapDef `boss.waves`, the campaign's), each its own
+ *  numbers. Before: 50 hits, two shells and a guided missile every 9 s at
+ *  24 px/s, as the wave starts. Each broadside fires fewer shells than the
+ *  campaign's and drones off its deck at the carrier in their place (game.ts
+ *  updateBoss), so the wave sends what the campaign's does (rule w-budget:
+ *  the broadsides are the bulk of a pass wave's launches) but the ships take
+ *  fewer shells with a short flight. */
+export const DREAD_PASSES: Record<number, DreadPass> = {
+  1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
+  3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
+  6: { hp: 45, at: 0, speed: 30, first: 5, every: 8.5, broadside: ['drone', 'ballistic', 'drone', 'drone'] },
+  9: { hp: 50, at: 0, speed: 30, first: 5, every: 9, broadside: ['drone', 'drone', 'guided', 'drone', 'drone', 'drone'] },
+  10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 6.5, broadside: ['drone', 'drone', 'ballistic', 'guided', 'drone', 'drone', 'drone'] },
+};
+
+/** A wave's Dreadnought pass under the layer (rev 4, a map with passes,
+ *  not the shared wave), or undefined: the map's own (`boss.waves`, at the
+ *  wave's start, as the campaign). */
+export function dreadPasses(map: MapId, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): Record<number, DreadPass> | undefined {
+  if (map !== 'dreadnought' || !setup || setup.rev < 4 || (setup.only && !setup.only.length)) return undefined;
+  return DREAD_PASSES;
+}
+
+/** Dreadnought Pass's boss, the Dreadnought (log v51): the Fire Mission's
+ *  spotters (before: 3 spotters, 2 turns each, 4.4 s apart, each calling a
+ *  walking barrage of 5 shells from off the map, and 3 swarms of 5, every
+ *  round) lay the guns of the battleship itself: it steams in from the
+ *  east, heaves to broadside-on to the convoy and fires, its spotters'
+ *  barrages coming from its hull; sunk, it is silent and its spotters go.
+ *  Rising: a tougher hull each round, longer on station, faster
+ *  broadsides, more spotters and swarms. */
+export const DREAD_BOSS_ROUNDS: BossRound[] = [
+  { dread: { hp: 40, speed: 60, first: 4, every: 8, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1150, 3], dash: 2 }, spotters: 1, turns: 1, spotAt: 4, spotEvery: 8, swarms: 2, size: 5, swarmAt: 3, swarmGap: 8 },
+  { dread: { hp: 50, speed: 60, first: 4, every: 6.5, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1050, 4], dash: 2 }, spotters: 1, turns: 2, spotAt: 3, spotEvery: 8, swarms: 3, size: 5, swarmAt: 3, swarmGap: 6 },
+  { dread: { hp: 60, speed: 60, first: 4, every: 7, broadside: ['ballistic', 'ballistic'], aim: 'lead', hold: [950, 5], dash: 2 }, spotters: 2, turns: 1, spotAt: 3, spotEvery: 6, swarms: 4, size: 6, swarmAt: 3, swarmGap: 5 },
+];
+
+/** The Black Strait's Bombardment (log v52, docs/design/v3-ch3-lantern.md):
+ *  before, three siege hatches on the far shore, 3 s apart, two salvos each,
+ *  and four supply swarms, every round. Now a line of guns along the whole
+ *  far shore opening one after another, west to east, and from round 2
+ *  guns on the dark bank behind the ships as well (the signature's own
+ *  place), with shells, missiles and clusters out of the dark bank at the
+ *  lead ship. Rising: more guns, closer together, more salvos. */
+export const LANTERN_BOSS_ROUNDS: BossRound[] = [
+  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 0, supply: 4, fire: [{ kind: 'ballistic', at: 8, count: 1, base: 4, aim: 'lead' }] },
+  { guns: 3, gunGap: 2.2, gunSalvos: 2, dark: 1, supply: 4, fire: [{ kind: 'guided', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 10, count: 1, base: 4, aim: 'lead' }] },
+  { guns: 4, gunGap: 2.2, gunSalvos: 2, dark: 2, supply: 4, fire: [{ kind: 'cluster', at: 5, count: 1, base: 5, aim: 'lead' }] },
+];
+
 /** The Coves' Fire Fleet (log v53, docs/design/v3-ch4-coves.md), in place
  *  of the Repair Yard (before: a tough drone mothership and three Repair
  *  Ships meeting on its course, 2 swarms of 5, every round; the Repair Ship
@@ -5940,7 +6611,11 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // Chapter 3 (BATTERY_BOSS_ROUNDS above).
   battery: { rounds: BATTERY_BOSS_ROUNDS },
   sowers: { rounds: SOWERS_BOSS_ROUNDS },
+  // Chapter 3's finale (DREAD_BOSS_ROUNDS above): the Dreadnought itself,
+  // on the Fire Mission's spotters.
+  dreadnought: { rounds: DREAD_BOSS_ROUNDS, name: 'The Dreadnought' },
   rigs: { rounds: RIGS_BOSS_ROUNDS, name: 'Rig Barrage' },
+  lantern: { rounds: LANTERN_BOSS_ROUNDS },
   // Chapter 4 (COVES_BOSS_ROUNDS above).
   coves: { rounds: COVES_BOSS_ROUNDS, name: 'Fire Fleet' },
 };
@@ -5984,8 +6659,10 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   rocketTruck: ['rocket truck', 'rocket trucks'],
   cluster: ['cluster missile', 'cluster missiles'],
   mine: ['drifting mine', 'drifting mines'],
+  spotter: ['spotter plane', 'spotter planes'],
   stealthBomber: ['stealth bomber', 'stealth bombers'],
   rig: ['relief rig under tow', 'relief rigs under tow'],
+  siege: ['siege gun', 'siege guns'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {

@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-20',
-  headline: 'Building the rest of chapter 3 (The Rigs, The Lantern, The Dreadnought), then chapter 4. Waiting on your play: the Battery, the Sowers and Saltgate’s missile parade.',
+  headline: 'Your Battery, Sowers and Rig Field runs are in (all Keep). Building: your Sowers and Rig Field notes, the Lantern (finishing chapter 3), and chapter 4’s Coves and Delta. Still to play: the Dreadnought, and Saltgate’s missile parade.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -82,7 +82,8 @@ export const STATUS = {
     { id: 'rate', name: 'Your rating screen in the Test Lab', state: 'done', detail: 'Merged (#173). The Test Lab end screen is the normal game’s “Rate & review this run”: Fun, Difficulty, the new Intensity, Boss rounds, Compared with the last map, Play again; then the run’s timeline with Watch it and notes, where you pick the best and weakest wave; then the Test Lab verdict. Best moment is gone. At each weapon pick an optional “Rate wave N” row (difficulty, fun, intensity 1–5 and a note) saves as you tap; your fun ratings then suggest the best and weakest wave. The three boss rounds play back to back, so only waves 1–10 get the row.' },
     { id: 'combos', name: 'Bot test of every weapon combination', state: 'done', detail: 'Done (#176): about 11,000 bot runs, re-run in full on play log v29 (docs/design/v3-combo-sweep.md). No kit makes a map trivial: the one lead (Shrapnel + Scattergun + Flak on Marrow, perfect on 4 seeds) lost 5.6 ships a run on 16. The first good weapon does most of the work (plain gun 18.6 ships lost over 13 waves, one good weapon 8.4–9.4, the best three 7.6). Best sets: Air Strike + Point Defense + Supply Run, Air Strike + Flak + Point Defense, Point Defense + Railgun + Supply Run. Supply Run is the best partner. Your Overdrive + Scattergun + Supply Run kit is still weak for the bot (11.7 lost, 28% won) though you won twice with it: the bot plays boosts and pickups badly, so it gets checked on one of your logs before any change. Armory: Armor Plating (13 ships saved) and Damage Control (9) matter most, Stockpile and Quick Reload least; the Armory matters about twice as much as the loadout. On v29 Marrow is now the easiest map for the bot (83% won drafting for itself) and Kesh the hardest (8%): your replay decides whether either moves. Seven proposals are in the doc; nothing is retuned without you.' },
     { id: 'ch2', name: 'Chapter 2: The Narrows', state: 'now', detail: 'All five rebuilt: The Island, The Behemoth Run, The Needle of Bosk (#193), The Archipelago (#197), Saltgate Canal (#199). Waiting on your play. The Island and The Behemoth Run are rebuilt (#180, play log v31), with map cards (docs/design/v3-ch2-island.md, v3-ch2-behemoth.md), one encounter a wave and rising boss rounds (the Island: Gunship Wall; the Behemoth: Wolf Pack). As they were, both maps were flat for six waves and then a cliff; waves 6–10 now send most of their shells as drones. Bot with your Armory: the Island won 92% → 50%, ships lost in waves 1–5 0.25 → 0.88, boss rounds 1.3 / 1.7 / 1.6; the Behemoth won 58% → 42%, waves 1–5 0.29 → 0.71, boss rounds 0.5 / 2.2 / 2.5. Counter kits, all draftable in chapter 2: the Island, Gravity Well + Drone Screen + Gunship Pair (matches the bot’s own picks); the Behemoth, Shield + Frigate Escort + Air Strike (8.9 lost against 12.3). New enemies show “NEW · The Narrows” on their first banner. Still flagged: on the Island the south lane’s way in takes 28% of the damage (line 25%), left as it is. Next: the Needle of Bosk, the Archipelago and Saltgate Canal, after your play.' },
-    { id: 'ch3', name: 'Chapter 3: Dark Water', state: 'now', detail: 'Three of five rebuilt: The Battery (#210), The Sowers (#213), The Rig Field (#216). Building now: The Lantern and The Dreadnought. Chapter 4 after.' },
+    { id: 'ch3', name: 'Chapter 3: Dark Water', state: 'done', detail: 'All five rebuilt: The Battery (#210), The Sowers (#213), The Rig Field (#216), The Dreadnought (#217), The Black Strait (#219). Your notes on the Sowers and the Rig Field are being built.' },
+    { id: 'ch4', name: 'Chapter 4: Open War', state: 'now', detail: 'Started: The Coves and The Delta are being built. Then Dunmar Crossing, The Tide and The Citadel.' },
   ],
   prs: [
     { n: 155, title: 'Frigates never run over the convoy; munitions on launchers; the Nuke', state: 'merged' },
@@ -146,9 +147,15 @@ export const STATUS = {
     { n: 214, title: 'Home-screen app icon', state: 'merged' },
     { n: 215, title: 'Hub update', state: 'merged' },
     { n: 216, title: 'Chapter 3: The Rig Field rebuilt (log v49)', state: 'merged' },
+    { n: 217, title: 'Chapter 3: The Dreadnought rebuilt (log v51)', state: 'merged' },
+    { n: 218, title: 'Hub update', state: 'merged' },
+    { n: 219, title: 'Chapter 3: The Black Strait (the Lantern) rebuilt (log v52)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-22', what: 'Merged #219 (log v52): The Black Strait (the Lantern) rebuilt (Test Lab), and with it all five chapter 3 maps. The question: watch the beam, or watch your back? It’s night: a threat is only a glow until the lighthouse beam, your lamp or a star shell lights it, and the enemy’s own bank behind the ships as they deliver is never swept by the beam and has the shortest flights on the map. Signature from wave 4: siege batteries rise beside the dark bank. Boss, Bombardment: a line of siege guns rises along the far shore, with guns joining from the dark bank (3, then 3 + 1, then 4 + 2). Bot with your usual Armory: wins 58%, boss rounds 0.5 / 0.8 / 1.4. The bot sees through the dark, so expect it harder than that.' },
+    { date: '2026-11-22', what: 'Your runs read: the Battery (won, fun 4, boss 5), the Sowers (won, fun 4, boss 5) and the Rig Field (won, fun 5) — all Keep. Building from your notes (log v55): Sowers mines hidden until ships are close, with a big glowing Hold button bottom left replacing the command and notes buttons; Rig Field rigs counted in shots so power-ups can’t melt them, a much better tow-in animation, and busier early waves. Also: The Dreadnought merged (#217); The Lantern is finishing; chapter 4 (The Coves, The Delta) is being built.' },
+    { date: '2026-11-22', what: 'Merged #217 (log v51): The Dreadnought rebuilt (Test Lab), chapter 3’s finale. The question: sink it or ride it out? A battleship steams down the deep channel against the convoy on waves 3, 6, 9 and 10, firing broadsides with a short flight; 50 hits silence it, or shoot each broadside down. Its deck launches drones at the carrier (easy kills). Signature from wave 4: spotter planes lay its guns, the shells coming from the battleship’s hull. Boss, The Dreadnought: each round it steams in, stops broadside-on and fires at the lead ship while spotters walk barrages; sink it and the spotters have no guns (hull 40 / 50 / 60). Bot wins: usual 63% → 66%, latest 12% → 68%, plating 44% → 89%; the old cliffs on waves 6, 8, 9 and 10 are gone. Best weapon alone: Point Defense; no Air Strike in its best kits.' },
     { date: '2026-11-22', what: 'Merged #216 (log v49): The Rig Field rebuilt (Test Lab), chapter 3 map 3. The problem: four enemy rigs stand right over the lane and fire point-blank; each takes 40 hits, and one brought down stays down, though its fire moves to the far shore with a longer flight. Signature from wave 4: relief rigs towed in by tugs (sink a tow in 8 hits, or it raises a downed rig or mends a damaged one). Boss: the Rig Barrage, downed rigs rise out of the sea, 2 then 3 then 4, and fire together in volleys at the ship halfway along. Bot wins: usual Armory 59% → 64%, plating 57% → 89%, latest 15% → 40%; the old wave 8 spike is gone. Its best weapon alone is the Shrapnel Shell, and its best kits share nothing with any other rebuilt map.' },
     { date: '2026-11-21', what: 'You asked for at least another full chapter while you’re away. Building now, in parallel: the rest of chapter 3 — The Rigs (log v49), The Lantern (v50) and The Dreadnought, the chapter finale (v51) — the same way as the Battery and the Sowers. Chapter 4 (Open War) starts after them. Each lands here as it merges.' },
     { date: '2026-11-21', what: 'Lifeboats level 5 stays as built (+1 life at the start of each run), as you answered. Added: a home-screen icon (a carrier on a cyan radar scope with a red contact) and a web app manifest. To get it on your iPhone, remove the old home-screen app and add it again from Safari (Share → Add to Home Screen); iOS only reads the icon when the shortcut is made.' },
@@ -205,34 +212,55 @@ export const STATUS = {
 export const NEEDS = [
 
   {
-    id: 'r14-play-battery',
-    kind: 'item',
-    title: 'Play the rebuilt Battery (Test Lab → Ready to test)',
-    text: 'Two allied shore guns cover the east of the lane; the enemy goes for the guns first, and a knocked-out gun leaves the east open for 12 s. Wave 3’s shell spike is gone. From wave 4 heavies go for the guns and dark jets come in; the boss is the Blackout. The big question: waves 4–9 now send more drones and fewer shells (shells were most of the fire before). Does the climb still feel like your 5 / 5 / 5 run? If it feels lighter, say so and I’ll put shells back on waves 6–9. Also try the new golden bomb (Quartermaster level 3+) and Lifeboats if you have them.',
-  },
-  {
     id: 'r14-play-missiles',
     kind: 'item',
     title: 'Play Saltgate’s new boss: the Missile Truck parade',
     text: 'Test Lab → Ready to test → Saltgate Canal, then Skip to boss from the pause menu to get straight there. Missile trucks drive in nose to tail, raise their missiles (red ring and a dashed line to the ship), and lob ballistic missiles at the ships held at the lock gates; round 3 has up to 7 missiles in the air at once. Kill the trucks as they raise, or shoot the missiles. Is it intense and different enough from the rocket trucks?',
   },
   {
-    id: 'r14-play-sowers',
+    id: 'r15-play-dreadnought',
     kind: 'item',
-    title: 'Play the rebuilt Sowers (Test Lab → Ready to test)',
-    text: 'Mines drift across the lane on the current; a ship that meets one sinks. Shoot them, or press Hold to stop the convoy and let them pass (wave 5 punishes holding). From wave 4 stealth bombers sow mines just ahead of your ships; the boss, the Carpet Run, carpets the lane. Look for: can you read the sown mines in time on your phone (waves 4 and 8)? Do you ever press Hold, and is it worth it? Approve (with a note) or Change.',
+    title: 'Play the rebuilt Dreadnought, chapter 3’s finale (Test Lab → Ready to test)',
+    text: 'A battleship steams down the channel on waves 3, 6, 9 and 10 firing broadsides: sink it (50 hits) or shoot down each broadside. Spotter planes lay its guns from wave 4. The boss: it steams in, stops broadside-on and fires while spotters walk barrages at your ships; sink it and the barrage stops. Look for: is the boss different enough from the battleship in the waves? Does sinking it feel like a real choice?',
   },
   {
-    id: 'r15-play-rigs',
+    id: 'r15-play-lantern',
     kind: 'item',
-    title: 'Play the rebuilt Rig Field (Test Lab → Ready to test)',
-    text: 'Four enemy rigs over the lane fire point-blank; bring one down (40 hits) and its fire moves to the far shore. From wave 4 tugs tow relief rigs in: sink the tow (8 hits) or it raises a fallen rig. The boss, the Rig Barrage: rigs rise out of the sea and fire together in volleys. Look for: are rigs worth 40 hits? Can you read the tows and volleys on your phone?',
+    title: 'Play the rebuilt Black Strait (the Lantern), the night map (Test Lab → Ready to test)',
+    text: 'Threats are glows until the lighthouse beam or your lamp lights them; the enemy bank behind you as you deliver is never lit and fires from close. Siege batteries rise by the dark bank from wave 4; the boss, Bombardment, is a line of siege guns on the far shore plus guns in the dark. Look for: can you read the dark on your phone? Do the shells from behind feel fair?',
   },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r14-play-battery',
+    kind: 'item',
+    verdict: 'approve',
+    note: "Played on v46: won, Keep, fun 4, difficulty right, boss 5; the climb rated 3–4 from wave 5. A v48 run lost on wave 10.",
+    at: '2026-11-22',
+    title: "Play the rebuilt Battery",
+    text: '',
+  },
+  {
+    id: 'r14-play-sowers',
+    kind: 'item',
+    verdict: 'approve',
+    note: "Played on v49: won, Keep, fun 4, boss 5, “great boss, it gave a lot more use for the mines.” Notes being built: mines stay hidden until a ship is close and surface in its path (no silo-style warning); a big Hold button at the bottom left that glows when holding would save a ship, replacing the command and notes buttons on the left in every mode.",
+    at: '2026-11-22',
+    title: "Play the rebuilt Sowers",
+    text: '',
+  },
+  {
+    id: 'r15-play-rigs',
+    kind: 'item',
+    verdict: 'approve',
+    note: "Played on v49: won, Keep, fun 5, boss 3. Notes being built: rigs much stronger and counted in shots, not damage (a powered-up shot is still one shot); the tow-in kept (“hilarious”) but animated far better; a little more action in waves 1–3.",
+    at: '2026-11-22',
+    title: "Play the rebuilt Rig Field",
+    text: '',
+  },
   {
     id: 'r14-lifeboats-l5',
     kind: 'question',

@@ -31,6 +31,8 @@ import {
   playsAt,
   MAP_BOSS,
   MAP_SIGNATURE,
+  DREAD_PASSES,
+  dreadPasses,
   MAP_FOE_SWAP,
   signatureOf,
   swapFoe,
@@ -45,9 +47,9 @@ import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { applyEncounters, createGame, damageThreat, lightFireShip, rigAt, rigStations, spawnThreat, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
-import { isFoe, onLand, truckMark } from '../../src/v3/sim/foes';
-import { bossIntroCards, eventName } from '../../src/v3/data/events';
+import { CARRIER_TARGET, applyEncounters, createGame, damageThreat, lightFireShip, rigAt, rigStations, spawnThreat, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
+import { isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
+import { EV, bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
 import { LOG_VERSION, logTelemetry, replay } from '../../src/v3/sim/playlog';
@@ -166,7 +168,7 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'coves']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves']);
     // Chapter 4, Open War (log v53): its own table, as chapter 3's.
     expect(CHAPTER_FOUR_MAPS).toEqual(['coves']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
@@ -217,6 +219,16 @@ describe('a campaign run has no encounter layer', () => {
       'rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley',
       'rigs-periscope', 'rigs-supersonic', 'rigs-two-tows', 'rigs-whole-field', 'rigs-last-tow',
     ]);
+    // Dreadnought Pass (docs/design/v3-ch3-dreadnought.md, log v51): the same.
+    expect(arc('dreadnought').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'dread-smoke', 'dread-long-reach', 'dread-first-pass', 'dread-spotted', 'dread-both-sides',
+      'dread-gun-laying', 'dread-crossfire', 'dread-two-spotters', 'dread-gunline', 'dread-full-ahead',
+    ]);
+    // The Black Strait, the Lantern (docs/design/v3-ch3-lantern.md, log v52): the same.
+    expect(arc('lantern').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'lantern-first-light', 'lantern-from-behind', 'lantern-both-banks', 'lantern-gun-in-the-dark', 'lantern-periscope',
+      'lantern-front-and-back', 'lantern-two-guns', 'lantern-dark-water', 'lantern-crossfire', 'lantern-last-light',
+    ]);
     // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
     expect(arc('coves').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends',
@@ -237,8 +249,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('lantern')).toBe(false);
-    expect(encountersFor('lantern', 5)).toEqual([]);
+    expect(hasEncounters('crossing')).toBe(false);
+    expect(encountersFor('crossing', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -289,13 +301,21 @@ describe('every beat is legal on its map at its wave', () => {
           // Log v48 (Sowers' Reach): a stealth bomber from an edge, an enemy
           // of the map's chapter or before, from its signature's first wave
           // (the wave's own new enemies come as stealth bombers from then).
-          const sower = 'air' in b.from && b.kind === 'stealthBomber' && foesUpTo(chapterOf(e.map)).includes('stealthBomber') && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
+          // Log v51 (Dreadnought Pass): the same for its signature's spotter
+          // planes.
+          const sig = MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE];
+          const sower = 'air' in b.from && (b.kind === 'stealthBomber' || b.kind === sig?.foe) && foesUpTo(chapterOf(e.map)).includes(b.kind as FoeId) && w >= (sig?.from ?? 99);
           // Log v49 (The Rig Field): a relief rig towed in from an edge, from
           // its signature's first wave (the wave's own new enemies come as
           // relief rigs from then), on a map with rigs.
           const tow = 'air' in b.from && b.kind === 'rig' && MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.kind === 'rig' && m.bases.some((x) => x.rig) && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
-          expect(inTable || extra || plane || truck || sower || tow, where).toBe(true);
-          if ('base' in b.from) {
+          // Log v52 (the Black Strait): a siege gun beside a base on the
+          // enemy's dark bank (the signature's `beside`), an enemy of the
+          // map's chapter or before, from the signature's first wave.
+          const gun = 'base' in b.from && b.kind === 'siege' && foesUpTo(chapterOf(e.map)).includes('siege') && w >= (sig?.from ?? 99) && !!sig?.beside?.includes(b.from.base);
+          expect(inTable || extra || plane || truck || sower || tow || gun, where).toBe(true);
+          if (gun) expect(m.bases[(b.from as { base: number }).base], where).toBeDefined();
+          else if ('base' in b.from) {
             const base = m.bases[b.from.base];
             expect(base, where).toBeDefined();
             expect(base.kinds, where).toContain(b.kind);
@@ -730,7 +750,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'coves'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -818,6 +838,23 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     expect(at('marrow')).toEqual([2, 5, 8, 10]);
     // Battery Point (log v45): its shore guns are the target in every wave
     // from the first shell (wave 2) to the climax.
+    // The Black Strait (log v52): the night is the mechanic; the waves use
+    // it through the enemy's dark bank in the south-east (bases 4 and 5,
+    // and the sub spot off it), the one shore the lighthouse beam never
+    // sweeps: something comes out of it in every wave, and a siege gun
+    // rises on it in every wave from the signature's first.
+    const n = MAPS.lantern.night!;
+    const beamTo = (x: number, y: number) => (Math.atan2(y - n.light.y, x - n.light.x) * 180) / Math.PI;
+    for (const i of [4, 5]) {
+      const b = MAPS.lantern.bases[i];
+      const a = beamTo(b.x, b.y);
+      expect(a < n.a0 || a > n.a1, `base ${i} out of the sweep`).toBe(true);
+      expect(Math.hypot(b.x - MAPS.lantern.carrier.x, b.y - MAPS.lantern.carrier.y), `base ${i} out of the carrier's lamp`).toBeGreaterThan(200);
+    }
+    const dark = (b: { from: object }) => ('base' in b.from && [4, 5].includes((b.from as { base: number }).base)) || ('sub' in b.from && (b.from as { sub: number }).sub === 2);
+    expect(arc('lantern').filter((a) => a.encounters.some((e) => e.beats.some((b) => !b.filler && dark(b)))).map((a) => a.wave)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(arc('lantern').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'siege'))).map((a) => a.wave)).toEqual([4, 5, 6, 7, 8, 9, 10]);
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'lantern')) for (const b of e.beats.filter((x) => x.kind === 'siege')) expect([4, 5], e.id).toContain((b.from as { base: number }).base);
     expect(at('battery')).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
     // Sowers' Reach (log v48): its mines are in every wave, off the chutes
     // or sown by a stealth bomber (the signature, from wave 4).
@@ -843,6 +880,12 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     for (const e of ENCOUNTERS) for (const b of e.beats.filter((x) => x.fire)) expect(e.map === 'coves' && b.kind === 'fastboat' && 'base' in b.from && MAPS.coves.bases[b.from.base].cove, e.id).toBe(true);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
+    // Dreadnought Pass (log v51): the battleship passes on the map's own
+    // waves (3, 6, 9, 10) and shows itself on wave 1; its spotters lay its
+    // guns in waves 4, 6, 8, 9 and 10 (the signature, from wave 4).
+    expect(Object.keys(DREAD_PASSES).map(Number)).toEqual([1, ...MAPS.dreadnought.boss!.waves]);
+    const spotted = arc('dreadnought').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'spotter'))).map((a) => a.wave);
+    expect(spotted).toEqual([4, 6, 8, 9, 10]);
   });
 });
 
@@ -1452,6 +1495,149 @@ describe('the Rig Field\'s boss rounds (log v49, MAP_BOSS): the Rig Barrage rise
   }, 30_000);
 });
 
+describe('Dreadnought Pass\'s boss (log v51, MAP_BOSS): the Dreadnought itself on the Fire Mission\'s spotters, rising; a rev 3 log and the campaign play the Fire Mission as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  it('each round the battleship steams in, heaves to and fires, its spotters calling barrages from its hull; tougher, longer on station, more spotters and swarms each round', () => {
+    // (Seed 218: the tryhard bot plays all three rounds there; tools/v3/dreadnought/probe-boss.ts.)
+    const off = playMimic('dreadnought', 218, opts);
+    const old = playMimic('dreadnought', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the Fire Mission's spotters and swarms, no battleship.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('fire-mission');
+      expect(e.sent.dreadnought ?? 0).toBe(0);
+    }
+    const on = playMimic('dreadnought', 218, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.dreadnought!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['fire-mission', 1], ['fire-mission', 2], ['fire-mission', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    for (const e of done) {
+      const R = rounds[e.run! - 1];
+      expect(e.sent.dreadnought, `run ${e.run}`).toBe(1);
+      expect(e.sent.spotter ?? 0, `run ${e.run}`).toBeLessThanOrEqual(R.spotters! * R.turns!);
+      expect(e.sent.drone, `run ${e.run}`).toBe(R.swarms! * R.size!);
+    }
+    for (const r of rounds) {
+      expect(r.dread!.hold).toBeDefined();
+      expect(r.dread!.aim).toBe('lead');
+    }
+    // Rising: a tougher hull, longer on station, more spotter turns and
+    // more drones each round.
+    for (let k = 1; k < rounds.length; k++) {
+      const [a, b] = [rounds[k - 1], rounds[k]];
+      expect(b.dread!.hp, `round ${k + 1}`).toBeGreaterThan(a.dread!.hp);
+      expect(b.dread!.hold![1], `round ${k + 1}`).toBeGreaterThan(a.dread!.hold![1]);
+      expect(b.spotters! * b.turns!, `round ${k + 1}`).toBeGreaterThanOrEqual(a.spotters! * a.turns!);
+      expect(b.swarms! * b.size!, `round ${k + 1}`).toBeGreaterThan(a.swarms! * a.size!);
+    }
+    roundLengths(done);
+    // The boss is named for the battleship under the layer, with the shared
+    // intro cards; the campaign reads the Fire Mission.
+    expect(eventName('fire-mission', 'dreadnought', ENCOUNTER_REV)).toBe('The Dreadnought');
+    expect(eventName('fire-mission', 'dreadnought', 3)).toBe('Fire Mission');
+  }, 90_000);
+
+  it('sunk, the Dreadnought is silent: its spotters have no guns to call', () => {
+    const g = createGame('dreadnought', 218, 11);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    let sunk = false;
+    let shells = 0;
+    const seen = new Set<number>();
+    for (let i = 0; i < 40 / DT && g.wave === 11; i++) {
+      step(g, DT);
+      const d = g.threats.find((t) => t.kind === 'dreadnought' && !t.dead);
+      // Sink it as soon as it is on the map, before its spotter comes.
+      if (d && !sunk && d.x < VIEW.width - 20) {
+        damageThreat(g, d, d.hp, false, 'gun');
+        sunk = true;
+      }
+      for (const m of g.foe.marks) {
+        if (m.kind !== 'shell' || seen.has(m.id)) continue;
+        seen.add(m.id);
+        shells++;
+      }
+    }
+    expect(sunk).toBe(true);
+    expect(shells).toBe(0);
+    expect(g.event?.sent.spotter ?? 0).toBe(0);
+  }, 60_000);
+});
+
+describe('the Black Strait\'s boss rounds (log v52, MAP_BOSS): the Bombardment walks the far shore, then the dark bank, and rises; a rev 3 log and the campaign play it as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
+  it('a line of siege guns along the far shore, more each round and from round 2 on the dark bank too, with fire out of the dark bank at the lead ship', () => {
+    // (Seed 225: the tryhard bot plays all three rounds there; tools/v3/lantern/probe-boss.ts.)
+    const off = playMimic('lantern', 225, opts);
+    const old = playMimic('lantern', 225, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own three hatches and supply swarms.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('bombardment');
+      expect(e.sent.siege).toBe(EV.bombardment.guns);
+      expect((e.sent.ballistic ?? 0) + (e.sent.guided ?? 0) + (e.sent.cluster ?? 0)).toBe(0);
+    }
+    const on = playMimic('lantern', 225, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.lantern!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['bombardment', 1], ['bombardment', 2], ['bombardment', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    expect(done.map((e) => e.sent.siege)).toEqual(done.map((e) => rounds[e.run! - 1].guns! + rounds[e.run! - 1].dark!));
+    for (const kind of ['ballistic', 'guided', 'cluster'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual(done.map((e) => fired(rounds[e.run! - 1], kind)));
+    for (const r of rounds) {
+      // The rest comes out of the dark bank (bases 4 and 5) at the lead ship.
+      for (const f of r.fire ?? []) {
+        expect(MAPS.lantern.bases[f.base!].kinds).toContain(f.kind);
+        expect([4, 5]).toContain(f.base);
+        expect(f.aim).toBe('lead');
+      }
+    }
+    // Guns on the dark bank from round 2 (the signature's place).
+    expect(rounds.map((r) => r.dark)).toEqual([0, 1, 2]);
+    // More each round (a gun is five hits and its salvos), the line no
+    // further apart.
+    const weight = rounds.map((r) => (r.guns! + r.dark!) * (5 + 2 * r.gunSalvos!) + 2 * (fired(r, 'ballistic') + fired(r, 'guided')) + 4 * fired(r, 'cluster'));
+    for (let k = 1; k < weight.length; k++) {
+      expect(weight[k], `round ${k + 1}`).toBeGreaterThan(weight[k - 1]);
+      expect(rounds[k].gunGap!, `round ${k + 1}`).toBeLessThanOrEqual(rounds[k - 1].gunGap!);
+    }
+    roundLengths(done);
+    // The boss keeps the event's name, and the shared intro cards.
+    expect(eventName('bombardment', 'lantern', ENCOUNTER_REV)).toBe('Bombardment');
+  }, 90_000);
+
+  it('the guns rise beside the far shore\'s silos in a line, west to east, then beside the dark bank\'s', () => {
+    const g = createGame('lantern', 3, 13);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    const r = MAP_BOSS.lantern!.rounds![2];
+    const hatches: { x: number; y: number; dur: number }[] = [];
+    for (let i = 0; i < 40 / DT && !hatches.length; i++) {
+      step(g, DT);
+      if (g.event) for (const m of g.foe.marks) if (m.kind === 'hatch' && m.spawn) hatches.push({ x: m.x, y: m.y, dur: m.dur });
+    }
+    expect(g.event?.id).toBe('bombardment');
+    expect(g.event?.run).toBe(3);
+    expect(hatches.length).toBe(r.guns! + r.dark!);
+    const far = hatches.filter((h) => h.y < 450);
+    const near = hatches.filter((h) => h.y > 450);
+    expect(far.length).toBe(r.guns!);
+    expect(near.length).toBe(r.dark!);
+    // West to east, each opening after the one before.
+    for (let k = 1; k < far.length; k++) {
+      expect(far[k].x).toBeGreaterThan(far[k - 1].x);
+      expect(far[k].dur).toBeGreaterThan(far[k - 1].dur);
+    }
+    for (const h of near) expect(h.dur).toBeGreaterThan(far[far.length - 1].dur);
+  });
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -1816,6 +2002,49 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(g.baseDown[st[1]]).toBe(true);
   });
 
+  it('the Black Strait (log v52): from wave 4 the wave\'s new enemies are siege guns beside the dark bank; the campaign and the shared wave keep the planner\'s own', () => {
+    expect(MAP_SIGNATURE.lantern).toMatchObject({ from: 4, foe: 'siege', foeShare: 1, beside: [4, 5] });
+    let guns = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('lantern', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('lantern', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('lantern', seed, w);
+        const drawn = on.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && !l.enc);
+        if (w >= 4) {
+          // Every new enemy the wave sends is a siege gun beside the dark
+          // bank (bases 4 and 5, in turn), firing the signature's salvos.
+          for (const l of drawn) expect([l.kind, l.base, l.salvos], `wave ${w}`).toEqual(['siege', [4, 5][drawn.indexOf(l) % 2], MAP_SIGNATURE.lantern!.salvos]);
+          guns += drawn.length;
+          // Launch for launch, within the wave budget (rule w-budget).
+          expect(Math.abs(planned(on) / planned(shared) - 1), `wave ${w} seed ${seed}`).toBeLessThanOrEqual(0.2);
+        } else for (const l of kinds(on, 'siege')) expect(l.base, `wave ${w}`).toBe(-1);
+        // Lab only: the campaign's and the shared wave's siege guns rise beside any base.
+        for (const l of [...kinds(camp, 'siege'), ...kinds(shared, 'siege')]) expect(l.base).toBe(-1);
+      }
+    expect(guns).toBeGreaterThan(20);
+    expect(signatureOf('lantern', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('lantern', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('lantern', 4, { rev: 4, only: [] })).toBeUndefined();
+    // Played: each gun comes up out of a hatch beside a dark-bank base, the
+    // wave's own on the side towards the middle, an encounter's on the
+    // other, so no two share a hatch.
+    const g = createGame('lantern', 5, 7);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    const spots = new Set<string>();
+    for (let i = 0; i < 90 / DT && g.wave === 7; i++) {
+      step(g, DT);
+      for (const m of g.foe.marks) if (m.kind === 'hatch' && m.spawn) spots.add(`${Math.round(m.x)},${Math.round(m.y)}`);
+    }
+    const dark = [4, 5].flatMap((i) => [1, -1].map((side) => siegeSpotAt(g, MAPS.lantern.bases[i], side as 1 | -1))).map((p) => `${Math.round(p.x)},${Math.round(p.y)}`);
+    expect(spots.size).toBeGreaterThanOrEqual(2);
+    for (const sp of spots) expect(dark, sp).toContain(sp);
+  });
+
   it('a sowing bomber lays its mines in the water just ahead of a ship, and fires no missile', () => {
     const g = createGame('sowers', 5, 4);
     applyEncounters(g, VER('v1'));
@@ -1861,6 +2090,124 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     }
     expect(campMines).toBe(0);
   });
+
+  it('Dreadnought Pass (log v51): from wave 4 the wave\'s new enemies are spotter planes, whose shells come from the battleship\'s hull while it is on the map; the campaign and the shared wave keep the planner\'s own', () => {
+    expect(MAP_SIGNATURE.dreadnought).toMatchObject({ from: 4, foe: 'spotter', foeShare: 1, guns: true });
+    let spotters = 0;
+    for (let w = 4; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('dreadnought', seed, w);
+        applyEncounters(on, VER('v1'));
+        const drawn = on.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && !l.enc);
+        for (const l of drawn) expect(l.kind, `wave ${w}`).toBe('spotter');
+        spotters += kinds(on, 'spotter').length;
+      }
+    expect(spotters).toBeGreaterThan(20);
+    expect(signatureOf('dreadnought', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('dreadnought', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('dreadnought', 4, { rev: 4, only: [] })).toBeUndefined();
+    // Wave 6: the battleship passes while the spotters call; their shells
+    // fire from its hull (a flash there), not from over the horizon.
+    const g = createGame('dreadnought', 3, 6);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    let hull = 0;
+    const seen = new Set<number>();
+    for (let i = 0; i < 120 / DT && g.wave === 6; i++) {
+      step(g, DT);
+      const d = g.threats.find((t) => t.kind === 'dreadnought' && !t.dead && t.x > 0 && t.x < VIEW.width);
+      for (const m of g.foe.marks) {
+        if (m.kind !== 'shell' || seen.has(m.id)) continue;
+        seen.add(m.id);
+        if (m.far) continue;
+        hull++;
+        expect(d, 'the battleship is on the map').toBeDefined();
+        expect(Math.abs(m.gy! - d!.y)).toBeLessThan(2);
+      }
+    }
+    expect(hull).toBeGreaterThan(0);
+    // The campaign's spotters call the guns over the horizon as ever.
+    const c = createGame('dreadnought', 3, 6);
+    c.tempo = { ...c.tempo, lossLimit: 999 };
+    c.carrierHp = 999;
+    for (let i = 0; i < 120 / DT && c.wave === 6; i++) {
+      step(c, DT);
+      for (const m of c.foe.marks) if (m.kind === 'shell') expect(m.far, 'campaign').toBe(true);
+    }
+  }, 60_000);
+
+  it('Dreadnought Pass (log v51): each pass under the layer has its own numbers and moment, a glimpse on wave 1 turns back; the campaign and the shared wave pass as before', () => {
+    const passOf = (w: number, layer: boolean | 'shared', seed = 2) => {
+      const g = createGame('dreadnought', seed, w);
+      if (layer) applyEncounters(g, layer === 'shared' ? { ...VER('v1'), only: [] } : VER('v1'));
+      g.tempo = { ...g.tempo, lossLimit: 999 };
+      g.carrierHp = 999;
+      let first: { t: number; hp: number; speed: number } | undefined;
+      let minX = Infinity;
+      let lastX = 0;
+      let broadside = 0;
+      let aimed = 0;
+      let guns = 0;
+      let deck = 0;
+      const seen = new Set<number>();
+      for (let i = 0; i < 150 / DT && g.wave === w; i++) {
+        step(g, DT);
+        const d = g.threats.find((t) => t.kind === 'dreadnought');
+        if (d) {
+          first ??= { t: g.waveT, hp: d.hp, speed: d.speed };
+          minX = Math.min(minX, d.x);
+          lastX = d.x;
+        }
+        for (const t of g.threats) {
+          if (seen.has(t.id)) continue;
+          seen.add(t.id);
+          if (t.parent === 'dreadnought') {
+            broadside++;
+            // The drones off its deck go for the carrier; its guns at a ship.
+            if (t.kind === 'drone') {
+              if (t.target === CARRIER_TARGET) deck++;
+              continue;
+            }
+            guns++;
+            const lead = g.ships.reduce((a, b) => (b.d > a.d ? b : a), g.ships[0]);
+            if (t.target === lead?.id) aimed++;
+          }
+        }
+      }
+      return { first, minX, lastX, broadside, aimed, guns, deck };
+    };
+    // The campaign and the shared wave: the map's own pass, as the wave
+    // starts, 50 hits, its broadsides untagged.
+    for (const layer of [false, 'shared'] as const) {
+      expect(dreadPasses('dreadnought', layer ? { ...VER('v1'), only: [] } : null)).toBeUndefined();
+      const p = passOf(3, layer);
+      expect(p.first, String(layer)).toMatchObject({ hp: MAPS.dreadnought.boss!.hp });
+      expect(p.first!.t, String(layer)).toBeLessThan(0.1);
+      expect(p.broadside, String(layer)).toBe(0);
+      expect(passOf(1, layer).first, `${layer} wave 1`).toBeUndefined();
+    }
+    expect(dreadPasses('sowers', VER('v1'))).toBeUndefined();
+    // Under the layer: each pass its own hits and speed; the broadsides are
+    // its own (tagged), aimed at the lead ship where the pass says so.
+    for (const w of [3, 6, 9]) {
+      const P = DREAD_PASSES[w];
+      const p = passOf(w, true);
+      expect(p.first, `wave ${w}`).toMatchObject({ hp: P.hp, speed: P.speed });
+      expect(p.guns, `wave ${w}`).toBeGreaterThan(0);
+      expect(p.deck, `wave ${w}`).toBe(p.broadside - p.guns);
+      expect(p.deck, `wave ${w}`).toBeGreaterThan(0);
+      if (P.aim === 'lead') expect(p.aimed, `wave ${w}`).toBeGreaterThanOrEqual(p.guns * 0.8);
+    }
+    // Wave 10's pass comes after the wave's own fire (the climax).
+    expect(passOf(10, true).first!.t).toBeGreaterThan(30);
+    // Wave 1: a glimpse in the east, turning back the way it came.
+    const g1 = passOf(1, true);
+    expect(g1.first).toBeDefined();
+    expect(g1.minX).toBeGreaterThanOrEqual(DREAD_PASSES[1].turn! - 5);
+    expect(g1.lastX).toBeGreaterThan(VIEW.width);
+    expect(g1.broadside).toBeGreaterThan(0);
+  }, 60_000);
 
   it('a jet down the supertanker\'s lane strafes the tanker, and the Shield does not stop it', () => {
     const g = createGame('behemoth', 5, 4);
@@ -1952,7 +2299,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -1961,6 +2308,11 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // (a short flight: wave 1 one late string, wave 3 none).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('rigs', w))).toEqual([1, 2, 4, 5, 6]);
     expect(BUSY['rigs-point-blank'].length).toBe(1);
+    // Dreadnought Pass (log v51): the same, out of its one drone silo.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('dreadnought', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // The Black Strait (log v52): every one of waves 1-6, out of the far
+    // shore's drone silos under the beam.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // The Coves (log v53): waves 1-6, out of its one drone silo (the far north-west).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('coves', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {

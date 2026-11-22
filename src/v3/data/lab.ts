@@ -713,6 +713,8 @@ export interface ReadyToTest {
 
 export const READY_TO_TEST: ReadyToTest[] = [
   { map: 'coves', log: 53, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
+  { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
+  { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
   { map: 'rigs', log: 49, tag: 'New', note: 'Rigs fire from point-blank; bring one down for good, or tows bring it back. Worth it?' },
   { map: 'sowers', log: 48, tag: 'New', note: 'Mines drift across the lane; bombers sow them ahead of your ships. Hold or shoot?' },
   { map: 'saltgate', log: 46, tag: 'Polished', note: 'Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?' },

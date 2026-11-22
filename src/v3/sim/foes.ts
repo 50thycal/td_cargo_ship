@@ -10,7 +10,7 @@ import { THREATS, VIEW, type ThreatKind } from '../data/config';
 import { DEBUT_SLOTS, FOE, FOES, FOE_LEAD_SHARE, FOE_OF_KIND, FOE_ORDER, FOES_BUILT, foeCount, foesInChapter, foesUpTo, type FoeId, type FoeSetting } from '../data/foes';
 import { MAP_ORDER, chapterOf, type MapId, type Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
-import type { BeatAim } from '../data/encounters';
+import { signatureOf, type BeatAim } from '../data/encounters';
 import { EV } from '../data/events';
 import { hydraDartPace, hydraDarts, walkingBarrage } from './events';
 import type { TelImpact } from './telemetry';
@@ -434,8 +434,15 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
     case 'siege': {
       // A closed hatch on the shore first (Test Lab round 1: "raised up
       // from low ground"); the gun comes up out of it when it opens.
-      const gun = siegeSpot(g, rng);
-      g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: gun.x, y: gun.y, t: 0, dur: FOE.siege.first, spawn: true });
+      // Log v52 (The Black Strait, MAP_SIGNATURE `beside`, lab only): a
+      // gun the launch names a base for rises beside that base (the
+      // enemy's dark bank in the south-east), the wave's own on the side
+      // towards the middle of the screen, an encounter's on the other, so
+      // two never share a hatch; otherwise beside any. Its salvos: the
+      // launch's (absent, its own).
+      const b = l.base >= 0 ? g.map.bases[l.base] : undefined;
+      const gun = b ? siegeSpotAt(g, b, l.enc ? -1 : 1) : siegeSpot(g, rng);
+      g.foe.marks.push({ id: g.nextId++, kind: 'hatch', x: gun.x, y: gun.y, t: 0, dur: FOE.siege.first, spawn: true, ...(l.salvos !== undefined ? { salvos: l.salvos } : {}) });
       return;
     }
     case 'spotter': {
@@ -523,10 +530,11 @@ function siegeSpot(g: Game, rng: RNG): Point {
   return siegeSpotAt(g, sites.length ? rng.pick(sites) : { x: VIEW.width / 2, y: 90 });
 }
 
-/** A siege gun's place beside a given site. */
-export function siegeSpotAt(g: Game, b: Point): Point {
+/** A siege gun's place beside a given site: on its side towards the
+ *  middle of the screen (`inward` -1: the other side). */
+export function siegeSpotAt(g: Game, b: Point, inward: 1 | -1 = 1): Point {
   void g;
-  const side = b.x < VIEW.width / 2 ? 1 : -1;
+  const side = (b.x < VIEW.width / 2 ? 1 : -1) * inward;
   return { x: clamp(b.x + side * 95, 80, VIEW.width - 80), y: b.y + 6 };
 }
 
@@ -1374,6 +1382,9 @@ export function callShells(g: Game, th: Threat, ship: number): void {
   const s = g.ships.find((o) => o.id === ship);
   if (!s) return;
   const gun = offMapGun(g, s, g.rng.foes);
+  // Log v51 (Dreadnought Pass, MAP_SIGNATURE `guns`): the battleship's
+  // guns, from its hull while it steams on the map.
+  const hull = signatureOf(g.map.id, g.wave, g.enc?.setup)?.guns ? dreadGun(g) : undefined;
   for (let k = 0; k < P.shells; k++) {
     const t = P.mark + k * P.gap;
     const p = shipAhead(g, s, t);
@@ -1382,9 +1393,16 @@ export function callShells(g: Game, th: Threat, ship: number): void {
     const ux = d > 0.5 ? (q.x - p.x) / d : Math.cos(s.heading);
     const uy = d > 0.5 ? (q.y - p.y) / d : Math.sin(s.heading);
     const off = (k - (P.shells - 1) / 2) * P.spread;
-    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: gun.x, gy: gun.y, dmg: P.dmg, link: th.id, flight: P.flight, far: true });
+    g.foe.marks.push({ id: g.nextId++, kind: 'shell', x: p.x + ux * off, y: p.y + uy * off, t: 0, dur: t, gx: (hull ?? gun).x, gy: (hull ?? gun).y, dmg: P.dmg, link: th.id, flight: P.flight, far: !hull });
   }
   cue(g, 'notice', th.x, th.y);
+}
+
+/** Log v51 (Dreadnought Pass): where the battleship's guns are, while it
+ *  is afloat on the screen (a spotter's shells fire from its hull). */
+export function dreadGun(g: Game): Point | undefined {
+  const d = g.threats.find((t) => t.kind === 'dreadnought' && !t.dead && t.x > 0 && t.x < VIEW.width);
+  return d ? { x: d.x, y: d.y } : undefined;
 }
 
 /** Where an off-map battery fires from (round 8: "an artillery shell

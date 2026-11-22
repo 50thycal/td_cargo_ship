@@ -604,7 +604,7 @@ function drawDreadnought(ctx: CanvasRenderingContext2D, th: Threat, t: number): 
     ctx.stroke();
   }
   ctx.restore();
-  bar(ctx, th.x, th.y - 52, 160, th.hp / THREATS.dreadnought.hp, '#ff8a7a');
+  bar(ctx, th.x, th.y - 52, 160, th.hp / (th.maxHp ?? THREATS.dreadnought.hp), '#ff8a7a');
   label(ctx, 'DREADNOUGHT', th.x, th.y - 60, '#ffb2a3', 18);
 }
 
@@ -617,7 +617,7 @@ function drawDreadnought(ctx: CanvasRenderingContext2D, th: Threat, t: number): 
  *  ballistic's landing circle always shows: every threat keeps a warning. */
 let dark: HTMLCanvasElement | null = null;
 
-export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (th: Threat) => void): void {
+export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (th: Threat) => void, drawMarks?: () => void): void {
   const n = g.map.night;
   // Blackout (a special event): night for its length, with no lighthouse.
   if (!n && !nightEvent(g)) return;
@@ -685,6 +685,10 @@ export function drawNight(ctx: CanvasRenderingContext2D, g: Game, drawReticle: (
     ctx.fill();
     if (th.kind === 'ballistic' && reticleVisible(g, th)) drawReticle(th);
   }
+  // Log v52: a siege battery's and a dive bomber's circles on top of the
+  // dark too (their shells and bombs can't be shot down: the circle is the
+  // whole warning).
+  drawMarks?.();
 }
 
 /** A special event's night (Blackout). */
