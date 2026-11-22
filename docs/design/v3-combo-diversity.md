@@ -239,7 +239,7 @@ npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/r
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=archipelago --seeds=4
 ```
 
-## The Coves: chapter 4's first map (game version 53)
+## The Coves: chapter 4's first map (game version 56; swept at 53)
 
 > 2026-11-22. The Coves rebuilt to the map rules (docs/design/v3-ch4-coves.md): fast boats out of four coves two seconds from the lane, and its signature is "fire ships" (from wave 4 some of the wave's boats come out of the coves set alight: three hits, and where one is sunk or rams, its fireball burns on the water); from wave 5 most of the waves' shells, and from wave 7 their guided missiles, come as drones. The question, as for each rebuild: are its best kits and its best weapon alone its own, and is Air Strike over-dominant? Swept the same way at version 53, with chapter 4's draft (27 weapons, the Wild Card and the Cadence Gun new): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. (The pairs and kits were swept on the build just before the final one, whose wave 6 sends no signature fire ship and two drones fewer.) The other maps are read from their last sweeps (`results/v37-ch2`, Saltgate `results/v42-ch2`, the Battery `results/v43-ch3`, the Sowers `results/v48-ch3`, the Rigs `results/v49-ch3`, the Black Strait `results/v50-ch3`, the Dreadnought `results/v51-ch3`). Results: `tools/v3/combo-sweep/results/v53-ch4`; the comparison: `python3 tools/v3/coves/compare.py`.
 

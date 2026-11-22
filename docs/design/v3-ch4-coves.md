@@ -1,6 +1,6 @@
 # The Coves: map card (map rebuild, chapter 4)
 
-**Date:** 2026-11-22. Smugglers' Coves (`coves`, chapter 4 "Open War", the 16th map and the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way the Rig Field (`docs/design/v3-ch3-rigs.md`, #216) and the rest of chapter 3 were. It starts chapter 4: its own table, `CHAPTER_FOUR_MAPS`, and chapter 4's four new enemies debut here. Encounter rev 4; play log **v53** (v52 is the Black Strait; v54 the Delta, built alongside).
+**Date:** 2026-11-22. Smugglers' Coves (`coves`, chapter 4 "Open War", the 16th map and the chapter's first) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), the way the Rig Field (`docs/design/v3-ch3-rigs.md`, #216) and the rest of chapter 3 were. It starts chapter 4: its own table, `CHAPTER_FOUR_MAPS`, and chapter 4's four new enemies debut here. Encounter rev 4; play log **v56** (built as v53 alongside the Delta's v54; v55 is round 15's notes on the Sowers and the Rigs, merged first).
 
 There is no player run of the Coves to start from. The starting point is the map as it was (the Test Lab card: today's convoy controls, the shared waves, the Repair Yard as its boss) and what the player asked of every rebuild: a question of its own and kits of its own, busier early waves ("more drones and easy things to kill", "less is more"), the climb from wave 4 to 9, no single-wave cliff, wave 10 the climax and not a wall, big and distinct boss set pieces, readable on an iPhone in landscape (874×402), anything that can sink a ship warned.
 
@@ -13,7 +13,7 @@ Code:
 - `src/v3/sim/foes.ts`: `burstCloud` takes the fire's `burn` (an Incendiary Missile's fireball, burning less long);
 - `src/v3/sim/events.ts`: the Repair Yard under the Coves' boss tuning is the Fire Fleet (`fireFleet`: the cove mouths lit, the sortie, the round's added launches); with no boss tuning it plays as it did;
 - `src/v3/ui/features.ts`: a fire ship drawn burning (flames on its deck) with a dashed orange ring the size of the fire it leaves, and its health bar against its own hits;
-- `src/v3/data/convoy.ts`: `MAP_CONVOY.coves` (the campaign's schedule, Pairs, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.coves`; `src/v3/data/lab.ts`: "Ready to test" lists the Coves at v53; `src/v3/sim/playlog.ts`: `LOG_VERSION` 53;
+- `src/v3/data/convoy.ts`: `MAP_CONVOY.coves` (the campaign's schedule, Pairs, no command); `src/v3/data/mapPlans.ts`: `MAP_PLANS.coves`; `src/v3/data/lab.ts`: "Ready to test" lists the Coves at v56; `src/v3/sim/playlog.ts`: `LOG_VERSION` 56;
 - tools: `tools/v3/coves/` (`readall.sh`: the tuning read for every Armory, `tools/v3/rigs/read.py` on the Coves; `final.sh`: normal and tough; `reports.sh`: the record reports; `waves.ts`: what each wave plans, fire ships counted; `compare.py`: the diversity check against chapters 2 and 3); `tools/v3/rigs/sunk.ts` takes `--map` now (what sinks the ships, wave by wave); `tools/v3/combo-sweep/mixwaves.ts` counts the Coves' signature (a fire ship).
 
 Bot reports: `tools/v3/map-report/results/coves-player.md` (the usual Armory: Quick Reload 5, Damage Control 4, Stockpile 5), `coves-latest.md` (Wide Warhead 5, Point Defense 4, Supply Lines 3), `coves-plating.md` (Quick Reload 5, Armor Plating 5, Big Magazine 4), `coves.md` (no Armory); each with a heat map and the counter and off-counter kits; the map as it was: `coves-before*.md` (read on a clean copy of the base build). Tuning reads: `tools/v3/coves/final.sh <dir>` (192 seeds, 900–1091, the record reports' bot).
@@ -233,9 +233,9 @@ The 24-seed record and the 192-seed reads disagree by up to 14 points on a win r
 - **The 24-seed records and the 192-seed reads disagree** by several points on a win rate; the larger read is the one to trust.
 - **The pairs and kits of the diversity sweep** were played on the build before the last change (wave 6's signature fire ship and two drones); the singles on that build too.
 
-## The play log (v53)
+## The play log (v56)
 
-`LOG_VERSION` 53, `LOG_REPLAYS` `[53]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer: the campaign plays as at 52, and a 52 Coves card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 53 (`python3 tools/v3/playtest-fixes/pins.py 52 53`, and `tests/v3/scorecard.test.ts`). The Test Lab's "Ready to test" lists the Coves at v53. The combo sweep's results are in `tools/v3/combo-sweep/results/v53-ch4`.
+`LOG_VERSION` 56, `LOG_REPLAYS` `[56]` (`src/v3/sim/playlog.ts`). The change is lab only, under the encounter layer: the campaign plays as at 55, and a 55 Coves card log played today's convoy controls and the shared waves (it no longer replays to the same game). The map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and was rewritten with `--write`; it replays exactly with telemetry on and off. The version pins in the tests and e2e scripts moved to 56 (`python3 tools/v3/playtest-fixes/pins.py 52 53`, then, after merging round 15's v55, `pins.py 55 56`, and `tests/v3/scorecard.test.ts`). The Test Lab's "Ready to test" lists the Coves at v56. The combo sweep's results are in `tools/v3/combo-sweep/results/v53-ch4` (swept as v53, the same game as v56 on this map).
 
 ## Questions for the player
 
@@ -263,7 +263,7 @@ The 24-seed record and the 192-seed reads disagree by up to 14 points on a win r
   - the filler: waves 1–6.
 - `tests/v3/mapRules.test.ts`: no repeats and no gaps; `MAP_PLANS` complete; the boss target is 2; the notes name the coves the boats come out of.
 - `tests/v3/mapCards.test.ts`, `round11.test.ts`, `convoy.test.ts`: the production setup is policy D with the encounters, no command, at the campaign's schedule ("The map's own convoy (no commands) · encounters v1 Original"). `tests/v3/round12fixes.test.ts`: wave 1 opens with two boats and three drones, and loses no ship (seeds 11–13, "you" and casual).
-- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 53.
+- `tests/v3/readyToTest.test.ts`: the new entry. `tests/v3/scorecard.test.ts`: the log is version 56.
 - `e2e/v3-map-cards.mjs`: the hub card says so. `e2e/v3-encounters.mjs`: the card opens with its encounters and no command, the pause screen's script names the Fire Fleet and the first fire ship, and skipped to the boss, fire ships come out of the coves at once (a shot at one pixel a point: `e2e/shots/v3-encounters/coves-boss.png`).
 
 ## What to look for when you play
