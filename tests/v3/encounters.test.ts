@@ -24,6 +24,7 @@ import {
   MAP_VERSIONS,
   REBUILT_MAPS,
   CHAPTER_FOUR_MAPS,
+  SPOTTER,
   hasEncounters,
   arc,
   calloutsOn,
@@ -49,7 +50,8 @@ import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
 import { CARRIER_TARGET, applyEncounters, createGame, damageThreat, lightFireShip, rigAt, rigStations, spawnThreat, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
-import { isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
+import { crossingPair, isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
+import { beaconMark } from '../../src/v3/sim/events';
 import { EV, bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
@@ -169,9 +171,9 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'crossing']);
     // Chapter 4, Open War (log v53): its own table, as chapter 3's.
-    expect(CHAPTER_FOUR_MAPS).toEqual(['coves']);
+    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'crossing']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -235,6 +237,11 @@ describe('a campaign run has no encounter layer', () => {
       'coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends',
       'coves-periscope', 'coves-crossfire', 'coves-north-shore', 'coves-facing', 'coves-every-cove',
     ]);
+    // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): the same.
+    expect(arc('crossing').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges',
+      'crossing-periscopes', 'crossing-two-spotters', 'crossing-crossfire', 'crossing-passing-fire', 'crossing-the-crossing',
+    ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
       for (const e of ENCOUNTERS.filter((x) => x.map === map)) {
@@ -250,8 +257,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
     // The other maps have none yet.
-    expect(hasEncounters('crossing')).toBe(false);
-    expect(encountersFor('crossing', 5)).toEqual([]);
+    expect(hasEncounters('tide')).toBe(false);
+    expect(encountersFor('tide', 5)).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -314,7 +321,10 @@ describe('every beat is legal on its map at its wave', () => {
           // enemy's dark bank (the signature's `beside`), an enemy of the
           // map's chapter or before, from the signature's first wave.
           const gun = 'base' in b.from && b.kind === 'siege' && foesUpTo(chapterOf(e.map)).includes('siege') && w >= (sig?.from ?? 99) && !!sig?.beside?.includes(b.from.base);
-          expect(inTable || extra || plane || truck || sower || tow || gun, where).toBe(true);
+          // Log v58 (Dunmar Crossing): a spotter beacon rising at the
+          // crossing, the signature's own enemy, from its first wave.
+          const spotter = 'water' in b.from && b.kind === 'lure' && sig?.foe === 'lure' && !!sig.beacons && foesUpTo(chapterOf(e.map)).includes('lure') && w >= sig.from;
+          expect(inTable || extra || plane || truck || sower || tow || gun || spotter, where).toBe(true);
           if (gun) expect(m.bases[(b.from as { base: number }).base], where).toBeDefined();
           else if ('base' in b.from) {
             const base = m.bases[b.from.base];
@@ -756,7 +766,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'crossing'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -2307,7 +2317,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait', 'crossing'].sort());
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -2324,6 +2334,8 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // The Coves (log v53): waves 1-6, out of its one drone silo (the far north-west).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('coves', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // Dunmar Crossing (log v58): waves 1-6, out of the north-west and north-east silos.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('crossing', w))).toEqual([1, 2, 3, 4, 5, 6]);
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
@@ -2454,5 +2466,129 @@ describe('the Coves (log v53): fire ships, the signature and the Fire Fleet', ()
       expect(foeDebutTag(FOES[id].kind), id).toBe('New on Open War');
     });
     for (const e of ENCOUNTERS.filter((x) => x.map === 'coves')) for (const b of e.beats) expect(isFoe(b.kind), e.id).toBe(false);
+  });
+});
+
+// Chapter 4, Open War: Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58).
+describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signature and the Beacon Line', () => {
+  const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
+
+  it('from wave 4 half the wave\'s new enemies are spotter beacons, each taking its shells out of the wave; the campaign and the shared wave keep plain beacons', () => {
+    expect(MAP_SIGNATURE.crossing).toMatchObject({ from: 4, foe: 'lure', foeShare: 0.5, beacons: SPOTTER });
+    let spotters = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('crossing', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('crossing', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('crossing', seed, w);
+        const own = kinds(on, 'lure').filter((l) => !l.enc && l.beacon);
+        if (w < 4) expect(own, `wave ${w}`).toEqual([]);
+        spotters += own.length;
+        expect([...kinds(camp, 'lure'), ...kinds(shared, 'lure')].filter((l) => l.beacon)).toEqual([]);
+        // Its shells come out of the wave's own: no more shells, guided
+        // missiles and drones with the signature than the shared wave's.
+        const enc = encountersFor('crossing', w);
+        const taken = enc.reduce((a, e) => a + (e.replaces.ballistic ?? 0) + (e.replaces.guided ?? 0), 0);
+        const calls = own.length * SPOTTER.calls;
+        const fire = (g: Game) => kinds(g, 'ballistic').length + kinds(g, 'guided').length;
+        if (!taken) expect(fire(on) + calls, `wave ${w} seed ${seed}`).toBeLessThanOrEqual(fire(shared) + 1);
+      }
+    expect(spotters).toBeGreaterThanOrEqual(12);
+    expect(signatureOf('crossing', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('crossing', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('crossing', 4, { rev: 4, only: [] })).toBeUndefined();
+  });
+
+  it('the encounters\' spotters rise in waves 4 and 7-10, never before the signature\'s first wave; every wave aims at a lane or the crossing', () => {
+    const spotted = arc('crossing').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'lure'))).map((a) => a.wave);
+    expect(spotted).toEqual([4, 7, 8, 9, 10]);
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'crossing'))
+      for (const b of e.beats.filter((x) => x.kind === 'lure')) {
+        expect('water' in b.from && b.from.water, e.id).toBe('cross');
+        expect(b.beacon, e.id).toEqual(SPOTTER);
+        // Its shells come out of the wave's own (the books).
+        expect((e.replaces.ballistic ?? 0) + (e.replaces.guided ?? 0), e.id).toBeGreaterThanOrEqual(SPOTTER.calls);
+      }
+    for (const a of arc('crossing')) expect(a.encounters.some((e) => e.beats.some((b) => b.lane !== undefined || b.aim === 'cross' || b.kind === 'lure')), `wave ${a.wave}`).toBe(true);
+    // Only the Crossing's encounters rise from the water or aim at the crossing.
+    for (const e of ENCOUNTERS.filter((x) => x.map !== 'crossing')) for (const b of e.beats) expect('water' in b.from || b.aim === 'cross' || b.lane !== undefined, e.id).toBe(false);
+  });
+
+  it('a spotter beacon rises between the lanes at the crossing, takes SPOTTER.hp hits, marks the ship nearest it and calls SPOTTER.calls shells, then sinks back', () => {
+    const g = createGame('crossing', 5, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    for (let i = 0; i < 40 / DT; i++) step(g, DT);
+    const c = crossingPair(g);
+    expect(c).toBeDefined();
+    expect(c!.a.channel).toBe(0);
+    expect(c!.b.channel).toBe(1);
+    g.queue.push({ at: g.waveT, kind: 'lure', base: -1, beacon: SPOTTER });
+    step(g, DT);
+    const b = g.threats.find((t) => t.kind === 'lure' && !t.dead)!;
+    expect(b).toBeDefined();
+    expect(b.hp).toBe(SPOTTER.hp);
+    // Between the lanes: below the north lane's water and above the south's.
+    const [n, s] = g.map.channels;
+    expect(b.y).toBeGreaterThan(n.y + n.halfWidth);
+    expect(b.y).toBeLessThan(s.y - s.halfWidth);
+    expect(Math.hypot(b.x - g.map.carrier.x, b.y - g.map.carrier.y)).toBeGreaterThanOrEqual(60);
+    let marked = false;
+    const called = new Set<number>();
+    for (let i = 0; i < 20 / DT && !b.dead; i++) {
+      step(g, DT);
+      if (beaconMark(g, b)) marked = true;
+      for (const t of g.threats) if (t.called) called.add(t.id);
+    }
+    expect(marked).toBe(true);
+    expect(called.size).toBe(SPOTTER.calls);
+    expect(b.dead).toBe(true);
+    // Shot down early, it calls no more.
+    g.queue.push({ at: g.waveT, kind: 'lure', base: -1, beacon: SPOTTER });
+    step(g, DT);
+    const b2 = g.threats.find((t) => t.kind === 'lure' && !t.dead)!;
+    damageThreat(g, b2, SPOTTER.hp);
+    expect(b2.dead).toBe(true);
+    const before = g.queue.filter((l) => l.called).length;
+    for (let i = 0; i < 8 / DT; i++) step(g, DT);
+    expect(g.queue.filter((l) => l.called).length).toBe(before);
+  });
+
+  it('the Beacon Line: lines of spotter beacons calling together, longer each round; a rev 3 log and the campaign play Beacon Strike', () => {
+    const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+    const off = playMimic('crossing', 219, opts);
+    const old = playMimic('crossing', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('beacon-strike');
+      expect(e.sent.lure).toBe(4);
+    }
+    const on = playMimic('crossing', 219, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.crossing!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['beacon-strike', 1], ['beacon-strike', 2], ['beacon-strike', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    for (const e of done) {
+      const R = rounds[e.run! - 1];
+      expect(e.sent.lure, `round ${e.run}`).toBe(R.line!.beacons * R.line!.at.length);
+      expect(e.sent.ballistic ?? 0, `round ${e.run}`).toBeGreaterThan(0);
+    }
+    // Rising: more beacons each round.
+    const n = (r: (typeof rounds)[number]) => r.line!.beacons * r.line!.at.length;
+    for (let k = 1; k < rounds.length; k++) expect(n(rounds[k]), `round ${k + 1}`).toBeGreaterThan(n(rounds[k - 1]));
+    for (const r of rounds) expect(r.line!.call.charge, 'each ship marked first').toBeGreaterThanOrEqual(1.5);
+    roundLengths(done);
+    expect(eventName('beacon-strike', 'crossing', ENCOUNTER_REV)).toBe('Beacon Line');
+    expect(eventName('beacon-strike', 'crossing', 3)).toBe('Beacon Strike');
+    expect(eventName('beacon-strike', 'crossing')).toBe('Beacon Strike');
+  }, 90_000);
+
+  it('chapter 4\'s new enemies are regulars here (they debut on the Coves); the encounters bring only the signature\'s spotter beacons', () => {
+    for (const id of ['tender', 'bodyguard', 'lure', 'cloud'] as const) expect(mapDebutsFoe('crossing', FOES[id].kind), id).toBe(false);
+    for (const e of ENCOUNTERS.filter((x) => x.map === 'crossing')) for (const b of e.beats) expect(!isFoe(b.kind) || b.kind === 'lure', e.id).toBe(true);
   });
 });

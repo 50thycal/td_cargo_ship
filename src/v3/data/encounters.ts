@@ -5741,7 +5741,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [6],
     role: 'combine',
     name: 'Periscopes at both ends',
-    callout: 'Periscopes between the lanes',
+    callout: 'Two periscopes',
     premise: 'Subs surface at both ends of the water between the lanes, each lobbing shells at the convoy coming in past it, the west one at the outbound ships and the east one at the inbound.',
     decision: 'Two subs, two salvos, either end: which salvo first?',
     counters: 'The shells as they climb, one end then the other.',
@@ -6928,11 +6928,11 @@ export const COVES_BOSS_ROUNDS: BossRound[] = [
  *  call together: every beacon marks its ship at the same moment (the
  *  lines drawn all at once), then a volley of shells comes off both shores.
  *  Rising: a longer line, a second line, more volleys. */
-const LINE_CALL: BeaconCall = { hp: 5, calls: 3, first: 2.5, every: 4.5, charge: 2, life: 20 };
+const LINE_CALL: BeaconCall = { hp: 4, calls: 3, first: 2.5, every: 4.5, charge: 2, life: 20 };
 export const CROSSING_BOSS_ROUNDS: BossRound[] = [
-  { line: { at: [0], beacons: 6, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
-  { line: { at: [0, 10], beacons: 5, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
-  { line: { at: [0, 8], beacons: 6, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 12, base: 0, aim: 'rear' }, { kind: 'guided', at: 12, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 8], beacons: 3, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }, { kind: 'guided', at: 12, base: 3, aim: 'cross' }] },
+  { line: { at: [0, 7, 14], beacons: 4, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 6, 12], beacons: 5, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
 ];
 
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {

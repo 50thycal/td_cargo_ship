@@ -58,6 +58,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // The Coves (log v53): fire ships, fast boats set alight (counted apart
   // from the plain boats, the map's mechanic, as `fireShip`).
   coves: ['fireShip'],
+  // Dunmar Crossing (log v58): spotters at the crossing, the Lure Beacons
+  // that call shells (counted apart from a plain beacon as `spotter`), and
+  // the shells they call (`called`).
+  crossing: ['spotter', 'called'],
 };
 
 /** Threats that showed, by wave and kind (mean a run), and their hit
@@ -85,7 +89,7 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         // Field's; its rigs standing from the start are its mechanic.
         // A broadside of the Dreadnought's (log v51) is its signature's.
         // A fire ship (log v53) is the Coves' signature; a plain boat its mechanic.
-        const kind = th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
+        const kind = th.called ? 'called' : th.kind === 'lure' && th.foe?.spot ? 'spotter' : th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate
