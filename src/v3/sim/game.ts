@@ -80,12 +80,12 @@ import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
-import { absorbs, burstCloud, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
+import { absorbs, burstCloud, crossingPair, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
 
@@ -291,6 +291,8 @@ export interface Threat {
    *  launch off the Citadel under its dome: while the shield stands it
    *  can't be shot inside the dome (`domed`). */
   dome?: boolean;
+  /** Log v58 (Dunmar Crossing): a shell a spotter beacon called. */
+  called?: boolean;
   /** Grapnel or Chain Shot has hold of it: it doesn't fly its own course
    *  (and can't hit anything) until let go. */
   held?: boolean;
@@ -482,6 +484,12 @@ export interface Launch {
   fire?: boolean;
   /** Log v60 (The Citadel): a launch off the Citadel under its dome. */
   dome?: boolean;
+  /** Log v58 (Dunmar Crossing): a Lure Beacon that rises at the crossing
+   *  and calls shells (BeaconCall); a shell a beacon called; an authored
+   *  launch aimed only at the ships of one lane (Beat `lane`). */
+  beacon?: BeaconCall;
+  called?: boolean;
+  inLane?: number;
 }
 
 /** What a launcher carries: a single missile, or a drone swarm of `size`. */
@@ -1327,6 +1335,16 @@ function startWave(g: Game): void {
     // The Archipelago (log v37, MAP_SIGNATURE `escort`): a Scavenger Drone
     // with each mothership, its launch one drone out of the wave's own.
     if (k < signed && sig!.escort && takeDrone()) units.push({ kind: FOES[sig!.escort].kind, size: 1 });
+    // Dunmar Crossing (log v58, MAP_SIGNATURE `beacons`): a spotter
+    // beacon's calls come out of the wave's own shells, one for one (else
+    // its guided missiles, else its drones), so the wave sends no more.
+    if (k < signed && sig!.beacons)
+      for (let c = sig!.beacons.calls; c > 0; c--) {
+        const i = units.findIndex((u) => u.kind === 'ballistic');
+        const j = i >= 0 ? i : units.findIndex((u) => u.kind === 'guided');
+        if (j >= 0) units.splice(j, 1);
+        else takeDrone();
+      }
     // The Archipelago (log v37, MAP_SIGNATURE `kind`): one of the map's own
     // threat kinds (a drone mothership) in place of the enemy.
     units.push({ kind: k < signed ? (sig!.kind ?? FOES[sig!.foe!].kind) : FOES[id].kind, size });
@@ -1413,7 +1431,7 @@ function startWave(g: Game): void {
         // guns rise beside the bases of the enemy's dark bank, in turn.
         const beside = u.kind === 'siege' && sig?.beside?.length ? sig.beside[besides++ % sig.beside.length] : -1;
         const salvos = beside >= 0 && sig?.salvos !== undefined ? { salvos: sig.salvos } : {};
-        queue.push({ at, kind: u.kind, base: beside, ...salvos, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
+        queue.push({ at, kind: u.kind, base: beside, ...salvos, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}), ...(u.kind === 'lure' && sig?.beacons ? { beacon: sig.beacons } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1595,8 +1613,13 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
     for (const b of e.beats) {
       // Never sooner than a raid's warning after the wave's lead-in.
       const at = lead + RAID.warn + b.at * duration + (b.plus ?? 0);
-      const aim = b.aim && b.aim !== 'any' ? { aim: b.aim } : {};
-      if ('base' in b.from) {
+      const aim = b.aim && b.aim !== 'any' ? { aim: b.aim, ...(b.lane !== undefined ? { inLane: b.lane } : {}) } : {};
+      if ('water' in b.from) {
+        // Log v58 (Dunmar Crossing): a spotter beacon rises at the crossing;
+        // its rising is its warning.
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * (b.gap ?? 3), kind: b.kind, base: -1, enc: e.id, ...(b.beacon ? { beacon: b.beacon } : {}) });
+        start = Math.min(start, at);
+      } else if ('base' in b.from) {
         const gap = b.gap ?? 0.35;
         // The Rig Field (log v49): a beat out of a rig already brought down
         // comes from the far shore instead (rigStandIn), lit there.
@@ -1675,7 +1698,7 @@ function updateEncCalls(g: Game): void {
  *  nearest halfway along its lane; 'post', the map's allied structure while
  *  it stands (Lee of Marrow's radar), else the ship nearest where it stood.
  *  Chapter 2's Behemoth Run: 'vip', the supertanker while it sails. */
-export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
+export function aimBeat(g: Game, th: Threat, aim: BeatAim, lane?: number): void {
   let from: Point = { x: th.x, y: th.y };
   if (aim === 'post' && g.map.posts) {
     const up = g.map.posts.map((_, i) => i).filter((i) => postUp(g, i));
@@ -1688,7 +1711,11 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
     }
     from = g.map.posts[0];
   }
-  const pool = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
+  const all = targetable(g, th.kind === 'ballistic' ? VIEW.width - 320 : undefined);
+  // Log v58 (Dunmar Crossing, Beat `lane`): only that lane's ships, if it
+  // has any.
+  const inLane = lane === undefined ? [] : all.filter((s) => s.channel === lane);
+  const pool = inLane.length ? inLane : all;
   if (!pool.length) return;
   const along = (s: Ship) => s.d / laneLength(g.map.channels[s.channel]);
   // Chapter 2 (rev 4): the supertanker while it sails (else, as 'lead',
@@ -1717,6 +1744,14 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim): void {
     const lane = switchLane(g);
     const bound = pool.filter((s) => s.channel === lane);
     pick = (bound.length ? bound : pool).reduce((a, b) => (along(b) < along(a) ? b : a));
+  }
+  // Log v58 (Dunmar Crossing): 'cross', of the next two ships to pass each
+  // other (one each way), the one nearer the launcher; none, the ship
+  // nearest halfway along.
+  if (aim === 'cross') {
+    const c = crossingPair(g);
+    const pair = c ? pool.filter((s) => s.id === c.a.id || s.id === c.b.id) : [];
+    pick = pair.length ? pair.reduce((a, b) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a)) : pool.reduce((a, b) => (Math.abs(along(b) - 0.5) < Math.abs(along(a) - 0.5) ? b : a));
   }
   if (aim === 'narrows') {
     const mouth = g.map.channels.map((c) => c.narrow?.fromX).find((x) => x !== undefined);
@@ -5803,7 +5838,8 @@ function launch(g: Game, l: Launch): void {
     // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
     // first wave everything the Citadel fires leaves under its dome.
     if (base.core && (l.dome || !!signatureOf(g.map.id, g.wave, g.enc?.setup)?.dome)) th.dome = true;
-    if (l.aim) aimBeat(g, th, l.aim);
+    if (l.aim) aimBeat(g, th, l.aim, l.inLane);
+    if (l.called) th.called = true;
     if (l.paired) th.paired = true;
     if (l.spotter !== undefined) th.src = l.spotter;
     // A supply drone (the Bombardment's) heads for the carrier.

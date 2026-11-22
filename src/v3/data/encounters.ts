@@ -81,7 +81,25 @@ export function setupVersion(s: Pick<EncounterSetup, 'version'> | null | undefin
 /** Where a beat's launches come from: a base of the map (its index), a
  *  submarine at one of the map's surfacing spots, or an aircraft from one
  *  edge (+1: the left, flying right). */
-export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { road: number };
+export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { road: number } | { water: 'cross' };
+
+/** Dunmar Crossing (log v58): a spotter beacon's calls. A Lure Beacon that
+ *  rises in the water between the two lanes where the next outbound and
+ *  inbound ships will pass each other (the crossing), marks the ship
+ *  nearest it `charge` s before each call (a dashed line), and at each call
+ *  a shell is lobbed at that ship from the shell silo nearest it: `calls`
+ *  calls, the first `first` s after it is up, then every `every` s; its
+ *  calls spent (or `life` s up), it sinks back. Only your own weapons sink
+ *  it (it is a Lure Beacon: your helpers in its ring fire at it in vain). */
+export interface BeaconCall {
+  /** Its hits (a plain Lure Beacon's: 2). */
+  hp: number;
+  calls: number;
+  first: number;
+  every: number;
+  charge: number;
+  life: number;
+}
 
 /** Who a beat is aimed at, decided as each launch leaves: any ship (the
  *  sim's own pick), the ship furthest along, the ship nearest the narrows
@@ -105,7 +123,7 @@ export type BeatFrom = { base: number } | { sub: number } | { air: 1 | -1 } | { 
  *  branch the fork's switch is set to (the one least far along of those);
  *  none, the ship least far along. An Incendiary Missile aimed so bursts
  *  on the water at the mouth of that branch, ahead of the next ships. */
-export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'switch';
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'switch' | 'cross';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -138,6 +156,13 @@ export interface Beat {
    *  (data/config.ts FIRESHIP): more hits, and where one is sunk or rams,
    *  its fireball burns on the water. */
   fire?: boolean;
+  /** Dunmar Crossing (log v58): aimed only at ships in this lane (its
+   *  index: 0 the outbound north lane, 1 the inbound south lane), when it
+   *  has any. */
+  lane?: number;
+  /** Dunmar Crossing (log v58): a spotter beacon (kind 'lure', from
+   *  `{ water: 'cross' }`) and its calls (BeaconCall). */
+  beacon?: BeaconCall;
   /** The Citadel (log v60): a launch off the Citadel under its dome (MAP_
    *  SIGNATURE `dome`): it can't be shot while it is inside the dome and
    *  the shield stands. */
@@ -5871,6 +5896,262 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.62, kind: 'drone', count: 2, gap: 0.5, from: base(0) },
     ],
     replaces: { ballistic: 17, guided: 9, extras: { cluster: 1, cloud: 2 } },
+  },
+];
+
+/** Dunmar Crossing's spotter beacon (log v58): four hits, three calls, the first 2 s
+ *  after it is up, then every 4 s, each ship marked 1.6 s before. */
+export const SPOTTER: BeaconCall = { hp: 4, calls: 3, first: 2, every: 4, charge: 1.6, life: 14 };
+const cross = { water: 'cross' as const };
+
+/** Dunmar Crossing (chapter 4, Open War; docs/design/v3-ch4-crossing.md,
+ *  log v58): ten encounters, one a wave. Two convoys pass each other: the
+ *  outbound one east down the north lane (lane 0) under the north shore's
+ *  three silos, the inbound one west down the south lane (lane 1) past the
+ *  south shore's two; each enters at the other's exit, and they cross in
+ *  the middle by the carrier. From wave 4 spotter beacons rise in the
+ *  water between the lanes where the next two ships pass and call shells
+ *  on both. Bases (from 0): the north-west silo (280, 95), the north-middle
+ *  (800, 90), the north-east (1320, 95), the south-west shore (560, 838),
+ *  the south-east shore (1040, 838); sub spots at each end of the water
+ *  between the lanes (200, 455) and (1420, 455). */
+const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'crossing-two-fronts',
+    map: 'crossing',
+    waves: [1],
+    role: 'teach',
+    name: 'Two fronts',
+    callout: 'Both ways at once',
+    premise: 'Drones come off the north shore at the outbound ships halfway along, then at the inbound ships halfway along theirs: two convoys sailing opposite ways, both yours to cover.',
+    decision: 'The first look: two convoys sail opposite ways, each coming in at the other\'s far end. Which lane first?',
+    counters: 'One string of drones at each lane, as they come.',
+    succeeds: 'Nothing is sunk on wave 1; the player sees both lanes as theirs to cover.',
+    notes: {
+      sites: 'The north-west silo (280, 95; drones) and the north-east silo (1320, 95; drones).',
+      target: 'The outbound ship halfway along (lane 0), then the inbound ship halfway along (lane 1).',
+      usesMap: 'Shows the map on wave 1: two convoys, each entering at the other\'s exit, so both edges of the screen are a front.',
+    },
+    beats: [
+      { at: 0.2, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'mid', lane: 0 },
+      { at: 0.5, kind: 'drone', count: 2, gap: 0.6, from: base(2), aim: 'mid', lane: 1 },
+    ],
+    replaces: { drones: 4 },
+  },
+  {
+    id: 'crossing-shore-to-shore',
+    map: 'crossing',
+    waves: [2],
+    role: 'teach',
+    name: 'Shore to shore',
+    callout: 'Shells from both shores',
+    premise: 'A shell from the north shore falls on the outbound ship halfway along, and a moment later one from the south shore on the inbound ship halfway along: each shore has its own lane.',
+    decision: 'Two shells, two lanes, a few seconds apart: one finger for both?',
+    counters: 'Each shell as it climbs; the drones after.',
+    succeeds: 'No ship lost on wave 2 in most runs; the player reads the south shore as a front too.',
+    notes: {
+      sites: 'The north-west silo (280, 95; a shell), the south-west shore silo (560, 838; a shell), the north-east silo (1320, 95; drones).',
+      target: 'The outbound ship halfway along (lane 0, the north shore\'s shell); the inbound ship halfway along (lane 1, the south shore\'s); the inbound ships coming in (the drones).',
+      usesMap: 'The two enemy shores, each over its own lane; in place of the wave\'s own shells and drones.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 1, from: base(0), aim: 'mid', lane: 0 },
+      { at: 0.35, plus: 2.5, kind: 'ballistic', count: 1, from: base(3), aim: 'mid', lane: 1 },
+      { at: 0.65, kind: 'drone', count: 3, gap: 0.4, from: base(2), aim: 'mid', lane: 1 },
+    ],
+    replaces: { ballistic: 2, drones: 3 },
+  },
+  {
+    id: 'crossing-meeting',
+    map: 'crossing',
+    waves: [3],
+    role: 'teach',
+    name: 'The meeting',
+    callout: 'Where the convoys pass',
+    premise: 'As the next two ships pass each other in the middle, a shell off the north shore and a guided missile off the south shore come at them, one from each side.',
+    decision: 'The first stakes: the two ships passing are the target. Which do you cover?',
+    counters: 'The shell as it climbs; the guided missile over the south lane.',
+    succeeds: 'A close call at the crossing in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The north-west silo (280, 95; a shell, drones), the south-west shore silo (560, 838; a guided missile).',
+      target: 'The next two ships to pass each other (the crossing): the one nearer each launcher.',
+      usesMap: 'The crossing itself, where the two convoys pass by the carrier; in place of the wave\'s own shells, a guided missile and drones.',
+    },
+    beats: [
+      { at: 0.4, kind: 'ballistic', count: 1, from: base(0), aim: 'cross' },
+      { at: 0.4, plus: 1.5, kind: 'guided', count: 1, from: base(3), aim: 'cross' },
+      { at: 0.7, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'mid', lane: 0 },
+    ],
+    replaces: { guided: 1, ballistic: 3, drones: 3 },
+  },
+  {
+    id: 'crossing-spotter',
+    map: 'crossing',
+    waves: [4],
+    role: 'combine',
+    name: 'Spotter',
+    callout: 'A spotter beacon',
+    premise: 'A beacon rises in the water between the lanes where the next two ships will pass, marks the ship nearest it and calls a shell on it, three times; drones come at the inbound ships meanwhile, and a shell off the north shore at the outbound ship halfway along.',
+    decision: 'Tap the beacon down (your helpers can\'t), or shoot down each shell it calls on both lanes?',
+    counters: 'The beacon with your own shots before its first call; the shells if it stays up.',
+    succeeds: 'The beacon is down before its second call in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'A spotter beacon at the crossing (the water between the lanes), its shells off the shell silos nearest its ships (north-west, south-west shore); the north-east silo (drones), the south-east shore silo (a cluster), the north-west silo (a shell at the outbound ship halfway along).',
+      target: 'The ship nearest the beacon at each call (either lane: they are passing); the inbound ships coming in (the drones); the next two ships to pass (the cluster).',
+      usesMap: 'The signature\'s first wave: a spotter between the two lanes reaches both convoys as they cross; in place of the wave\'s own shells, a cluster and drones.',
+    },
+    beats: [
+      { at: 0.3, kind: 'lure', count: 1, from: cross, beacon: SPOTTER },
+      { at: 0.3, plus: 2, kind: 'drone', count: 4, gap: 0.4, from: base(2), aim: 'mid', lane: 1 },
+      { at: 0.7, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
+      { at: 0.55, kind: 'ballistic', count: 1, from: base(0), aim: 'mid', lane: 0 },
+    ],
+    replaces: { drones: 5, ballistic: 4, extras: { cluster: 1 } },
+  },
+  {
+    id: 'crossing-both-edges',
+    map: 'crossing',
+    waves: [5],
+    role: 'combine',
+    name: 'Both edges',
+    callout: 'Both ends at once',
+    premise: 'Guided missiles come off the north shore at both convoys as they come in, the outbound in the west and, three seconds later, the inbound in the east, while drones come at the outbound ships ahead.',
+    decision: 'The two ends of the screen at once: which way do you turn first?',
+    counters: 'One missile, then the other (each a long flight from its silo); the drones.',
+    succeeds: 'A close call at one end in most runs; a good player loses under a ship.',
+    notes: {
+      sites: 'The north-west silo (280, 95; a guided missile) and the north-east silo (1320, 95; a guided missile, drones).',
+      target: 'The outbound ships coming in (lane 0, the west) and the inbound ships coming in (lane 1, the east), three seconds apart; the outbound lead ship (the drones).',
+      usesMap: 'Two entries and two exits: both edges of the screen are a front at once (rule g-split); in place of the wave\'s own guided missiles, shells and drones.',
+    },
+    beats: [
+      { at: 0.35, kind: 'guided', count: 1, from: base(0), aim: 'rear', lane: 0 },
+      { at: 0.35, plus: 3, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.4, from: base(2), aim: 'lead', lane: 0 },
+    ],
+    replaces: { guided: 2, ballistic: 3, drones: 4 },
+  },
+  {
+    id: 'crossing-periscopes',
+    map: 'crossing',
+    waves: [6],
+    role: 'combine',
+    name: 'Periscopes at both ends',
+    callout: 'Two periscopes',
+    premise: 'Subs surface at both ends of the water between the lanes, each lobbing shells at the convoy coming in past it, the west one at the outbound ships and the east one at the inbound.',
+    decision: 'Two subs, two salvos, either end: which salvo first?',
+    counters: 'The shells as they climb, one end then the other.',
+    succeeds: 'A close call at an end in most runs.',
+    notes: {
+      sites: 'The sub spots at the west and east ends of the water between the lanes (200, 455; 1420, 455; 2 shells each), the north-west silo (drones).',
+      target: 'The outbound ships coming in (lane 0, the west sub) and the inbound ships coming in (lane 1, the east sub).',
+      usesMap: 'Both entries at once, from the water between the lanes (rule g-split); in place of the wave\'s own shells and drones.',
+    },
+    beats: [
+      { at: 0.35, kind: 'ballistic', count: 2, gap: 1.4, from: sub(0), aim: 'rear', lane: 0 },
+      { at: 0.5, kind: 'ballistic', count: 2, gap: 1.4, from: sub(1), aim: 'rear', lane: 1 },
+      { at: 0.75, kind: 'drone', count: 4, gap: 0.4, from: base(0), aim: 'mid', lane: 0 },
+    ],
+    replaces: { ballistic: 4, drones: 4 },
+  },
+  {
+    id: 'crossing-two-spotters',
+    map: 'crossing',
+    waves: [7],
+    role: 'escalate',
+    name: 'Two spotters',
+    callout: 'Two spotter beacons',
+    premise: 'Two beacons rise a few seconds apart where the next ships cross, each calling shells on the ship nearest it, while a cluster off the south shore comes at the ships passing.',
+    decision: 'Two beacons calling on both lanes: which do you tap down first, and do you have the shots?',
+    counters: 'The beacons with your own shots before they call; the cluster before it splits.',
+    succeeds: 'One beacon down early, the other\'s shells shot down, in most runs; a close call at the crossing.',
+    notes: {
+      sites: 'Two spotter beacons at the crossing (the water between the lanes), their shells off the shell silos nearest their ships; the south-east shore silo (1040, 838; a cluster); the north-east silo (drones).',
+      target: 'The ships nearest each beacon at its calls (both lanes); the next two ships to pass (the cluster).',
+      usesMap: 'The crossing, twice; in place of the wave\'s own shells, a cluster and drones.',
+    },
+    beats: [
+      { at: 0.3, kind: 'lure', count: 2, gap: 5, from: cross, beacon: SPOTTER },
+      { at: 0.3, plus: 3, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
+      { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'mid', lane: 1 },
+    ],
+    replaces: { drones: 7, ballistic: 6, extras: { cluster: 1 } },
+  },
+  {
+    id: 'crossing-crossfire',
+    map: 'crossing',
+    waves: [8],
+    role: 'escalate',
+    name: 'Crossfire',
+    callout: 'Crossfire both ways',
+    premise: 'Each shore fires at the far lane: guided missiles off the north shore at the inbound ships and off the south shore at the outbound ships, crossing over the carrier, while a beacon rises at the crossing.',
+    decision: 'Missiles over your own lane at the other one, and a beacon calling: which first?',
+    counters: 'The missiles as they cross the water between the lanes; the beacon with your own shots.',
+    succeeds: 'A close call on both lanes in most runs.',
+    notes: {
+      sites: 'The north-west silo (280, 95; a guided missile) and the north-east silo (1320, 95; a guided missile), the south-west shore silo (560, 838; 2 guided missiles), a spotter beacon at the crossing, the north-west silo (drones).',
+      target: 'The inbound ships (lane 1: the north shore\'s missiles, halfway along and coming in); the outbound ships (lane 0: the south shore\'s, halfway along); the ship nearest the beacon at each call.',
+      usesMap: 'Both shores reach both lanes: each fires over its own lane and the carrier at the far one; in place of the wave\'s own guided missiles, shells and drones.',
+    },
+    beats: [
+      { at: 0.3, kind: 'guided', count: 1, from: base(0), aim: 'mid', lane: 1 },
+      { at: 0.3, plus: 1, kind: 'guided', count: 2, gap: 1, from: base(3), aim: 'mid', lane: 0 },
+      { at: 0.3, plus: 2, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.55, kind: 'lure', count: 1, from: cross, beacon: SPOTTER },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid', lane: 0 },
+    ],
+    replaces: { guided: 4, ballistic: 3, drones: 6 },
+  },
+  {
+    id: 'crossing-passing-fire',
+    map: 'crossing',
+    waves: [9],
+    role: 'escalate',
+    name: 'Passing fire',
+    callout: 'Fire as they pass',
+    premise: 'Two beacons rise where the next ships cross and, as those ships pass, clusters off both shores come at them and a supersonic off the north-middle silo at the lead ship.',
+    decision: 'Beacons calling, clusters at the passing ships, a supersonic: what do you let through?',
+    counters: 'The clusters before they split; the beacons with your own shots; the supersonic early.',
+    succeeds: 'A close call at the crossing in most runs; wave 10 is still the hardest.',
+    notes: {
+      sites: 'Two spotter beacons at the crossing; the north-middle silo (800, 90; a cluster, a supersonic) and the south-east shore silo (1040, 838; a cluster); the north-east silo (drones).',
+      target: 'The next two ships to pass (the clusters, from each side); the ship nearest each beacon at its calls; the lead ship (the supersonic).',
+      usesMap: 'The crossing at its fullest, from both shores at once; in place of the wave\'s own clusters, supersonic, shells and drones.',
+    },
+    beats: [
+      { at: 0.25, kind: 'lure', count: 2, gap: 6, from: cross, beacon: SPOTTER },
+      { at: 0.45, kind: 'cluster', count: 1, from: base(1), aim: 'cross' },
+      { at: 0.45, plus: 0.8, kind: 'cluster', count: 1, from: base(4), aim: 'cross' },
+      { at: 0.7, kind: 'supersonic', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'mid', lane: 1 },
+    ],
+    replaces: { drones: 7, ballistic: 6, extras: { cluster: 2, supersonic: 1 } },
+  },
+  {
+    id: 'crossing-the-crossing',
+    map: 'crossing',
+    waves: [10],
+    role: 'climax',
+    name: 'The crossing',
+    callout: 'Beacons all along',
+    premise: 'Once the wave\'s own fire is spent, a breath, then three beacons rise one after another where the ships cross, while clusters off both shores and guided missiles at both entries come at once.',
+    decision: 'Everything at the crossing and both ends: which beacon first, and which lane gives?',
+    counters: 'The beacons with your own shots as they rise; the clusters before they split; the missiles at the ends.',
+    succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'Three spotter beacons at the crossing; the north-middle silo (a cluster), the south-east shore silo (a cluster), the north-west and north-east silos (a guided missile each), after the wave\'s own fire and a calm.',
+      target: 'The ships nearest each beacon at its calls; the next two ships to pass (the clusters); the ships coming in at both ends (the missiles).',
+      usesMap: 'The map\'s problem at its hardest: the crossing and both fronts at once; in place of the wave\'s own shells, clusters, guided missiles and drones.',
+    },
+    beats: [
+      { at: 1, plus: 1, kind: 'lure', count: 3, gap: 3, from: cross, beacon: SPOTTER },
+      { at: 1, plus: 3, kind: 'cluster', count: 1, from: base(1), aim: 'cross' },
+      { at: 1, plus: 6, kind: 'guided', count: 1, from: base(0), aim: 'rear', lane: 0 },
+      { at: 1, plus: 6, kind: 'guided', count: 1, from: base(2), aim: 'rear', lane: 1 },
+      { at: 0.2, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid', lane: 0 },
+      { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(2), aim: 'rear', lane: 1 },
+    ],
+    replaces: { drones: 15, ballistic: 9, guided: 2, extras: { cluster: 1 } },
     calm: 6,
   },
 ];
@@ -6271,6 +6552,14 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // launcher, a long flight to the lane, waves 1-6.
   ...busy(['citadel-under-the-guns', 'citadel-generators', 'citadel-narrows', 'citadel-dome', 'citadel-two-ends', 'citadel-periscope'], 4, 4),
   ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
+  // Dunmar Crossing (log v58): the north-west and north-east silos, the
+  // map's two drone silos on the far (north) shore, waves 1-6.
+  // Wave 1 one late string of two only, off the north-east silo (its
+  // shared drones already reach the ships coming in at both ends; an early
+  // string of three off the north-west silo sank ships for the bots with no
+  // Armory on wave 1).
+  ['crossing-two-fronts', [fill(0.75, 2, 2)]],
+  ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2, [1]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -6305,6 +6594,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...COVES_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-delta.md)
   ...DELTA_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch4-crossing.md)
+  ...CROSSING_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-citadel.md: the game's last map)
   ...CITADEL_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
@@ -6362,11 +6653,12 @@ export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs' | 'dreadnought' | 'l
 export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadnought', 'lantern'];
 /** Chapter 4, Open War, a map at a time as chapter 3's: so far the Coves
  *  (log v53, docs/design/v3-ch4-coves.md), the chapter's first, where its
- *  new enemies debut; and the Delta (log v57, docs/design/v3-ch4-delta.md). */
-export type ChapterFourMap = 'coves' | 'delta' | 'citadel';
+ *  new enemies debut; and the Delta (log v57, docs/design/v3-ch4-delta.md); and Dunmar Crossing (log v58,
+ *  docs/design/v3-ch4-crossing.md). */
+export type ChapterFourMap = 'coves' | 'delta' | 'crossing' | 'citadel';
 /** (And the Citadel of Vey, log v60, docs/design/v3-ch4-citadel.md: the
  *  chapter's and the game's last map.) */
-export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'citadel'];
+export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'crossing', 'citadel'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS, ...CHAPTER_FOUR_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -6490,6 +6782,10 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
  *  rule w-budget's ±15%). */
 const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9];
 const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
+/** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
+ *  1.65) on the map's own convoy, within ±15% of each wave and never more
+ *  than the ten. */
+const CROSSING_CLIMB = [0.85, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -6510,6 +6806,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   coves: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four smugglers\' coves two seconds from the lane, three on the north shore and one on the south by the delivery end: their fast boats come at the ship passing each cove mouth; fire ships that burn where they are sunk from wave 4.', callouts: false, scale: COVES_CLIMB } },
   citadel: { v1: { name: 'Original', idea: 'One encounter a wave, built on the Citadel over the narrows: its fire is the shortest on the map, its shield rises again every wave on three generators spread round the map, and from wave 4 it fires under its dome, where nothing can be shot until the shield is down.', callouts: false, scale: CITADEL_CLIMB } },
   delta: { v1: { name: 'Original', idea: 'One encounter a wave, built on the fork: the switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, and the enemy fires at the branch it is set to; incendiaries burst on that branch\'s mouth from wave 4.', callouts: false, scale: DELTA_CLIMB } },
+  crossing: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two convoys that pass each other in the middle of the strait, outbound east in the north lane under the north shore and inbound west in the south lane under the south shore: spotter beacons rise between the lanes where the next ships cross and call shells on both from wave 4.', callouts: false, scale: CROSSING_CLIMB } },
   sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
 };
 
@@ -6635,6 +6932,10 @@ export interface MapSignature {
    *  ('switch': they burst on the mouth of the branch the fork's switch is
    *  set to, ahead of the next ships). */
   clouds?: BeatAim;
+  /** Dunmar Crossing (log v58): the wave's signature Lure Beacons rise at
+   *  the crossing and call shells (BeaconCall); each one's calls come out
+   *  of the wave's own shells, one for one (rule w-budget). */
+  beacons?: BeaconCall;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -6717,6 +7018,12 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // burning on the water where the next ships will sail: shoot it far out,
   // or throw the switch and send the ships round it.
   delta: { from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' },
+  // Dunmar Crossing (log v58, docs/design/v3-ch4-crossing.md): "spotters at
+  // the crossing", from wave 4. Half the wave's new enemies (rounded up)
+  // are Lure Beacons that rise between the lanes where the next two ships
+  // pass and call shells on the ship nearest them (SPOTTER), the Beacon
+  // Line's own; each one's shells come out of the wave's own.
+  crossing: { from: 4, foe: 'lure', foeShare: 0.5, beacons: SPOTTER },
   // The Citadel (log v60, docs/design/v3-ch4-citadel.md): "under the dome",
   // from wave 4. Everything the Citadel fires leaves under its dome, and so
   // many more of the wave's own guided missiles and shells come off the
@@ -6984,6 +7291,13 @@ export interface BossRound {
    *  funnels into the branch left open; the round's `fire` comes at the
    *  ships bunched on the way in. */
   burn?: { at: number; n: number; dur: number }[];
+  /** Dunmar Crossing's Beacon Line (log v58), in place of Beacon Strike's
+   *  pairs by the lanes: `beacons` spotter beacons rise at once in a line
+   *  down the water between the two lanes, `at` s into the round (one line
+   *  for each), and call together (BeaconCall: every beacon standing marks
+   *  the ship nearest it at the same moment, and at the call a volley of
+   *  shells comes off both shores). */
+  line?: { at: number[]; beacons: number; call: BeaconCall };
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -7358,6 +7672,21 @@ export const CITADEL_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
+/** Dunmar Crossing's Beacon Line (log v58; docs/design/v3-ch4-crossing.md),
+ *  in place of Beacon Strike's pairs by the lanes (the Lure Beacon is a
+ *  regular of the Crossing's waves, and its spotters call one at a time
+ *  from wave 4): a line of spotter beacons rises at once down the water
+ *  between the two lanes, the convoys passing either side of it, and they
+ *  call together: every beacon marks its ship at the same moment (the
+ *  lines drawn all at once), then a volley of shells comes off both shores.
+ *  Rising: a longer line, a second line, more volleys. */
+const LINE_CALL: BeaconCall = { hp: 4, calls: 3, first: 2.5, every: 4.5, charge: 2, life: 20 };
+export const CROSSING_BOSS_ROUNDS: BossRound[] = [
+  { line: { at: [0, 8], beacons: 3, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }, { kind: 'guided', at: 12, base: 3, aim: 'cross' }] },
+  { line: { at: [0, 6, 12], beacons: 4, call: LINE_CALL }, swarms: 2, size: 5, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+  { line: { at: [0, 6, 12], beacons: 5, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -7408,6 +7737,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // Chapter 4 (COVES_BOSS_ROUNDS above).
   coves: { rounds: COVES_BOSS_ROUNDS, name: 'Fire Fleet' },
   delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Burning Delta' },
+  crossing: { rounds: CROSSING_BOSS_ROUNDS, name: 'Beacon Line' },
   // The game's finale (CITADEL_BOSS_ROUNDS above).
   citadel: { rounds: CITADEL_BOSS_ROUNDS, name: 'The Last Stand' },
 };
@@ -7456,6 +7786,7 @@ const BEAT_NAME: Partial<Record<ThreatKind, [string, string]>> = {
   rig: ['relief rig under tow', 'relief rigs under tow'],
   siege: ['siege gun', 'siege guns'],
   cloud: ['incendiary missile', 'incendiary missiles'],
+  lure: ['spotter beacon', 'spotter beacons'],
 };
 
 const AIM_TEXT: Record<BeatAim, string> = {
@@ -7469,6 +7800,7 @@ const AIM_TEXT: Record<BeatAim, string> = {
   vip: 'aimed at the supertanker (when none is out, the lead ship)',
   lock: 'aimed at a ship held at the lock nearest it (none there, the ship nearest it)',
   switch: 'aimed at the branch the switch is set to (an incendiary bursts on its mouth)',
+  cross: 'aimed at the next two ships to pass each other (the nearer of the two)',
 };
 
 const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;
@@ -7479,9 +7811,11 @@ const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of 
 export function beatText(b: Beat): string {
   const names = BEAT_NAME[b.kind] ?? [b.kind, b.kind];
   const what = `${b.count} ${b.count === 1 ? names[0] : names[1]}`;
-  const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : 'road' in b.from ? `down road ${b.from.road + 1}` : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
+  const from = 'base' in b.from ? `from base ${b.from.base + 1}` : 'sub' in b.from ? `from a sub at spot ${b.from.sub + 1}` : 'road' in b.from ? `down road ${b.from.road + 1}` : 'water' in b.from ? 'rising between the lanes where the next ships cross' : `from the ${b.from.air > 0 ? 'left' : 'right'} edge`;
   const gap = b.count > 1 ? `, ${b.gap ?? (b.kind === 'drone' ? 0.35 : 1.5)} s apart` : '';
-  return `${whenText(b.at, b.plus)}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}`;
+  const lane = b.lane === undefined ? '' : b.lane === 0 ? ' in the outbound lane' : ' in the inbound lane';
+  if (b.beacon) return `${whenText(b.at, b.plus)}: ${what} ${from}${gap}, each calling ${b.beacon.calls} shells on the ship nearest it`;
+  return `${whenText(b.at, b.plus)}: ${what} ${from}${gap}, ${AIM_TEXT[b.aim ?? 'any']}${lane}`;
 }
 
 /** An enemy pair as a line: "at 30% of the wave: enemy pair Hydra + Drone

@@ -438,6 +438,39 @@ try {
     await one.close();
   }
 
+  // ---- Dunmar Crossing (log v58): chapter 4's third map, two convoys
+  // passing, spotter beacons at the crossing, and the Beacon Line ----
+  await open(page, 'lab=map-crossing&seed=7');
+  const cr = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: document.querySelectorAll('.v3-command').length }));
+  check(cr.map === 'crossing' && cr.rev === ENCOUNTER_REV && cr.cmds === 0, `Dunmar Crossing's card opens with its encounters and no command (${JSON.stringify(cr)})`);
+  await labMenu(page);
+  const crArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Beacon Line/.test(crArc) && /Spotter/.test(crArc), `Dunmar Crossing's script names its first spotter and its boss, the Beacon Line (${crArc.slice(0, 120)})`);
+  await page.screenshot({ path: `${OUT_DIR}/crossing-script.png` });
+  // Skip to the boss, at the phone's own size and one pixel a point (the
+  // record shot): a line of beacons between the lanes, marking their ships.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-crossing&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let line = { up: 0, marked: 0, event: '' };
+    for (let k = 0; k < 400 && !(line.up >= 3 && line.marked >= 2); k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      line = await one.evaluate(() => {
+        const g = window.__v3.game();
+        const up = g.threats.filter((t) => t.kind === 'lure' && !t.dead && t.foe?.spot);
+        return { up: up.length, marked: up.filter((t) => (t.foe.marked ?? -1) >= 0).length, event: g.event?.id ?? '' };
+      });
+    }
+    check(line.event === 'beacon-strike' && line.up >= 3 && line.marked >= 2, `the Beacon Line: beacons between the lanes marking their ships together (${JSON.stringify(line)})`);
+    await one.screenshot({ path: `${OUT_DIR}/crossing-boss.png` });
+    await one.close();
+  }
+
   // ---- The Citadel (log v60): the game's last map, the shield that rises
   // every wave, fire under the dome, and the Last Stand ----
   await open(page, 'lab=map-citadel&seed=7');
@@ -476,7 +509,7 @@ try {
   }
 
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-crossing', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3, the Coves since chapter 4)'], ['ev-rush', 'an event card']]) {
+  for (const [card, why] of [['map-tide', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3, the Coves, the Delta and Dunmar Crossing since chapter 4)'], ['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');

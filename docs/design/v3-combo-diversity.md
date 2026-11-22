@@ -270,6 +270,38 @@ python3 tools/v3/citadel/compare.py
 npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=citadel --seeds=8
 ```
 
+## Dunmar Crossing: chapter 4's third map (game version 58)
+
+> 2026-11-22. Dunmar Crossing rebuilt to the map rules (docs/design/v3-ch4-crossing.md): two convoys pass each other, outbound east under the north shore and inbound west under the south shore, and its signature is "spotters at the crossing" (from wave 4 half the wave's new enemies come as Lure Beacons that rise between the lanes where the next two ships pass, take four hits from your own shots only, and call shells on the ship nearest them); its convoy a Spread at flow step 3. Swept at version 58 with chapter 4's draft (27 weapons): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps (the Coves `results/v53-ch4`, the Delta `results/v54-ch4`). Results: `tools/v3/combo-sweep/results/v58-ch4`; the comparison: `python3 tools/v3/crossing/compare.py`.
+
+| Map | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Dunmar Crossing (v58) | **Air Strike + Scattergun + Dual Wield** 4.7 (won 81%) | Air Strike + Shrapnel Shell + Supply Run 5.2 | Boomerang + Gravity Well + Wild Card 5.4 | Flak Cannon + Railgun + Supply Run 5.6 | Air Strike + Shrapnel Shell + Tesla Arc 5.9 |
+
+| Measure | Result |
+| --- | --- |
+| Jaccard of the top-5 kits, the Crossing against the Island / Behemoth / Needle / Archipelago / Saltgate / Battery / Sowers / Rigs / Black Strait / Dreadnought / Coves / Delta | **0** against all twelve |
+| The same, the Crossing against itself (two halves of its seeds) | 0.43 |
+| #1 kit | in no other rebuilt map's top 5 |
+| Best weapon alone | **Air Strike** 4.7 (Wild Card 4.8, Thermobaric 5.8, Gravity Well and Shield 5.9, Railgun 6.0) |
+| Rank correlation of the weapons alone, against the twelve | 0.37 / 0.46 / 0.37 / 0.56 / 0.40 / 0.68 / 0.65 / 0.76 / 0.68 / 0.62 / 0.57 / 0.59 |
+| The bot drafting for itself; the plain gun | 6.7 lost, won 67%; 11.8, won 17% |
+
+### Reading
+
+- **All five of the Crossing's best kits are its own** (Jaccard 0 against all twelve rebuilt maps), and its #1 kit is in no other map's top 5.
+- **Air Strike is the best weapon alone and in three of the five best kits**, as on the Delta. **Air Strike + Flak Cannon is in none of them**: the Flak Cannon is in one (with the Railgun and Supply Run, no Air Strike). The Air Strike is a weapon you fire, so it sinks a spotter (your helpers cannot); the spotters reward it.
+- **The weapons alone rank most like the Rig Field's** (0.76) and least like the Island's and the Needle's (0.37).
+- The counter kit (Thermobaric Shell, Gravity Well, Railgun: weapons you fire that hit hard where you put them) is the next best three alone after the Air Strike and the Wild Card, left out on purpose.
+
+```
+npm run v3:combo-sweep -- --stage=singles --maps=crossing --out=tools/v3/combo-sweep/results/v58-ch4
+npm run v3:combo-sweep -- --stage=pairs --maps=crossing --out=tools/v3/combo-sweep/results/v58-ch4
+npx vite-node tools/v3/combo-sweep/diversity.ts -- --dirs=tools/v3/combo-sweep/results/v58-ch4 --maps=crossing --json=tools/v3/combo-sweep/results/v58-ch4/diversity.json
+python3 tools/v3/crossing/compare.py
+npx vite-node tools/v3/combo-sweep/mixwaves.ts -- --maps=crossing --seeds=8
+```
+
 ## The Delta: chapter 4's second map (game version 57; swept at 54)
 
 > 2026-11-22. The Sharra Delta rebuilt to the map rules (docs/design/v3-ch4-delta.md): the river forks three ways at the buoy and the enemy fires at the branch the switch is set to; its signature is "fire on the branch" (from wave 4 the wave's new enemies come as Incendiary Missiles that burst on the mouth of the switch's branch), its convoy a Spread at flow step 3. Swept at version 54 (the same sim as 57) with chapter 4's draft (27 weapons: the Cadence Gun and the Wild Card join): singles on 12 seeds, every pair on 6, its 6 best pairs with every third weapon on 6, its 10 best kits on 16, the player's usual Armory. The other maps are read from their last sweeps. Results: `tools/v3/combo-sweep/results/v54-ch4`; the comparison: `python3 tools/v3/delta/compare.py`.

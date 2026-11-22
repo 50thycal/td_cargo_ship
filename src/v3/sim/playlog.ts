@@ -443,6 +443,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      convoy controls and the shared waves and no longer replays to the
  *      same game; the campaign plays as it did. (56: the Coves, built
  *      alongside.)
+ *  58: chapter 4's third map, Dunmar Crossing, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch4-crossing.md; lab, under the encounter
+ *      layer): ten encounters (CROSSING_R4) with their filler, a climb
+ *      (CROSSING_CLIMB), the map's own convoy, flow step 3 in a Spread
+ *      (MAP_CONVOY.crossing), two aims ('cross': the next two ships to
+ *      pass each other; Beat `lane`: one lane's ships only), spotter
+ *      beacons (BeaconCall, SPOTTER; Beat `beacon` from `{ water: 'cross' }`,
+ *      Launch `beacon` and `called`, foes.ts crossingPair, crossingSpot,
+ *      spotterCalls: a Lure Beacon that rises between the lanes where the
+ *      next ships cross, takes four hits and calls shells on the ship
+ *      nearest it), the signature (MAP_SIGNATURE.crossing `beacons`: half
+ *      the wave's new enemies from wave 4, their shells out of the wave's
+ *      own), and a new boss on Beacon Strike, the Beacon Line (MAP_BOSS
+ *      `line`: lines of spotter beacons calling volleys together). A
+ *      Crossing card log before v58 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did.
  *  60: chapter 4's last map and the game's, the Citadel of Vey, rebuilt to
  *      the map and wave rules (docs/design/v3-ch4-citadel.md; lab, under the
  *      encounter layer): ten encounters (CITADEL_R4) with their filler, a
@@ -460,8 +477,7 @@ import type { EncounterSetup } from '../data/encounters';
  *      Citadel's shielded fire alone until it leaves the dome
  *      (worthShooting). A Citadel card log before v60 played today's convoy
  *      controls and the shared waves and no longer replays to the same
- *      game; the campaign plays as it did. (58 and 59: Dunmar Crossing and
- *      the Tide, built alongside.) */
+ *      game; the campaign plays as it did. (59: the Tide, built alongside.) */
 export const LOG_VERSION = 60;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */

@@ -440,6 +440,35 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
       botTarget: 2,
     },
   },
+  // docs/design/v3-ch4-crossing.md (chapter 4, Open War)
+  crossing: {
+    problem: 'Two convoys pass each other in the middle of the strait, outbound east under the north shore and inbound west under the south shore, each coming in at the other\'s exit; from wave 4 spotter beacons rise in the water between the lanes where the next two ships cross and call shells on both, and only your own shots sink them.',
+    // The fire is spread over two lanes running opposite ways and the
+    // water between them: shells and missiles off both shores, and from
+    // wave 4 spotter beacons rising between the lanes, four hits each and
+    // only your own shots count (your helpers in the ring fire at it in
+    // vain), each calling shells on the ship nearest it until it is down.
+    // Weapons you fire that hit hard where you put them answer both: the
+    // Thermobaric Shell, the Gravity Well that holds the shells and drones
+    // over the water between the lanes, the Railgun's beam through a
+    // beacon. Helpers that wait for the threat to come to them are drawn
+    // to the beacons and shoot them in vain (the Drone Screen), Full Steam
+    // hurries the convoys through the crossing but not past the beacons,
+    // and the Bomber Wing silences a silo, not the beacon calling it
+    // (forced, the combo sweep's singles at log v58: Thermobaric 5.8,
+    // Gravity Well 5.9, Railgun 6.0 against the Drone Screen 8.2, Full
+    // Steam 9.6, Bomber Wing 10.0; docs/design/v3-ch4-crossing.md, The
+    // counters). The Air Strike is the best alone (4.7) and left out on
+    // purpose. Every weapon is in chapter 4's draft.
+    counters: ['thermo', 'well', 'railgun'],
+    offCounter: ['droneScreen', 'fullSteam', 'bomberWing'],
+    convoy: 'The map\'s own convoy, no commands: heavy two-way traffic, a ship every step-3 gap in a Spread, alternating between the outbound north lane (west to east) and the inbound south lane (east to west), the two passing each other by the carrier in the middle.',
+    stretches: { danger: 'middle', safe: 'late' },
+    boss: {
+      plan: 'The Beacon Line (in place of Beacon Strike\'s pairs by the lanes: the Lure Beacon is a regular of the Crossing\'s waves and its spotters call one at a time from wave 4): a line of spotter beacons rises at once down the water between the lanes, four hits each, and they call together, every beacon marking its ship at the same moment and then a volley of shells off both shores, three volleys a line: two lines of three in round 1 (and three guided missiles), three lines of four in round 2, three lines of five in round 3 (two guided missiles at both entries in each), with drone swarms (encounters rev 4, MAP_BOSS; lab only: the campaign plays Beacon Strike). Rising, below the asked 1.5 / 2 / 2.5 a round on the bot in the first rounds, as on every rebuilt map, to keep the win rate up.',
+      botTarget: 2,
+    },
+  },
 };
 
 export function mapPlan(map: MapId): MapPlan | undefined {
