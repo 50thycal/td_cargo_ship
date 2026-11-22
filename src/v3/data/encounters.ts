@@ -5872,7 +5872,7 @@ const LANTERN_CLIMB = [1, 0.9, 0.9, 0.88, 0.9, 0.86, 0.86, 0.86, 0.86, 0.88];
  *  controls before, where a Box takes a hit less from every ram), so every
  *  wave but the first sends a little less, the most off wave 9, within
  *  ±15% of each wave and never more than the ten. */
-const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.85, 0.88, 0.95, 0.95, 1];
+const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.85, 0.85, 0.95, 0.92, 1];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -6564,7 +6564,7 @@ export const COVES_BOSS_ROUNDS: BossRound[] = [
     fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 7, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
   },
   {
-    fleet: { coves: [4, 5, 6, 7], first: 2, every: 10, sorties: 2, warn: 2 },
+    fleet: { coves: [4, 5, 6, 7], first: 2, every: 11, sorties: 2, warn: 2 },
     fire: [],
   },
 ];
