@@ -5892,7 +5892,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  sub spots between the lanes, west (0) and east (1). The danger is the
  *  delivery end, the lanes' late third (where the bunched boxes are as the
  *  strikes land); the safe stretch the way in. */
-export const TIDE_EBB = [0.5, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
+export const TIDE_EBB = [0.9, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
 export const TIDE_LOW = [9, 11, 13, 15, 16, 16, 17, 17, 18, 20];
 const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });
 /** The shells, guided missiles and clusters a Tide wave gives up (its
@@ -5920,18 +5920,18 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'The first ebb',
     callout: 'The tide goes out',
-    premise: 'Drones come off the west silo at the lead ship while the flats lane is open; then the tide goes out, every new ship takes the deep channel, and drones come at the ships crowding in it.',
-    decision: 'The first look at the map: the gauge counts down to the ebb, the flats close, and the ships bunch under the guns. Where will the next drones go?',
-    counters: 'The first drones anywhere; the ebb\'s drones before they reach the crowd.',
+    premise: 'Drones fly the long way to the flats lane while it is open; late in the wave the tide goes out, the ships on the flats cross to the deep channel, every new ship takes it, and the last drones come the long way at the newest of them.',
+    decision: 'The first look at the map: the gauge counts down to the ebb, the flats dry, and the ships bunch under the guns. What will the next wave send at them?',
+    counters: 'The drones on their long flight.',
     succeeds: 'Nothing is sunk on wave 1; the gauge reads as the clock of the wave.',
     notes: {
       sites: 'The west silo (250, 80; drones), the east silo (1400, 80; drones at the ebb).',
-      target: 'The lead ship (high water); the ship with the most hulls round it in the deep channel (the ebb).',
-      usesMap: 'Shows the map on wave 1: the tide goes out mid-wave and the convoy crowds into the deep channel; the ebb\'s fire goes for the crowd.',
+      target: 'A ship on the flats (high water); the ship furthest from the east silo, the newest in the deep channel (the ebb).',
+      usesMap: 'Shows the map on wave 1: the tide goes out at the end of the wave and the convoy crowds into the deep channel; light, so wave 1 sinks nothing (rule w-first).',
     },
     beats: [
       { at: 0.3, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'flats' },
-      { ...ebb(1, 2), kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'crowd' },
+      { ...ebb(1, 2), kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
     ],
     replaces: { drones: 6 },
   },
@@ -6005,7 +6005,7 @@ const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { ...ebb(4, 2), kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'crowd' },
       ...swapIn(15),
     ],
-    replaces: { drones: 14, ballistic: 5, guided: 1, extras: { cluster: 1, supersonic: 1 } },
+    replaces: { drones: 15, ballistic: 5, guided: 1, extras: { cluster: 1, supersonic: 1 } },
   },
   {
     id: 'tide-the-flood',
