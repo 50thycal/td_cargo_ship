@@ -257,7 +257,7 @@ The 24-seed record and the 192-seed reads disagree by up to 11 points on a win r
 
 ## Checks run
 
-`tsc`; `vitest --exclude '.claude/**'` (VITESTLINE); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass; `v3-map-cards.mjs` failed once under a heavy machine load on an unrelated timing check, the Strait's helicopter-missile card, and passed on the rerun); the map-lab baseline replays exactly.
+`tsc`; `vitest --exclude '.claude/**'` (80 files, 1882 tests, all pass); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass; `v3-map-cards.mjs` failed once under a heavy machine load on an unrelated timing check, the Strait's helicopter-missile card, and passed on the rerun); the map-lab baseline replays exactly.
 
 ## Tests
 
