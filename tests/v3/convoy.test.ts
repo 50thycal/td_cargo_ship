@@ -56,14 +56,18 @@ describe('a campaign run has no convoy layer', () => {
   it('round 11: Hold, the one command left, is on Sowers\' Reach only (mines cross its lane); the reference maps have none', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-*.md) sail the map's own convoy, as the reference maps do.
     // Chapter 2's Island and Behemoth Run (docs/design/v3-ch2-*.md): the same.
-    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'delta', 'gauntlet', 'harbor', 'island', 'kesh', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
-    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'delta'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
+    expect(Object.keys(MAP_CONVOY).sort()).toEqual(['archipelago', 'battery', 'behemoth', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    for (const id of ['strait', 'gauntlet', 'harbor', 'kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'delta'] as const) expect(mapConvoy(id).commands, id).toEqual([]);
     // Saltgate Canal (docs/design/v3-ch2-saltgate.md): the campaign's own
     // schedule, as Sowers' Reach (the locks set the pace).
     expect(mapConvoy('saltgate')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
     // Battery Point (docs/design/v3-ch3-battery.md): the same, the pace the
     // player rated in the campaign.
     expect(mapConvoy('battery')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
+    // The Black Strait (docs/design/v3-ch3-lantern.md, log v52): no command,
+    // and flow 2 as most of chapter 2's maps (at the campaign's flow its
+    // shared waves were the hardest of any rebuilt map for the bot).
+    expect(mapConvoy('lantern')).toMatchObject({ flow: 2, formation: 'pairs', commands: [] });
     // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
     expect(mapConvoy('rigs')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
     // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v54): heavy river

@@ -82,7 +82,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, encountersFor, firstBeatAt, setupVersion, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type Encounter, type EncounterSetup } from '../data/encounters';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, setupVersion, signatureOf, swapFoe, waveFire, waveScale, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 
 export const CARRIER_TARGET = -1;
@@ -270,6 +270,11 @@ export interface Threat {
    *  its next broadside. */
   along?: number;
   fireT?: number;
+  /** Log v51 (Dreadnought Pass, lab only): its pass's own numbers
+   *  (data/encounters.ts DreadPass), and seconds left on station while it
+   *  heaves to. */
+  dread?: DreadPass;
+  holdT?: number;
   /** The enemy build: a new enemy's own state (sim/foes.ts). */
   foe?: FoeData;
   /** Its full hull when a special event made it tougher than its kind
@@ -1325,6 +1330,7 @@ function startWave(g: Game): void {
     cursor.set(theme, at0 + 1);
   }
   g.raiderQueue = planVectors(g, raids, raidUnits, rng);
+  let besides = 0;
   raids.forEach((raid, r) => {
     for (const u of raidUnits[r]) {
       const at = raid.at + rng.range(0, RAID.window);
@@ -1344,7 +1350,11 @@ function startWave(g: Game): void {
         // Rocket Trucks fire at the ships held at the locks.
         // Sowers' Reach (log v48, MAP_SIGNATURE `sow`): its stealth bombers
         // sow mines ahead of the ships in place of their missiles.
-        queue.push({ at, kind: u.kind, base: -1, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
+        // The Black Strait (log v52, MAP_SIGNATURE `beside`): its siege
+        // guns rise beside the bases of the enemy's dark bank, in turn.
+        const beside = u.kind === 'siege' && sig?.beside?.length ? sig.beside[besides++ % sig.beside.length] : -1;
+        const salvos = beside >= 0 && sig?.salvos !== undefined ? { salvos: sig.salvos } : {};
+        queue.push({ at, kind: u.kind, base: beside, ...salvos, ...(u.kind === 'rocketTruck' && sig?.trucks ? { aim: sig.trucks } : {}), ...(u.kind === 'stealthBomber' && sig?.sow ? { sow: sig.sow } : {}) });
         continue;
       }
       const base = pickBase(g, u.kind, rng);
@@ -1369,12 +1379,17 @@ function startWave(g: Game): void {
   // The Strait's waves 5-10), on top of the wave as planned.
   const more = g.enc ? waveFire(g.map.id, g.wave, g.enc.setup.rev) : 0;
   if (more) addFire(g, queue, more, lead, spec.duration, rng);
+  // Log v51 (Dreadnought Pass, lab only): the battleship's passes are the
+  // layer's (DREAD_PASSES), each at its own moment.
+  const passes = g.map.boss ? dreadPasses(g.map.id, g.enc?.setup) : undefined;
+  const pass = passes?.[g.wave];
+  if (pass && g.bossWave < g.wave) queue.push({ at: pass.at ? lead + RAID.warn + pass.at * spec.duration + (pass.plus ?? 0) : 0, kind: 'dreadnought', base: -1 });
   queue.sort((a, b) => a.at - b.at);
   labOpener(g, queue);
   g.queue = queue.filter((l) => l.base !== -2);
   g.events.push({ kind: 'wave', wave: g.wave });
   cue(g, 'wave.start', VIEW.width / 2, VIEW.height / 2);
-  if (g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
+  if (!passes && g.map.boss?.waves.includes(g.wave) && g.bossWave < g.wave) launchBoss(g);
 }
 
 /** More of a planned wave's own fire (encounters rev 3, MAP_FIRE): `more`
@@ -1478,8 +1493,9 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         const gap = b.gap ?? 0.35;
         // The Rig Field (log v49): a beat out of a rig already brought down
         // comes from the far shore instead (rigStandIn), lit there.
+        // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}) });
         g.raids.push({ at, theme: RAID_THEME[b.kind], bases: [from] });
         start = Math.min(start, at - RAID.warn);
       } else if ('road' in b.from) {
@@ -2050,6 +2066,12 @@ function replanWave(g: Game): void {
   g.events = g.events.filter((e) => e.kind !== 'wave' && e.kind !== 'special' && e.kind !== 'restore');
   g.event = null;
   g.cues = [];
+  // Log v51 (Dreadnought Pass): planned again under the layer, the wave's
+  // battleship comes on its pass's own moment, not as the wave started.
+  if (g.map.boss && g.bossWave === g.wave && dreadPasses(g.map.id, g.enc?.setup)) {
+    g.threats = g.threats.filter((t) => t.kind !== 'dreadnought');
+    g.bossWave = g.wave - 1;
+  }
   g.wave -= 1;
   startWave(g);
 }
@@ -5614,6 +5636,12 @@ function launch(g: Game, l: Launch): void {
     towRig(g, l.enc ? l.side : undefined, l.enc);
     return;
   }
+  // Log v51: a Dreadnought pass of the layer's (DREAD_PASSES).
+  if (l.kind === 'dreadnought') {
+    const pass = dreadPasses(g.map.id, g.enc?.setup)?.[g.wave];
+    if (pass && g.map.boss && g.bossWave < g.wave) launchBoss(g, pass);
+    return;
+  }
   if (l.kind === 'strafer' || l.kind === 'bomber') {
     launchPlane(g, l);
     return;
@@ -7201,14 +7229,21 @@ function structureDown(g: Game, th: Threat): void {
   g.events.push({ kind: 'bigKill', label, x: th.x, y: th.y });
 }
 
-/** The Dreadnought steams in from the right edge for this wave. */
-function launchBoss(g: Game): void {
+/** The Dreadnought steams in from the right edge for this wave (log v51,
+ *  lab only: a pass of its own, `pass`; Dreadnought Pass's boss rounds
+ *  send it too, sim/events.ts). */
+export function launchBoss(g: Game, pass?: DreadPass): Threat {
   const boss = g.map.boss!;
-  g.bossWave = g.wave;
+  if (!g.event) g.bossWave = g.wave;
   const p = boss.path[0];
-  const th = structure(g, 'dreadnought', p.x, p.y, boss.hp);
+  const th = structure(g, 'dreadnought', p.x, p.y, pass?.hp ?? boss.hp);
   th.along = 0;
-  th.fireT = BOSS.firstShot;
+  th.fireT = pass?.first ?? BOSS.firstShot;
+  if (pass) {
+    th.dread = pass;
+    th.maxHp = pass.hp;
+    if (pass.speed) th.speed = pass.speed;
+  }
   if (!g.seen.has('dreadnought')) {
     g.seen.add('dreadnought');
     g.events.push({ kind: 'debut', threat: 'dreadnought' });
@@ -7217,28 +7252,59 @@ function launchBoss(g: Game): void {
   if (g.tel) g.tel.spawn(g, th, 'structure');
   g.events.push({ kind: 'boss' });
   cue(g, 'boss.horn', p.x, p.y);
+  return th;
+}
+
+/** The Dreadnought's course: the map's (east to west down the deep
+ *  channel), or (log v51) a glimpse's, in to its turn and back out east. */
+function dreadPath(g: Game, th: Threat): Point[] {
+  const path = g.map.boss!.path;
+  const turn = th.dread?.turn;
+  return turn === undefined ? path : [path[0], { x: turn, y: path[0].y }, path[0]];
 }
 
 /** Along its path, firing a broadside every BOSS.every s; off the far end
- *  it is gone (no kill). */
+ *  it is gone (no kill). Log v51 (lab only): its pass's own broadside,
+ *  cadence and aim, and a pass that heaves to on station for a while. */
 function updateBoss(g: Game, th: Threat, dt: number): void {
-  const path = g.map.boss!.path;
-  th.along = (th.along ?? 0) + th.speed * dt;
-  const p = alongPath(path, th.along);
+  const path = dreadPath(g, th);
+  const P = th.dread;
+  const station = P?.hold ? Math.abs(path[0].x - P.hold[0]) : Infinity;
+  if (P?.hold && th.holdT === undefined && (th.along ?? 0) + th.speed * dt >= station) {
+    th.along = station;
+    th.holdT = P.hold[1];
+  }
+  if (th.holdT !== undefined && th.holdT > 0) {
+    th.holdT -= dt;
+    if (th.holdT <= 0) th.speed *= P?.dash ?? 1;
+  } else th.along = (th.along ?? 0) + th.speed * dt;
+  const p = alongPath(path, th.along!);
   th.x = p.x;
   th.y = p.y;
   th.heading = p.heading;
   th.age += 0;
-  if (th.along >= pathLength(path)) {
+  if (th.along! >= pathLength(path)) {
     th.dead = true;
     return;
   }
   th.fireT = (th.fireT ?? BOSS.every) - dt;
   if (th.fireT > 0 || th.x > VIEW.width - 40 || th.x < 40) return;
-  th.fireT = BOSS.every;
-  BOSS.broadside.forEach((kind, k) => {
-    const m = spawnThreat(g, kind, th.x + (k - 1) * 60, th.y, 'base');
+  th.fireT = P?.every ?? BOSS.every;
+  const kinds: readonly ThreatKind[] = P?.broadside ?? BOSS.broadside;
+  const apart = kinds.length > 3 ? 40 : 60;
+  kinds.forEach((kind, k) => {
+    const m = spawnThreat(g, kind, th.x + (k - (kinds.length - 1) / 2) * apart, th.y, 'base');
     m.from = th.id;
+    if (P) {
+      m.parent = 'dreadnought';
+      // Log v51: the drones off its deck go for the carrier (they count
+      // in the wave, they do not sink a ship); its guns at the ships.
+      if (kind === 'drone') {
+        m.target = CARRIER_TARGET;
+        const tp = targetPos(g, m);
+        m.heading = Math.atan2(tp.y - m.y, tp.x - m.x);
+      } else if (P.aim) aimBeat(g, m, P.aim);
+    }
   });
   addFx(g, 'launch', th.x, th.y, { life: 0.6, r: 40 });
   cue(g, 'boss.broadside', th.x, th.y);
