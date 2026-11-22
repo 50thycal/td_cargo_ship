@@ -8168,3 +8168,78 @@ a.v3-lab-page {
     font-size: 10px;
   }
 }
+
+/* ---- Round 15: the convoy command is one big button, bottom left -------
+   The player: "the option to hit a larger [Hold] button on the bottom left
+   of the screen ... that button should glow when it is advantageous to use
+   it". The rail's command box sits at the rail's foot; the power-up timers
+   move up over it. */
+.convoy-auto .v3-commands,
+.convoy-tactical .v3-commands {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 8px;
+}
+
+.convoy-tactical .v2-timers {
+  bottom: 104px;
+}
+
+.v3-command.v3-big-cmd {
+  width: 100%;
+  min-height: 88px;
+  padding: 8px 2px 12px;
+  border-width: 2px;
+  border-radius: 14px;
+  gap: 4px;
+}
+
+.v3-command.v3-big-cmd b {
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.v3-command.v3-big-cmd small {
+  font-size: 11px;
+}
+
+.v3-command.v3-big-cmd i {
+  height: 6px;
+}
+
+/* Now is the moment: a mine is about to meet a hull, or a shell is coming
+   down where a ship is about to be. The button pulses gold. */
+.v3-command.advised {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 34%, var(--panel));
+  color: #fff7d6;
+  animation: v3-cmd-advise 0.45s ease-in-out infinite alternate;
+}
+
+.v3-command.advised small {
+  color: var(--gold);
+}
+
+.v3-command.advised i {
+  background: var(--gold);
+}
+
+@keyframes v3-cmd-advise {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 70%, transparent);
+    transform: scale(1);
+  }
+  to {
+    box-shadow: 0 0 18px 6px color-mix(in srgb, var(--gold) 75%, transparent);
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-command.advised {
+    animation: none;
+    box-shadow: 0 0 14px 5px color-mix(in srgb, var(--gold) 70%, transparent);
+  }
+}

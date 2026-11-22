@@ -5,7 +5,7 @@
 // Like render.ts it reads the game and mutates nothing.
 
 import { THREATS } from '../data/config';
-import { FORK_RADIUS, highTide, lockCountdown, reticleVisible, shieldUp, tracked, type Game, type Threat } from '../sim/game';
+import { FORK_RADIUS, highTide, lockCountdown, reticleVisible, shieldUp, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 
 const RED = '#ff5a3d';
@@ -349,7 +349,7 @@ export function drawNewThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat
       drawBoat(ctx, th);
       return true;
     case 'rig':
-      drawRig(ctx, th, g.t);
+      drawRig(ctx, g, th, g.t);
       return true;
     case 'generator':
       drawGenerator(ctx, th, g.t);
@@ -419,80 +419,289 @@ function drawBoat(ctx: CanvasRenderingContext2D, th: Threat): void {
   if (th.hp < THREATS.fastboat.hp) bar(ctx, th.x, th.y - 26, 30, th.hp / THREATS.fastboat.hp, '#ff8a7a');
 }
 
-function drawRig(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {
-  const { x, y } = th;
-  // Log v49 (The Rig Field): a relief rig on its tow, a tug ahead of it on
-  // a line and a white wake behind, so it reads as on its way in.
-  if (th.tow !== undefined) {
-    const dir = th.vx < 0 ? -1 : 1;
-    const tx = x + dir * 92;
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+/** A tug for a relief rig's tow (round 15): a squat red hull with a white
+ *  wheelhouse and a funnel, heading `dir` (+1: to the right), its bow wave
+ *  and the churn of its screw drawn under it. */
+function drawTug(ctx: CanvasRenderingContext2D, x: number, y: number, dir: number, t: number, alpha = 1): void {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const bob = Math.sin(t * 5.3 + x * 0.05) * 1.6;
+  // The churn astern: foam boiling up and spreading behind the screw.
+  for (let k = 0; k < 6; k++) {
+    const age = (t * 1.6 + k / 6) % 1;
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - age)})`;
     ctx.beginPath();
-    ctx.moveTo(x - dir * 36, y + 30);
-    ctx.lineTo(x - dir * 110, y + 18);
-    ctx.lineTo(x - dir * 110, y + 42);
-    ctx.closePath();
+    ctx.ellipse(x - dir * (26 + age * 46), y + bob + Math.sin(k * 2.1 + t * 7) * 5 * age, 5 + age * 9, 3 + age * 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#e8d9c8';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 5]);
-    ctx.beginPath();
-    ctx.moveTo(x + dir * 36, y + 4);
-    ctx.lineTo(tx - dir * 14, y + 18);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#3a3f46';
-    ctx.strokeStyle = RIM;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tx - dir * 16, y + 10);
-    ctx.lineTo(tx + dir * 10, y + 10);
-    ctx.lineTo(tx + dir * 20, y + 18);
-    ctx.lineTo(tx + dir * 10, y + 26);
-    ctx.lineTo(tx - dir * 16, y + 26);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
   }
-  // Legs into the water, a deck, a derrick and a flare stack.
+  // The bow wave: a white V off the stem.
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x + dir * 30, y + bob);
+  ctx.quadraticCurveTo(x + dir * 18, y + bob - 16, x - dir * 4, y + bob - 22);
+  ctx.moveTo(x + dir * 30, y + bob);
+  ctx.quadraticCurveTo(x + dir * 18, y + bob + 16, x - dir * 4, y + bob + 22);
+  ctx.stroke();
+  ctx.translate(x, y + bob);
+  ctx.scale(dir, 1);
+  // Hull: a round-bowed tug, fendered.
+  ctx.fillStyle = '#b83a2c';
+  ctx.strokeStyle = '#1d1d22';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-24, -11);
+  ctx.lineTo(14, -11);
+  ctx.quadraticCurveTo(32, -10, 32, 0);
+  ctx.quadraticCurveTo(32, 10, 14, 11);
+  ctx.lineTo(-24, 11);
+  ctx.quadraticCurveTo(-28, 0, -24, -11);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#2a2a2e';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-22, -11);
+  ctx.lineTo(14, -11);
+  ctx.quadraticCurveTo(32, -10, 32, 0);
+  ctx.stroke();
+  // Wheelhouse and funnel.
+  ctx.fillStyle = '#f2efe8';
+  ctx.strokeStyle = '#1d1d22';
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(-4, -7, 16, 14);
+  ctx.strokeRect(-4, -7, 16, 14);
+  ctx.fillStyle = '#7fd0ff';
+  ctx.fillRect(8, -5, 3, 10);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-14, -5, 7, 10);
+  ctx.fillStyle = '#ffd166';
+  ctx.fillRect(-14, -5, 7, 3);
+  // The tow hook astern.
+  ctx.fillStyle = '#ddd';
+  ctx.beginPath();
+  ctx.arc(-22, 0, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // Smoke from the funnel, drifting astern.
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (let k = 0; k < 4; k++) {
+    const age = (t * 0.9 + k / 4) % 1;
+    ctx.fillStyle = `rgba(60,60,66,${0.45 * (1 - age)})`;
+    ctx.beginPath();
+    ctx.arc(x - dir * (10 + age * 40), y + bob - 6 - age * 18, 4 + age * 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** Seconds a relief rig takes to settle on its station after docking (the
+ *  splash, the dip and the last of the rocking), and for its tug to cast
+ *  off and steam away. */
+const DOCK_SETTLE = 1.6;
+const TUG_LEAVE = 2.6;
+
+/** A rig's legs, deck, derrick and flare stack at (0, 0), drawn in place. */
+function rigBody(ctx: CanvasRenderingContext2D, x: number, t: number): void {
   ctx.strokeStyle = '#6b5a50';
   ctx.lineWidth = 5;
   for (const dx of [-26, 26]) {
     ctx.beginPath();
-    ctx.moveTo(x + dx, y + 8);
-    ctx.lineTo(x + dx * 1.15, y + 34);
+    ctx.moveTo(dx, 8);
+    ctx.lineTo(dx * 1.15, 34);
     ctx.stroke();
   }
+  ctx.fillStyle = '#4a3a33';
+  ctx.strokeStyle = RIM;
+  ctx.lineWidth = 3;
+  ctx.fillRect(-36, -10, 72, 22);
+  ctx.strokeRect(-36, -10, 72, 22);
+  ctx.strokeStyle = '#9a8678';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-14, -10);
+  ctx.lineTo(-4, -46);
+  ctx.lineTo(6, -10);
+  ctx.moveTo(-11, -24);
+  ctx.lineTo(3, -24);
+  ctx.stroke();
+  const flick = 0.6 + 0.4 * Math.sin(t * 13 + x);
+  ctx.fillStyle = `rgba(255,150,40,${flick})`;
+  ctx.beginPath();
+  ctx.arc(26, -26, 6 + 3 * flick, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = RED;
+  ctx.beginPath();
+  ctx.arc(18, 1, 6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** How much a rig still takes, over it (round 15): on a map whose rigs
+ *  count shots (SHOT_RIGS), the shots left as a number in a pill, with a
+ *  pip a shot for a small count, or a bar; elsewhere the plain bar. */
+function rigCount(ctx: CanvasRenderingContext2D, g: Game, th: Threat, x: number, y: number): void {
+  const full = th.maxHp ?? (THREATS.rig.hp || 1);
+  if (!shotRigs(g)) {
+    bar(ctx, x, y, 70, th.hp / full, '#ff8a7a');
+    return;
+  }
+  const left = Math.max(0, Math.ceil(th.hp - 1e-6));
+  const text = String(left);
+  ctx.font = '900 26px system-ui, sans-serif';
+  const tw = ctx.measureText(text).width;
+  const w = Math.max(84, tw + 52);
+  ctx.fillStyle = 'rgba(7,13,18,0.86)';
+  ctx.strokeStyle = '#ff8a7a';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - 26, w, 40, 10);
+  ctx.fill();
+  ctx.stroke();
+  // A crosshair: what the number counts is shots.
+  const cx = x - w / 2 + 17;
+  const cy = y - 6;
+  ctx.strokeStyle = '#ffd166';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.moveTo(cx - 12, cy);
+  ctx.lineTo(cx - 4, cy);
+  ctx.moveTo(cx + 4, cy);
+  ctx.lineTo(cx + 12, cy);
+  ctx.moveTo(cx, cy - 12);
+  ctx.lineTo(cx, cy - 4);
+  ctx.moveTo(cx, cy + 4);
+  ctx.lineTo(cx, cy + 12);
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(text, x + 12, y - 5);
+  ctx.textBaseline = 'alphabetic';
+  // Pips for a count a glance can take in; a bar for a big one.
+  const pipsY = y + 20;
+  if (full <= 14) {
+    const n = Math.round(full);
+    const gap = 3;
+    const pw = Math.min(10, (w - gap * (n - 1)) / n);
+    const total = n * pw + (n - 1) * gap;
+    for (let k = 0; k < n; k++) {
+      ctx.fillStyle = k < left ? '#ff8a7a' : 'rgba(255,255,255,0.18)';
+      ctx.fillRect(x - total / 2 + k * (pw + gap), pipsY, pw, 7);
+    }
+  } else bar(ctx, x, pipsY, w - 8, th.hp / full, '#ff8a7a');
+}
+
+function drawRig(ctx: CanvasRenderingContext2D, g: Game, th: Threat, t: number): void {
+  const { x, y } = th;
+  let rock = 0;
+  let dip = 0;
+  // Log v49 (The Rig Field): a relief rig on its tow. Round 15 ("the
+  // bringing in of the oil rig was hilarious, keep that and improve that
+  // animation a lot"): a tug out ahead on a sagging tow line, its bow wave
+  // and churn; the rig rolling a little on its legs, pushing a bow wave
+  // and leaving a wake; the tug easing off to one side and the line going
+  // slack as the rig reaches its station.
+  if (th.tow !== undefined) {
+    const dir = th.vx < 0 ? -1 : 1;
+    const b = g.map.bases[th.tow];
+    const togo = b ? Math.abs(b.x - x) : 999;
+    const ease = Math.max(0, Math.min(1, 1 - togo / 110));
+    rock = Math.sin(t * 2.3 + x * 0.02) * 0.05 + Math.sin(t * 3.7) * 0.015;
+    // The rig's own wake: two white arms trailing back from its legs, and
+    // foam where its legs push the water.
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x - dir * 30, y + 30);
+    ctx.quadraticCurveTo(x - dir * 90, y + 22, x - dir * 150, y + 6);
+    ctx.moveTo(x - dir * 30, y + 40);
+    ctx.quadraticCurveTo(x - dir * 90, y + 48, x - dir * 150, y + 62);
+    ctx.stroke();
+    for (let k = 0; k < 5; k++) {
+      const age = (t * 1.2 + k / 5) % 1;
+      ctx.fillStyle = `rgba(255,255,255,${0.35 * (1 - age)})`;
+      ctx.beginPath();
+      ctx.ellipse(x - dir * (34 + age * 100), y + 35 + Math.sin(k * 1.7) * 8 * age, 6 + age * 10, 3 + age * 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (const dx of [-30, 30]) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(x + dx + dir * 4, y + 36, 9 + Math.sin(t * 6 + dx) * 2, dir > 0 ? -1.2 : Math.PI - 1.2, dir > 0 ? 1.2 : Math.PI + 1.2);
+      ctx.stroke();
+    }
+    // The tug: out ahead, easing off to the near side as the rig comes in.
+    const tx = x + dir * (118 - 20 * ease);
+    const ty = y + 22 - 34 * ease;
+    // The tow line from the rig's deck to the tug's hook, sagging into
+    // the water as it slackens at the end.
+    const ax = x + dir * 36;
+    const ay = y + 6;
+    const hx = tx - dir * 22;
+    const hy = ty;
+    const sag = 6 + 22 * ease + Math.sin(t * 3.1) * 2;
+    ctx.strokeStyle = 'rgba(20,20,24,0.55)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay + 2);
+    ctx.quadraticCurveTo((ax + hx) / 2, (ay + hy) / 2 + sag + 2, hx, hy + 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#f0e2c8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.quadraticCurveTo((ax + hx) / 2, (ay + hy) / 2 + sag, hx, hy);
+    ctx.stroke();
+    drawTug(ctx, tx, ty, dir, t);
+  } else if (th.dockT !== undefined && g.t - th.dockT < TUG_LEAVE) {
+    // Round 15: docked. A splash ring spreads round its legs, it dips and
+    // settles with a last rock, and its tug casts off and steams away.
+    const a = g.t - th.dockT;
+    const dir = th.towDir ?? 1;
+    if (a < DOCK_SETTLE) {
+      const k = a / DOCK_SETTLE;
+      dip = Math.sin(k * Math.PI) * 9 * (1 - k * 0.5);
+      rock = Math.sin(a * 9) * 0.07 * (1 - k);
+      for (let r = 0; r < 2; r++) {
+        const kk = Math.min(1, k * 1.4 - r * 0.25);
+        if (kk <= 0) continue;
+        ctx.strokeStyle = `rgba(255,255,255,${0.8 * (1 - kk)})`;
+        ctx.lineWidth = 4 - r;
+        ctx.beginPath();
+        ctx.ellipse(x, y + 36, 40 + 70 * kk, 12 + 20 * kk, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // Spray thrown up off the legs.
+      for (let i = 0; i < 8; i++) {
+        const ang = -Math.PI / 2 + (i - 3.5) * 0.32;
+        const d = 12 + 60 * k;
+        ctx.fillStyle = `rgba(220,240,255,${0.75 * (1 - k)})`;
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * d * 1.2, y + 34 + Math.sin(ang) * d * 0.9 + 40 * k * k, 4 * (1 - k) + 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const lx = x + dir * (98 + 140 * (a / TUG_LEAVE) ** 1.4);
+    const ly = y - 12 - 24 * (a / TUG_LEAVE);
+    drawTug(ctx, lx, ly, dir, t, Math.max(0, 1 - Math.max(0, a - TUG_LEAVE + 0.8) / 0.8));
+  }
+  // The legs' feet in the water.
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   for (const dx of [-30, 30]) {
     ctx.beginPath();
     ctx.ellipse(x + dx, y + 36, 10, 3, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = '#4a3a33';
-  ctx.strokeStyle = RIM;
-  ctx.lineWidth = 3;
-  ctx.fillRect(x - 36, y - 10, 72, 22);
-  ctx.strokeRect(x - 36, y - 10, 72, 22);
-  ctx.strokeStyle = '#9a8678';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(x - 14, y - 10);
-  ctx.lineTo(x - 4, y - 46);
-  ctx.lineTo(x + 6, y - 10);
-  ctx.moveTo(x - 11, y - 24);
-  ctx.lineTo(x + 3, y - 24);
-  ctx.stroke();
-  const flick = 0.6 + 0.4 * Math.sin(t * 13 + x);
-  ctx.fillStyle = `rgba(255,150,40,${flick})`;
-  ctx.beginPath();
-  ctx.arc(x + 26, y - 26, 6 + 3 * flick, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = RED;
-  ctx.beginPath();
-  ctx.arc(x + 18, y + 1, 6, 0, Math.PI * 2);
-  ctx.fill();
-  bar(ctx, x, y - 62, 70, th.hp / (th.maxHp ?? (THREATS.rig.hp || 1)), '#ff8a7a');
+  ctx.save();
+  ctx.translate(x, y + dip);
+  ctx.rotate(rock);
+  rigBody(ctx, x, t);
+  ctx.restore();
+  rigCount(ctx, g, th, x, y - 66);
 }
 
 function drawGenerator(ctx: CanvasRenderingContext2D, th: Threat, t: number): void {

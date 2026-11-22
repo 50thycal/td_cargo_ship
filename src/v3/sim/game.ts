@@ -45,6 +45,7 @@ import {
   FASTBOAT,
   LOCK,
   MINE,
+  RIG_SHOTS,
   SOW,
   TOW,
   POST,
@@ -2314,7 +2315,17 @@ export function applyEncounters(g: Game, setup: EncounterSetup): void {
     sets: [],
     calls: [],
   };
+  // Log v55 (round 15, SHOT_RIGS): the rigs standing take RIG_SHOTS.rig
+  // shots (a rig's own hits on the map are the campaign's).
+  if (shotRigs(g)) for (const th of g.threats) if (th.kind === 'rig' && th.base !== undefined && th.tow === undefined && th.hp >= (g.map.bases[th.base]?.rig?.hp ?? THREATS.rig.hp) - 1e-6) th.hp = th.maxHp = RIG_SHOTS.rig;
   replanWave(g);
+}
+
+/** A rig's full hits on station `i`: RIG_SHOTS.rig on a map whose rigs
+ *  count shots (log v55), else the map's own. */
+function rigFull(g: Game, i: number): number {
+  const b = g.map.bases[i];
+  return shotRigs(g) ? RIG_SHOTS.rig : (b?.rig?.hp ?? THREATS.rig.hp);
 }
 
 /** The Test Lab (after applyFreePlay): give the run its card. A map
@@ -5924,7 +5935,8 @@ export function raiseRig(g: Game, i: number, hp: number): void {
   const b = g.map.bases[i];
   g.baseDown[i] = false;
   const th = structure(g, 'rig', b.x, b.y, hp, i);
-  th.maxHp = b.rig?.hp ?? THREATS.rig.hp;
+  // Counting shots (log v55), its pips are its own: the shots it rose with.
+  th.maxHp = shotRigs(g) ? hp : rigFull(g, i);
   g.threats.push(th);
   if (g.tel) g.tel.spawn(g, th, 'structure');
   addFx(g, 'splash', b.x, b.y + 30, { life: 1.2, r: 60 });
@@ -5951,10 +5963,15 @@ function updateTow(g: Game, th: Threat, dt: number): void {
 function dockRig(g: Game, th: Threat): void {
   const i = th.tow!;
   const b = g.map.bases[i];
-  const full = b.rig?.hp ?? THREATS.rig.hp;
+  const full = rigFull(g, i);
   const rig = rigAt(g, i);
+  // Round 15 (UI only): the side its tug came from, for the cast-off.
+  th.towDir = th.vx < 0 ? -1 : 1;
   th.vx = 0;
+  // Round 15: it settles on its legs with a splash (the tow's arrival).
+  addFx(g, 'splash', b.x, b.y + 34, { life: 1.1, r: 80 });
   if (!rig) {
+    th.dockT = g.t;
     g.baseDown[i] = false;
     th.tow = undefined;
     th.base = i;

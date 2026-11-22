@@ -4284,7 +4284,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The mines as a curtain the convoy must pass, in place of the wave\'s own mines and its shells (a swarm, easy to kill, where the shells were).',
     },
     beats: [
-      { at: 0.25, kind: 'mine', count: 4, gap: 1.2, from: base(6) },
+      { at: 0.25, kind: 'mine', count: 3, gap: 1.4, from: base(6) },
       { at: 0.7, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
     ],
     replaces: { drones: 1, ballistic: 3, extras: { mine: 3 } },
@@ -4330,7 +4330,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'stealthBomber', count: 1, from: { air: -1 } },
-      { at: 0.15, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
+      { at: 0.15, kind: 'mine', count: 1, from: base(5) },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.35, plus: 5, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
@@ -4354,7 +4354,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Hold\'s cost: the ships stopped for the mines sit still for the shells, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 3, gap: 1.3, from: base(6) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 1.5, from: base(6) },
       { at: 0.3, plus: 8, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
@@ -5105,8 +5105,14 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Wave 1 one late string out of the east rig only: the drone rigs stand a
   // short flight from the lane, and the wave's own drones already cost the
   // no-Armory bots (casual 0.18 ships on wave 1 before the rebuild).
-  ['rigs-point-blank', [fill(0.7, 2, 3)]],
-  ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 3]),
+  // Log v55 (round 15: the player rated the Rigs' waves 1-3 1, 2 and 1):
+  // a little more on each, easy strings of drones off the two drone rigs:
+  // wave 1 a string off the west rig too, wave 2 a third string, wave 3
+  // two (it had none).
+  ['rigs-point-blank', [fill(0.35, 2, 0), fill(0.7, 2, 3)]],
+  ['rigs-bring-down', [fill(0.1, 3, 0), fill(0.45, 2, 3), fill(0.8, 2, 3)]],
+  ['rigs-under', [fill(0.15, 3, 3), fill(0.85, 2, 0)]],
+  ...busy(['rigs-point-blank', 'rigs-bring-down', 'rigs-under', 'rigs-relief', 'rigs-rig-or-volley', 'rigs-periscope'], 3, 0, [1, 2, 3]),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -5865,9 +5871,9 @@ export const SOWERS_BOSS_ROUNDS: BossRound[] = [
  *  missiles, shells and drones converging on the convoy. A rig brought down
  *  fires no more. Rising: more rigs, more volleys, bigger ones. */
 export const RIGS_BOSS_ROUNDS: BossRound[] = [
-  { rigs: 2, rigHp: 8, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 3, rigHp: 8, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
-  { rigs: 4, rigHp: 8, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 2, rigHp: 10, barrage: { first: 3, every: 6.5, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 3, rigHp: 10, barrage: { first: 3, every: 7, count: 3, size: 1, warn: 1.5 } },
+  { rigs: 4, rigHp: 10, barrage: { first: 3, every: 8, count: 3, size: 1, warn: 1.5 } },
 ];
 
 /** Dreadnought Pass (log v51, docs/design/v3-ch3-dreadnought.md): one pass
