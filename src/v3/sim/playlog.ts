@@ -477,11 +477,31 @@ import type { EncounterSetup } from '../data/encounters';
  *      Citadel's shielded fire alone until it leaves the dome
  *      (worthShooting). A Citadel card log before v60 played today's convoy
  *      controls and the shared waves and no longer replays to the same
- *      game; the campaign plays as it did. (59: the Tide, built alongside.) */
-export const LOG_VERSION = 60;
+ *      game; the campaign plays as it did. (59: the Tide, built alongside.)
+ *  61: chapter 4's Tidewater Flats rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-tide.md; lab, under the encounter layer): the
+ *      tide keeps each wave's own clock (MAP_TIDE, Game `ebb`: one ebb a
+ *      wave, game.ts highTide, tideGauge), ten encounters (TIDE_R4) with
+ *      their filler, a climb (TIDE_CLIMB), two new aims ('crowd': a ship of
+ *      the most bunched hulls; 'flats': a ship on the flats lane), the
+ *      signature (MAP_SIGNATURE.tide `ebb`: the wave's own clusters, then
+ *      shells, as cluster missiles at the crowd at low water), the
+ *      Repair Ship and the Bodyguard Ring as Lure Beacons on its waves
+ *      (MAP_FOE_SWAP.tide), the map's own convoy, flow step 2 in a Box
+ *      (MAP_CONVOY.tide), and a new boss on the Firestorm, Low Water
+ *      (MAP_BOSS.tide: `ebb`, `strikes`: the round's tide out early and
+ *      the whole shore firing at the crowd). And the tide's turn itself, on
+ *      the campaign's clock too (sim/tide.ts; the player: "the ships did not
+ *      navigate off the low tide area"): the tide falls over 4 s and rises
+ *      over 3 s instead of snapping, the flats lane takes ships only at high
+ *      water, and as the tide falls every ship on the flats crosses to the
+ *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
+ *      (the card or the campaign) no longer replays to the same game; the
+ *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.) */
+export const LOG_VERSION = 61;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [60];
+export const LOG_REPLAYS: readonly number[] = [61];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

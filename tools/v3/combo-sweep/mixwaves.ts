@@ -66,6 +66,10 @@ export const SIGNATURE: Partial<Record<MapId, string[]>> = {
   // that call shells (counted apart from a plain beacon as `spotter`), and
   // the shells they call (`called`).
   crossing: ['spotter', 'called'],
+  // Tidewater Flats (log v61): the ebb strike, everything launched at the
+  // crowd in the deep channel at low water (`ebbStrike`, a cluster's
+  // bomblets with it), the encounters' and the signature's.
+  tide: ['ebbStrike'],
   // The Citadel (log v60): fire under the dome, the Citadel's own launches
   // shielded inside its dome (counted apart from the rest of its fire as
   // `domeFire`; the generators and the Citadel are the map's mechanic).
@@ -98,7 +102,7 @@ export function mixByWave(map: MapId, nSeeds: number, hp?: Record<string, number
         // A broadside of the Dreadnought's (log v51) is its signature's.
         // A fire ship (log v53) is the Coves' signature; a plain boat its mechanic.
         // Fire under the Citadel's dome (log v60) is its signature's.
-        const kind = th.dome ? 'domeFire' : th.called ? 'called' : th.kind === 'lure' && th.foe?.spot ? 'spotter' : th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
+        const kind = th.ebb ? 'ebbStrike' : th.dome ? 'domeFire' : th.called ? 'called' : th.kind === 'lure' && th.foe?.spot ? 'spotter' : th.fire ? 'fireShip' : th.kind === 'mine' && th.parent === 'stealthBomber' ? 'sownMine' : th.tow !== undefined ? 'towRig' : th.rack ? 'rack' : th.parent === 'dreadnought' ? 'broadside' : th.kind;
         if (w) w[kind] = (w[kind] ?? 0) + 1 / nSeeds;
         const h = hp?.[Math.min(13, g.wave) - 1];
         // An armored drone's plate takes hits too (up to FOE.armored.plate

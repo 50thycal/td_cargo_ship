@@ -471,6 +471,80 @@ try {
     await one.close();
   }
 
+  // ---- Tidewater Flats (log v61): the tide goes out once a wave, the ships
+  // crowd the deep channel, and Low Water ----
+  await open(page, 'lab=map-tide&seed=7');
+  const td = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command), ebb: window.__v3.game().ebb }));
+  check(td.map === 'tide' && td.rev === ENCOUNTER_REV && td.cmds.length === 0 && Array.isArray(td.ebb), `the Tide's card opens with its encounters, no command and the wave's own tide (${JSON.stringify(td)})`);
+  await labMenu(page);
+  const tdArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
+  check(/Boss rounds: Low Water/.test(tdArc) && /The first ebb/.test(tdArc), `the Tide's script names its boss, Low Water, and its first ebb (${tdArc})`);
+  await page.screenshot({ path: `${OUT_DIR}/tide-script.png` });
+  // Skip to the boss at the phone's own size and one pixel a point (the
+  // record shot): the tide out, the ships crowded in the deep channel and a
+  // strike in the air at them.
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-tide&seed=7');
+    await labMenu(one);
+    await one.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
+    await one.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
+    let low = { air: 0, low: false, name: '' };
+    for (let k = 0; k < 400 && !(low.low && low.air >= 2); k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      await one.waitForTimeout(20);
+      low = await one.evaluate(() => {
+        const g = window.__v3.game();
+        const out = !!g.ebb && g.waveT >= g.ebb[0] && g.waveT < g.ebb[1];
+        return { air: g.threats.filter((t) => !t.dead && ['ballistic', 'cluster', 'guided', 'supersonic'].includes(t.kind)).length, low: out, name: g.event?.id ?? '' };
+      });
+    }
+    check(low.name === 'firestorm' && low.low && low.air >= 2, `Low Water: the tide out and a strike in the air at the crowd (${JSON.stringify(low)})`);
+    await one.screenshot({ path: `${OUT_DIR}/tide-boss.png` });
+    await one.close();
+  }
+  // The tide turning (log v61, the player: "the ships did not navigate off
+  // the low tide area"): wave 1 played through its ebb at the phone's own
+  // size, a shot at high water with ships on both lanes, one as the tide
+  // goes out (the flats ships crossing to the deep channel, the sand coming
+  // up from the shore), and one at low water (the flats dry, no ship on
+  // them).
+  {
+    const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
+    await open(one, 'lab=map-tide&seed=7');
+    const tideAt = () =>
+      one.evaluate(() => {
+        const g = window.__v3.game();
+        const [a, b] = g.ebb ?? [Infinity, Infinity];
+        const t = g.waveT;
+        const phase = t < a - 4 ? 'high' : t < a ? 'falling' : t < b ? 'low' : t < b + 3 ? 'rising' : 'high';
+        const flats = g.map.channels.find((c) => c.tide);
+        const inBand = g.ships.filter((s) => s.y > flats.y - flats.halfWidth - 50 && s.y < flats.y + flats.halfWidth + 50).length;
+        return { wave: g.wave, phase, t: Math.round(t * 10) / 10, a, ships: g.ships.length, inBand, crossing: g.ships.filter((s) => s.cross).length };
+      });
+    const shots = {};
+    let st = await tideAt();
+    for (let k = 0; k < 900 && !shots.low; k++) {
+      if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
+      await one.evaluate(() => window.__v3.advance(0.1));
+      st = await tideAt();
+      if (st.wave < 1) continue;
+      if (!shots.high && st.phase === 'high' && st.t > st.a - 8 && st.inBand > 0) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-high.png` });
+        shots.high = st;
+      } else if (shots.high && !shots.mid && st.phase === 'falling' && st.t >= st.a - 3.3) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-falling.png` });
+        shots.mid = st;
+      } else if (shots.mid && !shots.low && st.phase === 'low' && st.t >= st.a + 2) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-low.png` });
+        shots.low = st;
+      }
+    }
+    check(!!shots.high && !!shots.mid && !!shots.low && shots.low.inBand === 0, `the tide turns: ships on the flats at high water, crossing as it falls, none on the dry flats at low water (${JSON.stringify(shots)})`);
+    await one.close();
+  }
+
   // ---- The Citadel (log v60): the game's last map, the shield that rises
   // every wave, fire under the dome, and the Last Stand ----
   await open(page, 'lab=map-citadel&seed=7');
@@ -509,7 +583,9 @@ try {
   }
 
   // ---- Where the choice is not offered ----
-  for (const [card, why] of [['map-tide', 'a map with no authored encounters (Kesh and Marrow have theirs since chapter 1, every chapter 2 map since chapter 2, every chapter 3 map since chapter 3, the Coves, the Delta and Dunmar Crossing since chapter 4)'], ['ev-rush', 'an event card']]) {
+  // (Every map has its authored encounters since the Tide and the Citadel,
+  // chapter 4's last two: only an event card is left.)
+  for (const [card, why] of [['ev-rush', 'an event card']]) {
     await open(page, `lab=${card}&enc=1&seed=7`);
     await labMenu(page);
     await page.tap('[data-lab-setup]');

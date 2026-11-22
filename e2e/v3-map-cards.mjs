@@ -242,9 +242,10 @@ try {
   check(hub.delta === enc1, `the Delta says it opens with its encounters (${hub.delta})`);
   // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): the same.
   check(hub.crossing === enc1, `Dunmar Crossing says it opens with its encounters (${hub.crossing})`);
+  // Tidewater Flats (docs/design/v3-ch4-tide.md, log v61): the same.
+  check(hub.tide === enc1, `the Tide says it opens with its encounters (${hub.tide})`);
   // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the same.
   check(hub.citadel === enc1, `the Citadel says it opens with its encounters (${hub.citadel})`);
-  check(/^Full map: waves 1–10 and 3 boss rounds · Today's convoy controls/.test(hub.tide ?? ''), `a map with no commands or encounters yet says so ("${hub.tide}")`);
   await shot(page, 'hub-card');
 
   // ---- Tap The Strait's card: wave 1, no command (round 11), no Bring one ----
@@ -354,7 +355,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 60 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 61 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });

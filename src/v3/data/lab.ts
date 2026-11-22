@@ -712,6 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'tide', log: 61, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'citadel', log: 60, tag: 'New', note: 'The finale: the shield rises every wave; fire under the dome can\'t be shot. Break it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
   { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },

@@ -509,7 +509,7 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(60);
+    expect(log.v).toBe(61);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('drone-storm');

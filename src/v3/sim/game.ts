@@ -85,7 +85,8 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
+import { TIDE_TURN, tideAt, type TideNow } from './tide';
+import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
 
@@ -182,6 +183,10 @@ export interface Ship {
   /** Distance along its lane, and its offset across it (lanes.ts). */
   d: number;
   lat: number;
+  /** Tidewater Flats (log v61): crossing from the flats to the deep channel
+   *  as the tide falls (sim/tide.ts): its `lat` closes on its slot at
+   *  TIDE_TURN.cross px/s, not the slot's ease. */
+  cross?: boolean;
   /** The way its bow points (radians). */
   heading: number;
   hp: number;
@@ -286,6 +291,9 @@ export interface Threat {
   /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet): a
    *  fire ship, a fast boat set alight (FIRESHIP): where it is sunk, or
    *  where it rams, its fireball burns on the water (foes.ts burstCloud). */
+  /** Log v59 (Tidewater Flats): launched at the crowd (BeatAim 'crowd'), the
+   *  ebb's fire; a cluster's bomblets carry it. For the tools' counts only. */
+  ebb?: boolean;
   fire?: boolean;
   /** Log v60 (The Citadel, MAP_SIGNATURE `dome`, and its Last Stand): a
    *  launch off the Citadel under its dome: while the shield stands it
@@ -904,6 +912,11 @@ export interface Game {
   spawnT: number;
   spawnCount: number;
   channelCursor: number;
+  /** Tidewater Flats (log v61, lab only, under the encounter layer): this
+   *  wave's low water, from and to (s of the wave), on the tide's own clock
+   *  for the wave (data/encounters.ts MAP_TIDE) or the boss round's; absent,
+   *  the tide runs on the map's clock (MapDef `tide`). */
+  ebb?: [number, number];
   /** The Armory levels this run was started with (fixed for the run). */
   armory: ArmoryLevels;
   /** Weapon levels held this run. */
@@ -1203,6 +1216,7 @@ function startWave(g: Game): void {
   g.wave += 1;
   g.waveT = 0;
   g.phase = 'wave';
+  g.ebb = undefined;
   g.offer = [];
   const spec = waveSpec(g.wave, g.map.threatScale);
   // A special event is a wave of its own: its script launches in place of
@@ -1245,6 +1259,13 @@ function startWave(g: Game): void {
   const rng = g.rng.threats;
   const lead = RULES.waveLeadIn;
   const queue: Launch[] = [];
+  // Tidewater Flats (log v61, MAP_TIDE): the wave's own tide, its low water
+  // at a beat's moment.
+  const clock = g.enc ? tideClock(g.map.id, g.wave, g.enc.setup) : undefined;
+  if (clock && g.map.tide) {
+    const at = lead + RAID.warn + clock.ebb * spec.duration;
+    g.ebb = [at, at + clock.low];
+  }
   // Most launches bunch into raids: a few seconds of several bases firing
   // at once, then a short breather. Each raid is one family of threat (a
   // drone swarm, a splash barrage, a guided volley), so each calls for its
@@ -1372,6 +1393,19 @@ function startWave(g: Game): void {
         fireShips++;
       }
   }
+  // Tidewater Flats (log v61, MAP_SIGNATURE `ebb`): so many of the wave's
+  // own clusters, then its shells, are held for the ebb and come as cluster
+  // missiles at the crowd, one for one (rule w-budget).
+  let ebbStrike = 0;
+  if (sig?.ebb && g.ebb) {
+    const want = sig.ebb[Math.min(g.wave, 10) - sig.from] ?? 0;
+    for (const kind of ['cluster', 'ballistic'] as const)
+      for (let i = units.length - 1; i >= 0 && ebbStrike < want; i--)
+        if (units[i].kind === kind) {
+          units.splice(i, 1);
+          ebbStrike++;
+        }
+  }
   const themes: RaidTheme[] = ['swarm', 'barrage', 'volley', 'strike'];
   const count = (t: RaidTheme) => units.filter((u) => RAID_THEME[u.kind] === t).length;
   const present = themes.filter((t) => count(t) > 0);
@@ -1448,6 +1482,14 @@ function startWave(g: Game): void {
   if (hidden) raids.forEach((raid, r) => (raid.quiet = raidUnits[r].length > 0 && raidUnits[r].every((u) => u.kind === 'mine')));
   g.raids = raids;
   if (authored.length) planEncounters(g, authored, queue, lead, spec.duration);
+  if (ebbStrike && g.ebb) {
+    const base = sig!.ebbBase ?? 0;
+    for (let k = 0; k < ebbStrike; k++) {
+      const at = g.ebb[0] + 3 + k * 3;
+      queue.push({ at, kind: 'cluster', base, aim: 'crowd' });
+      g.raids.push({ at, theme: RAID_THEME.cluster, bases: [base] });
+    }
+  }
   if (fireShips) {
     const coves = g.map.bases.map((x, i) => (x.cove && x.kinds.includes('fastboat') ? i : -1)).filter((i) => i >= 0);
     for (let k = 0; k < fireShips && coves.length; k++) {
@@ -1723,13 +1765,17 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim, lane?: number): void 
   const tanker = aim === 'vip' ? pool.find((s) => s.vip) : undefined;
   let pick =
     tanker ??
-    (aim === 'near' || aim === 'post'
+    (aim === 'flats'
+      ? flatsShip(g, pool, from)
+      : aim === 'near' || aim === 'post'
       ? pool.reduce((a, b) => (dist(b.x, b.y, from.x, from.y) < dist(a.x, a.y, from.x, from.y) ? b : a))
       : aim === 'mid'
         ? pool.reduce((a, b) => (Math.abs(along(b) - 0.5) < Math.abs(along(a) - 0.5) ? b : a))
         : aim === 'rear'
           ? pool.reduce((a, b) => (along(b) < along(a) ? b : a))
-          : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
+          : aim === 'crowd'
+            ? crowdShip(pool, th.id, along)
+            : pool.reduce((a, b) => (along(b) > along(a) ? b : a)));
   // Chapter 2's Saltgate Canal (log v38): the ship held at a lock, in its
   // chamber or waiting at its shut entry gate, the lock nearest the
   // launcher first; no ship held there, the ship nearest the launcher.
@@ -1762,6 +1808,36 @@ export function aimBeat(g: Game, th: Threat, aim: BeatAim, lane?: number): void 
   if (th.kind === 'ballistic') aimBallistic(g, th);
   const tp = targetPos(g, th);
   th.heading = Math.atan2(tp.y - th.y, tp.x - th.x);
+}
+
+/** Tidewater Flats (log v61, BeatAim 'flats'): the ship on a tide lane
+ *  nearest `from`; none there (low water), the ship furthest from it. */
+function flatsShip(g: Game, pool: Ship[], from: Point): Ship {
+  const on = pool.filter((s) => g.map.channels[s.channel]?.tide);
+  const d = (s: Ship) => dist(s.x, s.y, from.x, from.y);
+  return on.length ? on.reduce((a, b) => (d(b) < d(a) ? b : a)) : pool.reduce((a, b) => (d(b) > d(a) ? b : a));
+}
+
+/** Tidewater Flats (log v61, BeatAim 'crowd'): how many other hulls are
+ *  within CROWD_RADIUS px of a ship. */
+export const CROWD_RADIUS = 170;
+function crowdAround(pool: Ship[], s: Ship): number {
+  let n = 0;
+  for (const o of pool) if (o !== s && dist(o.x, o.y, s.x, s.y) <= CROWD_RADIUS) n++;
+  return n;
+}
+/** The crowd's ships: the hull with the most round it and those round it,
+ *  west to east; each launch takes one of them by its own id, so a strike at
+ *  the crowd spreads over it rather than all going for one hull (no dice:
+ *  an encounter plays the same every time). */
+function crowdShip(pool: Ship[], id: number, along: (s: Ship) => number): Ship {
+  const core = pool.reduce((a, b) => {
+    const ca = crowdAround(pool, a);
+    const cb = crowdAround(pool, b);
+    return cb > ca || (cb === ca && along(b) > along(a)) ? b : a;
+  });
+  const near = pool.filter((s) => dist(s.x, s.y, core.x, core.y) <= CROWD_RADIUS).sort((a, b) => a.id - b.id);
+  return near[id % near.length] ?? core;
 }
 
 /** Is a ship held at a lock (Saltgate Canal): in a lock's chamber, or in
@@ -5560,6 +5636,11 @@ function fileLat(g: Game, s: Ship, ch: Channel, d: number): number {
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
+  // Tidewater Flats (log v61): once the tide starts to fall, every ship on
+  // the flats crosses to the deep channel at once, from where it is, ahead
+  // of the sand (sim/tide.ts): it keeps its distance along (the lanes run
+  // side by side) and sails across to its slot.
+  if (g.map.tide && g.ships.length) leaveFlats(g);
   // Keep station on the rails: a hull eases off when the one ahead in its lane
   // is too close. This is what turns two ships abreast into a single file when
   // a formation change merges their lanes, instead of stacking them. "Ahead"
@@ -5598,7 +5679,15 @@ function updateShips(g: Game, dt: number): void {
       const off = Math.abs((o.x - aim[i].x) * nx + (o.y - aim[i].y) * ny);
       return along >= SHIP.minGap || off >= SHIP.laneMatch;
     });
-    if (clear) {
+    if (s.cross) {
+      const step = TIDE_TURN.cross * dt;
+      const off = want[i] - s.lat;
+      if (Math.abs(off) <= step) {
+        s.lat = want[i];
+        s.cross = false;
+      } else s.lat += Math.sign(off) * step;
+      placeShip(g, s);
+    } else if (clear) {
       s.lat += (want[i] - s.lat) * ease;
       placeShip(g, s);
     }
@@ -5614,6 +5703,26 @@ function updateShips(g: Game, dt: number): void {
   }
   if (arrived.length) cue(g, 'ship.delivered', clamp(arrived[0].x, 0, VIEW.width), arrived[0].y);
   if (arrived.length) g.ships = g.ships.filter((s) => !arrived.includes(s));
+}
+
+/** Tidewater Flats (log v61): the tide falling, every ship on a tide lane
+ *  moves to the lane beside it that never dries (the deep channel), at the
+ *  same distance along, its offset the way across from where it is. */
+function leaveFlats(g: Game): void {
+  if (tideNow(g).phase === 'high') return;
+  const chans = g.map.channels;
+  const deep = chans.findIndex((c) => !c.tide && !c.vip);
+  if (deep < 0) return;
+  for (const s of g.ships) {
+    if (!chans[s.channel].tide) continue;
+    const to = laneAt(chans[deep], s.d, 0);
+    s.channel = deep;
+    // Across the deep lane's own normal, from its centre to the hull.
+    const t = lanePoint(chans[deep], s.d);
+    s.lat = (s.x - to.x) * -t.ty + (s.y - to.y) * t.tx;
+    s.cross = true;
+    placeShip(g, s);
+  }
 }
 
 /** The supertanker came through: every hull gets a point back and a weapon
@@ -5662,11 +5771,23 @@ function laneSpeed(g: Game, s: Ship): number {
   return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
 }
 
-/** Tidewater Flats: is the tide in? (A map without a tide: always.) */
+/** Tidewater Flats: is the tide in, the flats lane taking new ships? Only
+ *  at high water: not while it falls, is out, or is still coming back in
+ *  (sim/tide.ts). Under the encounter layer (log v61) the wave's own low
+ *  water (`g.ebb`). (A map without a tide: always.) */
 export function highTide(g: Game): boolean {
-  const t = g.map.tide;
-  if (!t) return true;
-  return g.t % (t.high + t.low) < t.high;
+  return tideNow(g).phase === 'high';
+}
+
+/** The tide now (sim/tide.ts tideAt): its phase, the water over the flats
+ *  (1 high, 0 low), the seconds to the next turn. */
+export function tideNow(g: Game): TideNow {
+  return tideAt(g.map, g.t, g.waveT, g.ebb);
+}
+
+/** The tide gauge (Tidewater Flats): the tide now, as the gauge reads it. */
+export function tideGauge(g: Game): TideNow {
+  return tideNow(g);
 }
 
 // Bomblets are blamed on the cluster that dropped them.
@@ -5835,6 +5956,7 @@ function launch(g: Game, l: Launch): void {
     if (l.filler) th.filler = true;
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
+    if (l.aim === 'crowd') th.ebb = true;
     // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
     // first wave everything the Citadel fires leaves under its dome.
     if (base.core && (l.dome || !!signatureOf(g.map.id, g.wave, g.enc?.setup)?.dome)) th.dome = true;

@@ -122,8 +122,14 @@ export interface BeaconCall {
  *  v3-ch4-delta.md, log v57): 'switch', the newest ship bound for the
  *  branch the fork's switch is set to (the one least far along of those);
  *  none, the ship least far along. An Incendiary Missile aimed so bursts
- *  on the water at the mouth of that branch, ahead of the next ships. */
-export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'switch' | 'cross';
+ *  on the water at the mouth of that branch, ahead of the next ships.
+ *  Chapter 4's Tidewater Flats (log v61,
+ *  docs/design/v3-ch4-tide.md): 'crowd', the ship with the most hulls
+ *  within CROWD_RADIUS of it (the ships bunched in the deep channel at low
+ *  water), the one furthest along among equals; 'flats', the ship on the
+ *  flats lane (a tide lane) nearest the launcher, a long flight from the
+ *  north shore (none there at low water: the ship furthest from it). */
+export type BeatAim = 'any' | 'lead' | 'narrows' | 'rear' | 'near' | 'mid' | 'post' | 'vip' | 'lock' | 'switch' | 'cross' | 'crowd' | 'flats';
 
 export interface Beat {
   /** When, as a share of the wave's length (0 its first launch window, 1
@@ -6156,6 +6162,293 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
+/** Chapter 4, Open War (log v61, docs/design/v3-ch4-tide.md): Tidewater
+ *  Flats. Two lanes: the deep channel (y 282) under the enemy's north
+ *  shore, always open, and the flats lane (y 575) out by the carrier, which
+ *  floats only at high tide. Under the layer the tide keeps the wave's own
+ *  clock (MAP_TIDE): every wave opens on high water, the tide goes out
+ *  once (`TIDE_EBB`, a beat's `at`), the flats stay dry `TIDE_LOW` s, then
+ *  it floods again. At low water every new ship takes the deep channel, so
+ *  the convoy crowds in it under the silos, and the enemy saves its fire for
+ *  that: beats aimed 'crowd' go for the ship with the most hulls round it.
+ *  The silos: the west (base 0: drones, guided, shells; over the way in),
+ *  the middle (base 1: heavies, clusters), the east-middle (base 2:
+ *  supersonic, guided), the east (base 3: drones, motherships, shells); the
+ *  sub spots between the lanes, west (0) and east (1). The danger is the
+ *  delivery end, the lanes' late third (where the bunched boxes are as the
+ *  strikes land); the safe stretch the way in. */
+export const TIDE_EBB = [0.9, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
+export const TIDE_LOW = [9, 11, 13, 15, 16, 16, 17, 17, 18, 20];
+const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });
+/** The shells, guided missiles and clusters a Tide wave gives up (its
+ *  `replaces`, past the encounter's own) come as `n` drones (strings of up
+ *  to five out of the west and east silos in turn, spread over the wave),
+ *  as the Coves' waves do: the wave sends no fewer launches (rule
+ *  w-budget; waves 5, 6 and 10 send three more, which kept them inside
+ *  ±15% of the no-encounter wave), and its fire at the crowd is the
+ *  encounter's. */
+const swapIn = (n: number): Beat[] => {
+  const out: Beat[] = [];
+  const aims: BeatAim[] = ['flats'];
+  const strings = Math.ceil(n / 5);
+  for (let k = 0; k < strings; k++) {
+    const count = Math.min(5, n - k * 5);
+    out.push({ at: Math.round((0.08 + (0.84 * (k + 0.5)) / strings) * 100) / 100, kind: 'drone', count, gap: 0.35, from: base(k % 2 ? 3 : 0), aim: aims[k % aims.length] });
+  }
+  return out;
+};
+const TIDE_R4: Omit<Encounter, 'version' | 'rev'>[] = [
+  {
+    id: 'tide-first-ebb',
+    map: 'tide',
+    waves: [1],
+    role: 'teach',
+    name: 'The first ebb',
+    callout: 'The tide goes out',
+    premise: 'Drones fly the long way to the flats lane while it is open; late in the wave the tide goes out, the ships on the flats cross to the deep channel, every new ship takes it, and the last drones come the long way at the newest of them.',
+    decision: 'The first look at the map: the gauge counts down to the ebb, the flats dry, and the ships bunch under the guns. What will the next wave send at them?',
+    counters: 'The drones on their long flight.',
+    succeeds: 'Nothing is sunk on wave 1; the gauge reads as the clock of the wave.',
+    notes: {
+      sites: 'The west silo (250, 80; drones), the east silo (1400, 80; drones at the ebb).',
+      target: 'A ship on the flats (high water); the ship furthest from the east silo, the newest in the deep channel (the ebb).',
+      usesMap: 'Shows the map on wave 1: the tide goes out at the end of the wave and the convoy crowds into the deep channel; light, so wave 1 sinks nothing (rule w-first).',
+    },
+    beats: [
+      { at: 0.3, kind: 'drone', count: 3, gap: 0.4, from: base(0), aim: 'flats' },
+      { ...ebb(1, 2), kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
+    ],
+    replaces: { drones: 6 },
+  },
+  {
+    id: 'tide-far-flats',
+    map: 'tide',
+    waves: [2],
+    role: 'teach',
+    name: 'Far over the flats',
+    callout: 'Shells at low water',
+    premise: 'Drones fly the long way to the lead ship at high water; at the ebb a shell from each end of the shore falls on the ships crowding in the deep channel.',
+    decision: 'High water is the long flight, low water the short one: what do you keep for the ebb?',
+    counters: 'The drones at leisure; the shells as they climb.',
+    succeeds: 'No ship lost on wave 2 in most runs; the player starts to watch the gauge.',
+    notes: {
+      sites: 'The east silo (1400, 80; drones, a shell), the west silo (250, 80; a shell).',
+      target: 'The lead ship (the drones, high water); the crowd in the deep channel (the shells, the ebb).',
+      usesMap: 'Both tides in one wave: the long flight at high water, the crowd under the guns at low; in place of the wave\'s own shells.',
+    },
+    beats: [
+      { at: 0.25, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
+      { ...ebb(2, 1.5), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(2, 4), kind: 'ballistic', count: 1, from: base(3), aim: 'flats' },
+      ...swapIn(5),
+    ],
+    replaces: { drones: 9, ballistic: 2 },
+  },
+  {
+    id: 'tide-low-water',
+    map: 'tide',
+    waves: [3],
+    role: 'teach',
+    name: 'Low water',
+    callout: 'Fire at the crowd',
+    premise: 'At the ebb a guided missile off the west silo and two shells after it go for the ships crowding in the deep channel, while drones from the east come at the lead ship.',
+    decision: 'The first stakes: the crowd is one target for a shell\'s splash. The missile or the shells first?',
+    counters: 'The shells as they climb (one splash can catch two ships), the missile in its flight.',
+    succeeds: 'A close call in the deep channel in most runs; a good player loses under half a ship.',
+    notes: {
+      sites: 'The west silo (250, 80; a guided missile, 2 shells), the east silo (1400, 80; drones).',
+      target: 'The crowd in the deep channel (the ebb: the newest ships, in the west); the lead ship (the drones).',
+      usesMap: 'The map\'s danger: the way in at low water, every new ship in the deep channel; in place of the wave\'s own guided missile and shells.',
+    },
+    beats: [
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.4, from: base(3), aim: 'flats' },
+      { ...ebb(3, 1), kind: 'guided', count: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(3, 3.5), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
+      ...swapIn(12),
+    ],
+    replaces: { drones: 13, guided: 1, ballistic: 4 },
+  },
+  {
+    id: 'tide-ebb-cluster',
+    map: 'tide',
+    waves: [4],
+    role: 'combine',
+    name: 'Cluster on the crowd',
+    callout: 'A cluster at the ebb',
+    premise: 'A supersonic missile streaks at the lead ship at high water; at the ebb a cluster missile off the middle silo splits over the ships crowding in the deep channel, drones behind it.',
+    decision: 'Shoot the cluster before it splits over the crowd: a split over bunched ships finds a hull with every bomblet.',
+    counters: 'The cluster as it climbs off the rail; the supersonic as it comes; the drones after.',
+    succeeds: 'The cluster is down before it splits in most runs; no ship lost in most runs.',
+    notes: {
+      sites: 'The east-middle silo (1000, 80; a supersonic), the middle silo (650, 75; a cluster), the west silo (drones).',
+      target: 'The lead ship (the supersonic, high water); the crowd in the deep channel (the cluster and drones, the ebb).',
+      usesMap: 'The signature\'s first wave: a cluster at the crowd the ebb makes; in place of the wave\'s own cluster and supersonic.',
+    },
+    beats: [
+      { at: 0.15, kind: 'supersonic', count: 1, from: base(2), aim: 'lead' },
+      { ...ebb(4, 1), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { ...ebb(4, 2), kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'crowd' },
+      ...swapIn(15),
+    ],
+    replaces: { drones: 15, ballistic: 5, guided: 1, extras: { cluster: 1, supersonic: 1 } },
+  },
+  {
+    id: 'tide-the-flood',
+    map: 'tide',
+    waves: [5],
+    role: 'combine',
+    name: 'The flood',
+    callout: 'A periscope on the flood',
+    premise: 'Shells fall on the crowd at the ebb; then, as the tide floods back and the ships spread to the flats again, a sub surfaces between the lanes in the east and lobs its shells at the ships nearest it.',
+    decision: 'Low water is not the end of it: the flood brings its own. Save a shot for the periscope?',
+    counters: 'The ebb\'s shells as they climb; the sub\'s shells as they climb, from close by.',
+    succeeds: 'A close call at each turn of the tide in most runs; a good player loses under a ship.',
+    notes: {
+      sites: 'The west silo (250, 80; 2 shells), the east sub spot (1500, 392; 2 shells), the east silo (1400, 80; drones).',
+      target: 'The crowd in the deep channel (the ebb\'s shells); the ships nearest the east sub spot (the flood).',
+      usesMap: 'Both turns of the tide: the ebb, and the flood after the low water; in place of the wave\'s own shells.',
+    },
+    beats: [
+      { ...ebb(5, 1), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(5, TIDE_LOW[4] + 1), kind: 'ballistic', count: 2, gap: 1.2, from: sub(1), aim: 'near' },
+      { at: 0.2, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'flats' },
+      { ...ebb(5, 3), kind: 'drone', count: 3, gap: 0.35, from: base(3), aim: 'crowd' },
+      ...swapIn(17),
+    ],
+    replaces: { drones: 15, ballistic: 7, guided: 1, extras: { cluster: 1 } },
+  },
+  {
+    id: 'tide-both-lanes',
+    map: 'tide',
+    waves: [6],
+    role: 'combine',
+    name: 'Both lanes',
+    callout: 'Before the ebb and after',
+    premise: 'At high water a guided missile goes for the lead ship and shells from the east for the ships coming in; at the ebb a cluster and drones come down on the crowd.',
+    decision: 'Spread over two lanes before the ebb, bunched in one after: where are your shots best spent?',
+    counters: 'The guided missile in its flight; the shells as they climb; the cluster before it splits.',
+    succeeds: 'A close call in each lane in most runs.',
+    notes: {
+      sites: 'The east-middle silo (1000, 80; a guided missile), the east silo (1400, 80; 2 shells), the middle silo (650, 75; a cluster), the west silo (drones).',
+      target: 'The lead ship (the guided missile), the ships coming in (the shells), high water; the crowd (the cluster, the drones), the ebb.',
+      usesMap: 'High water and low water in one wave, both lanes and then one; in place of the wave\'s own guided missile, shells and a cluster.',
+    },
+    beats: [
+      { at: 0.12, kind: 'guided', count: 1, from: base(2), aim: 'lead' },
+      { at: 0.2, kind: 'ballistic', count: 2, gap: 1, from: base(3), aim: 'rear' },
+      { ...ebb(6, 1.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { ...ebb(6, 4), kind: 'ballistic', count: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(6, 2.5), kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'crowd' },
+      ...swapIn(19),
+    ],
+    replaces: { drones: 13, guided: 2, ballistic: 10, extras: { cluster: 1 } },
+  },
+  {
+    id: 'tide-supersonic-ebb',
+    map: 'tide',
+    waves: [7],
+    role: 'escalate',
+    name: 'Fast at the ebb',
+    callout: 'Supersonics at low water',
+    premise: 'As the tide goes out two supersonic missiles streak off the east-middle silo at the crowd, a breath apart, with a cluster from the middle silo between them.',
+    decision: 'The fastest thing on the map at the tightest crowd: which do you take, and which do you let through?',
+    counters: 'The supersonics as they leave the silo; the cluster before it splits.',
+    succeeds: 'A close call in the deep channel in most runs; one hull hit in some.',
+    notes: {
+      sites: 'The east-middle silo (1000, 80; 2 supersonics), the middle silo (650, 75; a cluster), the west and east silos (drones).',
+      target: 'The crowd in the deep channel (the ebb); the lead ship (drones, high water).',
+      usesMap: 'The ebb at its sharpest: the short flight from the shore to the bunched deep channel; in place of the wave\'s own supersonics and a cluster.',
+    },
+    beats: [
+      { at: 0.15, kind: 'supersonic', count: 1, from: base(2), aim: 'flats' },
+      { ...ebb(7, 1.2), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(3), aim: 'lead' },
+      { ...ebb(7, 4), kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'crowd' },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(3) },
+      ...swapIn(22),
+    ],
+    replaces: { drones: 20, ballistic: 10, guided: 5, extras: { supersonic: 2, cluster: 1 } },
+  },
+  {
+    id: 'tide-whole-shore',
+    map: 'tide',
+    waves: [8],
+    role: 'escalate',
+    name: 'The whole shore',
+    callout: 'The whole shore fires',
+    premise: 'At the ebb the whole north shore fires at the crowd in turn, west to east: shells off the west silo, a cluster off the middle, guided missiles off the east-middle, shells off the east.',
+    decision: 'Four silos, one crowd, a few seconds: what do you shoot first?',
+    counters: 'Each silo\'s fire as it lifts: the shells as they climb, the cluster before it splits, the missiles in their flight.',
+    succeeds: 'A close call in the deep channel in most runs; the wave hurts but does not end the run.',
+    notes: {
+      sites: 'The west silo (250, 80; 2 shells), the middle silo (650, 75; a cluster), the east-middle silo (1000, 80; 2 guided), the east silo (1400, 80; 2 shells, drones).',
+      target: 'The crowd in the deep channel (the ebb); the lead ship (the drones, high water).',
+      usesMap: 'The whole shore over the deep channel at low water; in place of the wave\'s own shells, guided missiles and a cluster.',
+    },
+    beats: [
+      { ...ebb(8, 0.5), kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(8, 2), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { ...ebb(8, 3.5), kind: 'guided', count: 2, gap: 0.8, from: base(2), aim: 'crowd' },
+      { at: 0.1, kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
+      { at: 0.8, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
+      ...swapIn(22),
+    ],
+    replaces: { drones: 19, ballistic: 13, guided: 6, extras: { cluster: 1 } },
+  },
+  {
+    id: 'tide-before-ebb',
+    map: 'tide',
+    waves: [9],
+    role: 'escalate',
+    name: 'Before the ebb',
+    callout: 'A mothership before the ebb',
+    premise: 'A drone mothership sets out from the east silo at high water, launching as it comes; at the ebb a cluster and a supersonic come at the crowd, and the mothership\'s drones are still in the air.',
+    decision: 'Kill the mothership on the long flight before the ebb, or keep the shots for the crowd?',
+    counters: 'The mothership early, before it fills the sky; the cluster and the supersonic at the ebb.',
+    succeeds: 'A close call in the deep channel in most runs; wave 10 is still the hardest.',
+    notes: {
+      sites: 'The east silo (1400, 80; a mothership, drones), the middle silo (650, 75; a cluster), the east-middle silo (1000, 80; a supersonic), the west silo (drones).',
+      target: 'The lead ship (the mothership, high water); the crowd in the deep channel (the ebb).',
+      usesMap: 'High water\'s long flight set against the ebb\'s short one; in place of the wave\'s own mothership, a cluster and a supersonic.',
+    },
+    beats: [
+      { at: 0.1, kind: 'mothership', count: 1, from: base(3), aim: 'flats' },
+      { ...ebb(9, 1), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { ...ebb(9, 2.5), kind: 'supersonic', count: 1, from: base(2), aim: 'crowd' },
+      { ...ebb(9, 3.5), kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'crowd' },
+      { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(3) },
+      ...swapIn(27),
+    ],
+    replaces: { drones: 19, ballistic: 13, guided: 6, extras: { mothership: 1, cluster: 1, supersonic: 1 } },
+  },
+  {
+    id: 'tide-spring-low',
+    map: 'tide',
+    waves: [10],
+    role: 'climax',
+    name: 'Spring low',
+    callout: 'Everything at the crowd',
+    premise: 'Once the wave\'s own fire is spent, a breath; then the tide runs out, and the whole shore fires at the crowd in the deep channel: clusters off the middle silo, shells from both ends, guided missiles and a supersonic from the east-middle.',
+    decision: 'Everything the shore holds, at one crowd: what goes first?',
+    counters: 'The clusters before they split, the shells as they climb, the missiles in flight.',
+    succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
+    notes: {
+      sites: 'The middle silo (650, 75; 2 clusters), the west and east silos (shells, drones), the east-middle silo (1000, 80; 2 guided, a supersonic), after the wave\'s own fire and a calm.',
+      target: 'The crowd in the deep channel (the ebb); the lead ship (the last drones, as the flood comes).',
+      usesMap: 'The map\'s problem at its hardest: the longest low water, the whole shore at the crowd; in place of the wave\'s own clusters, shells, guided missiles and a supersonic.',
+    },
+    beats: [
+      { ...ebb(10, 0.5), kind: 'cluster', count: 1, from: base(1), aim: 'crowd' },
+      { ...ebb(10, 1.5), kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'crowd' },
+      { ...ebb(10, 3), kind: 'guided', count: 1, from: base(2), aim: 'crowd' },
+      { ...ebb(10, 2), kind: 'drone', count: 6, gap: 0.35, from: base(3), aim: 'flats' },
+      ...swapIn(34),
+    ],
+    replaces: { drones: 26, ballistic: 15, guided: 9, extras: { cluster: 1, supersonic: 1 } },
+    calm: 6,
+  },
+];
+
 /** Chapter 4's finale (log v60, docs/design/v3-ch4-citadel.md): the Citadel
  *  of Vey, the last map of the game. The fortress stands on its island
  *  (base 0: (1250, 300), every kind of missile) over the harbour narrows,
@@ -6560,6 +6853,9 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // Armory on wave 1).
   ['crossing-two-fronts', [fill(0.75, 2, 2)]],
   ...busy(['crossing-two-fronts', 'crossing-shore-to-shore', 'crossing-meeting', 'crossing-spotter', 'crossing-both-edges', 'crossing-periscopes'], 0, 2, [1]),
+  // Tidewater Flats (log v61): the west and east silos, the map's two drone
+  // launchers, a long flight to the flats lane, waves 1-6.
+  ...busy(['tide-first-ebb', 'tide-far-flats', 'tide-low-water', 'tide-ebb-cluster', 'tide-the-flood', 'tide-both-lanes'], 0, 3),
 ]);
 const busier = <E extends { id: string; beats: Beat[] }>(e: E): E => (BUSY[e.id] ? { ...e, beats: [...e.beats, ...BUSY[e.id]] } : e);
 
@@ -6596,6 +6892,8 @@ export const ENCOUNTERS: Encounter[] = [
   ...DELTA_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-crossing.md)
   ...CROSSING_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
+  // (docs/design/v3-ch4-tide.md)
+  ...TIDE_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
   // (docs/design/v3-ch4-citadel.md: the game's last map)
   ...CITADEL_R4.map((e) => ({ ...e, version: 'v1' as const, rev: 4 })),
 ].map(busier);
@@ -6653,12 +6951,13 @@ export type ChapterThreeMap = 'battery' | 'sowers' | 'rigs' | 'dreadnought' | 'l
 export const CHAPTER_THREE_MAPS: MapId[] = ['battery', 'sowers', 'rigs', 'dreadnought', 'lantern'];
 /** Chapter 4, Open War, a map at a time as chapter 3's: so far the Coves
  *  (log v53, docs/design/v3-ch4-coves.md), the chapter's first, where its
- *  new enemies debut; and the Delta (log v57, docs/design/v3-ch4-delta.md); and Dunmar Crossing (log v58,
- *  docs/design/v3-ch4-crossing.md). */
-export type ChapterFourMap = 'coves' | 'delta' | 'crossing' | 'citadel';
-/** (And the Citadel of Vey, log v60, docs/design/v3-ch4-citadel.md: the
- *  chapter's and the game's last map.) */
-export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'crossing', 'citadel'];
+ *  new enemies debut; the Delta (log v57, docs/design/v3-ch4-delta.md);
+ *  Dunmar Crossing (log v58, docs/design/v3-ch4-crossing.md); Tidewater
+ *  Flats (log v61, docs/design/v3-ch4-tide.md); and the Citadel of Vey (log
+ *  v60, docs/design/v3-ch4-citadel.md: the chapter's and the game's last
+ *  map). */
+export type ChapterFourMap = 'coves' | 'delta' | 'crossing' | 'tide' | 'citadel';
+export const CHAPTER_FOUR_MAPS: MapId[] = ['coves', 'delta', 'crossing', 'tide', 'citadel'];
 export const REBUILT_MAPS: MapId[] = ['kesh', 'marrow', ...CHAPTER_TWO_MAPS, ...CHAPTER_THREE_MAPS, ...CHAPTER_FOUR_MAPS];
 /** Every map with an authored encounter layer. */
 export const LAYER_MAPS: MapId[] = [...ENCOUNTER_MAPS, ...REBUILT_MAPS];
@@ -6786,6 +7085,8 @@ const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
 const CROSSING_CLIMB = [0.85, 1, 1, 1, 1, 0.96, 0.94, 0.92, 0.9, 0.86];
+/** Tidewater Flats (log v61): within ±15% of each shared wave. */
+const TIDE_CLIMB = [1, 0.9, 0.88, 0.92, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86];
 
 /** A rebuilt map's one version: the original (v1). */
 const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, VersionDef>>> = {
@@ -6807,6 +7108,7 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   citadel: { v1: { name: 'Original', idea: 'One encounter a wave, built on the Citadel over the narrows: its fire is the shortest on the map, its shield rises again every wave on three generators spread round the map, and from wave 4 it fires under its dome, where nothing can be shot until the shield is down.', callouts: false, scale: CITADEL_CLIMB } },
   delta: { v1: { name: 'Original', idea: 'One encounter a wave, built on the fork: the switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, and the enemy fires at the branch it is set to; incendiaries burst on that branch\'s mouth from wave 4.', callouts: false, scale: DELTA_CLIMB } },
   crossing: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two convoys that pass each other in the middle of the strait, outbound east in the north lane under the north shore and inbound west in the south lane under the south shore: spotter beacons rise between the lanes where the next ships cross and call shells on both from wave 4.', callouts: false, scale: CROSSING_CLIMB } },
+  tide: { v1: { name: 'Original', idea: 'One encounter a wave, built on the tide: the flats lane by the carrier floats only at high water, so when the tide goes out mid-wave every ship crowds into the deep channel under the guns, and the enemy saves its fire for the crowd; cluster missiles at the ebb from wave 4.', callouts: false, scale: TIDE_CLIMB } },
   sowers: { v1: { name: 'Original', idea: 'One encounter a wave, built on the mines that drift down across the lane on the current: each one sinks a ship that sails into it and takes one shot to clear, and they come while the shells and missiles do; stealth bombers sow mines just ahead of the ships from wave 4.', callouts: false, scale: SOWERS_CLIMB } },
 };
 
@@ -6936,6 +7238,13 @@ export interface MapSignature {
    *  the crossing and call shells (BeaconCall); each one's calls come out
    *  of the wave's own shells, one for one (rule w-budget). */
   beacons?: BeaconCall;
+  /** Tidewater Flats (log v61): at each wave's ebb (MAP_TIDE) so many
+   *  cluster missiles at the crowd in the deep channel, wave by wave from
+   *  `from`, out of `ebbBase`, one for one out of the wave's own clusters
+   *  and then its shells (a shell comes as a cluster), so the wave sends no
+   *  more launches (rule w-budget). */
+  ebb?: number[];
+  ebbBase?: number;
 }
 
 export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignature>> = {
@@ -7024,6 +7333,11 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // pass and call shells on the ship nearest them (SPOTTER), the Beacon
   // Line's own; each one's shells come out of the wave's own.
   crossing: { from: 4, foe: 'lure', foeShare: 0.5, beacons: SPOTTER },
+  // Tidewater Flats (log v61, docs/design/v3-ch4-tide.md): "the ebb
+  // strike", from wave 4. At each wave's low water so many of the wave's own
+  // clusters (then shells, as clusters) fly off the middle silo at the crowd
+  // in the deep channel, one for one, the Low Water's own.
+  tide: { from: 4, ebb: [0, 1, 1, 0, 0, 1, 0], ebbBase: 1 },
   // The Citadel (log v60, docs/design/v3-ch4-citadel.md): "under the dome",
   // from wave 4. Everything the Citadel fires leaves under its dome, and so
   // many more of the wave's own guided missiles and shells come off the
@@ -7042,6 +7356,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
  *  missile, rule w-budget). The campaign plays the planner as it was. */
 export const MAP_FOE_SWAP: Partial<Record<EncounterMap | RebuiltMap, Partial<Record<FoeId, FoeId>>>> = {
   saltgate: { torpedoSub: 'rocketTruck' },
+  tide: { tender: 'lure', bodyguard: 'lure' },
 };
 
 /** A map's new enemies that come as another on its early waves only (log
@@ -7072,6 +7387,27 @@ export function signatureOf(map: MapId, wave: number, setup: Pick<EncounterSetup
   if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return undefined;
   const sig = (MAP_SIGNATURE as Partial<Record<MapId, MapSignature>>)[map];
   return sig && wave >= sig.from ? sig : undefined;
+}
+
+/** Tidewater Flats (log v61, docs/design/v3-ch4-tide.md): under the
+ *  encounter layer the tide keeps each wave's own clock instead of running
+ *  on through the waves: the wave opens on high water, the tide goes out at
+ *  its `ebb` (as a beat's `at`: a share of the wave after its lead-in and a
+ *  raid's warning) and the flats stay dry `low` s, then it floods for the
+ *  rest of the wave. So the ebb is a moment the encounters can be written
+ *  round. A campaign run, a rev 3 log and the shared wave (`only: []`) keep
+ *  the tide running on the clock as before (MapDef `tide`). */
+export interface TideClock {
+  ebb: number[];
+  low: number[];
+}
+export const MAP_TIDE: Partial<Record<MapId, TideClock>> = {
+  tide: { ebb: TIDE_EBB, low: TIDE_LOW },
+};
+export function tideClock(map: MapId, wave: number, setup: Pick<EncounterSetup, 'rev' | 'only'> | null | undefined): { ebb: number; low: number } | undefined {
+  if (!setup || setup.rev < 4 || (setup.only && !setup.only.length) || wave > 10) return undefined;
+  const c = MAP_TIDE[map];
+  return c ? { ebb: c.ebb[wave - 1], low: c.low[wave - 1] } : undefined;
 }
 
 /** Log v55 (round 15, the player on Sowers' Reach: "have the mines surface
@@ -7298,6 +7634,13 @@ export interface BossRound {
    *  the ship nearest it at the same moment, and at the call a volley of
    *  shells comes off both shores). */
   line?: { at: number[]; beacons: number; call: BeaconCall };
+  /** Tidewater Flats' Low Water (log v61), in place of the Firestorm: the
+   *  round's own tide, the flats dry from `ebb.at` s for `ebb.low` s (every
+   *  ship in the deep channel), and `strikes`: at each, every base listed
+   *  launcher in `from` lights `warn` s before `at` s and then fires its
+   *  `count` of `kind` (`gap` s apart) at the crowd, all at once. */
+  ebb?: { at: number; low: number };
+  strikes?: { at: number; warn: number; from: { base: number; kind: ThreatKind; count: number; gap?: number }[] }[];
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -7687,6 +8030,39 @@ export const CROSSING_BOSS_ROUNDS: BossRound[] = [
   { line: { at: [0, 6, 12], beacons: 5, call: LINE_CALL }, swarms: 2, size: 6, swarmAt: 5, swarmGap: 7, fire: [{ kind: 'guided', at: 7, base: 0, aim: 'rear' }, { kind: 'guided', at: 7, base: 2, aim: 'rear' }] },
 ];
 
+/** Tidewater Flats' Low Water (log v61, docs/design/v3-ch4-tide.md), in
+ *  place of the Firestorm (before: firebombs from every side, every round;
+ *  the Incendiary Missile is a regular of chapter 4's waves by now, debuted
+ *  on the Coves). Each round the tide runs out early and stays out: the
+ *  flats dry, every ship crowds into the deep channel under the shore, and
+ *  the whole shore fires at the crowd at once, strike after strike, its
+ *  silos lit first. Rising: more strikes, more silos, longer low water. */
+export const TIDE_BOSS_ROUNDS: BossRound[] = [
+  {
+    ebb: { at: 2, low: 18 },
+    strikes: [
+      { at: 6, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }] },
+      { at: 13, warn: 2.5, from: [{ base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }] },
+    ],
+  },
+  {
+    ebb: { at: 2, low: 22 },
+    strikes: [
+      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }] },
+      { at: 12, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 2, kind: 'supersonic', count: 1 }] },
+      { at: 18, warn: 2.5, from: [{ base: 0, kind: 'drone', count: 5, gap: 0.35 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 1 }] },
+    ],
+  },
+  {
+    ebb: { at: 2, low: 26 },
+    strikes: [
+      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 1 }] },
+      { at: 13, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }, { base: 0, kind: 'drone', count: 4, gap: 0.35 }] },
+      { at: 20, warn: 2.5, from: [{ base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'drone', count: 5, gap: 0.35 }] },
+    ],
+  },
+];
+
 export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   // The Breakout at the neck (docs/design/v3-p4-harbor.md): the player lost
   // no ship in six of its rounds; the boss rounds come to the funnel, one
@@ -7738,6 +8114,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   coves: { rounds: COVES_BOSS_ROUNDS, name: 'Fire Fleet' },
   delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Burning Delta' },
   crossing: { rounds: CROSSING_BOSS_ROUNDS, name: 'Beacon Line' },
+  tide: { rounds: TIDE_BOSS_ROUNDS, name: 'Low Water' },
   // The game's finale (CITADEL_BOSS_ROUNDS above).
   citadel: { rounds: CITADEL_BOSS_ROUNDS, name: 'The Last Stand' },
 };
@@ -7801,6 +8178,8 @@ const AIM_TEXT: Record<BeatAim, string> = {
   lock: 'aimed at a ship held at the lock nearest it (none there, the ship nearest it)',
   switch: 'aimed at the branch the switch is set to (an incendiary bursts on its mouth)',
   cross: 'aimed at the next two ships to pass each other (the nearer of the two)',
+  crowd: 'aimed at the crowd (the ship with the most hulls round it)',
+  flats: 'aimed at a ship on the flats lane (none there, the ship furthest from it)',
 };
 
 const whenText = (at: number, plus?: number) => `at ${Math.round(at * 100)}% of the wave${plus ? ` (+${plus} s)` : ''}`;

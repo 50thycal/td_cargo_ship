@@ -34,6 +34,7 @@ import { WAVE_TABLE } from '../data/waves';
 import type { ArmoryLevels } from '../data/armory';
 import type { MapDef, MapId } from '../data/maps';
 import { ENDING, EV, EVENT, EVENT_MAPS, EVENT_WAVE, type EventId } from '../data/events';
+import { tideAt } from './tide';
 import type { Game, LaunchOrigin, Pickup, Raider, Ship, TapResult, Tempo, Threat } from './game';
 import type { FoeMark } from './foes';
 import { lastWave } from './events';
@@ -1080,9 +1081,9 @@ export class Telemetry {
   }
 }
 
+/** High water: the flats lane taking ships (sim/tide.ts). */
 function tideIn(g: Game): boolean {
-  const t = g.map.tide;
-  return !t || g.t % (t.high + t.low) < t.high;
+  return tideAt(g.map, g.t, g.waveT, g.ebb).phase === 'high';
 }
 
 function postState(p: { hp: number; downT: number; lost: boolean }): string {

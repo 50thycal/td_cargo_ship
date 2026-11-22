@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { FIRESHIP, PLANE, RAID, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
+import { FIRESHIP, PLANE, RAID, SHIP, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -35,6 +35,10 @@ import {
   DREAD_PASSES,
   dreadPasses,
   MAP_FOE_SWAP,
+  MAP_TIDE,
+  TIDE_EBB,
+  TIDE_LOW,
+  tideClock,
   signatureOf,
   hiddenMinesOn,
   swapFoe,
@@ -45,16 +49,18 @@ import {
   type EncounterVersion,
 } from '../../src/v3/data/encounters';
 import { BOSS_FOES, FOE, FOES, FOES_BUILT, FOE_ORDER, HEAVY_FOES, foeCount, foeDebutTag, foesUpTo, type FoeId } from '../../src/v3/data/foes';
-import { MAPS, chapterOf } from '../../src/v3/data/maps';
+import { MAPS, MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { CARRIER_TARGET, applyEncounters, branchBurning, branchMouth, createGame, damageThreat, lightFireShip, quieterBranch, rigAt, rigStations, spawnThreat, step, switchLane, throwSwitch, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
+import { flatsBand, sandEdge, tideAt, TIDE_TURN } from '../../src/v3/sim/tide';
+import { CONVOY_REV } from '../../src/v3/data/convoy';
+import { CARRIER_TARGET, aimBeat, tideNow, applyEncounters, branchBurning, branchMouth, createGame, damageThreat, highTide, lightFireShip, quieterBranch, rigAt, rigStations, spawnThreat, step, switchLane, throwSwitch, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
 import { DELTA_BURN, beaconMark } from '../../src/v3/sim/events';
 import { crossingPair, isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
 import { EV, bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
-import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
+import { BotRun, PERSONAS, playMimic } from '../../src/v3/sim/mimic';
 import { LOG_VERSION, logTelemetry, replay } from '../../src/v3/sim/playlog';
 import { reconcile, type TelEvent, type TelemetrySidecar } from '../../src/v3/sim/telemetry';
 
@@ -174,9 +180,11 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'citadel']);
-    // Chapter 4, Open War (log v53): its own table, as chapter 3's.
-    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'delta', 'crossing', 'citadel']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide', 'citadel']);
+    // Chapter 4, Open War (log v53): its own table, as chapter 3's; the
+    // Delta (log v57), Dunmar Crossing (log v58), the Citadel (log v60) and the
+    // Tide (log v61) join it.
+    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'delta', 'crossing', 'tide', 'citadel']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -269,9 +277,8 @@ describe('a campaign run has no encounter layer', () => {
       expect(versionDef(map, 'v1')!.idea.length, map).toBeGreaterThan(30);
       expect(versionDef(map, 'v2'), map).toBeUndefined();
     }
-    // The other maps have none yet.
-    expect(hasEncounters('tide')).toBe(false);
-    expect(encountersFor('tide', 5)).toEqual([]);
+    // Every map has its own since the Tide and the Citadel (log v61, v60).
+    expect(MAP_ORDER.filter((m) => !hasEncounters(m))).toEqual([]);
     expect(LAYER_MAPS).toEqual([...ENCOUNTER_MAPS, ...REBUILT_MAPS]);
     for (const e of ENCOUNTERS) for (const k of ['name', 'premise', 'decision', 'counters', 'succeeds', 'callout'] as const) expect(e[k].length, `${e.id}.${k}`).toBeGreaterThan(k === 'name' ? 4 : 10);
     // The call-out is short: it sits in a corner card on a phone.
@@ -783,7 +790,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'citadel'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta', 'crossing', 'tide', 'citadel'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -2461,7 +2468,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait', 'crossing', 'citadel'].sort());
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait', 'crossing', 'tide', 'citadel'].sort());
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -2481,6 +2488,8 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // The Delta (log v57): waves 1-6 out of the island's west silo, the far
     // one of its drone silos; wave 1 one late string.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('delta', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // Tidewater Flats (log v61): waves 1-6, out of the west and east silos.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('tide', w))).toEqual([1, 2, 3, 4, 5, 6]);
     expect(BUSY['delta-three-ways'].length).toBe(1);
     for (const id of Object.keys(BUSY).filter((k) => k.startsWith('delta-'))) for (const b of BUSY[id]) expect(b.from, id).toEqual({ base: 3 });
     // Dunmar Crossing (log v58): waves 1-6, out of the north-west and north-east silos.
@@ -2755,4 +2764,232 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
     for (const id of ['tender', 'bodyguard', 'lure', 'cloud'] as const) expect(mapDebutsFoe('crossing', FOES[id].kind), id).toBe(false);
     for (const e of ENCOUNTERS.filter((x) => x.map === 'crossing')) for (const b of e.beats) expect(!isFoe(b.kind) || b.kind === 'lure', e.id).toBe(true);
   });
+});
+
+// Chapter 4, Open War: Tidewater Flats (docs/design/v3-ch4-tide.md, log v61).
+describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the ebb strike and Low Water', () => {
+  // The player: "the ships did not navigate off the low tide area, so just
+  // make sure that mechanic actually works". Every step of whole bot runs
+  // (the card's production setup, the boss rounds too, and the campaign's
+  // own clock): no hull is ever on exposed sand (sim/tide.ts sandEdge: the
+  // water leaves the flats from the shore side as the tide falls), none is
+  // in the flats at all at low water, a ship on the flats when the tide
+  // starts to fall has crossed to the deep channel before the sand reaches
+  // it, and no hull stalls on its lane.
+  const sweepTide = (seed: number, layer: boolean, waves: number) => {
+    const run = new BotRun('tide', seed, { persona: PERSONAS.you, armory: { reload: 5, repair: 4, stockpile: 5 }, ...(layer ? { encounters: VER('v1'), convoy: { policy: 'tactical' as const, obligation: 'natural' as const, rev: CONVOY_REV } } : {}) });
+    const g = run.game;
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = g.stats.carrierHp = 1e6;
+    const flats = MAPS.tide.channels.find((c) => c.tide)!;
+    const band = flatsBand(flats);
+    const seen = { low: 0, falling: 0, rising: 0, crossed: new Set<number>(), onSand: [] as string[], inFlatsLow: [] as string[], stalled: [] as string[] };
+    const still = new Map<number, { d: number; n: number }>();
+    while (!run.done && g.wave <= waves) {
+      run.advance(1);
+      if (g.phase !== 'wave') {
+        still.clear();
+        continue;
+      }
+      const tide = tideNow(g);
+      if (tide.phase !== 'high') seen[tide.phase] += 1;
+      const edge = sandEdge(flats, tide.level);
+      for (const sh of g.ships) {
+        if (sh.cross) seen.crossed.add(sh.id);
+        // A hull's whole width (SHIP.hitRadius) clear of the sand.
+        if (sh.y + SHIP.hitRadius > edge && sh.y - SHIP.hitRadius < band.bottom && sh.x > 0 && sh.x < VIEW.width) seen.onSand.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id} y ${sh.y.toFixed(0)} sand from ${edge.toFixed(0)}`);
+        if (tide.phase === 'low' && sh.y > band.top && sh.y < band.bottom) seen.inFlatsLow.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id}`);
+        const was = still.get(sh.id);
+        if (!was || sh.d > was.d + 1e-6) still.set(sh.id, { d: sh.d, n: 0 });
+        else if (++was.n === 5 * 60) seen.stalled.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id} at d ${sh.d.toFixed(0)}`);
+      }
+    }
+    return seen;
+  };
+
+  it('no ship is ever on exposed sand, none is in the flats at low water, the flats ships cross to the deep channel as the tide falls, and none stalls (the card, waves 1-10 and the boss, three seeds)', () => {
+    for (const seed of [3, 11, 29]) {
+      const r = sweepTide(seed, true, 13);
+      expect(r.onSand.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.inFlatsLow.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.stalled.slice(0, 3), `seed ${seed}`).toEqual([]);
+      // The tide turned every wave, and ships were caught on the flats by it.
+      expect(r.low, `seed ${seed}`).toBeGreaterThan(60 * 60);
+      expect(r.falling, `seed ${seed}`).toBeGreaterThan(60 * 20);
+      expect(r.rising, `seed ${seed}`).toBeGreaterThan(60 * 10);
+      expect(r.crossed.size, `seed ${seed}`).toBeGreaterThan(5);
+    }
+  }, 240_000);
+
+  it('the same on the campaign\'s own clock (no layer), waves 1-6', () => {
+    for (const seed of [5, 17]) {
+      const r = sweepTide(seed, false, 6);
+      expect(r.onSand.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.inFlatsLow.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.stalled.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.low, `seed ${seed}`).toBeGreaterThan(0);
+      expect(r.crossed.size, `seed ${seed}`).toBeGreaterThan(0);
+    }
+  }, 240_000);
+
+  it('the tide turns smoothly: the water falls over TIDE_TURN.fall s and rises over TIDE_TURN.rise s, never snapping', () => {
+    const ebb: [number, number] = [20, 32];
+    let prev = tideAt(MAPS.tide, 0, 0, ebb).level;
+    for (let t = 0; t < 45; t += 1 / 60) {
+      const now = tideAt(MAPS.tide, 0, t, ebb);
+      expect(Math.abs(now.level - prev), `t ${t.toFixed(2)}`).toBeLessThanOrEqual(1 / (60 * Math.min(TIDE_TURN.fall, TIDE_TURN.rise)) + 1e-9);
+      prev = now.level;
+    }
+    expect(tideAt(MAPS.tide, 0, 20 - TIDE_TURN.fall - 0.01, ebb).phase).toBe('high');
+    expect(tideAt(MAPS.tide, 0, 18, ebb).phase).toBe('falling');
+    expect(tideAt(MAPS.tide, 0, 25, ebb)).toMatchObject({ phase: 'low', level: 0 });
+    expect(tideAt(MAPS.tide, 0, 33, ebb).phase).toBe('rising');
+    expect(tideAt(MAPS.tide, 0, 40, ebb)).toMatchObject({ phase: 'high', level: 1 });
+    // The campaign's clock too.
+    let p2 = tideAt(MAPS.tide, 0, 0).level;
+    for (let t = 0; t < 90; t += 1 / 60) {
+      const now = tideAt(MAPS.tide, t, 0);
+      expect(Math.abs(now.level - p2), `t ${t.toFixed(2)}`).toBeLessThanOrEqual(1 / (60 * Math.min(TIDE_TURN.fall, TIDE_TURN.rise)) + 1e-9);
+      p2 = now.level;
+    }
+  });
+
+  const crowdAimed = (g: Game) => g.queue.filter((l) => l.at < 1e8 && l.aim === 'crowd');
+
+  it('under the layer each wave opens on high water and the tide goes out once, at its ebb, for its low water; the campaign, a rev 3 log and the shared wave keep the map\'s clock', () => {
+    expect(MAP_TIDE.tide).toEqual({ ebb: TIDE_EBB, low: TIDE_LOW });
+    expect(TIDE_EBB.length).toBe(10);
+    expect(TIDE_LOW.length).toBe(10);
+    for (let w = 1; w <= 10; w++) {
+      const g = createGame('tide', 3, w);
+      applyEncounters(g, VER('v1'));
+      const spec = waveSpec(w, MAPS.tide.threatScale);
+      const at = 3 + RAID.warn + TIDE_EBB[w - 1] * spec.duration;
+      expect(g.ebb![0], `wave ${w}`).toBeCloseTo(at, 5);
+      expect(g.ebb![1] - g.ebb![0], `wave ${w}`).toBeCloseTo(TIDE_LOW[w - 1], 6);
+      // Every launch aimed at the crowd leaves at low water.
+      for (const l of crowdAimed(g)) {
+        expect(l.at, `wave ${w}`).toBeGreaterThanOrEqual(g.ebb![0]);
+        expect(l.at, `wave ${w}`).toBeLessThan(g.ebb![1]);
+      }
+      for (const setup of [null, { rev: 3, version: 'v1' as const }, { ...VER('v1'), only: [] }]) {
+        const c = createGame('tide', 3, w);
+        if (setup) applyEncounters(c, setup);
+        expect(c.ebb, `wave ${w}`).toBeUndefined();
+      }
+    }
+    expect(tideClock('tide', 11, VER('v1'))).toBeUndefined();
+    expect(tideClock('coves', 4, VER('v1'))).toBeUndefined();
+  });
+
+  it('at low water no new ship takes the flats lane, and the flats ships still out sail on; at high water both lanes take ships', () => {
+    const g = createGame('tide', 7, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = g.stats.carrierHp = 1e6;
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    const flats = MAPS.tide.channels.findIndex((c) => c.tide);
+    const seen = new Set<number>();
+    const born: { id: number; lane: number; high: boolean }[] = [];
+    for (let i = 0; i < 60 / DT; i++) {
+      step(g, DT);
+      for (const s of g.ships)
+        if (!seen.has(s.id)) {
+          seen.add(s.id);
+          born.push({ id: s.id, lane: s.channel, high: highTide(g) });
+        }
+      if (g.phase !== 'wave') break;
+    }
+    const low = born.filter((b) => !b.high);
+    expect(low.length).toBeGreaterThan(0);
+    for (const b of low) expect(b.lane).not.toBe(flats);
+    expect(born.some((b) => b.high && b.lane === flats)).toBe(true);
+  });
+
+  it('\'crowd\' goes for a ship among the most bunched hulls; \'flats\' for a ship on the flats lane, a long flight', () => {
+    const g = createGame('tide', 5, 3);
+    applyEncounters(g, VER('v1'));
+    g.queue = [];
+    for (let i = 0; i < 40 / DT && g.ships.length < 6; i++) step(g, DT);
+    const th = spawnThreat(g, 'drone', MAPS.tide.bases[0].x, MAPS.tide.bases[0].y, 'base');
+    aimBeat(g, th, 'crowd');
+    const t = g.ships.find((s) => s.id === th.target)!;
+    const around = (x: { x: number; y: number }) => g.ships.filter((o) => Math.hypot(o.x - x.x, o.y - x.y) <= 170).length;
+    const best = Math.max(...g.ships.map(around));
+    // In the densest group: within reach of its core.
+    expect(around(t)).toBeGreaterThanOrEqual(Math.min(2, best));
+    const onFlats = g.ships.filter((s) => MAPS.tide.channels[s.channel].tide);
+    if (onFlats.length) {
+      const f = spawnThreat(g, 'drone', MAPS.tide.bases[0].x, MAPS.tide.bases[0].y, 'base');
+      aimBeat(g, f, 'flats');
+      expect(MAPS.tide.channels[g.ships.find((s) => s.id === f.target)!.channel].tide).toBe(true);
+    }
+  });
+
+  it('the ebb strike: from wave 5 the wave\'s own clusters (then shells) come as cluster missiles off the middle silo at the crowd, one for one; none on the shared wave or the campaign', () => {
+    const sig = MAP_SIGNATURE.tide!;
+    expect(sig).toMatchObject({ from: 4, ebbBase: 1 });
+    expect(sig.ebb!.length).toBe(7);
+    expect(MAPS.tide.bases[1].kinds).toContain('cluster');
+    for (let w = 4; w <= 10; w++) {
+      const g = createGame('tide', 2, w);
+      applyEncounters(g, VER('v1'));
+      const own = crowdAimed(g).filter((l) => !l.enc);
+      expect(own.length, `wave ${w}`).toBe(sig.ebb![w - 4]);
+      for (const l of own) expect([l.kind, l.base], `wave ${w}`).toEqual(['cluster', 1]);
+      const shared = createGame('tide', 2, w);
+      applyEncounters(shared, { ...VER('v1'), only: [] });
+      expect(crowdAimed(shared), `wave ${w}`).toEqual([]);
+      expect(crowdAimed(createGame('tide', 2, w)), `wave ${w}`).toEqual([]);
+    }
+    expect(signatureOf('tide', 3, VER('v1'))).toBeUndefined();
+  });
+
+  it('the Repair Ship and the Bodyguard Ring come as Lure Beacons on the Tide\'s waves (no heavy at the crowd), under the layer only', () => {
+    expect(MAP_FOE_SWAP.tide).toEqual({ tender: 'lure', bodyguard: 'lure' });
+    expect(swapFoe('tide', 3, 'tender', VER('v1'))).toBe('lure');
+    expect(swapFoe('tide', 6, 'bodyguard', VER('v1'))).toBe('lure');
+    expect(swapFoe('tide', 3, 'tender', { rev: 3 })).toBe('tender');
+    expect(swapFoe('tide', 3, 'tender', null)).toBe('tender');
+    expect(swapFoe('tide', 3, 'tender', { ...VER('v1'), only: [] })).toBe('tender');
+  });
+
+  it('Low Water: the round\'s own tide out early, strikes at the crowd from the lit silos, more each round; the Firestorm\'s firebombs gone; a rev 3 log and the campaign play the Firestorm', () => {
+    const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+    const off = playMimic('tide', 219, opts);
+    const old = playMimic('tide', 219, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('firestorm');
+      expect(e.sent.cloud).toBeGreaterThan(0);
+    }
+    const on = playMimic('tide', 219, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.tide!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['firestorm', 1], ['firestorm', 2], ['firestorm', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    const total = (R: BossRound) => (R.strikes ?? []).reduce((a, k) => a + k.from.reduce((b, f) => b + f.count, 0), 0);
+    for (const e of done) {
+      const R = rounds[e.run! - 1];
+      expect(e.sent.cloud ?? 0, `round ${e.run}`).toBe(0);
+      expect(Object.values(e.sent).reduce((a, b) => a + (b ?? 0), 0), `round ${e.run}`).toBe(total(R));
+    }
+    for (let k = 1; k < rounds.length; k++) {
+      expect(total(rounds[k]), `round ${k + 1}`).toBeGreaterThan(total(rounds[k - 1]));
+      expect(rounds[k].ebb!.low, `round ${k + 1}`).toBeGreaterThan(rounds[k - 1].ebb!.low);
+    }
+    for (const r of rounds) {
+      for (const k of r.strikes!) {
+        expect(k.warn, 'each strike lit first').toBeGreaterThanOrEqual(RAID.warn);
+        // Inside the round's low water.
+        expect(k.at).toBeGreaterThan(r.ebb!.at);
+        expect(k.at).toBeLessThan(r.ebb!.at + r.ebb!.low);
+        for (const f of k.from) expect(MAPS.tide.bases[f.base].kinds, `${f.kind} from base ${f.base}`).toContain(f.kind);
+      }
+    }
+    roundLengths(done);
+    expect(eventName('firestorm', 'tide', ENCOUNTER_REV)).toBe('Low Water');
+    expect(eventName('firestorm', 'tide', 3)).toBe('Firestorm');
+  }, 90_000);
 });
