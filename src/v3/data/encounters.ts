@@ -4618,7 +4618,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 3, gap: 0.75, from: sub(2), aim: 'rear' },
-      { at: 0.35, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
+      { at: 0.35, kind: 'guided', count: 2, gap: 1.2, from: base(1), aim: 'lead' },
       { at: 0.35, plus: 1, kind: 'strafer', count: 1, from: { air: -1 } },
       { at: 0.55, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
@@ -5560,7 +5560,7 @@ export interface DreadPass {
 export const DREAD_PASSES: Record<number, DreadPass> = {
   1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
   3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
-  6: { hp: 45, at: 0, speed: 30, first: 5, every: 8, broadside: ['drone', 'ballistic', 'drone', 'drone'] },
+  6: { hp: 45, at: 0, speed: 30, first: 5, every: 8.5, broadside: ['drone', 'ballistic', 'drone', 'drone'] },
   9: { hp: 50, at: 0, speed: 30, first: 5, every: 9, broadside: ['drone', 'drone', 'guided', 'drone', 'drone', 'drone'] },
   10: { hp: 50, at: 1, plus: 0, speed: 45, first: 3, every: 6.5, broadside: ['drone', 'drone', 'ballistic', 'guided', 'drone', 'drone', 'drone'] },
 };
