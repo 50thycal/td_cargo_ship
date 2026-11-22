@@ -3,7 +3,7 @@
 - Seeds: 24 (900–923); persona "you"; Armory: the player's ({"reload":5,"repair":4,"stockpile":5}); threat scale 1.65; built 2026-11-22.
 - Setup: the map's Test Lab card, production setup (full map, its convoy policy, encounters v1 on).
 - **normal** = the loss limit as in play (24 runs); **tough** = no loss limit and a carrier that can't sink, so every seed plays every wave (24 runs). Each number says which.
-- Made by `npx vite-node tools/v3/map-report/report.ts -- --map=crossing --seeds=24 --armory=player`. Heat map: `tools/v3/map-report/results/crossing-player-heat.html`.
+- Made by `npx vite-node tools/v3/map-report/report.ts -- --map=crossing --seeds=24 --armory=player --kits=plan`. Heat map: `tools/v3/map-report/results/crossing-player-heat.html`.
 
 ## Checks
 
@@ -18,6 +18,7 @@
 | `w-early` | Ships lost waves 1–5 | 0.42 a run | a good player 0–1 (rule w-early) | normal | INFO |
 | `w-boss` | Boss rounds | normal (runs that reached it): r1 0.43 (21), r2 0.76 (21), r3 2.33 (21); tough (every run): 0.46, 0.75, 2.79 | about 2 a round on the bot's scale, rising | normal | INFO |
 | `fun` | Fun: saves a wave (provisional) | saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10 | you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small | normal+forks | **FLAG** |
+| `m-kits` | Kits | off-counter 3.0 lost 1–10, end 13.4; counter 3.1 lost 1–10, end 13.5 | the counter kit clearly better; neither trivial | kits | INFO |
 
 ## What to look at
 
@@ -126,6 +127,15 @@ Read on the normal runs' logs, over the runs that reached each wave (docs/design
 | shape (most runs) | flat 96% | flat 92% | flat 54% | flat 75% | one peak 50% | one peak 50% | sawtooth 29% | one peak 38% | sawtooth 38% | flat 50% | one peak 33% | pinned 76% | pinned 95% |
 | taps follow tension (r) | 0.36 | 0.31 | 0.35 | 0.33 | 0.35 | 0.35 | 0.38 | 0.36 | 0.31 | 0.32 | 0.43 | 0.28 | 0.27 |
 
-saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 1143 s of forks and replays.
+saves a run: waves 1–7 0.1, 8–10 + boss 0.3; flat (under 0.5) w1, w2, w3, w4, w5, w6, w7, w8, w9, w10. 24 runs, 1276 s of forks and replays.
+
+## Kits
+
+The bot's taste set to the kit (it takes these first when a draft offers them).
+
+| Kit | Weapons | Won | End wave | Lost 1–10 (normal) | Lost 1–10 (tough) | Boss r1 / r2 / r3 (reached) | Curve 1–10 (tough) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| counter | thermo, well, railgun | 75% | 13.5 | 3.0 | 3.1 | 0.45 (22) / 0.68 (22) / 2.36 (22) | 0.0 0.0 0.1 0.0 0.3 0.2 0.5 0.8 0.8 0.6 |
+| off-counter | droneScreen, fullSteam, bomberWing | 75% | 13.4 | 2.9 | 3.0 | 0.41 (22) / 0.77 (22) / 2.24 (21) | 0.0 0.0 0.1 0.1 0.3 0.2 0.3 0.7 0.8 0.5 |
 
 Read with docs/design/v3-map-report.md (what each number means and the bots' known biases).

@@ -3,7 +3,7 @@
  "persona": "you",
  "armory": "the player's ({\"reload\":5,\"repair\":4,\"stockpile\":5})",
  "date": "2026-11-22",
- "command": "npx vite-node tools/v3/map-report/report.ts -- --map=crossing --seeds=24 --armory=player",
+ "command": "npx vite-node tools/v3/map-report/report.ts -- --map=crossing --seeds=24 --armory=player --kits=plan",
  "heat": "tools/v3/map-report/results/crossing-player-heat.html",
  "waves": 13,
  "report": {
@@ -404,11 +404,82 @@
    ]
   },
   "tower": null,
-  "kits": [],
+  "kits": [
+   {
+    "kit": "counter",
+    "weapons": [
+     "thermo",
+     "well",
+     "railgun"
+    ],
+    "n": 24,
+    "endWave": 13.458,
+    "won": 0.75,
+    "lost10": 3,
+    "lost10Tough": 3.125,
+    "curveTough": [
+     0,
+     0.042,
+     0.125,
+     0,
+     0.25,
+     0.167,
+     0.458,
+     0.75,
+     0.75,
+     0.583
+    ],
+    "boss": [
+     0.455,
+     0.682,
+     2.364
+    ],
+    "bossReached": [
+     22,
+     22,
+     22
+    ]
+   },
+   {
+    "kit": "off-counter",
+    "weapons": [
+     "droneScreen",
+     "fullSteam",
+     "bomberWing"
+    ],
+    "n": 24,
+    "endWave": 13.417,
+    "won": 0.75,
+    "lost10": 2.917,
+    "lost10Tough": 3.042,
+    "curveTough": [
+     0,
+     0.042,
+     0.083,
+     0.083,
+     0.292,
+     0.208,
+     0.333,
+     0.708,
+     0.833,
+     0.458
+    ],
+    "boss": [
+     0.409,
+     0.773,
+     2.238
+    ],
+    "bossReached": [
+     22,
+     22,
+     21
+    ]
+   }
+  ],
   "fun": {
    "n": 24,
    "dice": 3,
-   "ms": 1142904,
+   "ms": 1275842,
    "waves": [
     {
      "wave": 1,
@@ -832,6 +903,14 @@
     "target": "you-bot: about 1–2 real saves a wave 1–10, more in 8–10 and the boss rounds; flat under 0.5, chaotic over 4 mostly small",
     "verdict": "FLAG",
     "from": "normal+forks"
+   },
+   {
+    "rule": "m-kits",
+    "name": "Kits",
+    "value": "off-counter 3.0 lost 1–10, end 13.4; counter 3.1 lost 1–10, end 13.5",
+    "target": "the counter kit clearly better; neither trivial",
+    "verdict": "INFO",
+    "from": "kits"
    }
   ]
  }
