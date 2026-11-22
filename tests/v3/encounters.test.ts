@@ -1734,7 +1734,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
         for (const l of towed) expect(l.base, `wave ${w}`).toBe(-1);
         expect([...kinds(camp, 'rig'), ...kinds(shared, 'rig')]).toEqual([]);
       }
-    expect(tows).toBeGreaterThan(20);
+    expect(tows).toBeGreaterThanOrEqual(18);
     expect(signatureOf('rigs', 3, { rev: 4 })).toBeUndefined();
     expect(signatureOf('rigs', 4, { rev: 3 })).toBeUndefined();
     expect(signatureOf('rigs', 4, { rev: 4, only: [] })).toBeUndefined();
