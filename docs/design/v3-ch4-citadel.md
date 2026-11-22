@@ -55,8 +55,9 @@ Bases are counted from 1, as the pause screen counts them.
 
 ## The stretches
 
-- **Danger: the late third, the narrows** under the Citadel, where the ships deliver. TBD
-- **Safe: the early third, the wide water of the way in** under the far silo's long flight. TBD
+- **Danger: the late third, the narrows** under the Citadel, where the ships deliver: 47% of the hull damage in waves 1–9 (the usual Armory's record report; 46–52% for the other player Armories).
+- **Safe: the early third, the wide water of the way in** under the far silo's long flight: 21% (18–20% for the other player Armories; 27% with none, flagged).
+- **The middle** (32%) takes the drones at the ship halfway along and the periscope's wave.
 - Rule `m-carrier`: the carrier (720, 752) sits under the middle of the lane, so the danger stretch is not its closest.
 
 ## The convoy
@@ -74,7 +75,14 @@ The encounters add their own (`dome` on a beat): wave 4's guided missile, wave 5
 
 The signature asks the map's question every wave from 4: open the keep, or let its fire come and catch it at the dome's edge.
 
-How much of waves 4–10 it is: TBD
+How much of waves 4–10 it is (`tools/v3/combo-sweep/mixwaves.ts`, 8 seeds, the "you" bot drafting for itself, tough):
+
+| | Waves 4–10 | Waves 6–10 | Boss rounds |
+| --- | --- | --- | --- |
+| Share of the threats that show | 6% | 6% | 46% |
+| Share of the hits it takes to clear them | **6%** | 6% | 31% |
+
+Far under the asked quarter (the Coves 7%, the Rigs 9%, the Sowers 19%): the bot silences the Citadel in most waves (above), so the keep's fire comes off the far silos instead, and most of what shows in waves 4–10 is drones (56%). Counted as fire under the dome is only what leaves the keep under it; the generators and the Citadel themselves (11% of what shows) are the mechanic. A first build that put only so many of the wave's own missiles under the dome read 3%; making everything the keep fires from wave 4 dome fire doubled it at the same win rate. A question for the player.
 
 ## The counters
 
@@ -186,9 +194,47 @@ Tough-run curves (every seed plays every wave; the cliff check), 192 seeds. Befo
 
 How the mechanic plays for the bot (`tools/v3/citadel/down.ts`, 12 seeds; `dome.ts`): it brings the shield down in every wave from wave 3 (92% of waves 1–2; the shield stands 12–33% of a wave), and **silences the Citadel in 75–100% of waves 2–10** (its idle shots: nine on the generators, fourteen on the keep), so much of the signature's fire leaves the far silos instead; in the boss rounds it silences the Citadel in all of round 1's runs but only a third of round 2's and a fifth of round 3's. On the base build it had the shield down for good by wave 2 and the Citadel a wreck by wave 4: now the question comes back every wave, but the bot answers it the same way almost every time. A question for the player (below).
 
+### The record reports (24 seeds, 900–923)
+
+| | latest / plating / usual / none |
+| --- | --- |
+| Won (normal) | 0% / 83% / 63% / 0% (the 192-seed reads: 11% / 72% / 49% / 0%) |
+| Waves 1–5 lost (normal) | 1.08 / 0.25 / 0.75 / 2.25 |
+| Boss r1 / r2 / r3 | see the 192-seed table above |
+| `w-cliff` (tough) | FLAG (w6) / FLAG (w8) / FLAG (w8: 0.33 → 1.00) / FLAG (w5): on 24 seeds; on 192 tough seeds the usual and plating sets' largest step is ×1.5–1.6, the latest set's wave 5 ×3.1 |
+| `w-early` close calls from wave 3 | PASS / FLAG (0.83 on w4) / FLAG (0.63 on w4) / PASS |
+| `w-budget` ±15% | FLAG (w4 ×0.85, the line) / PASS / **PASS** (furthest ×0.85) / FLAG (w3 ×0.85) |
+| `m-stretches` | PASS: hot late 46–52%, cold early 18–21%; none: cold early 27% |
+| `g-warning` | PASS: 8.0 → 5.9–6.1 s |
+| `w-first` | PASS (0.00) |
+| Kits (counter / off-counter): lost in waves 1–10 (tough) | latest 8.4 / 8.6; plating 3.2 / 3.1; usual 4.5 / 4.7; none 17.8 / 18.6 |
+
+The 24-seed records and the 192-seed reads disagree by up to 14 points on a win rate (the usual set 63% against 49%); the larger read is the one to trust.
+
+**Busier early waves** (the usual Armory's record): threats on the board at a moment 1.9, 2.1, 1.6 on waves 1–3, kills a minute 53, 45, 46.
+
+**The counters** (rule `m-kits`): the counter kit loses 0.2 fewer ships in waves 1–10 than the off-counter with the usual and latest sets and the same with the plating set (24 seeds, tough): not clearly better. Neither is trivial.
+
+### Citadel difficulty (rule `m-difficulty`; the brief: win 50–70%, waves 1–5 0.4–0.8)
+
+- **The usual Armory wins 49%** on 192 seeds, a point under the band (64% on the build before the last change, which gave waves 5, 8 and 9 the drones the budget check asked for); before 36%. **The latest set 11%** (before 3%), **the plating set 72%** (before 28%): no single tuning puts the three in 50–70% together, as on every chapter 3 and 4 map. Chapter 4's band is "3–4 tries" for the player.
+- **Waves 1–5: 0.84** for the usual Armory (the asked 0.4–0.8; before 0.63), the plating set 0.63, the latest 1.61.
+- **The climb from wave 4 to 9** rises every wave for the usual Armory (.10 .35 .49 .69 .93 .95), to wave 10's 0.98; on the tough runs .10 .37 .54 .81 1.21 1.22, then 1.51.
+- **Wave 10** is the hardest regular wave (tough) for the usual and plating Armories; no step to it doubles.
+
 ## What is not satisfied, or uncertain
 
-TBD
+- **The usual Armory wins 49%, a point under the band** (192 seeds; 64% on the build before the last change). The last change filled waves 5, 8 and 9 to the budget check's line with drones; the lever, if the player wants it back in the band: round 3 of the boss a salvo fewer, or those drones on the ships coming in only.
+- **Waves 1–5 lose 0.84** for the usual Armory, just over the asked 0.8; most of it is the planner's chapter 4 heavies (a Repair Ship's) and the keep's short flights on waves 2–3. The Bodyguard Ring's heavy off the keep was a third of a ship on its own on waves 2–5 and a cliff on wave 6; it comes as a Lure Beacon through wave 6 (`MAP_FOE_SWAP_EARLY`).
+- **The bot answers the map's question the same way almost every wave**: it drops the shield and silences the Citadel in 75–100% of waves 2–10 with its idle shots (nine on the generators, fourteen on the keep). The question is asked every wave now (before, once, by wave 4), but for the bot the answer is always yes. A player may find it harder (the generators are far apart); if not, the lever is more shots on the keep.
+- **The signature is 6% of the hits in waves 4–10**, far under the asked quarter, for the same reason: the silenced keep's fire comes off the far silos. In the boss it is 31%.
+- **Air Strike leads**: the best weapon alone and in four of the five best kits; three of the five best kits are in one other map's top 5 each. The dome does not counter it (its work is the drones on the long flight). The Gunship Pair, in all five best kits, is the Citadel's own mark.
+- **The counter kit is not clearly better** than the off-counter (0.2 ships in waves 1–10 on 24 seeds).
+- **The latest Armory's wave 5 is 3.1× its wave 4** on tough runs (the cliff line), and it wins 11%: as on the Coves and the Delta, it is the Armory, not the map.
+- **Boss rounds 1–2 under the asked 1.5 / 2** (0.34 / 1.22), round 3 near the asked 2.5 (2.35), to protect the win rate, as on every rebuilt map.
+- **Close calls** (24 seeds): under one a run on wave 4 for the usual and plating sets (0.63, 0.83).
+- **The diversity sweep** was played on the build before the last three changes (waves 2, 5–9, the Bodyguard's swap), a few drones and missiles; the kits' order, not their numbers, is what it reads.
+- **Fire under the dome reads as a cyan ring** that spins round the missile while it can't be shot; whether it reads on the phone at 874×402 is for the player (the boss screenshot shows it).
 
 ## The play log (v60)
 
@@ -196,8 +242,19 @@ TBD
 
 ## Questions for the player
 
-TBD
+- **Does "break the shield every wave" feel like the finale's question?** The shield rises again every wave; nine shots drop it, fourteen more silence the keep for the wave. Recommended: play waves 4, 7 and the boss; if breaking it every wave feels like a chore, the next build can raise it every other wave instead.
+- **The boss: the Last Stand, the Citadel itself, on the Siege of Vey's slot.** The Siege's four enemies are chapter 4's regulars by the last map; the boss is the fortress firing grand salvos under its dome. Recommended: keep it and the name.
+- **The convoy: a Spread at the campaign's schedule**, so a heavy or a shell off the keep costs one hull, not two (Pairs won 4% on the shared waves). Recommended: keep it.
+- **The signature is 6% of the hits in waves 4–10, not 25%.** Recommended: keep it as is for your play; if the dome fire feels absent, the lever is a tougher keep (more shots to silence), not more missiles.
+- **Air Strike leads the best kits here too.** Recommended: leave it for your play; a natural counter the map could grow is the dome blocking an Air Strike's run that crosses it.
+- **The Bodyguard Ring as a Lure Beacon on waves 2–6** (its heavy came off the keep a breath from the narrows). Recommended: keep it.
+- **The two Armories again:** the latest set wins 11%, the plating set 72%. Recommended: leave it; it is the Armory, not the map.
 
 ## Checks run
 
-TBD
+On the merged base (Dunmar Crossing's #224, log v58), the Citadel at v60:
+- `npx tsc --noEmit`: clean.
+- `npx vitest run --exclude '.claude/**'`: 82 files, 1920 tests passed (including `tests/v3/citadel.test.ts`: the shield and the shots, the shield rising, the silenced keep's stand-in, the signature, the dome, the early swap, the Last Stand on seed 230).
+- `npm run build`, `vite preview` on port 4862, then `e2e/v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs` (the Citadel's card, script and the Last Stand shot: `e2e/shots/v3-encounters/citadel-boss.png`), `v3-map-lab.mjs`, `v3-convoy.mjs`: all passed (run on the build before the Crossing merge and the last wave change; the merge plays the Citadel's games exactly as before, seed for seed).
+- `npm run v3:map-lab -- baseline --write`: every baseline run replays exactly, with telemetry on and off (only the version changed).
+- `python3 tools/v3/playtest-fixes/pins.py 57 60` (and 58 60 after the merge: nothing left at 58), `tests/v3/scorecard.test.ts` at 60.
