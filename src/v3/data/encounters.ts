@@ -4648,7 +4648,7 @@ const LANTERN_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.5, kind: 'siege', count: 1, from: base(5), salvos: 1 },
       { at: 0.15, kind: 'drone', count: 4, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.75, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'lead' },
-      { at: 0.45, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'mid' },
+      { at: 0.45, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
     ],
     replaces: { ballistic: 11, extras: { cluster: 1, mothership: 1 } },
   },
