@@ -48,7 +48,8 @@ import { MAPS, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { CARRIER_TARGET, applyEncounters, createGame, damageThreat, lightFireShip, rigAt, rigStations, spawnThreat, step, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
+import { CARRIER_TARGET, applyEncounters, branchBurning, branchMouth, createGame, damageThreat, lightFireShip, quieterBranch, rigAt, rigStations, spawnThreat, step, switchLane, throwSwitch, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
+import { DELTA_BURN } from '../../src/v3/sim/events';
 import { isFoe, onLand, siegeSpotAt, truckMark } from '../../src/v3/sim/foes';
 import { EV, bossIntroCards, eventName } from '../../src/v3/data/events';
 import { lockstep, stateHash } from '../../src/v3/sim/mapLab';
@@ -57,6 +58,9 @@ import { LOG_VERSION, logTelemetry, replay } from '../../src/v3/sim/playlog';
 import { reconcile, type TelEvent, type TelemetrySidecar } from '../../src/v3/sim/telemetry';
 
 const DT = 1 / 60;
+/** The Delta's boss test seed (tools/v3/delta/probe-boss.ts): the tryhard
+ *  bot plays all three rounds of the Burning Delta there. */
+const DELTA_BOSS_SEED = 218;
 const ON = { rev: ENCOUNTER_REV };
 const VER = (version: EncounterVersion, rev = ENCOUNTER_REV) => ({ rev, version });
 /** The versions a map has: three on a reference map, the original (v1)
@@ -169,9 +173,9 @@ describe('a campaign run has no encounter layer', () => {
     // Chapter 1's Kesh and Marrow (docs/design/v3-ch1-kesh.md,
     // v3-ch1-marrow.md): rev 4, the original (v1) only, one encounter a
     // wave; nothing at rev 3, so an older log plays them as it did.
-    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves']);
+    expect(REBUILT_MAPS).toEqual(['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta']);
     // Chapter 4, Open War (log v53): its own table, as chapter 3's.
-    expect(CHAPTER_FOUR_MAPS).toEqual(['coves']);
+    expect(CHAPTER_FOUR_MAPS).toEqual(['coves', 'delta']);
     expect(arc('kesh').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'kesh-first-turn', 'kesh-long-reach', 'kesh-apex-shells', 'kesh-hook-periscope', 'kesh-two-banks',
       'kesh-bunch', 'kesh-strafe-the-turn', 'kesh-outer-bank', 'kesh-crossfire', 'kesh-round-the-hook',
@@ -234,6 +238,11 @@ describe('a campaign run has no encounter layer', () => {
     expect(arc('coves').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends',
       'coves-periscope', 'coves-crossfire', 'coves-north-shore', 'coves-facing', 'coves-every-cove',
+    ]);
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): the same.
+    expect(arc('delta').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
+      'delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends',
+      'delta-island', 'delta-lock-fork', 'delta-every-branch', 'delta-funnel', 'delta-burns',
     ]);
     for (const map of REBUILT_MAPS) {
       expect(hasEncounters(map), map).toBe(true);
@@ -314,12 +323,16 @@ describe('every beat is legal on its map at its wave', () => {
           // enemy's dark bank (the signature's `beside`), an enemy of the
           // map's chapter or before, from the signature's first wave.
           const gun = 'base' in b.from && b.kind === 'siege' && foesUpTo(chapterOf(e.map)).includes('siege') && w >= (sig?.from ?? 99) && !!sig?.beside?.includes(b.from.base);
-          expect(inTable || extra || plane || truck || sower || tow || gun, where).toBe(true);
+          // Log v57 (the Delta): an Incendiary Missile out of a base, an
+          // enemy of the map's chapter or before, from its signature's first
+          // wave (the wave's own new enemies come as incendiaries from then).
+          const firebomb = 'base' in b.from && b.kind === 'cloud' && foesUpTo(chapterOf(e.map)).includes('cloud') && MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.foe === 'cloud' && w >= (MAP_SIGNATURE[e.map as keyof typeof MAP_SIGNATURE]?.from ?? 99);
+          expect(inTable || extra || plane || truck || sower || tow || gun || firebomb, where).toBe(true);
           if (gun) expect(m.bases[(b.from as { base: number }).base], where).toBeDefined();
           else if ('base' in b.from) {
             const base = m.bases[b.from.base];
             expect(base, where).toBeDefined();
-            expect(base.kinds, where).toContain(b.kind);
+            if (!firebomb) expect(base.kinds, where).toContain(b.kind);
           } else if ('road' in b.from) {
             expect(m.roads.popups[b.from.road], where).toBeDefined();
             expect(b.kind, where).toBe('rocketTruck');
@@ -756,7 +769,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
       for (const kind of ['cluster', 'supersonic']) expect(count(on, kind), `seed ${seed} ${kind}`).toBe(Math.max(0, count(off, kind) - 1));
     }
     // Only rev 4's chapter 2 encounters do it.
-    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves'], e.id).toContain(e.map);
+    for (const e of ENCOUNTERS.filter((x) => x.replaces.extras)) expect(['island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'sowers', 'rigs', 'dreadnought', 'lantern', 'coves', 'delta'], e.id).toContain(e.map);
   });
 
   // Chapter 2's Saltgate Canal (docs/design/v3-ch2-saltgate.md, log v38):
@@ -884,6 +897,13 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     const fired = arc('coves').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.fire))).map((a) => a.wave);
     expect(fired).toEqual([4, 7, 8, 10]);
     for (const e of ENCOUNTERS) for (const b of e.beats.filter((x) => x.fire)) expect(e.map === 'coves' && b.kind === 'fastboat' && 'base' in b.from && MAPS.coves.bases[b.from.base].cove, e.id).toBe(true);
+    // The Delta (log v57): the switch is the stake in every wave from 2 (a
+    // beat at the branch it is set to), and its incendiaries burst on that
+    // branch's mouth in waves 4 and 6-10.
+    const switched = arc('delta').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'switch'))).map((a) => a.wave);
+    expect(switched).toEqual([2, 4, 6, 7, 8, 9, 10]);
+    const burned = arc('delta').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.kind === 'cloud' && b.aim === 'switch'))).map((a) => a.wave);
+    expect(burned).toEqual([4, 6, 7, 8, 9, 10]);
     expect(at('kesh')).toEqual([]);
     expect(MAPS.kesh.posts).toBeUndefined();
     // Dreadnought Pass (log v51): the battleship passes on the map's own
@@ -1645,6 +1665,75 @@ describe('the Black Strait\'s boss rounds (log v52, MAP_BOSS): the Bombardment w
   });
 });
 
+describe('the Delta\'s boss rounds (log v57, MAP_BOSS): the Burning Delta rises; a rev 3 log and the campaign play the Escort Run as it was', () => {
+  const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
+  it('burning oil closes the fork\'s branches (more of them each round) and the raid comes at the ships on the way in; no guarded heavy', () => {
+    // (Seed DELTA_BOSS_SEED: the tryhard bot plays all three rounds there;
+    // tools/v3/delta/probe-boss.ts.)
+    const off = playMimic('delta', DELTA_BOSS_SEED, opts);
+    const old = playMimic('delta', DELTA_BOSS_SEED, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    // Before the layer: the event's own heavy in its rings of guards.
+    expect(old.game.eventLog).toEqual(off.game.eventLog);
+    expect(old.log.commands).toEqual(off.log.commands);
+    for (const e of off.game.eventLog) {
+      expect(e.id).toBe('escort-run');
+      expect(e.sent.heavy ?? 0).toBeGreaterThan(0);
+    }
+    const on = playMimic('delta', DELTA_BOSS_SEED, { ...opts, encounters: VER('v1') });
+    const rounds = MAP_BOSS.delta!.rounds!;
+    expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['escort-run', 1], ['escort-run', 2], ['escort-run', 3]]);
+    const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
+    expect(done.length).toBeGreaterThanOrEqual(2);
+    for (const e of done) {
+      // No heavy and no guard: the fire and the raid are the boss.
+      expect(e.sent.heavy ?? 0).toBe(0);
+      expect(e.sent.guard ?? 0).toBe(0);
+      expect((e.sent.drone ?? 0) + (e.sent.guided ?? 0) + (e.sent.ballistic ?? 0), `round ${e.run}`).toBeGreaterThan(0);
+    }
+    // Rising: as many branches burning or more, and more of the raid.
+    const burns = (r: (typeof rounds)[number]) => r.burn!.reduce((a, b) => a + b.n, 0);
+    const raid = (r: (typeof rounds)[number]) => r.fire!.reduce((a, f) => a + (f.count ?? 1), 0);
+    for (let k = 1; k < rounds.length; k++) {
+      expect(burns(rounds[k]), `round ${k + 1}`).toBeGreaterThan(burns(rounds[k - 1]));
+      expect(raid(rounds[k]), `round ${k + 1}`).toBeGreaterThan(raid(rounds[k - 1]));
+    }
+    for (const r of rounds) for (const b of r.burn!) expect(b.at, 'each burn lit first').toBeGreaterThanOrEqual(DELTA_BURN.warn);
+    expect(DELTA_BURN.warn, 'warned at least 2.5 s ahead (m-reads)').toBeGreaterThanOrEqual(2.5);
+    roundLengths(done);
+    // The boss has a name of its own; the event's id stays.
+    expect(eventName('escort-run', 'delta', ENCOUNTER_REV)).toBe('Burning Delta');
+    expect(eventName('escort-run', 'delta', 3)).toBe('Escort Run');
+    expect(eventName('escort-run', 'delta')).toBe('Escort Run');
+  }, 120_000);
+
+  it('a burn lights the mouth of the switch\'s branch first, then sets it alight; a ship sailing into it is burned, and the bots throw the switch off it', () => {
+    const g = createGame('delta', 3, 11);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    for (let i = 0; i < 40 / DT && !g.event; i++) step(g, DT);
+    expect(g.event?.id).toBe('escort-run');
+    const lane = switchLane(g);
+    const mouth = branchMouth(g, lane);
+    // Lit first (no fire yet), then burning at the mouth of the switch's branch.
+    const fireAt = () => g.foe.marks.filter((m) => m.kind === 'fire' && Math.hypot(m.x - mouth.x, m.y - mouth.y) < 1);
+    let lit = false;
+    // (The first round's calm, EVENT.bossCalm, comes before its clock starts.)
+    for (let i = 0; i < 40 / DT && !fireAt().length; i++) {
+      step(g, DT);
+      lit ||= g.fx.some((f) => f.kind === 'text' && f.text === 'FIRE');
+    }
+    expect(lit).toBe(true);
+    expect(fireAt().length).toBe(1);
+    expect(fireAt()[0].dur).toBe(MAP_BOSS.delta!.rounds![0].burn![0].dur);
+    expect(branchBurning(g, lane)).toBe(true);
+    // The other branches are open, and a bot sends the ships to one of them.
+    expect(g.map.fork!.lanes.filter((l) => l !== lane).every((l) => !branchBurning(g, l))).toBe(true);
+    expect(quieterBranch(g)).not.toBeNull();
+    expect(quieterBranch(g)).not.toBe(g.forkLane % g.map.fork!.lanes.length);
+  }, 60_000);
+});
+
 describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)', () => {
   const kinds = (g: Game, kind: string) => g.queue.filter((l) => l.at < 1e8 && l.kind === kind);
   it('the Island: from wave 6 the wave\'s new enemies are attack helicopters; its debut waves 2-5 are as they were', () => {
@@ -2010,6 +2099,57 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(g.baseDown[st[1]]).toBe(true);
   });
 
+  it('the Delta (log v57): from wave 4 the wave\'s new enemies are incendiary missiles at the switch\'s branch; the campaign and the shared wave keep the planner\'s own', () => {
+    expect(MAP_SIGNATURE.delta).toMatchObject({ from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' });
+    let fires = 0;
+    for (let w = 1; w <= 10; w++)
+      for (const seed of [1, 2, 3]) {
+        const on = createGame('delta', seed, w);
+        applyEncounters(on, VER('v1'));
+        const shared = createGame('delta', seed, w);
+        applyEncounters(shared, { ...VER('v1'), only: [] });
+        const camp = createGame('delta', seed, w);
+        const drawn = on.queue.filter((l) => l.at < 1e8 && isFoe(l.kind) && !l.enc);
+        if (w >= 4) {
+          // The wave's own new enemies: incendiaries, every one at the switch.
+          for (const l of drawn) expect([l.kind, l.aim], `wave ${w}`).toEqual(['cloud', 'switch']);
+          fires += drawn.length;
+        }
+        for (const l of [...camp.queue, ...shared.queue]) expect(l.aim, `wave ${w}`).not.toBe('switch');
+      }
+    // (Less the ones an encounter stands in for: its own incendiaries.)
+    expect(fires).toBeGreaterThanOrEqual(9);
+    expect(signatureOf('delta', 3, { rev: 4 })).toBeUndefined();
+    expect(signatureOf('delta', 4, { rev: 3 })).toBeUndefined();
+    expect(signatureOf('delta', 4, { rev: 4, only: [] })).toBeUndefined();
+  });
+
+  it('an incendiary at the switch flies for the mouth of the switch\'s branch and bursts there; throwing the switch sends the next ships round it', () => {
+    const g = createGame('delta', 5, 4);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = 999;
+    g.queue = [{ at: 9999, kind: 'drone', base: 0 }];
+    g.raiderQueue = [];
+    for (let i = 0; i < 6 / DT; i++) step(g, DT);
+    const lane = switchLane(g);
+    const mouth = branchMouth(g, lane);
+    // On its branch, past the river the three share.
+    expect(mouth.x).toBeGreaterThan(g.map.fork!.x + 150);
+    g.queue.unshift({ at: g.waveT, kind: 'cloud', base: 3, aim: 'switch' });
+    step(g, DT);
+    const fb = g.threats.find((t) => t.kind === 'cloud')!;
+    expect(fb).toBeDefined();
+    for (let i = 0; i < 40 / DT && !fb.dead; i++) step(g, DT);
+    expect(fb.dead).toBe(true);
+    const fire = g.foe.marks.find((m) => m.kind === 'fire')!;
+    expect(Math.hypot(fire.x - mouth.x, fire.y - mouth.y)).toBeLessThan(12);
+    expect(branchBurning(g, lane)).toBe(true);
+    // Thrown, the next ships take a branch that is not burning.
+    while (switchLane(g) === lane) throwSwitch(g);
+    expect(branchBurning(g, switchLane(g))).toBe(false);
+  });
+
   it('the Black Strait (log v52): from wave 4 the wave\'s new enemies are siege guns beside the dark bank; the campaign and the shared wave keep the planner\'s own', () => {
     expect(MAP_SIGNATURE.lantern).toMatchObject({ from: 4, foe: 'siege', foeShare: 1, beside: [4, 5] });
     let guns = 0;
@@ -2307,7 +2447,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     // the Battery (its waves 3-4 rated well, its wave 1 the busiest of any
     // map) on wave 2 only.
     const maps = new Set(ENCOUNTERS.filter((e) => BUSY[e.id]).map((e) => e.map));
-    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
+    expect([...maps].sort()).toEqual(['archipelago', 'battery', 'behemoth', 'coves', 'delta', 'dreadnought', 'gauntlet', 'harbor', 'island', 'kesh', 'lantern', 'marrow', 'needle', 'rigs', 'saltgate', 'sowers', 'strait']);
     const busyOn = (map: Encounter['map'], w: number) => encountersFor(map, w).some((e) => e.beats.some((b) => b.filler));
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('battery', w))).toEqual([2]);
     // Sowers' Reach (log v48): every one of waves 1-6.
@@ -2324,6 +2464,11 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // The Coves (log v53): waves 1-6, out of its one drone silo (the far north-west).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('coves', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    // The Delta (log v57): waves 1-6 out of the island's west silo, the far
+    // one of its drone silos; wave 1 one late string.
+    expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('delta', w))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(BUSY['delta-three-ways'].length).toBe(1);
+    for (const id of Object.keys(BUSY).filter((k) => k.startsWith('delta-'))) for (const b of BUSY[id]) expect(b.from, id).toEqual({ base: 3 });
     for (const map of [...maps].filter((m) => m !== 'battery')) {
       expect(busyOn(map, 1), `${map} wave 1`).toBe(true);
       expect([1, 2, 3].filter((w) => busyOn(map, w)).length, map).toBeGreaterThanOrEqual(2);
