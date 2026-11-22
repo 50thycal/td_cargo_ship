@@ -6400,7 +6400,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // strike", from wave 4. At each wave's low water so many of the wave's own
   // clusters (then shells, as clusters) fly off the middle silo at the crowd
   // in the deep channel, one for one, the Low Water's own.
-  tide: { from: 4, ebb: [0, 1, 1, 1, 1, 1, 1], ebbBase: 1 },
+  tide: { from: 4, ebb: [0, 1, 1, 1, 1, 1, 0], ebbBase: 1 },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -6965,7 +6965,7 @@ export const TIDE_BOSS_ROUNDS: BossRound[] = [
   {
     ebb: { at: 2, low: 22 },
     strikes: [
-      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }] },
+      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }, { base: 3, kind: 'drone', count: 3, gap: 0.35 }] },
       { at: 12, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 3, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 2, kind: 'supersonic', count: 1 }] },
       { at: 18, warn: 2.5, from: [{ base: 0, kind: 'drone', count: 5, gap: 0.35 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 1 }] },
     ],
@@ -6973,7 +6973,7 @@ export const TIDE_BOSS_ROUNDS: BossRound[] = [
   {
     ebb: { at: 2, low: 26 },
     strikes: [
-      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 1 }] },
+      { at: 5, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8 }, { base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'ballistic', count: 1 }, { base: 3, kind: 'drone', count: 4, gap: 0.35 }] },
       { at: 13, warn: 2.5, from: [{ base: 1, kind: 'cluster', count: 1 }, { base: 2, kind: 'supersonic', count: 1 }, { base: 0, kind: 'drone', count: 6, gap: 0.35 }] },
       { at: 20, warn: 2.5, from: [{ base: 0, kind: 'guided', count: 2, gap: 0.8 }, { base: 3, kind: 'drone', count: 5, gap: 0.35 }] },
     ],
