@@ -8,7 +8,9 @@ import { CONVOY_REV, POLICY_ORDER, type ConvoyPolicy, type ConvoySetup } from '.
 import { ENCOUNTER_REV, hasEncounters, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, READY_TO_TEST, cardChanges, cardRev, cardVersion, labCard, labRound, mapCardId, mapProduction, productionText, type LabCard, type LabLength, type LabMix, type ReadyToTest } from '../data/lab';
-import { CHAPTERS, MAPS, MAP_ORDER, chapterOf } from '../data/maps';
+import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
+import { labArmoryIsAuto, labArmoryText, rangeText } from '../data/labArmory';
+import { loadLabArmory } from './labArmory';
 import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
 import type { LabResult, PlayLog } from '../sim/playlog';
@@ -262,9 +264,10 @@ export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchPa
   const rev = cardRev(card.id);
   // A map card says which encounter version of the map it played (round 11).
   const variant = map ? { variant: version } : {};
+  // Every live weapon in the drafts (log v64: "have all cards unlocked").
   const lab: LabSetup = full
-    ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) }, ...variant }
-    : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}), ...variant };
+    ? { card: card.id, rev, round: LAB_ROUND, plays: 'full', config: { convoy: s.convoy ?? 'current', encounters: encounters?.rev ?? 0, production: isProduction(card, s) }, ...variant, allCards: true }
+    : { card: card.id, length: s.length, mix: s.mix, rev, round: LAB_ROUND, ...(map ? { plays: 'slice' as const } : {}), ...variant, allCards: true };
   return { setup: s, full, lab, convoy, encounters };
 }
 
@@ -311,6 +314,10 @@ export interface HubHandlers {
   report: () => void;
   /** The Map & Convoy Lab's viewer (ui/mapLab.ts). */
   analytics: () => void;
+  /** The Test Lab's Armory for a chapter (the editor). */
+  armory: (chapter: number) => void;
+  /** A map's card: its Armory, what changed and why, its history. */
+  notes: (map: MapId) => void;
 }
 
 /** Ready to test: has the player played this build? A finished run (won,
@@ -361,6 +368,7 @@ export function labHub(p: LabProgress, h: HubHandlers, logs: readonly PlayLog[] 
 /** Ready to test: the newest builds, unplayed first, each with its line and
  *  a big Play. */
 function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
+  const arms = loadLabArmory();
   const box = el('section', 'v3-lab-ready v3-cic-panel');
   box.dataset.labReady = '1';
   const remembered = readyRemembered();
@@ -387,7 +395,19 @@ function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
     play.dataset.readyPlay = r.map;
     play.innerHTML = played ? '<span aria-hidden="true">✓</span> Played · again' : '<span aria-hidden="true">▶</span> Play';
     play.setAttribute('aria-label', `${played ? 'Play again' : 'Play'}: ${MAPS[r.map].name}`);
-    card.append(top, el('p', 'v3-ready-note', r.note), play);
+    // The map's Test Lab Armory and its notes (what changed, its history).
+    const ch = chapterOf(r.map);
+    const arm = button('', 'v3-ready-arm', () => h.armory(ch));
+    arm.dataset.readyArmory = r.map;
+    arm.append(el('b', '', '⚓'), el('span', '', labArmoryText(arms, ch)));
+    arm.title = `Test Lab Armory, chapter ${ch} (${rangeText(ch)})`;
+    arm.setAttribute('aria-label', `Test Lab Armory, chapter ${ch}: ${labArmoryText(arms, ch)}. Edit`);
+    const notes = button('Notes', 'v3-ready-notes', () => h.notes(r.map));
+    notes.dataset.readyNotes = r.map;
+    notes.setAttribute('aria-label', `Notes: ${MAPS[r.map].name}, what changed and why`);
+    const foot = el('div', 'v3-ready-foot');
+    foot.append(arm, notes);
+    card.append(top, el('p', 'v3-ready-note', r.note), foot, play);
     list.append(card);
   }
   box.append(head, list);
@@ -407,6 +427,7 @@ function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers)
   const head = el('header', 'v3-cic-head');
   head.append(el('i', 'v3-led'), el('b', '', 'All maps'), el('span', 'v3-cic-meta', `${tested}/${mapCards.length} tested`), el('i', 'v3-lab-maps-blurb', MAP_CARD_PLAYS));
   const rows = el('div', 'v3-lab-chapters');
+  const arms = loadLabArmory();
   for (const ch of CHAPTERS) {
     const row = el('div', 'v3-lab-chapter');
     row.dataset.chapter = String(ch.n);
@@ -434,9 +455,19 @@ function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers)
         tile.append(plays);
         cell.append(tile);
       }
+      // The map's notes: what changed, why, what to look for, its history.
+      const info = button('i', 'v3-lab-tile v v3-lab-info', () => h.notes(id));
+      info.dataset.mapNotes = id;
+      info.setAttribute('aria-label', `Notes: ${MAPS[id].name}`);
+      info.title = `${MAPS[id].name}: what changed and why`;
+      cell.append(info);
       grid.append(cell);
     }
-    row.append(label, grid);
+    // The chapter's Test Lab Armory, on show before any of its maps starts.
+    const arm = button('', 'v3-lab-arm', () => h.armory(ch.n));
+    arm.dataset.labArmory = String(ch.n);
+    arm.append(el('b', '', `⚓ Armory · ${rangeText(ch.n)}${labArmoryIsAuto(arms, ch.n) ? ' · auto' : ''}`), el('span', '', labArmoryText(arms, ch.n)), el('i', '', 'Edit'));
+    row.append(label, grid, arm);
     rows.append(row);
   }
   box.append(head, rows);

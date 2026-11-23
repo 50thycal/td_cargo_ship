@@ -8015,6 +8015,416 @@ a.v3-lab-page {
   }
 }
 
+/* ---- The Test Lab's Armory and map notes (ui/labArmory.ts) ---- */
+
+/* A chapter's Armory, under its row of maps on the hub. */
+.v3-lab-arm {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 3px 8px;
+  border: 1px dashed var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.55);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-lab-arm b {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.v3-lab-arm span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.v3-lab-arm i {
+  flex: none;
+  margin-left: auto;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.v3-lab-arm:hover,
+.v3-lab-arm:focus-visible {
+  border-color: var(--gold);
+}
+
+/* A map's notes key, beside its tile. */
+.v3-lab-tile.v3-lab-info {
+  width: 22px;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Ready to test: the chapter's Armory and the notes, above Play. */
+.v3-ready-foot {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.v3-ready-arm,
+.v3-ready-notes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.6);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.v3-ready-arm {
+  flex: 1;
+}
+
+.v3-ready-arm b {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--gold);
+}
+
+.v3-ready-arm span {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.v3-ready-notes {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* The editor. */
+.v3-lab-armory {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 860px);
+}
+
+.v3-lab-arm-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.v3-lab-arm-tab {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.8);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.v3-lab-arm-tab b {
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+.v3-lab-arm-tab-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v3-lab-arm-tab small {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gold);
+}
+
+.v3-lab-arm-tab.on {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, rgb(4 11 17 / 0.9));
+}
+
+.v3-lab-bays {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v3-lab-bay {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--card-color) 45%, var(--steel-hi));
+  border-top: 3px solid var(--card-color);
+  border-radius: 4px;
+  background: var(--cic-fill);
+}
+
+.v3-lab-bay-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.v3-lab-bay-head b {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--card-color);
+}
+
+.v3-lab-bay-eff {
+  font-size: 11.5px;
+  color: var(--ink);
+  min-height: 2.6em;
+}
+
+.v3-lab-bay-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.v3-lab-pick {
+  padding: 4px 7px;
+  border: 1px solid var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.8);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.v3-lab-pick.on {
+  border-color: var(--card-color);
+  background: color-mix(in srgb, var(--card-color) 18%, rgb(4 11 17 / 0.9));
+  color: var(--ink);
+}
+
+.v3-lab-bay-levels {
+  gap: 4px;
+}
+
+.v3-lab-bay-levels .v3-lab-seg {
+  padding: 4px 2px;
+  border-radius: 6px;
+  font-size: 11.5px;
+}
+
+.v3-lab-arm-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.v3-lab-arm-foot .v3-hint {
+  flex: 1;
+  margin: 0;
+}
+
+.v2-btn.v3-lab-arm-reset {
+  flex: none;
+}
+
+/* A map's notes. */
+.v3-map-notes {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 8px;
+  width: min(100%, 900px);
+  align-items: start;
+}
+
+.v3-notes-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v3-notes-what,
+.v3-notes-why,
+.v3-notes-look {
+  margin: 0 2px 5px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.v3-notes-why,
+.v3-notes-look {
+  color: var(--muted);
+}
+
+.v3-notes-why b,
+.v3-notes-look b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.v3-notes-look b {
+  color: var(--gold);
+}
+
+.v3-notes-edit {
+  margin-left: auto;
+}
+
+.v3-notes-arm-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.v3-notes-arm-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-left: 3px solid var(--card-color);
+  border-radius: 2px;
+  background: rgb(4 11 17 / 0.7);
+  font-size: 11px;
+}
+
+.v3-notes-arm-chip small {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--card-color);
+}
+
+.v3-notes-arm-chip span {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.v3-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v3-notes-list li {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--cic-line);
+}
+
+.v3-notes-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.v3-notes-meta {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 40px;
+  font-family: var(--mono);
+}
+
+.v3-notes-meta b {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.v3-notes-meta small {
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.v3-notes-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.v3-notes-text small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.v2-btn.v3-notes-play {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .v3-lab-arm {
+    grid-column: 1 / -1;
+  }
+  .v3-lab-bays,
+  .v3-map-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v3-lab-arm-tab-name {
+    display: none;
+  }
+}
+
+@media (max-height: 430px) {
+  .v3-lab-arm {
+    padding: 2px 8px;
+  }
+  .v3-lab-bay {
+    padding: 6px;
+    gap: 4px;
+  }
+  .v3-lab-bay-eff {
+    min-height: 0;
+  }
+}
+
 /* ---- In-game keyboard (palate-keys, ui/keys.ts) --------------------------- */
 /* The command-room colours for the shared touch keyboard. The selector is
    heavier than the package's own dark theme so these always win. */

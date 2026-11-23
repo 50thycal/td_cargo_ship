@@ -356,7 +356,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 62 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 64 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -527,7 +527,11 @@ try {
   const onIsland = await debutTitles('island', 'essential', 'attackHeli');
   check(onIsland.includes('New on The Narrows: Attack helicopter'), `the Island's card: the Attack Helicopter's debut card, though met before, at Call-outs: Essential (${onIsland.join(' | ')})`);
   const onStrait = await debutTitles('strait', 'all', 'attackHeli');
-  check(!onStrait.some((t) => /^new/i.test(t)), `the Strait's card (not its debut): no card for an enemy met before (${onStrait.join(' | ')})`);
+  // Only the helicopter's own debut is under test. At Call-outs: All the
+  // Strait may still give a NEW card to what it fires (its missile, "NEW:
+  // Helicopter missile") or to the map's own wave-1 enemies, depending on
+  // timing, so ignore those.
+  check(!onStrait.some((t) => /^new/i.test(t) && /helicopter(?! missile)/i.test(t)), `the Strait's card (not its debut): no card for an enemy met before (${onStrait.join(' | ')})`);
   const off = await debutTitles('island', 'off', 'torpedoSub');
   check(!off.some((t) => /^new/i.test(t)), `Call-outs: Off: no debut card (${off.join(' | ')})`);
   await page.evaluate(() => localStorage.removeItem('straitwatch.v3.callouts'));

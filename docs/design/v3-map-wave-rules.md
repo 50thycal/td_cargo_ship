@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-All 20 maps are rebuilt. New to play: Saltgate’s Missile Truck parade (your redo). Done: the old convoy controls are gone (#229). Building: the map using the full width (the empty left strip goes), and the Test Lab Armory editor (levels by chapter), every card unlocked and each map’s change history. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.
+All 20 maps are rebuilt. New in the Test Lab: Saltgate’s Missile Truck parade (#230), and the Armory editor (levels by chapter), every card unlocked and each map’s notes with its change history. Done: old convoy controls gone (#229). Next: the map using the full width. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.

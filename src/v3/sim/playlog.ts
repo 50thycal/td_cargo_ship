@@ -510,11 +510,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      synchronized pairs, volleys at once, the rolling barrage), 3 hits a
  *      truck (4 before). A Saltgate card log before v62 no longer replays
  *      to the same game; the campaign and the other maps play as they
- *      did. */
-export const LOG_VERSION = 62;
+ *      did.
+ *  64: the Test Lab's Armory and all cards (the player: "modify my armory
+ *      ... based on where the map is in the chapters ... and then have all
+ *      cards unlocked so I can test it out"): a Test Lab run's `lab` can
+ *      say `allCards`, and its drafts then deal every live weapon whatever
+ *      the map's chapter (game.ts draftChapterPool); a map card plays the
+ *      chapter's Test Lab Armory (data/labArmory.ts) in place of the
+ *      player's own, recorded as ever in the log's `armory`, with `lab.
+ *      armory` saying which chapter's range set it. A log without
+ *      `allCards` plays as it did (the map-lab baseline replays
+ *      unchanged); one with it needs this build. (62 is the
+ *      Saltgate parade, built alongside; 63 was never shipped.) */
+export const LOG_VERSION = 64;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [62];
+export const LOG_REPLAYS: readonly number[] = [64];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
