@@ -18,18 +18,19 @@
         "sub": "my convoy-defense prototype"
       },
       {
-        "from": 3.1,
-        "to": 7.6,
+        "from": 3,
+        "to": 7.5,
         "headline": "Tap a missile to intercept it",
         "sub": "drones, ballistic, guided"
       },
       {
-        "from": 8.2,
-        "to": 13.2,
+        "from": 8.1,
+        "to": 13.1,
         "headline": "Goal: get the cargo ships across",
         "sub": null
       }
-    ]
+    ],
+    "fps": 60
   },
   {
     "name": "railgun",
