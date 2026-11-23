@@ -111,24 +111,49 @@ try {
     await page.waitForTimeout(60);
   };
 
-  await tapKey('@ now');
-  await tapKey('too hard');
+  const setText = (v) => page.evaluate((v) => {
+    const t = document.querySelector('.v3-note-text');
+    t.value = v;
+    t.setSelectionRange(v.length, v.length);
+    t.dispatchEvent(new Event('input', { bubbles: true }));
+  }, v);
+  const keyLabels = () => page.$$eval('.pk-row-hot .pk-key-label', (els) => els.map((e) => e.textContent.trim()));
+
+  // The note strip: what the player writes most, from their own notes.
+  check(JSON.stringify(await keyLabels()) === JSON.stringify(['🎤', '✓ Fix', 'Note', 'Make', 'Fun', 'Overlap', 'Audit', 'Hard']), `the note hotkeys (${(await keyLabels()).join(' ')})`);
+
+  await tapKey('Hard');
+  await tapKey('Make');
   await tapKey('t');
   await tapKey('h');
   await tapKey('e');
   await tapKey('space');
   await swipeUp('q', 21); // swipe up on a letter: its digit
   const f1 = await field();
-  check(/^Wave \d+, \d+ s: too hard\. the 1$/i.test(f1.value), `hotkeys and keys typed into the note (${JSON.stringify(f1.value)})`);
-  await swipeUp('fun', 22);
+  check(/^Hard but doable\. Make sure the 1$/i.test(f1.value), `hotkeys and keys typed into the note (${JSON.stringify(f1.value)})`);
+  await swipeUp('Fun', 22);
   const f2 = await field();
-  check(f2.value.endsWith('boring: '), `swipe up on a hotkey gives its opposite (${JSON.stringify(f2.value.slice(-12))})`);
+  check(f2.value.endsWith('That was a clutch moment. '), `swipe up on a hotkey gives its alternate (${JSON.stringify(f2.value.slice(-26))})`);
 
-  // The words of the game are not "corrected".
-  await tapKey('bs');
-  await page.evaluate(() => { const t = document.querySelector('.v3-note-text'); t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })); });
-  for (const ch of 'torpedo ') await tapKey(ch === ' ' ? 'space' : ch);
-  check((await field()).value.toLowerCase() === 'torpedo ', `a game word survives autocorrect (${JSON.stringify((await field()).value)})`);
+  // Suggestions follow the player's own phrasing: after "good", "overall".
+  await setText('');
+  for (const ch of 'good ') await tapKey(ch === ' ' ? 'space' : ch);
+  await page.waitForTimeout(250);
+  const preds = await page.$$eval('.pk-pred', (els) => els.map((e) => e.textContent.trim()));
+  check(preds.includes('overall'), `after "good", the bar offers "overall" (${preds.join(' | ')})`);
+
+  // The Fix key: typos and dictation mishears in one tap.
+  await setText('The missle did damange to Dual weld, cna you see it');
+  await tapKey('✓ Fix');
+  await page.waitForTimeout(100);
+  check((await field()).value === 'The missile did damage to Dual Wield, can you see it', `the Fix key corrects the note (${JSON.stringify((await field()).value)})`);
+  await page.evaluate(() => document.execCommand('undo'));
+  check((await field()).value.startsWith('The missle'), 'a fix is one undo step');
+
+  // The game's words are not "corrected"; the keyboard's undo/return are untouched.
+  await setText('');
+  for (const ch of 'torpedo frigate ') await tapKey(ch === ' ' ? 'space' : ch);
+  check((await field()).value.toLowerCase() === 'torpedo frigate ', `game words survive autocorrect (${JSON.stringify((await field()).value)})`);
   await page.screenshot({ path: `${SHOT_DIR}/02-typed.png` });
 
   // Save: the note lands in the log, the dialog closes and the keyboard goes.
@@ -140,6 +165,18 @@ try {
   check((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--kb-h').trim())) === '0px', '--kb-h is back to 0');
   check(!(await page.evaluate(() => !!document.querySelector('.typing'))), 'typing mode is off');
   await page.screenshot({ path: `${SHOT_DIR}/03-after.png` });
+
+  // A Test Lab verdict note box gets the verdict strip.
+  const verdict = await page.evaluate(async () => {
+    const box = document.createElement('textarea');
+    box.className = 'v3-lab-note';
+    document.querySelector('#app').append(box);
+    await new Promise((r) => setTimeout(r, 50));
+    const set = box.dataset.pkHotkeys;
+    box.remove();
+    return set;
+  });
+  check(verdict === 'verdict', `a Test Lab note box takes the verdict keys (${verdict})`);
 
   // Desktop keeps its real keyboard.
   const desk = await browser.newPage({ viewport: { width: 1280, height: 720 } });
