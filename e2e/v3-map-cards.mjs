@@ -10,7 +10,7 @@
 // - its log says it is a full production run, and how it was set up;
 // - the setup sheet marks the production setup, Reset returns to it, and
 //   the Quick slice (the old short lab run) is still there;
-// - Next up and the bare link (?lab=map-harbor) open the same setup;
+// - a map's tile and the bare link (?lab=map-harbor) open the same setup;
 // - round 11's scorecard: Done on The Strait shows it above the verdict
 //   (no boss row on wave 1), Skip folds it, its chips land in the log
 //   (v28, `labResult.score`, `variant: 'v1'`); a lost run on wave 7 offers
@@ -462,24 +462,18 @@ try {
   const wonScore = { rev: 4, intensity: 4, boss: 5, vs: 'better', vsCard: 'map-gauntlet', best: 12, weakest: 10, waves: [{ n: 1, fun: 2 }, { n: 9, fun: 5, intensity: 5 }, { n: 10, fun: 3 }], bestSuggested: 9, weakestSuggested: 1 };
   check(won.end === 'won' && JSON.stringify(won.score) === JSON.stringify(wonScore) && JSON.stringify(won.entryScore) === JSON.stringify(won.score), `a won run's boss score, its comparison with The Gauntlet, the waves rated on the draft and what was suggested land in the log and on the device (${JSON.stringify(won.score)})`);
 
-  // ---- Next up opens the same setup ----
-  const ids = await page.evaluate(() => [...document.querySelectorAll('[data-card]')].map((c) => c.dataset.card));
-  await page.evaluate((ids) => {
-    const p = JSON.parse(localStorage.getItem('straitwatch.v3.lab'));
-    const e = { verdict: 'keep', tags: [], note: '', waves: 1, ended: 'done', stats: { came: 0, killed: 0, early: 0, harm: 0, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] }, at: '2026-11-13T07:00:00Z', rev: 99, round: 10 };
-    for (const id of ids) if (id !== 'map-gauntlet') p.results[id] = [e];
-    localStorage.setItem('straitwatch.v3.lab', JSON.stringify(p));
-  }, ids);
+  // ---- The hub's tile opens the same setup (the Tools round: Next up is
+  // gone with the old testing; the map's tile, Ready to test and the link
+  // open it) ----
   await page.goto(`${BASE_URL}/v3.html?seed=7`, { waitUntil: 'networkidle' });
   await page.tap('[data-lab]');
   await page.waitForSelector('[data-screen="lab"]');
-  const next = await page.evaluate(() => document.querySelector('[data-lab-next] small')?.textContent);
-  // The UI overhaul: Next up is in the hub's Tools drawer.
-  await page.tap('[data-lab-tools-open]');
-  await page.tap('[data-lab-next]');
+  check(!(await page.$('[data-lab-next], [data-lab-five]')), 'the hub has no Next up or Play 5 (the Tools round)');
+  await page.locator('[data-card="map-gauntlet"]').scrollIntoViewIfNeeded();
+  await page.tap('[data-card="map-gauntlet"]');
   await page.waitForSelector('.playing.lab-on');
   const s4 = await runState(page);
-  check(next === 'The Gauntlet' && s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.length === 0 && s4.enc === 4, `Next up (${next}) opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
+  check(s4.map === 'gauntlet' && s4.wave === 1 && s4.plays === 'full' && s4.policy === 'tactical' && s4.cmds.length === 0 && s4.enc === 4, `The Gauntlet's tile opens the full map under its production setup (${JSON.stringify({ wave: s4.wave, policy: s4.policy, cmds: s4.cmds, enc: s4.enc })})`);
 
   // ---- The bare link ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=7`, { waitUntil: 'networkidle' });

@@ -61,7 +61,7 @@ import { FOES, FOES_BUILT, RED_FOES, foeDebutTag, newOnTag, foesInChapter, type 
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
-import { LAB_ROUND, cardRev, labCard, mapCardId, type LabCard } from '../data/lab';
+import { LAB_CARDS, LAB_ROUND, cardRev, labCard, mapCardId, type LabCard } from '../data/lab';
 import { endingOutcome, eventFor, lastWave } from '../sim/events';
 import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, bossShort, eventName, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
@@ -75,6 +75,7 @@ import {
   labPauseHead,
   labHub,
   labLogs,
+  labToolsSheet,
   openLabTools,
   labReport,
   labSetupSheet,
@@ -2897,54 +2898,76 @@ export class App {
   // -------------------------------------------------------------------------
   // The Test Lab (docs/design/v3-test-lab.md)
 
-  /** The hub: the checklist, Next up, Play 5, the length, the report. */
-  private showLab(): void {
+  /** The hub: Ready to test on top, the maps by chapter, and the Tools
+   *  sheet over it (the Tools round). `tools`: open with Tools up (back
+   *  from one of its entries). */
+  private showLab(tools = false): void {
     this.leaveRun();
     const p = this.labProgress;
     // A test left mid-run: Continue, at the top of the hub.
     const saved = loadRun<RunUI>();
-    // The head's Tools key opens the drawer of everything past the maps.
-    const tools = button('', 'v3-top-btn v3-lab-tools-btn', () => openLabTools(this.overlay));
-    tools.innerHTML = `${chromeSvg('gear', 16)}<span>Tools</span>`;
-    tools.dataset.labToolsOpen = '1';
+    // The head's Tools key opens the Tools sheet in place.
+    const key = button('', 'v3-top-btn v3-lab-tools-btn', () => openLabTools(this.overlay));
+    key.innerHTML = `${chromeSvg('gear', 16)}<span>Tools</span>`;
+    key.dataset.labToolsOpen = '1';
+    key.setAttribute('aria-haspopup', 'dialog');
+    key.setAttribute('aria-expanded', String(tools));
     this.showOverlay('v3-lab', [
-      this.screenHead('Test Lab', () => this.showMenu(), tools, roundTitle()),
+      this.screenHead('Test Lab', () => this.showMenu(), key, roundTitle()),
       ...(saved?.kind === 'lab' ? [this.continueEntry(saved)] : []),
-      labHub(p, {
-        start: (id) => this.startLab(id),
-        playFive: () => {
-          p.queue = nextCards(p, 5).map((c) => c.id);
-          saveLabProgress(p);
-          if (p.queue.length) this.startLab(p.queue[0]);
+      labHub(p, { start: (id) => this.startLab(id), notes: (map) => this.showMapNotes(map) }, [...labLogs(), ...localLogs()]),
+    ]);
+    // The sheet sits over the whole screen, beside the panel (not in it:
+    // the hub under it keeps its scroll).
+    const last = labLogs()[0];
+    this.overlay.append(
+      labToolsSheet(
+        p,
+        {
+          armory: () => this.showLabArmory(this.labArmoryChapter),
+          callouts: {
+            level: this.alerts.level,
+            set: (id) => {
+              this.alerts.level = id;
+              saveCalloutLevel(id);
+            },
+          },
+          report: () => this.showLabReport(),
+          send: (out) => {
+            out.textContent = 'Sending…';
+            void flushUnsent().then((n) => (out.textContent = n ? `Sent ${n} log${n === 1 ? '' : 's'}.` : "Every log has been sent (or this device can't reach the log store right now)."));
+          },
+          download: last ? () => downloadLog(last) : undefined,
+          analytics: () => this.showMapLab(),
         },
-        setLength: (l) => {
-          p.length = l;
-          if (this.labLast) this.labLast = { ...this.labLast, length: l };
-          saveLabProgress(p);
-          this.showLab();
-        },
-        report: () => this.showLabReport(),
-        analytics: () => this.showMapLab(),
-        armory: (ch) => this.showLabArmory(ch),
-        notes: (map) => this.showMapNotes(map),
-      }, [...labLogs(), ...localLogs()]),
+        tools,
+      ),
+    );
+    if (tools) openLabTools(this.overlay);
+  }
+
+  /** The chapter the Test Lab Armory last showed (it opens there again). */
+  private labArmoryChapter = 1;
+
+  /** The Test Lab's Armory, a chapter at a time (data/labArmory.ts), from
+   *  Tools; Back is the hub with Tools open. */
+  private showLabArmory(chapter: number): void {
+    this.leaveRun();
+    this.labArmoryChapter = chapter;
+    this.showOverlay('v3-labarmory', [
+      this.screenHead('Test Lab Armory', () => this.showLab(true), undefined, 'Tools · strength by chapter'),
+      labArmoryEditor(chapter, (ch) => (this.labArmoryChapter = ch)),
     ]);
   }
 
-  /** The Test Lab's Armory, a chapter at a time (data/labArmory.ts). */
-  private showLabArmory(chapter: number, back: () => void = () => this.showLab()): void {
-    this.leaveRun();
-    this.showOverlay('v3-labarmory', [this.screenHead('Test Lab Armory', back, undefined, 'Strength by chapter'), labArmoryEditor(chapter)]);
-  }
-
   /** A map's card in the Test Lab: what changed and why, what to look for,
-   *  its history, and the Armory it will play with; Play starts its card. */
+   *  its history, and (one line, read only) the Armory it will play with;
+   *  Play starts its card. */
   private showMapNotes(map: MapId): void {
     this.leaveRun();
-    const again = () => this.showMapNotes(map);
     this.showOverlay('v3-mapnotes', [
       this.screenHead(MAPS[map].name, () => this.showLab(), undefined, `Test Lab · chapter ${chapterOf(map)}`),
-      mapNotesSheet(map, { play: () => this.startLab(mapCardId(map)), armory: () => this.showLabArmory(chapterOf(map), again) }),
+      mapNotesSheet(map, { play: () => this.startLab(mapCardId(map)) }),
     ]);
   }
 
@@ -2956,7 +2979,7 @@ export class App {
     this.leaveRun();
     const seen = new Set<string>();
     const logs = [...labLogs(), ...localLogs().reverse()].filter((l) => !seen.has(l.id) && !!seen.add(l.id));
-    const head = this.screenHead('Map Analytics', () => this.showLab(), undefined, 'Test Lab');
+    const head = this.screenHead('Map Analytics', () => this.showLab(true), undefined, 'Test Lab · Tools');
     this.showOverlay('v3-maplab-screen', [head, el('p', 'v3-hint', 'Opening…')]);
     // Its own chunk, fetched when it is first opened: nothing of it is in
     // the game a player downloads.
@@ -3075,7 +3098,9 @@ export class App {
     const strip = played !== undefined ? waveStrip(g.history, g.lost, g.wave, this.rec?.watch.moments ?? [], played, g.t) : undefined;
     const variant = g.lab.setup.variant;
     const queued = p.queue.filter((id) => id !== run.card.id);
-    const next = queued.length ? labCard(queued[0]) : nextCards(p, 1, run.card.id)[0];
+    // Save · next stays among the card's own kind (the Tools round: a map
+    // card never leads on to the old enemy, weapon or event cards).
+    const next = queued.length ? labCard(queued[0]) : nextCards(p, LAB_CARDS.length, run.card.id).find((c) => c.kind === run.card.kind);
     // The sheet drawn again for the same test (a wave's end coming in under
     // it) keeps what the player has picked and typed.
     if (this.labDraft?.run !== run) this.labDraft = { run, draft: newVerdictDraft(p, run.card.id) };
@@ -3172,7 +3197,7 @@ export class App {
   private showLabReport(): void {
     this.leaveRun();
     this.showOverlay('v3-lab-report', [
-      this.screenHead('Session report', () => this.showLab(), undefined, 'Test Lab'),
+      this.screenHead('Session report', () => this.showLab(true), undefined, 'Test Lab · Tools'),
       labReport(
         this.labProgress,
         (log, step) => {
@@ -4915,10 +4940,16 @@ export class App {
     const vv = window.visualViewport;
     const w = vv?.width ?? window.innerWidth;
     // The in-app keyboard (keys.ts) isn't the phone's: the page is not
-    // resized for it, so what it leaves visible is the rest of the screen.
+    // resized for it. It sits on the layout viewport's bottom edge, so what
+    // is left to type in is the visible part of the screen above its top
+    // edge (the Tools round: measured against the keyboard's top, not by
+    // taking its height off the visible height, so a panned or shrunk view
+    // never puts the box or its buttons under it).
     const kb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb-h')) || 0;
-    const h = (vv?.height ?? window.innerHeight) - kb;
-    this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
+    const top = vv?.offsetTop ?? 0;
+    const bottom = Math.min(top + (vv?.height ?? window.innerHeight), kb > 0 ? window.innerHeight - kb : Infinity);
+    const h = Math.max(0, bottom - top);
+    this.root.style.setProperty('--vv-top', `${Math.round(top)}px`);
     this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
     this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);
     this.root.style.setProperty('--vv-h', `${Math.round(h)}px`);

@@ -7,9 +7,10 @@
 import { CONVOY_REV, POLICY_ORDER, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
 import { ENCOUNTER_REV, hasEncounters, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
-import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, READY_TO_TEST, cardChanges, cardRev, cardVersion, labCard, labRound, mapCardId, mapProduction, productionText, type LabCard, type LabLength, type LabMix, type ReadyToTest } from '../data/lab';
+import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_START_WAVE, MAP_CARD_PLAYS, READY_TO_TEST, cardChanges, cardRev, cardVersion, labCard, labRound, mapCardId, mapProduction, productionText, type LabCard, type LabLength, type LabMix, type ReadyToTest } from '../data/lab';
 import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
-import { labArmoryIsAuto, labArmoryText, rangeText } from '../data/labArmory';
+import { labArmoryIsAuto } from '../data/labArmory';
+import { CALLOUT_LEVELS, type CalloutLevel } from './alerts';
 import { loadLabArmory } from './labArmory';
 import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
@@ -309,14 +310,7 @@ export function roundTitle(): string {
 
 export interface HubHandlers {
   start: (id: string) => void;
-  playFive: () => void;
-  setLength: (l: LabLength) => void;
-  report: () => void;
-  /** The Map & Convoy Lab's viewer (ui/mapLab.ts). */
-  analytics: () => void;
-  /** The Test Lab's Armory for a chapter (the editor). */
-  armory: (chapter: number) => void;
-  /** A map's card: its Armory, what changed and why, its history. */
+  /** A map's card: what changed and why, its history, the Armory it plays. */
   notes: (map: MapId) => void;
 }
 
@@ -349,26 +343,23 @@ function rememberReady(keys: Set<string>): void {
   }
 }
 
-/** Whether the hub's Tools drawer is open (kept while the game is open, so
- *  coming back from a test finds it as it was left). */
-let toolsOpen = false;
-
-/** The Test Lab's hub (UI overhaul, docs/design/v3-ui-overhaul.md): Ready
- *  to test on top, every map card below in a compact grid by chapter, and
- *  the rest (events, enemies, weapons, combos, Next up, Play 5, the
- *  report, Map Analytics) in the Tools drawer. `logs`: the play logs on the
- *  device, for Ready to test's ticks. */
+/** The Test Lab's hub (UI overhaul, docs/design/v3-ui-overhaul.md; the
+ *  Tools round, docs/design/v3-playtest-fixes.md): Ready to test on top and
+ *  the rebuilt maps by chapter below, each with its notes. Nothing else:
+ *  the old event, enemy, weapon and combo cards are gone from the hub (their
+ *  `?lab=` links still open them), and the lab's settings are in the Tools
+ *  sheet (labToolsSheet). `logs`: the play logs on the device, for Ready to
+ *  test's ticks. */
 export function labHub(p: LabProgress, h: HubHandlers, logs: readonly PlayLog[] = []): HTMLElement {
   const body = el('div', 'v3-lab-hub');
-  const status = new Map(LAB_CARDS.map((c) => [c.id, labStatus(p, c.id)]));
-  body.append(readyPanel(h, logs), mapGrid(p, status, h), toolsDrawer(p, status, h));
+  const status = new Map(LAB_CARDS.filter((c) => c.kind === 'map').map((c) => [c.id, labStatus(p, c.id)]));
+  body.append(readyPanel(h, logs), mapGrid(p, status, h));
   return body;
 }
 
-/** Ready to test: the newest builds, unplayed first, each with its line and
- *  a big Play. */
+/** Ready to test: the newest builds, unplayed first, each with its line,
+ *  its notes and a big Play. */
 function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
-  const arms = loadLabArmory();
   const box = el('section', 'v3-lab-ready v3-cic-panel');
   box.dataset.labReady = '1';
   const remembered = readyRemembered();
@@ -395,19 +386,14 @@ function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
     play.dataset.readyPlay = r.map;
     play.innerHTML = played ? '<span aria-hidden="true">✓</span> Played · again' : '<span aria-hidden="true">▶</span> Play';
     play.setAttribute('aria-label', `${played ? 'Play again' : 'Play'}: ${MAPS[r.map].name}`);
-    // The map's Test Lab Armory and its notes (what changed, its history).
-    const ch = chapterOf(r.map);
-    const arm = button('', 'v3-ready-arm', () => h.armory(ch));
-    arm.dataset.readyArmory = r.map;
-    arm.append(el('b', '', '⚓'), el('span', '', labArmoryText(arms, ch)));
-    arm.title = `Test Lab Armory, chapter ${ch} (${rangeText(ch)})`;
-    arm.setAttribute('aria-label', `Test Lab Armory, chapter ${ch}: ${labArmoryText(arms, ch)}. Edit`);
+    // The map's notes (what changed, its history) beside Play. The Armory
+    // it plays is a setting in Tools (the Tools round).
     const notes = button('Notes', 'v3-ready-notes', () => h.notes(r.map));
     notes.dataset.readyNotes = r.map;
     notes.setAttribute('aria-label', `Notes: ${MAPS[r.map].name}, what changed and why`);
     const foot = el('div', 'v3-ready-foot');
-    foot.append(arm, notes);
-    card.append(top, el('p', 'v3-ready-note', r.note), foot, play);
+    foot.append(notes, play);
+    card.append(top, el('p', 'v3-ready-note', r.note), foot);
     list.append(card);
   }
   box.append(head, list);
@@ -418,7 +404,7 @@ const STATUS_WORD: Record<LabStatus, string> = { tested: 'tested', changed: 'cha
 
 /** Every map card in a compact grid, a row a chapter: tap a map to play its
  *  full production run; a reference map's other encounter versions are the
- *  small v2 and v3 keys beside it. */
+ *  small v2 and v3 keys beside it, and "i" opens its notes. */
 function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers): HTMLElement {
   const box = el('section', 'v3-lab-maps v3-cic-panel');
   box.dataset.section = 'map';
@@ -427,7 +413,6 @@ function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers)
   const head = el('header', 'v3-cic-head');
   head.append(el('i', 'v3-led'), el('b', '', 'All maps'), el('span', 'v3-cic-meta', `${tested}/${mapCards.length} tested`), el('i', 'v3-lab-maps-blurb', MAP_CARD_PLAYS));
   const rows = el('div', 'v3-lab-chapters');
-  const arms = loadLabArmory();
   for (const ch of CHAPTERS) {
     const row = el('div', 'v3-lab-chapter');
     row.dataset.chapter = String(ch.n);
@@ -463,118 +448,160 @@ function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers)
       cell.append(info);
       grid.append(cell);
     }
-    // The chapter's Test Lab Armory, on show before any of its maps starts.
-    const arm = button('', 'v3-lab-arm', () => h.armory(ch.n));
-    arm.dataset.labArmory = String(ch.n);
-    arm.append(el('b', '', `⚓ Armory · ${rangeText(ch.n)}${labArmoryIsAuto(arms, ch.n) ? ' · auto' : ''}`), el('span', '', labArmoryText(arms, ch.n)), el('i', '', 'Edit'));
-    row.append(label, grid, arm);
+    row.append(label, grid);
     rows.append(row);
   }
   box.append(head, rows);
   return box;
 }
 
-/** Tools: the rest of the lab, folded away for later. */
-function toolsDrawer(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers): HTMLElement {
-  const count = (cards: LabCard[], s: LabStatus) => cards.filter((c) => status.get(c.id) === s).length;
-  const done = count(LAB_CARDS, 'tested');
-  const retestAll = count(LAB_CARDS, 'changed');
-  const tools = el('details', 'v3-lab-tools v3-cic-panel');
-  tools.dataset.labTools = '1';
-  tools.open = toolsOpen;
-  tools.addEventListener('toggle', () => {
-    toolsOpen = tools.open;
+// ---- Tools: the lab's settings, in a sheet over the hub ----------------------
+
+// The player, 2026-11-23: "you didn't need to add a button for all of them.
+// You can make it a setting in the tools. Also overhaul the tools option
+// there too: it just takes you to the bottom of the page there, and you can
+// remove all that old testing down there." The head's Tools key opens this
+// sheet in place (the hub does not scroll); the Test Lab Armory is one entry
+// in it.
+
+export interface LabToolsHandlers {
+  /** The Test Lab Armory editor (ui/labArmory.ts). */
+  armory: () => void;
+  /** Call-outs (the game's own setting, shared with Settings). */
+  callouts: { level: CalloutLevel; set: (level: CalloutLevel) => void };
+  /** Today's tests: verdicts, notes, rewatch. */
+  report: () => void;
+  /** Send the logs not sent yet; says how it went in `out`. */
+  send: (out: HTMLElement) => void;
+  /** Save the newest test's log as a file (absent: none on the device). */
+  download?: () => void;
+  /** The Map & Convoy Lab's viewer (ui/mapLab.ts). */
+  analytics: () => void;
+}
+
+const CALLOUT_NAME: Record<CalloutLevel, string> = { all: 'All', essential: 'Essential', off: 'Off' };
+
+/** One entry of the Tools sheet: a name, a line under it, and a chevron. */
+function toolEntry(name: string, line: string, onClick: () => void): HTMLButtonElement {
+  const b = button('', 'v3-tool', onClick);
+  const text = el('span', 'v3-tool-text');
+  text.append(el('b', '', name), el('small', '', line));
+  b.append(text, el('i', 'v3-tool-go'));
+  return b;
+}
+
+/** The Tools sheet: over the hub, opened by the head's Tools key and closed
+ *  by ✕, a tap outside it or Escape. `open`: shown at once (back from one
+ *  of its entries). */
+export function labToolsSheet(p: LabProgress, h: LabToolsHandlers, open = false): HTMLElement {
+  const sheet = el('div', 'v3-lab-tools');
+  sheet.dataset.labTools = '1';
+  sheet.hidden = !open;
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', 'Test Lab tools');
+  const shut = () => closeLabTools(sheet.parentElement ?? document);
+  const scrim = el('div', 'v3-lab-tools-scrim');
+  scrim.addEventListener('click', shut);
+  const panel = el('section', 'v3-lab-tools-panel v3-cic-panel');
+  const head = el('header', 'v3-cic-head');
+  const close = button('✕', 'v3-text-btn v3-lab-tools-close', shut);
+  close.dataset.labToolsClose = '1';
+  close.setAttribute('aria-label', 'Close Tools');
+  head.append(el('i', 'v3-led ok'), el('b', '', 'Tools'), el('span', 'v3-cic-meta', 'Test Lab settings'), close);
+  sheet.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') shut();
   });
-  const kinds = LAB_SECTIONS.filter((s) => s.kind !== 'map');
-  const sum = el('summary', 'v3-cic-head');
-  sum.append(el('i', `v3-led${retestAll ? ' warn' : ''}`), el('b', '', 'Tools'), el('span', 'v3-cic-meta', `${kinds.map((s) => s.name).join(' · ')} · Next up · report · analytics`), el('i', 'v3-lab-tools-caret'));
-  tools.append(sum);
-  const list = el('div', 'v3-lab-list');
-  for (const s of kinds) {
-    const cards = LAB_CARDS.filter((c) => c.kind === s.kind);
-    const sec = el('details', 'v3-lab-sec');
-    sec.open = s.kind === 'event' || s.kind === 'enemy' || s.kind === 'combo';
-    sec.dataset.section = s.kind;
-    const retest = count(cards, 'changed');
-    const secSum = el('summary');
-    secSum.append(el('b', '', s.name), el('span', '', `${count(cards, 'tested')} of ${cards.length}${retest ? ` · ${retest} to retest` : ''}`), el('i', '', s.blurb));
-    sec.append(secSum);
-    for (const c of cards) {
-      const st = status.get(c.id)!;
-      const r = currentEntry(p, c.id);
-      const row = button('', `v3-lab-row${st === 'tested' ? ' done' : st === 'changed' ? ' changed' : ''}`, () => h.start(c.id));
-      row.dataset.card = c.id;
-      row.dataset.status = st;
-      const text = el('span', 'v3-lab-row-text');
-      text.append(el('b', '', c.name));
-      if (st === 'changed') {
-        // Changed since the last test: what changed, and the old verdict,
-        // dimmed (it was about a different version).
-        const what = changedSince(p, c.id);
-        text.append(el('small', 'v3-lab-what', what.length ? `New: ${what.join(' · ')}` : 'Changed since your last test'));
-        text.append(el('small', 'v3-lab-old', oldLine(olderEntries(p, c.id)[0])));
-        row.append(text, el('span', 'v3-lab-chip changed', 'CHANGED · TEST AGAIN'));
-      } else {
-        text.append(el('small', '', r?.note ? `“${r.note}”` : c.look));
-        row.append(text, chip(r));
+
+  // Setup: the Armory every map card plays, and the call-outs.
+  const setup = el('div', 'v3-tool-group');
+  setup.dataset.toolGroup = 'setup';
+  setup.append(el('h3', 'v3-tool-head', 'Setup'));
+  const arms = loadLabArmory();
+  const set = CHAPTERS.filter((c) => !labArmoryIsAuto(arms, c.n)).map((c) => c.n);
+  const armory = toolEntry('Armory', `Strength by chapter · ${set.length ? `set for ch ${set.join(', ')}` : 'all Auto'}`, h.armory);
+  armory.dataset.labToolsArmory = '1';
+  const calls = el('div', 'v3-tool v3-tool-row');
+  const callText = el('span', 'v3-tool-text');
+  callText.append(el('b', '', 'Call-outs'), el('small', '', 'Notices in a run · same as Settings'));
+  const seg = el('div', 'v3-lab-len v3-tool-seg');
+  seg.setAttribute('role', 'radiogroup');
+  seg.setAttribute('aria-label', 'Call-outs');
+  for (const id of CALLOUT_LEVELS) {
+    const on = id === h.callouts.level;
+    const b = button('', `v3-lab-seg small${on ? ' on' : ''}`, () => {
+      h.callouts.set(id);
+      for (const o of seg.querySelectorAll<HTMLButtonElement>('[data-lab-callouts]')) {
+        const now = o.dataset.labCallouts === id;
+        o.classList.toggle('on', now);
+        o.setAttribute('aria-checked', String(now));
       }
-      sec.append(row);
-    }
-    list.append(sec);
+    });
+    b.dataset.labCallouts = id;
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(on));
+    b.append(el('b', '', CALLOUT_NAME[id]));
+    seg.append(b);
   }
-  const side = el('div', 'v3-lab-side');
-  const round = el('div', 'v3-lab-round');
-  round.dataset.labRound = String(LAB_ROUND);
-  round.append(el('b', '', `${retestAll} to retest`), el('span', '', `${count(LAB_CARDS, 'untested')} untested`));
-  round.classList.toggle('none', !retestAll);
-  const bar = el('div', 'v3-lab-progress');
-  bar.append(el('span', '', `${done} of ${LAB_CARDS.length} tested this round`));
-  const track = el('span', 'v3-lab-track');
-  const fill = el('i');
-  fill.style.width = `${Math.round((100 * done) / LAB_CARDS.length)}%`;
-  track.append(fill);
-  bar.append(track);
-  const next = nextCards(p, 1)[0];
-  const go = button('', 'v2-btn primary v3-lab-next', () => next && h.start(next.id));
-  go.dataset.labNext = '1';
-  go.append(el('span', '', next ? 'Next up' : 'All tested'), el('small', '', next ? next.name : 'Pick any card to test again'));
-  if (next && labStatus(p, next.id) === 'changed') go.append(el('small', 'v3-lab-next-why', 'changed · test again'));
-  if (!next) go.disabled = true;
-  const five = button(p.queue.length ? `Play 5 (${p.queue.length} left)` : 'Play 5', 'v2-btn v3-lab-five', h.playFive);
-  five.dataset.labFive = '1';
-  const len = el('div', 'v3-lab-len');
-  len.setAttribute('role', 'group');
-  len.setAttribute('aria-label', 'Test length');
-  for (const l of ['quick', 'full'] as LabLength[]) {
-    const b = button('', `v3-lab-seg${p.length === l ? ' on' : ''}`, () => h.setLength(l));
-    b.dataset.labLength = l;
-    b.setAttribute('aria-pressed', String(p.length === l));
-    b.append(el('b', '', l === 'quick' ? 'Quick' : 'Full'), el('small', '', l === 'quick' ? `${LAB_LENGTH.quick} waves` : `${LAB_LENGTH.full} waves, ~10 min`));
-    len.append(b);
-  }
-  const report = button(`Session report${p.session.ids.length ? ` (${p.session.ids.length})` : ''}`, 'v2-btn v3-lab-report-btn', h.report);
+  calls.append(callText, seg);
+  setup.append(armory, calls);
+
+  // Logs: today's report, send them, save one as a file.
+  const logs = el('div', 'v3-tool-group');
+  logs.dataset.toolGroup = 'logs';
+  logs.append(el('h3', 'v3-tool-head', 'Logs'));
+  const n = p.session.ids.length;
+  const report = toolEntry('Session report', n ? `${n} tested today · notes, rewatch` : 'Nothing tested yet today', h.report);
   report.dataset.labReport = '1';
-  const analytics = button('Map Analytics', 'v2-btn v3-lab-analytics', h.analytics);
+  const out = el('small', 'v3-tool-out');
+  out.dataset.labSendOut = '1';
+  const send = toolEntry('Send logs now', 'Upload the logs not sent yet', () => h.send(out));
+  send.dataset.labSend = '1';
+  const dl = toolEntry('Download last log', h.download ? 'The newest test, as a file' : 'No test on this device yet', () => h.download?.());
+  dl.dataset.labDownload = '1';
+  dl.disabled = !h.download;
+  logs.append(report, send, dl, out);
+
+  // More: the viewer and the review page.
+  const more = el('div', 'v3-tool-group');
+  more.dataset.toolGroup = 'more';
+  more.append(el('h3', 'v3-tool-head', 'More'));
+  const analytics = toolEntry('Map Analytics', 'Runs on this device, as layers on the map', h.analytics);
   analytics.dataset.maplabOpen = '1';
-  const page = el('a', 'v2-btn v3-lab-page', 'Feedback page ↗');
+  const page = el('a', 'v3-tool v3-lab-page');
   page.href = LAB_PAGE_URL;
   page.target = '_blank';
   page.rel = 'noopener';
-  side.append(round, bar, go, five, len, report, analytics, page, el('p', 'v3-hint', 'Tests start at wave 5 (an event at its own wave: 11, or a bonus event after wave 6) with three weapons that suit the card. A map card plays the whole map from wave 1, as the campaign does, set up ready to test. Setup in play changes them. Nothing here counts toward records.'));
-  const inner = el('div', 'v3-lab-tools-body');
-  inner.append(list, side);
-  tools.append(inner);
-  return tools;
+  page.dataset.labPage = '1';
+  const pageText = el('span', 'v3-tool-text');
+  pageText.append(el('b', '', 'Feedback page ↗'), el('small', '', 'What you marked, and what is left'));
+  page.append(pageText);
+  more.append(analytics, page);
+
+  const body = el('div', 'v3-lab-tools-body');
+  body.append(setup, logs, more);
+  panel.append(head, body);
+  sheet.append(scrim, panel);
+  return sheet;
 }
 
-/** Open the hub's Tools drawer and bring it into view (the screen head's
- *  Tools key). */
+/** Open the Tools sheet in place (the screen head's Tools key). */
 export function openLabTools(root: ParentNode): void {
-  const tools = root.querySelector<HTMLDetailsElement>('[data-lab-tools]');
-  if (!tools) return;
-  tools.open = true;
-  toolsOpen = true;
-  tools.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  const sheet = root.querySelector<HTMLElement>('[data-lab-tools]');
+  if (!sheet) return;
+  sheet.hidden = false;
+  root.querySelector<HTMLElement>('[data-lab-tools-open]')?.setAttribute('aria-expanded', 'true');
+  sheet.querySelector<HTMLElement>('[data-lab-tools-close]')?.focus({ preventScroll: true });
+}
+
+/** Close it (✕, a tap outside, Escape). */
+export function closeLabTools(root: ParentNode): void {
+  const sheet = root.querySelector<HTMLElement>('[data-lab-tools]');
+  if (!sheet || sheet.hidden) return;
+  sheet.hidden = true;
+  const key = root.querySelector<HTMLElement>('[data-lab-tools-open]');
+  key?.setAttribute('aria-expanded', 'false');
+  key?.focus({ preventScroll: true });
 }
 
 // ---- The test on the pause menu ---------------------------------------------
