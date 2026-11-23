@@ -3,18 +3,20 @@
 // Disperse are cut, and Hold is on Sowers' Reach only, where mines drift
 // across the lane). Expects `vite preview` (or dev) at BASE_URL. On a
 // landscape phone, by touch:
-// - under the Tactical policy The Strait has no command: the rail says the
-//   convoy sails itself;
-// - on Sowers' Reach, Hold is a button where the formation button and the
-//   flow slider were, a thumb's size;
+// - under the Tactical policy The Strait has no command: the foot of the rail
+//   shows nothing (round 16: no "CONVOY sails itself");
+// - on Sowers' Reach, Hold is the big button at the foot of the rail, a
+//   thumb's size;
 // - a touch on it gives it and never fires the gun; a touch on the water
 //   beside the rail fires and never gives a command;
 // - Hold (at 874 x 402 and 667 x 375): every ship afloat stops and stays
 //   stopped, the button and the board say so, it ends by itself, and a press
 //   while it cools down is refused with the reason on the screen;
-// - the other policies hide what the map has taken over;
+// - no policy shows a flow slider or a formation button (round 16), and the
+//   setup sheet has no Convoy row;
 // - the test's log carries its policy and commands and replays to the
-//   same telemetry; an ordinary run has none of this.
+//   same telemetry; an ordinary campaign or Free Play run has none of this,
+//   and no slider, formation button or note either.
 // Fails on any page error.
 //
 // Usage:  npm run build && npm run preview -- --port 4173 &  node e2e/v3-convoy.mjs
@@ -171,9 +173,9 @@ try {
   await open(page, 'lab=map-strait&seed=7');
   const strait = await page.evaluate(() => {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
-    return { policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length, note: vis('.v3-convoy-auto'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow]') };
+    return { policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length, foot: document.querySelector('.v3-commands').children.length, note: !!document.querySelector('.v3-convoy-auto'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider') };
   });
-  check(strait.policy === 'tactical' && strait.cmds === 0 && strait.note && !strait.formation && !strait.flow, `The Strait's production setup: no Rush or Disperse; the rail says the convoy sails itself (${JSON.stringify(strait)})`);
+  check(strait.policy === 'tactical' && strait.cmds === 0 && strait.foot === 0 && !strait.note && !strait.formation && !strait.flow, `The Strait's production setup: no command, and the foot of the rail shows nothing (no "sails itself") (${JSON.stringify(strait)})`);
   await page.screenshot({ path: `${OUT_DIR}/strait-tactical-none.png` });
   await open(page, 'lab=map-harbor&seed=7');
   const harbor = await page.evaluate(() => ({ policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length }));
@@ -187,7 +189,7 @@ try {
     const railBox = document.querySelector('.v2-rail-left').getBoundingClientRect();
     return { btns, formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), cls: document.querySelector('.v2-root').className, h: innerHeight, railRight: railBox.right };
   });
-  check(rail.btns.map((b) => b.id).join() === 'hold' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls), `Sowers' Reach under Tactical: Hold is where the formation button and the flow slider were (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
+  check(rail.btns.map((b) => b.id).join() === 'hold' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls) && /convoy-command/.test(rail.cls), `Sowers' Reach under Tactical: Hold is the big button at the foot of the rail (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
   check(rail.btns.every((b) => b.w >= 44 && b.h >= 44 && b.top >= 0 && b.bottom <= rail.h), `the button is a thumb's size and on the screen (${rail.btns.map((b) => `${b.id} ${b.w.toFixed(0)}x${b.h.toFixed(0)}`).join(', ')})`);
   check(/Hold: Every ship stops where it is \(up to 6 s\)\. Tap again to release\./.test(rail.btns[0].aria ?? ''), `its label says what it does and what it costs ("${rail.btns[0].aria}")`);
 
@@ -249,31 +251,33 @@ try {
   // ---- Sowers' Reach: Hold, and its release ----
   await holdCheck(page, 'sowers-holding');
 
-  // ---- The other policies hide what the map has taken over ----
-  for (const [policy, want] of [['auto', { formation: false, flow: false, note: true }], ['formation', { formation: true, flow: false, note: false }]]) {
+  // ---- No policy shows the old controls (round 16) ----
+  // A comparison link's ?convoy= still plays a policy (for the bots), but the
+  // rail never shows a flow slider, a formation button or a note.
+  for (const policy of ['auto', 'formation', 'current']) {
     await open(page, `lab=map-strait&convoy=${policy}&seed=7`);
     const r = await page.evaluate(() => {
       const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
-      return { formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), note: vis('.v3-convoy-auto'), cmds: document.querySelectorAll('.v3-command').length, policy: window.__v3.game().convoy?.setup.policy };
+      return { formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider'), note: !!document.querySelector('.v3-convoy-auto'), foot: document.querySelector('.v3-commands').children.length, cmds: document.querySelectorAll('.v3-command').length, policy: window.__v3.game().convoy?.setup.policy ?? 'current' };
     });
-    check(r.policy === policy && r.formation === want.formation && r.flow === want.flow && r.note === want.note && r.cmds === 0, `${policy}: ${JSON.stringify(r)}`);
+    check(r.policy === policy && !r.formation && !r.flow && !r.note && r.foot === 0 && r.cmds === 0, `${policy}: nothing in the rail for the convoy (${JSON.stringify(r)})`);
     if (policy === 'auto') await page.screenshot({ path: `${OUT_DIR}/strait-auto.png` });
   }
 
-  // ---- The setup sheet picks the policy ----
+  // ---- The setup sheet: no Convoy row; Reset puts the command back ----
   // (Test Lab round 10: a map card opens under its production setup, which
-  // on Sowers' Reach is Commands; a link asks for today's controls.)
+  // on Sowers' Reach is Commands; a link asks for today's convoy.)
   await open(page, 'lab=map-sowers&convoy=current&seed=7', 1);
   const plain = await page.evaluate(() => ({ convoy: window.__v3.game().convoy, cmds: document.querySelectorAll('.v3-command').length, cls: document.querySelector('.v2-root').className }));
-  check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test asked for today\'s controls plays with them, and no convoy layer at all');
+  check(plain.convoy === null && plain.cmds === 0 && !/convoy-/.test(plain.cls), 'a test asked for today\'s convoy plays with no convoy layer and no command');
   await labMenu(page);
   await page.tap('[data-lab-setup]');
-  await page.waitForSelector('[data-lab-convoy="tactical"]');
-  const opts = await page.evaluate(() => [...document.querySelectorAll('[data-lab-convoy]')].map((b) => b.textContent));
-  await page.tap('[data-lab-convoy="tactical"]');
+  await page.waitForSelector('[data-lab-reset]');
+  const opts = await page.evaluate(() => document.querySelectorAll('[data-lab-convoy]').length);
+  await page.tap('[data-lab-reset]');
   await page.tap('[data-lab-apply]');
   await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical' && document.querySelectorAll('.v3-command').length === 1, null, { timeout: 8000 });
-  check(opts.join(' | ') === "Today's | Automatic | Formations | Commands: Hold", `the setup sheet offers the four policies, naming the map's command (${opts.join(' | ')}); picking one restarts the test under it`);
+  check(opts === 0, `the setup sheet has no Convoy row (round 16); Reset to production setup restarts the test with Hold (${opts} policy buttons)`);
   await page.screenshot({ path: `${OUT_DIR}/sowers-tactical.png` });
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
@@ -303,10 +307,24 @@ try {
   await camp.waitForSelector('.playing');
   const ordinary = await camp.evaluate(() => {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
-    return { convoy: window.__v3.game().convoy, cmds: vis('.v3-command'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), log: 'convoy' in window.__v3.log() };
+    return { convoy: window.__v3.game().convoy, cmds: vis('.v3-command'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider'), note: !!document.querySelector('.v3-convoy-auto'), foot: document.querySelector('.v3-commands').children.length, log: 'convoy' in window.__v3.log() };
   });
-  check(ordinary.convoy === null && !ordinary.cmds && ordinary.formation && ordinary.flow && !ordinary.log, `an ordinary campaign run: no convoy layer, the formation button and flow slider as ever (${JSON.stringify(ordinary)})`);
+  check(ordinary.convoy === null && !ordinary.cmds && !ordinary.formation && !ordinary.flow && !ordinary.note && ordinary.foot === 0 && !ordinary.log, `an ordinary campaign run: no convoy layer, and no flow slider, formation button or note (round 16) (${JSON.stringify(ordinary)})`);
   await camp.close();
+  // Free Play: the same rail.
+  const fp = await browser.newPage(PHONE);
+  await fp.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
+  await fp.waitForSelector('[data-screen="menu"]');
+  await fp.tap('[data-free-play]');
+  await fp.waitForSelector('[data-screen="freeplay"]');
+  await fp.tap('[data-free-start]');
+  await fp.waitForSelector('.playing');
+  const free = await fp.evaluate(() => {
+    const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
+    return { free: !!window.__v3.log().freePlay, convoy: window.__v3.game().convoy, cmds: vis('.v3-command'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider'), note: !!document.querySelector('.v3-convoy-auto'), foot: document.querySelector('.v3-commands').children.length };
+  });
+  check(free.free && free.convoy === null && !free.cmds && !free.formation && !free.flow && !free.note && free.foot === 0, `a Free Play run: no flow slider, formation button or note (round 16) (${JSON.stringify(free)})`);
+  await fp.close();
 } catch (e) {
   fail(e.stack ?? String(e));
 } finally {

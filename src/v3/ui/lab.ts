@@ -4,7 +4,7 @@
 // tested is kept on this device (and every test's verdict also goes into its
 // game log, which reaches Claude).
 
-import { COMMANDS, CONVOY_REV, POLICY_ORDER, mapConvoy, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
+import { CONVOY_REV, POLICY_ORDER, type ConvoyPolicy, type ConvoySetup } from '../data/convoy';
 import { ENCOUNTER_REV, hasEncounters, isVersion, type EncounterSetup, type EncounterVersion } from '../data/encounters';
 import { ABILITIES, ABILITY_MAX, ABILITY_ORDER, type AbilityId } from '../data/abilities';
 import { LAB_CARDS, LAB_EVENT_LEVEL, LAB_EVENT_RUNS, LAB_LENGTH, LAB_ROUND, LAB_SECTIONS, LAB_START_WAVE, MAP_CARD_PLAYS, READY_TO_TEST, cardChanges, cardRev, cardVersion, labCard, labRound, mapCardId, mapProduction, productionText, type LabCard, type LabLength, type LabMix, type ReadyToTest } from '../data/lab';
@@ -734,19 +734,11 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
   const unit = (n: number) => (card.event ? `${n} run${n === 1 ? '' : 's'}` : `${n} waves`);
   slice.append(row('Length', seg(s.length, [['quick', `Quick · ${unit(runs.quick)}`], ['full', `Full · ${unit(runs.full)}`]], (v) => (s.length = v))));
   sheet.append(slice);
-  // The Map & Convoy Lab: who steers the convoy in this test.
-  const cmds = mapConvoy(card.map).commands.map((id) => COMMANDS[id].name).join(' and ');
-  sheet.append(
-    row(
-      'Convoy',
-      seg<ConvoyPolicy>(
-        s.convoy ?? 'current',
-        [['current', "Today's"], ['auto', 'Automatic'], ['formation', 'Formations'], ['tactical', cmds ? `Commands: ${cmds}` : 'Commands (none here)']],
-        (v) => (s.convoy = v),
-        'labConvoy',
-      ),
-    ),
-  );
+  // Round 16: no Convoy row. Its other policies (today's controls,
+  // Automatic, Formations only) differed by the flow slider and the
+  // formation button, which are gone from the rail in every game type; a
+  // test sails its production convoy, with the map's command where it has
+  // one. A comparison link's ?convoy= still picks a policy for the bots.
   // The map's authored encounters in place of part of its shared waves
   // (the three reference maps, waves 1-10; an event card plays its event
   // either way).

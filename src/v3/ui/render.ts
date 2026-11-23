@@ -311,14 +311,14 @@ function drawHeldShips(ctx: CanvasRenderingContext2D, g: Game): void {
 
 /** Each raid's colour and call-out (the tray card in app.ts uses it too). */
 export const RAID_LOOK: Record<RaidTheme, { color: string; name: string; tip: string }> = {
-  swarm: { color: '255,255,255', name: 'SWARM', tip: 'drones · Column hurries ships past' },
-  barrage: { color: '255,180,80', name: 'BARRAGE', tip: 'splash · Spread halves it' },
-  volley: { color: '255,120,230', name: 'VOLLEY', tip: 'guided · Box armour blunts it' },
-  strike: { color: '140,200,255', name: 'AIR STRIKE', tip: 'strafing · split up: Pairs or Spread' },
+  swarm: { color: '255,255,255', name: 'SWARM', tip: 'drones' },
+  barrage: { color: '255,180,80', name: 'BARRAGE', tip: 'splash' },
+  volley: { color: '255,120,230', name: 'VOLLEY', tip: 'guided' },
+  strike: { color: '140,200,255', name: 'AIR STRIKE', tip: 'strafing' },
 };
 
 /** A raid is coming: its bases light up and its type is called out, so the
- *  player has a moment to pick the formation that answers it. */
+ *  player has a moment to get ready for it. */
 function drawRaidWarning(ctx: CanvasRenderingContext2D, g: Game): void {
   const w = raidWarning(g);
   if (!w) return;
