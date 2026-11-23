@@ -39,7 +39,8 @@
     "v3:map-report": "vite-node tools/v3/map-report/report.ts --",
     "v3:combo-sweep": "vite-node tools/v3/combo-sweep/sweep.ts --",
     "build:store": "tsc --noEmit && vite build --mode store",
-    "ios:sync": "npm run build:store && cap sync ios"
+    "ios:sync": "npm run build:store && cap sync ios",
+    "video": "node video/make-clips.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.0",

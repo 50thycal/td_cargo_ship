@@ -11,3 +11,4 @@ assets-src/audio/synth/
 assets-src/audio/uisfx/
 assets-src/audio/stems/
 __pycache__/
+video/out/
