@@ -529,6 +529,16 @@ export class App {
         this.togglePause();
       }
     });
+    // The note boxes' own keyboard (not in the store build, which has no
+    // text boxes).
+    if (!STORE) {
+      void import('./keys').then((k) =>
+        k.startKeys(this.root, {
+          stamp: () => (this.game ? stopWhen(this.game) : null),
+          onChange: () => this.fitTyping(),
+        }),
+      );
+    }
     this.settle();
   }
 
@@ -4858,7 +4868,10 @@ export class App {
   private fitTyping(): void {
     const vv = window.visualViewport;
     const w = vv?.width ?? window.innerWidth;
-    const h = vv?.height ?? window.innerHeight;
+    // The in-app keyboard (keys.ts) isn't the phone's: the page is not
+    // resized for it, so what it leaves visible is the rest of the screen.
+    const kb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb-h')) || 0;
+    const h = (vv?.height ?? window.innerHeight) - kb;
     this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
     this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
     this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);
