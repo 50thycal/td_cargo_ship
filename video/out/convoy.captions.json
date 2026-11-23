@@ -1,0 +1,26 @@
+{
+  "seconds": 17.7,
+  "notes": [
+    "25 threats shot down"
+  ],
+  "captions": [
+    {
+      "from": 0.1,
+      "to": 2.7,
+      "headline": "Straitwatch",
+      "sub": "my convoy-defense prototype"
+    },
+    {
+      "from": 2.9,
+      "to": 7.4,
+      "headline": "Tap a missile to intercept it",
+      "sub": "drones, ballistic, guided"
+    },
+    {
+      "from": 8.3,
+      "to": 13.3,
+      "headline": "Goal: get the cargo ships across",
+      "sub": null
+    }
+  ]
+}

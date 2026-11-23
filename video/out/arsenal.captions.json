@@ -1,0 +1,32 @@
+{
+  "seconds": 21.2,
+  "notes": [
+    "loaded well, airstrike, thermo; 8 shots aimed at 17 threats; 31 threats gone"
+  ],
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 3.6,
+      "headline": "Tap a missile to intercept it",
+      "sub": "normal main gun"
+    },
+    {
+      "from": 4.1,
+      "to": 7.3,
+      "headline": "Gravity Well",
+      "sub": "pulls the swarm together"
+    },
+    {
+      "from": 8.8,
+      "to": 12,
+      "headline": "Air Strike",
+      "sub": "calls in a jet"
+    },
+    {
+      "from": 19.4,
+      "to": 21.2,
+      "headline": "Thermobaric Shell",
+      "sub": "big blast, slow shell"
+    }
+  ]
+}

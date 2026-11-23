@@ -1,0 +1,32 @@
+{
+  "seconds": 17.3,
+  "notes": [
+    "railgun: longest gap 2.2s, 8 beams, 16 threats lined up in the beams, 18 threats gone while loaded"
+  ],
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 3.7,
+      "headline": "Tap a missile to intercept it",
+      "sub": "normal main gun"
+    },
+    {
+      "from": 4.9,
+      "to": 6.2,
+      "headline": "Weapons drop as pickups",
+      "sub": "tap one to grab it"
+    },
+    {
+      "from": 6.3,
+      "to": 9.8,
+      "headline": "Railgun loaded for 15 seconds",
+      "sub": "every tap fires a beam"
+    },
+    {
+      "from": 13.7,
+      "to": 16.7,
+      "headline": "Then it goes back to the normal gun",
+      "sub": null
+    }
+  ]
+}
