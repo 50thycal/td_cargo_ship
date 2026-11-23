@@ -8424,3 +8424,23 @@ a.v3-lab-page {
     min-height: 0;
   }
 }
+
+/* ---- In-game keyboard (palate-keys, ui/keys.ts) --------------------------- */
+/* The command-room colours for the shared touch keyboard. The selector is
+   heavier than the package's own dark theme so these always win. */
+html:root[data-theme='dark'] {
+  --kb-bg: #0a141c;
+  --kb-key: #20384a;
+  --kb-key-action: #132430;
+  --kb-key-down: #33566c;
+  --kb-text: var(--ink);
+  --kb-muted: var(--muted);
+  --kb-accent: var(--accent);
+  --kb-hot: #17607a;
+  --kb-hot-text: #eafcff;
+  --kb-shadow: 0 1px 0 rgb(0 0 0 / 0.55);
+}
+.pk {
+  border-top: 1px solid var(--panel-edge);
+  font-family: var(--mono);
+}
