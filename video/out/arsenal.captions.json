@@ -1,7 +1,7 @@
 {
-  "seconds": 21.2,
+  "seconds": 13.5,
   "notes": [
-    "loaded well, airstrike, thermo; 8 shots aimed at 17 threats; 31 threats gone"
+    "loaded thermo, airstrike, well; 5 shots aimed at 7 threats; 24 threats gone"
   ],
   "captions": [
     {
@@ -13,20 +13,20 @@
     {
       "from": 4.1,
       "to": 7.3,
-      "headline": "Gravity Well",
-      "sub": "pulls the swarm together"
+      "headline": "Thermobaric Shell",
+      "sub": "big blast, slow shell"
     },
     {
-      "from": 8.8,
-      "to": 12,
+      "from": 8,
+      "to": 11.2,
       "headline": "Air Strike",
       "sub": "calls in a jet"
     },
     {
-      "from": 19.4,
-      "to": 21.2,
-      "headline": "Thermobaric Shell",
-      "sub": "big blast, slow shell"
+      "from": 11.8,
+      "to": 13.5,
+      "headline": "Gravity Well",
+      "sub": "pulls the swarm together"
     }
   ]
 }

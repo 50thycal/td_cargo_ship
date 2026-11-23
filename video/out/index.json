@@ -1,10 +1,14 @@
 [
   {
     "name": "convoy",
-    "file": "convoy-9x16.mp4",
-    "seconds": 17.7,
+    "files": [
+      "convoy-9x16.mp4",
+      "convoy-16x9.mp4"
+    ],
+    "speed": "1x",
+    "seconds": 18.8,
     "notes": [
-      "25 threats shot down"
+      "9 threats shot down"
     ],
     "captions": [
       {
@@ -14,14 +18,14 @@
         "sub": "my convoy-defense prototype"
       },
       {
-        "from": 2.9,
-        "to": 7.4,
+        "from": 3.1,
+        "to": 7.6,
         "headline": "Tap a missile to intercept it",
         "sub": "drones, ballistic, guided"
       },
       {
-        "from": 8.3,
-        "to": 13.3,
+        "from": 8.2,
+        "to": 13.2,
         "headline": "Goal: get the cargo ships across",
         "sub": null
       }
@@ -29,33 +33,37 @@
   },
   {
     "name": "railgun",
-    "file": "railgun-9x16.mp4",
-    "seconds": 17.3,
+    "files": [
+      "railgun-9x16.mp4",
+      "railgun-16x9.mp4"
+    ],
+    "speed": "1x",
+    "seconds": 23.8,
     "notes": [
-      "railgun: longest gap 2.2s, 8 beams, 16 threats lined up in the beams, 18 threats gone while loaded"
+      "railgun: longest gap 1.6s, 11 beams, 20 threats lined up in the beams, 17 threats gone while loaded"
     ],
     "captions": [
       {
         "from": 0.3,
-        "to": 3.7,
+        "to": 3.6,
         "headline": "Tap a missile to intercept it",
         "sub": "normal main gun"
       },
       {
-        "from": 4.9,
-        "to": 6.2,
+        "from": 3.7,
+        "to": 5,
         "headline": "Weapons drop as pickups",
         "sub": "tap one to grab it"
       },
       {
-        "from": 6.3,
-        "to": 9.8,
+        "from": 5.2,
+        "to": 8.7,
         "headline": "Railgun loaded for 15 seconds",
         "sub": "every tap fires a beam"
       },
       {
-        "from": 13.7,
-        "to": 16.7,
+        "from": 20.2,
+        "to": 23.2,
         "headline": "Then it goes back to the normal gun",
         "sub": null
       }
@@ -63,10 +71,14 @@
   },
   {
     "name": "arsenal",
-    "file": "arsenal-9x16.mp4",
-    "seconds": 21.2,
+    "files": [
+      "arsenal-9x16.mp4",
+      "arsenal-16x9.mp4"
+    ],
+    "speed": "1x",
+    "seconds": 13.5,
     "notes": [
-      "loaded well, airstrike, thermo; 8 shots aimed at 17 threats; 31 threats gone"
+      "loaded thermo, airstrike, well; 5 shots aimed at 7 threats; 24 threats gone"
     ],
     "captions": [
       {
@@ -78,20 +90,20 @@
       {
         "from": 4.1,
         "to": 7.3,
-        "headline": "Gravity Well",
-        "sub": "pulls the swarm together"
+        "headline": "Thermobaric Shell",
+        "sub": "big blast, slow shell"
       },
       {
-        "from": 8.8,
-        "to": 12,
+        "from": 8,
+        "to": 11.2,
         "headline": "Air Strike",
         "sub": "calls in a jet"
       },
       {
-        "from": 19.4,
-        "to": 21.2,
-        "headline": "Thermobaric Shell",
-        "sub": "big blast, slow shell"
+        "from": 11.8,
+        "to": 13.5,
+        "headline": "Gravity Well",
+        "sub": "pulls the swarm together"
       }
     ]
   }

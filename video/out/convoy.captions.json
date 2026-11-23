@@ -1,7 +1,7 @@
 {
-  "seconds": 17.7,
+  "seconds": 18.8,
   "notes": [
-    "25 threats shot down"
+    "9 threats shot down"
   ],
   "captions": [
     {
@@ -11,14 +11,14 @@
       "sub": "my convoy-defense prototype"
     },
     {
-      "from": 2.9,
-      "to": 7.4,
+      "from": 3.1,
+      "to": 7.6,
       "headline": "Tap a missile to intercept it",
       "sub": "drones, ballistic, guided"
     },
     {
-      "from": 8.3,
-      "to": 13.3,
+      "from": 8.2,
+      "to": 13.2,
       "headline": "Goal: get the cargo ships across",
       "sub": null
     }
