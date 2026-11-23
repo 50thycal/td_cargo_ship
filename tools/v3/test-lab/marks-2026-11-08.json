@@ -1,0 +1,30 @@
+{
+ "about": "The player's marks on the Test Lab design page (https://claude.ai/artifact/SzK5Boc4CrB9wrtMbd7249), read back from its store on 2026-11-08. Notes quoted exactly. Answer choices are 0-based indices into QUESTIONS in lab.mjs. No checklist card was dropped.",
+ "reviews": {
+  "lab-screen": { "verdict": "change", "note": "Yep, that looks like a good plan but make sure that we have this set up so that we can play test out new weapons to new maps things like that. It should be ER kind of play test hub" },
+  "next-up": { "verdict": "change", "note": "Yeah, I like this and just make sure like when you’re doing the plate test lab that it doesn’t feel like a specific wave like from a certain map. It should just be you know basically around designed to test that Pacific wood then to make sure that it works in various scenarios. I would say that each weapon test or each of these browns should last about I would say 5 to 10 minutes but then that window there and then I’ll have like a normal upgrades and everything too once you like, finish a ““ wave but but yeah, hopefully that makes sense doesn’t need to be like a normal level where it starts slow and then ramps up I mean, I could just start at a pretty good pace" },
+  "mix": { "verdict": "approve" },
+  "bar": { "verdict": "approve" },
+  "setup": { "verdict": "approve" },
+  "verdict": { "verdict": "approve" },
+  "evidence": { "verdict": "approve" },
+  "record": { "verdict": "approve" },
+  "bridge": { "verdict": "approve" },
+  "report": { "verdict": "approve" },
+  "combos": { "verdict": "approve" }
+ },
+ "answers": {
+  "tl-where": { "choice": 0, "chosen": "In the game; Claude copies it onto the review page (recommended)" },
+  "tl-length": { "choice": 0, "chosen": "Until you tap Done; after two waves the bar suggests it (recommended)" },
+  "tl-share": { "choice": 0, "chosen": "About a third, with one in the first ten seconds (recommended)" },
+  "tl-scope": { "choice": 2, "chosen": "Everything: all 29 weapons too" },
+  "tl-start": { "choice": 0, "chosen": "Wave 5, with three weapons that suit the card (recommended)" },
+  "tl-access": { "choice": 0, "chosen": "On the menu in test builds, hidden in the App Store build (recommended)" },
+  "tl-notes": { "note": "You can see my notes and the other ones that I saved to just wanna clarify if anything’s contradicting cause I went with a lot of recommendations here but the main thing I think is like I said kind of starting at that good pace so I guess level five is probably fine and then like I said could be about 10 to 15 minutes max but I see you kind of recommended like two rounds so I say either do like a long one or a shorter one maybe you can make that like an option I could see which one I like better but overall I think this plant is good" }
+ },
+ "readings": {
+  "hub": "The Lab is a playtest hub: cards can be an enemy, a weapon, a combo or a map, so new weapons and maps join it later as more cards.",
+  "length": "tl-length (until Done) and the notes (5-15 minutes, a long or short option) agree once there is a Quick (2 waves) / Full (8 waves, about 10 minutes) switch; Done ends a test early either way.",
+  "pace": "Lab waves are their own: a fast, even pace from the first wave (the wave 5 table, not a map's ramp), rotating scenarios (swarms, missiles, aircraft, platforms) so the card meets various situations; normal upgrades between waves."
+ }
+}

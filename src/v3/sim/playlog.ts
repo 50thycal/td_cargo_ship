@@ -1,0 +1,1310 @@
+// PLAYTEST LOGS. Every player input goes through a Recorder, stamped with the
+// sim step it happened before. Because the sim is deterministic, a log (seed +
+// inputs) replays the exact game — so a playtest can be studied input by input,
+// not just from its final numbers. Pure: no DOM, no storage (see
+// platform/playlogStore.ts for where logs are kept).
+
+import type { FormationId } from '../data/formations';
+import type { MapId } from '../data/maps';
+import { ABILITY_MAX, type AbilityId, type CardId } from '../data/abilities';
+import type { ArmoryLevels } from '../data/armory';
+import type { LabSetup, LabStats } from './lab';
+import type { Scorecard } from '../data/scorecard';
+import type { EventRecord } from './events';
+import {
+  applyEncounters,
+  applyFreePlay,
+  applyLab,
+  continueEndless,
+  createGame,
+  pickUpgrade,
+  rerollDraft,
+  freeLevelUp,
+  goldBomb,
+  focusHold,
+  labBring,
+  press,
+  pressMove,
+  release,
+  setFlow,
+  setFormation,
+  step,
+  tap,
+  type FreePlaySetup,
+  type Game,
+  type Phase,
+  type TapResult,
+  type Tempo,
+  type WaveRecord,
+} from './game';
+import { WAVE_NOTE_MAX, Watch, noteContext, type Moment, type PlayNote, type Rating, type Volley, type WaveRating } from './feedback';
+import { attachTelemetry, type TelHeader, type TelMode, type Telemetry } from './telemetry';
+import { applyConvoy, convoyCommand, type CommandResult } from './convoy';
+import type { CommandId, ConvoySetup } from '../data/convoy';
+import type { EncounterSetup } from '../data/encounters';
+
+/** Bump when the log format or sim rules change in a way that breaks replay.
+ *  3: playtest round 3 (raids, carrier strikes, formation traits, 8-HP
+ *  heavies, card swaps) — a v2 log only replays on a round-2 build.
+ *  4: playtest round 4 (subs, trucks, aircraft, the new roster and pickups).
+ *  5: round 5 (frigate holds station, rarer repairs, 1-damage ballistic spill).
+ *  6: round 6 audit (Twin Launch, Quick Reload and frigate reworked; the
+ *     Strike Package is now two jets sweeping the screen).
+ *  7: round 13 (a cleared wave clears the field and refills the racks,
+ *     strike jets destroy subs and trucks, truck roads moved off the bases).
+ *  8: V3 round 2 (weapons drop as pickups and load the gun; no ability
+ *     activations, so no 'a' commands).
+ *  9: V3 round 3 (five weapons replaced: the draft deals a new roster).
+ *  10: V3 round 6 (Cryo out; Shrapnel, Frigates, Thermobaric, Scattergun
+ *      and Boomerang in: twelve weapons, a new draft roster).
+ *  11: V3 round 7 (the Armory's Hull and Supply bays: `armory` can carry a
+ *      hull and a supply upgrade, and Armor Plating draws on its own random
+ *      stream; Battle Group's frigates take new stations).
+ *  12: V3 round 8 (seekers hit for a third and go in threes; Aegis is every
+ *      ship's own interceptors, not domes; Carpet Strike burns its row
+ *      behind the jet, canister by canister).
+ *  (Round 8's dev `tempo` is an optional field: a log without it is a
+ *  real-game log and replays as before, so the version stays.)
+ *  14: the weapons plan, phases 0–1: the Nuke joins the drops (a new roll),
+ *      and the gesture weapons' presses are logged ('d', 'v', 'r').
+ *  15: the lock-in: seven weapons cut, the rest dealt by chapter (a
+ *      chapter's new weapons come first), the four power-ups that became
+ *      boosts leave the campaign's drops.
+ *  16: the enemy build: new enemies join the waves by chapter (each in
+ *      place of a drone swarm, from their own RNG stream), and Free Play
+ *      can choose them (`freePlay.enemies`).
+ *  17: the Test Lab: a lab run carries its card (`lab`), which sets its
+ *      waves, and the verdict given after it (`labResult`, outside replay).
+ *  (The lab's rounds add optional `rev` and `round` to `lab` and
+ *  `labResult`: the sim never reads them, and a log without them is round 1,
+ *  so the version stays.)
+ *  18: special events: a campaign map with one has an 11th wave (its event),
+ *      so a run that won at wave 10 now plays on; the lab's 'b' command on an
+ *      event card starts the event over; `events` records each event met.
+ *      Also Test Lab round 5's weapon notes: Overclock and Time Warp cut, Wild
+ *      Card an active, the Gravity Well by size, the Laser Cutter cuts while
+ *      held, the Grapnel reaches the whole screen, Focus slows only after a
+ *      hold, Bomber Wing hits aircraft and subs as it passes over, Supply Run
+ *      without its magnet, Shield's new levels, Hyper Overdrive's twin shots.
+ *  19: special events, round 7: every map has an event (the three chapter
+ *      finales, Undertow on Dunmar Crossing), the map's event is three runs
+ *      (waves 11 to 13) with the convoy restored before the first, and a
+ *      bonus Siren Field wave after wave 6 when two passives are held. A run
+ *      that won at wave 11 now plays on.
+ *  20: enemies and events, round 8: the Torpedo Sub fires one by one at
+ *      ships, the Scavenger locks pickups instead of taking them, the
+ *      Spotter flies turns and calls shells from off the map, slower
+ *      Hydras, Hydra Bloom without its line, Run the Canal cut down, and
+ *      Beacon Strike in place of Undertow on Dunmar Crossing.
+ *      Also round 8's weapon notes: Focus slows time while its button is
+ *      held ('h' commands, no long-press any more), Overdrive level 2 lasts
+ *      longer instead of refilling, Wild Card's pickup brings a random
+ *      passive from level 2, a thrown Grapnel ball bursts on the first
+ *      threat it hits, idle drones fly home, a new Frigate drop sends a
+ *      fresh set in, and a lab draft always deals the tested weapon first.
+ *  21: round 9 (docs/design/v3-round9-fixes.md): the Scavenger's ring is
+ *      twice as wide (240 px), decoys are told apart from launch (the bots,
+ *      the broadside and the helpers leave them be), the Decoy Storm sends
+ *      twelve swarms with the second half sooner, and the Map & Convoy Lab's
+ *      Hold stops the ships short of its line (convoy rules rev 2).
+ *  22: Test Lab round 11's map scorecard (docs/design/v3-test-lab.md,
+ *      "Scorecard"): a map card's `labResult` can carry `score` (the
+ *      player's scorecard) and `variant` (the map's encounter version), and
+ *      its `lab` a `variant`. Round 11's game changes (Rush and Disperse cut,
+ *      Hold pauses every ship, decoys out of the game, Point Defense at
+ *      munitions only, a Cutter tap fires nothing, every weapon hurts a
+ *      Lure Beacon, Afterburner Rush with no line, Harbor's opening pairs)
+ *      mean a v21 log no longer replays to the same game.
+ *  23: Test Lab round 12's fixes (docs/design/v3-round12-encounter-
+ *      versions.md, "From the round 11 scorecards"): a rocket truck drives
+ *      off at its own speed once it has fired (the Rocket Convoy's and the
+ *      Breakout's sped off at about 7 ×), the Afterburner Rush has a Hydra
+ *      behind each sprint swarm, and the Breakout's trucks come sooner, three
+ *      down each shore road. A v22 log that reaches a boss round no longer
+ *      replays to the same game. (The encounters' own changes are lab only
+ *      and ride in the log's encounter rev.)
+ *  24: Saltgate Canal's locks and frigates (docs/design/v3-saltgate-locks.
+ *      md): a lock admits only what its chamber holds (the next hull waits
+ *      short of the open entry gate) and its entry shuts after LOCK.grace s
+ *      even on a hull in its gateway; frigates berth beside the canal,
+ *      coming in from the sides, and no longer open a gate. A v23 Saltgate
+ *      log that ran above the default flow, in Column, or with Frigate
+ *      Escort no longer replays to the same game. (Every other map plays as
+ *      it did: the map-lab baseline replays unchanged.)
+ *  25: round 13 (docs/design/v3-round13-escorts-munitions-nuke.md): lane
+ *      frigates hold station and sail on tracks clear of every formation's
+ *      files and give way to the convoy (they never run over a ship); a
+ *      munition still on its launcher (a supersonic arming on its rail) is
+ *      no target for anything; the Nuke destroys every enemy on the map,
+ *      off the screen and driving off included. A v24 log with frigates, a
+ *      supersonic or a Nuke no longer replays to the same game.
+ *  26: map rebuild phase 4, The Strait (docs/design/v3-p4-strait.md): the
+ *      Afterburner Rush rises from round to round, each run of the ending
+ *      sending more sprint swarms and Hydras (EV.rush.more). A v25 log that
+ *      reaches The Strait's boss rounds no longer replays to the same game.
+ *      (The Strait's new encounters are lab only and ride in the log's
+ *      encounter rev, 4.)
+ *      Also map rebuild phase 4, The Gauntlet (docs/design/v3-p4-gauntlet.md):
+ *      the Rocket Convoy builds up over the three boss rounds (three trucks
+ *      a column and one swarm, then three and two, then four and two
+ *      smaller swarms, in place of four and three every round). A v25 log
+ *      that reaches the Gauntlet's boss rounds (or a bonus Rocket Convoy in
+ *      a three-run ending) no longer replays to the same game.
+ *  27: after the playtest of the three rebuilt maps (review 2026-11-18;
+ *      docs/design/v3-p4-harbor.md, "After the playtest"): a supersonic is
+ *      on its rail, no target, for SUPERSONIC.rail (0.4 s) in place of its
+ *      whole 1.1 s lock, then lifts off slowly and can be shot (it lands
+ *      when it did; the lock line still shows for 1.1 s). And Harbor Mouth's Breakout (encounters
+ *      rev 4, MAP_BOSS) sends one sub salvo in round 3, not two. A v26 log
+ *      with a supersonic, or that reaches Harbor's third boss round under
+ *      the encounter layer, no longer replays to the same game.
+ *  28: map rebuild, chapter 1 (docs/design/v3-ch1-kesh.md, v3-ch1-marrow.
+ *      md): the Kesh Hook and Lee of Marrow get authored encounters (rev 4,
+ *      one a wave, with two new aims: the ship nearest the launcher and the
+ *      ship halfway along, plus Marrow's radar tower as a target), boss
+ *      rounds that rise (MAP_BOSS: the Drone Storm and Hydra Bloom), and a
+ *      map card that plays them by default (the map's own convoy, no
+ *      command). All of it is lab only, under the encounter layer: a
+ *      campaign run plays as it did. A v28 Kesh or Marrow map-card log needs
+ *      this build (an older one would play its encounters as nothing), so
+ *      the version moves; a v27 log played none of it (those maps had no
+ *      encounter layer, and every other map is unchanged: the map-lab
+ *      baseline's twelve runs changed only their version), but as with
+ *      every version before, this build lists only its own.
+ *  29: after the chapter 1 playtest (review 2026-11-19; docs/design/
+ *      v3-ch1-kesh.md and v3-ch1-marrow.md, "After the playtest"): Lee of
+ *      Marrow's radar tower slows every enemy inside its sweep to
+ *      POST.radarSlow of its pace, in place of speeding your shots at them
+ *      (campaign and lab); the Kesh Hook's Drone Storm (encounters rev 4,
+ *      MAP_BOSS) sends shells and guided missiles with its swarms, more
+ *      each round; the first boss round of every map's three-run ending
+ *      opens EVENT.bossCalm s later; and frigates round a bend smoothly
+ *      (their bow and their step across eased, the bend's corners
+ *      averaged). A v28 log with a frigate on a bent lane, on Marrow, or
+ *      that reaches a three-run ending no longer replays to the same game.
+ *  30: after the chapter 1 replay (review 2026-11-19 r6; docs/design/
+ *      v3-ch1-kesh.md and v3-ch1-marrow.md, "After the v29 replay"): the
+ *      Kesh Hook's and Lee of Marrow's waves climb instead of ending on a
+ *      cliff (encounters rev 4 reworked, and each map's v1 moves a little
+ *      of its shared waves' fire from waves 9-10 to waves 2-6: lab only);
+ *      and the first boss round of every map's three-run ending opens on a
+ *      calm of EVENT.bossCalm 6 s (5 before), for the intro's four cards. A
+ *      v29 Kesh or Marrow map-card log, or one that reaches a three-run
+ *      ending, no longer replays to the same game.
+ *  31: map rebuild, chapter 2 (docs/design/v3-ch2-island.md,
+ *      v3-ch2-behemoth.md): the Island and the Behemoth Run get an encounter
+ *      layer (encounters rev 4: one encounter a wave), their map cards open
+ *      with it, and their boss rounds rise (MAP_BOSS: the Gunship Wall's and
+ *      the Wolf Pack's numbers a round, and launches the round adds). New
+ *      for it: the aim 'vip' (the supertanker), and an encounter may
+ *      stand in for a map's own extras (`replaces.extras`).
+ *      All of it is lab only, under the encounter layer: a campaign run
+ *      plays as it did, and a v30 Island or Behemoth card log played its
+ *      shared waves.
+ *  32: the player's round 8 (docs/design/v3-ch1-marrow.md "After round
+ *      8", v3-ch2-island.md "The debuts"): Lee of Marrow's radar tower
+ *      takes 6 (was 4: three missiles or shells, not two; campaign and
+ *      lab), and Marrow's waves 7-10 send 10% more (MAP_FIRE, lab); the
+ *      Island's waves 3-5 are the Torpedo Sub's, Armored Drone's and
+ *      Scavenger Drone's debut waves, drones only around each (lab;
+ *      `replaces.extras` may stand in for a jet or a bomber). A v31 Marrow
+ *      log, or a v31 Island card log, no longer replays to the same game.
+ *  33: the Armory overhaul (docs/design/v3-armory-overhaul.md): Quick
+ *      Reload reloads up to 40% faster (was 30%), Stockpile drops power-ups
+ *      up to 3.25× and makes them last 2.5× (was 1.75× and 1.5×), Long
+ *      Loads refills the rack on every weapon or boost pickup, and Deep
+ *      Magazine adds a round at every level (11 at level 5, was 10). A v32
+ *      log with any of those four in its `armory` no longer replays to the
+ *      same game; one without them does, but only its own version replays
+ *      here.
+ *  34: the player's round 9 (docs/design/v3-combo-diversity.md, "Round
+ *      9"; built as 33 beside the Armory overhaul, merged after it as
+ *      34): Overdrive lasts 18 s from level 1 (was 15; level 2 and MAX
+ *      21 s, was 18; campaign and lab); chapter 2's maps each get a signature
+ *      threat (MAP_SIGNATURE, lab: the Island's new enemies are attack
+ *      helicopters from wave 6; the Behemoth Run's jets and heavies go for
+ *      the supertanker from wave 4), and the Behemoth Run's boss rounds are
+ *      a strike on the tanker led by jets, which the Shield never stops,
+ *      in place of most of the Wolf Pack's subs (MAP_BOSS, lab; a boss
+ *      round's `fire` may send jets). A v33 log with Overdrive,
+ *      or a v33 Island or Behemoth card log, no longer replays to the same
+ *      game.
+ *  35: the Needle of Bosk rebuilt to the map rules (docs/design/
+ *      v3-ch2-needle.md; lab, under the encounter layer): one encounter a
+ *      wave (NEEDLE_R4), small walls of armored drones from wave 4
+ *      (MAP_SIGNATURE.needle, its new `block`), the Shield Wall's rounds
+ *      (MAP_BOSS.needle; a boss round's `fire` may send a cluster). A v34
+ *      Needle card log no longer replays to the same game; the campaign
+ *      plays as it did.
+ *  36: the player's 2026-11-20 playtest notes (docs/design/
+ *      v3-playtest-fixes.md): the Shield boost breaks after AB.shield.hits
+ *      hits stopped (every missile, drone, shell or boat it stops is one,
+ *      whatever its damage); the Attack Helicopter fires whenever it is on
+ *      screen, on the way to its spot too (HP 5, was 6); the Torpedo Sub
+ *      stays under water and can't be hit (nothing targets it, nor the
+ *      Nuke; only its torpedoes can be shot) and fires two (was three to
+ *      five; the Wolf Pack's one or two, was two or three); the Scavenger
+ *      Drone takes three hits (was one); torpedoes run at 40 (was 75), and
+ *      the Behemoth Run sends no Torpedo Sub before wave 6 (SUB_FROM). A
+ *      v35 log with any of those no longer replays to the same game.
+ *  37: the Archipelago rebuilt to the map rules (docs/design/
+ *      v3-ch2-archipelago.md; lab, under the encounter layer): one
+ *      encounter a wave (ARCHIPELAGO_R4), drone motherships each with a
+ *      Scavenger Drone from wave 4 (MAP_SIGNATURE.archipelago, its new
+ *      `kind` and `escort`), the Supply Raid's rounds (MAP_BOSS.archipelago;
+ *      a boss round's `fire` may send a mothership, `cargoWeapons`). A v36
+ *      Archipelago card log no longer replays to the same game; the
+ *      campaign plays as it did.
+ *  38: Saltgate Canal rebuilt to the map rules (docs/design/
+ *      v3-ch2-saltgate.md; lab, under the encounter layer): one encounter
+ *      a wave (SALTGATE_R4) and a new aim, 'lock' (the ship held at the
+ *      lock nearest the launcher); the map's own convoy (flow 1, pairs);
+ *      a strike on the locks from wave 4 (MAP_SIGNATURE.saltgate: torpedo
+ *      subs for half the wave's new enemies, and the wave's clusters at the
+ *      locks, its new `clusters`); Run the Canal's rounds (MAP_BOSS.saltgate;
+ *      a boss round's `subs`). The Saltgate card, which played today's
+ *      convoy controls with no encounters, now plays these: a v37 Saltgate
+ *      card log no longer replays to the same game; the campaign plays as
+ *      it did.
+ *  39: the player's round 11 answer (the hub, "Softer: 2 / 3 / 4"): the
+ *      Shield boost breaks after AB.shield.hits = 2 / 3 / 4 hits at level
+ *      1 / 2 / MAX (was 1 / 2 / 3; campaign and lab). A v38 log that drew
+ *      the Shield no longer replays to the same game. (The Effort rating
+ *      added beside it is not sim input.)
+ *  40: four new Armory upgrades (docs/design/v3-armory-overhaul.md, "The
+ *      four new upgrades"): `armory` can name boilers, lifeboats,
+ *      quartermaster and salvage; Quartermaster's draft re-roll is a new
+ *      command ('x') and deals from the draft's own dice, and its level 5
+ *      deals four cards; Boilers sails the convoy faster; Lifeboats counts
+ *      a wave's first ship sunk as half a loss. A v39 log has none of them
+ *      and plays the same game (the map-lab baseline replays unchanged),
+ *      but a v40 log that uses one needs this build.
+ *  41: the player's chapter 2 notes (docs/design/v3-playtest-fixes.md,
+ *      "Round 12"): a cluster missile climbs for CLUSTER.armAfter s
+ *      (slower off the rail) and splits only after it; a torpedo sub
+ *      surfaces only at a good site (foes.ts subSite: its shadow clear of
+ *      land, a torpedo line to a lane; the Wolf Pack's packs too), and the
+ *      Needle of Bosk's east sub spot moved; the Gunship Pair's row of
+ *      hovers is kept whole on the screen. A Test Lab "Skip to boss" log
+ *      has a lab `loadout`, and a retry or skip a `retry` record. A v40 log
+ *      with a cluster missile, a torpedo sub or the Gunship Pair no longer
+ *      replays to the same game.
+ *  42: Saltgate Canal's trucks (docs/design/v3-ch2-saltgate.md; lab, under
+ *      the encounter layer; the player's answer to the v38 card): the boss
+ *      is the Gatecrashers, columns of Rocket Trucks down to the banks by
+ *      the locks (MAP_BOSS.saltgate `trucks`, `name`, `truck`; a truck aimed
+ *      'lock' marks its ship and may fire a cluster), the signature is
+ *      Rocket Trucks at the locks (MAP_SIGNATURE.saltgate `foe`, `trucks`),
+ *      no Torpedo Sub on the map (MAP_FOE_SWAP), a truck down a road in an
+ *      encounter (`from: { road }`, `salvos`), and a little of waves 6-10's
+ *      fire moved to waves 1-5 (SALTGATE_CLIMB). A v41 Saltgate card log no
+ *      longer replays to the same game; the campaign plays as it did.
+ *  43: chapter 3's first map, Battery Point, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-battery.md; lab, under the encounter
+ *      layer): ten encounters (BATTERY_R4), a climb (BATTERY_CLIMB), the
+ *      signature (MAP_SIGNATURE.battery: the wave's heavies at the shore
+ *      guns, off a truck as off a silo, and its strike jets as Stealth
+ *      Strafers), a launch at a knocked-out gun goes for the other gun,
+ *      and the Blackout's rounds rise (MAP_BOSS.battery: `jets`, `jetAt`,
+ *      `jetGap`, `fire`). A v42 Battery card log played the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
+ *  44: the Armory's Lifeboats and Quartermaster reworked (docs/design/
+ *      v3-armory-overhaul.md, "Lifeboats and Quartermaster reworked"; the
+ *      player's answers on the hub). Lifeboats: the half loss is gone;
+ *      between waves the carrier (level 1+) and the ships (level 2+) mend
+ *      66% of their missing hull (all of it from level 4), a Lifeboat card
+ *      (+1 life: `lossLimit`) is dealt in the draft after every third wave
+ *      from level 3 (a pick, 'u' 'lifeboat'), and level 5 starts the run
+ *      with a life. Quartermaster: re-rolls 1 / 2 / 2 / 3 / 3, a golden bomb
+ *      from level 3 (the Nuke when tapped: a new command, 'n'), and at level
+ *      5 four cards and a free weapon level-up in a draft (a new command,
+ *      'l'). A v42 log without either card plays the same game (the map-lab
+ *      baseline replays unchanged); one with either needs this build.
+ *  45: the Battery rebuild (43 above) on top of the Armory rework (44):
+ *      the base took 44 while the Battery was built as 43, so it moved
+ *      here. The campaign plays as at 44; a 44 Battery card log played the
+ *      shared waves and no longer replays to the same game.
+ *  46: Saltgate Canal's boss, the Gatecrashers, is a parade of Missile
+ *      Trucks (docs/design/v3-ch2-saltgate.md; lab, under the encounter
+ *      layer; the player's review of the v42 boss: "make it the missile
+ *      trucks so it is different"): a new boss-only enemy, the Missile
+ *      Truck (a TEL: it raises one long ballistic missile on its erector
+ *      and lobs it at a ship held at a lock; foes.ts, BOSS_FOES), its
+ *      columns nose to tail so each fires as one volley (MAP_BOSS.saltgate
+ *      `trucks` with `missiles`), no Rocket Truck in the boss. A new threat
+ *      kind, so the counts in every log carry it. A v42 Saltgate card log
+ *      no longer replays to the same game; the campaign plays as it did.
+ *  47: busier early waves (docs/design/v3-playtest-fixes.md, "Busier early
+ *      waves"; the player's answer to the chapter 2 playtests: "more drones
+ *      and easy things to kill ... keep it busy"): every rebuilt map's
+ *      encounters in waves 1-6 (the Battery's 1-2) send a short string or
+ *      two of filler drones on top of the wave (encounters.ts BUSY, Beat
+ *      `filler`), tagged `fill` in the telemetry. Lab only: a v46 map card
+ *      log no longer replays to the same game; the campaign plays as it
+ *      did.
+ *  48: chapter 3's second map, Sowers' Reach, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-sowers.md; lab, under the encounter
+ *      layer): ten encounters (SOWERS_R4) with their filler, a climb
+ *      (SOWERS_CLIMB), the signature (MAP_SIGNATURE.sowers: the wave's new
+ *      enemies are Stealth Bombers from wave 4, and a stealth bomber sows
+ *      mines just ahead of the ships in place of its missiles, `sow`,
+ *      Launch and Threat `sow`, data/config.ts SOW), and the Carpet Run's
+ *      rounds rise (MAP_BOSS.sowers: `vees`, `veeAt`, `veeGap`, `veeHp`,
+ *      `sow`, `fire`, a boss round's mines off the chutes). A v47 Sowers
+ *      card log played the shared waves and no longer replays to the same
+ *      game; the campaign plays as it did.
+ *  49: chapter 3's third map, the Rig Field, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-rigs.md; lab, under the encounter layer):
+ *      ten encounters (RIGS_R4) with their filler, a climb (RIGS_CLIMB),
+ *      the signature (MAP_SIGNATURE.rigs `kind: 'rig'`: from wave 4 the
+ *      wave's new enemies come as relief rigs towed in along the rig line,
+ *      Threat `tow`, game.ts towRig, data/config.ts TOW; docked, one stands
+ *      where a rig fell or mends one, and fires its rack, Launch `tow`,
+ *      Threat `rack`), the map's own convoy at the campaign's schedule
+ *      (MAP_CONVOY.rigs), and a new boss on the Dive Circus, the Rig Barrage
+ *      (MAP_BOSS.rigs: `rigs`, `rigHp`, `barrage`: the downed rigs rise
+ *      again and every rig standing fires its volley together). A v48 Rig
+ *      Field card log played today's convoy controls and the shared waves
+ *      and no longer replays to the same game; the campaign plays as it
+ *      did.
+ *  51: chapter 3's finale, Dreadnought Pass, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch3-dreadnought.md; lab, under the encounter
+ *      layer): ten encounters (DREAD_R4) with their filler, the
+ *      battleship's passes each with numbers of its own and a glimpse on
+ *      wave 1 (DREAD_PASSES: hits, speed, cadence, broadside, aim, a turn
+ *      or a spell on station; a pass is a launch at its own moment; drones
+ *      off its deck in a broadside go for the carrier), the
+ *      signature (MAP_SIGNATURE.dreadnought: the wave's new enemies are
+ *      Spotter Planes from wave 4, and a spotter's shells come from the
+ *      battleship's hull while it is on the map, `guns`), and the boss is
+ *      the Dreadnought itself on the Fire Mission's spotters
+ *      (MAP_BOSS.dreadnought: `dread`, `spotters`, `turns`, `spotAt`,
+ *      `spotEvery`, `swarms`, `size`, `swarmAt`, `swarmGap`; sunk, its
+ *      spotters have no guns to call). A v48 Dreadnought card log played
+ *      today's convoy and no layer, and no longer replays to the same
+ *      game; the campaign plays as it did. (49 is the Rig Field's rebuild;
+ *      50 was never shipped: the Black Strait's, built alongside, is 52.)
+ *  52: chapter 3's fourth map, the Black Strait (the Lantern), rebuilt to
+ *      the map and wave rules (docs/design/v3-ch3-lantern.md; lab, under
+ *      the encounter layer): ten encounters (LANTERN_R4) with their filler,
+ *      a climb (LANTERN_CLIMB), the map's own convoy at flow 2
+ *      (MAP_CONVOY.lantern), the signature (MAP_SIGNATURE.lantern: the
+ *      wave's new enemies are Siege Batteries from wave 4, rising beside
+ *      the enemy's dark bank, `beside`, one salvo each, `salvos`; a Launch
+ *      naming a base puts its siege gun there, an encounter's on the
+ *      other side), and the Bombardment's rounds rise (MAP_BOSS.lantern:
+ *      `guns`, `gunGap`, `gunSalvos`, `dark`, `supply`, `fire`). A Black Strait
+ *      card log before v52 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did.
+ *  55: round 15, the player's notes on Sowers' Reach and the Rig Field
+ *      (docs/design/v3-playtest-fixes.md, "Round 15"; lab, under the
+ *      encounter layer). The Sowers' mines drift hidden until a ship's
+ *      course would bring it onto one within MINE.surface s (HIDDEN_MINES:
+ *      no chute warning, nothing sees or shoots them till then; a raid of
+ *      hidden mines alone is `quiet`), its waves 2, 4 and 5 drop fewer
+ *      mines, and the bots' sharp convoy pilot holds when the big Hold
+ *      button glows (commandAdvised). The Rig Field's rigs count shots,
+ *      not damage (SHOT_RIGS, RIG_SHOTS.rig, TOW.hp 10), its waves 1-3
+ *      carry more filler and waves 4-5 a little less, and the Rig
+ *      Barrage's first round fires two volleys. A Sowers or Rig Field card
+ *      log before v55 no longer replays to the same game; the campaign
+ *      plays as it did. (56 and 57 are the Coves' and the Delta's
+ *      rebuilds, built alongside.)
+ *  56: chapter 4's first map, the Coves, rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-coves.md; lab, under the encounter layer): ten
+ *      encounters (COVES_R4) with their filler, a climb (COVES_CLIMB), the
+ *      map's own convoy at the campaign's schedule (MAP_CONVOY.coves), fire
+ *      ships (data/config.ts FIRESHIP; Beat, Launch, Unit and Threat
+ *      `fire`, game.ts lightFireShip: a fast boat set alight that burns
+ *      where it is sunk or rams, foes.ts burstCloud's `burn`), the
+ *      signature (MAP_SIGNATURE.coves `fireShips`: so many of the wave's own
+ *      fast boats come out of the coves as fire ships from wave 4), and a
+ *      new boss on the Repair Yard, the Fire Fleet (MAP_BOSS.coves `fleet`:
+ *      sorties of fire ships out of more coves each round; BossFire
+ *      `fastboat`). Chapter 4's table, CHAPTER_FOUR_MAPS, in REBUILT_MAPS.
+ *      A Coves card log before v56 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did. (Built as 53 alongside the Delta; it ships as 56,
+ *      after round 15's 55.)
+ *  57: chapter 4's second map, the Delta, rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-delta.md; lab, under the encounter layer): ten
+ *      encounters (DELTA_R4) with their filler, a climb (DELTA_CLIMB), a new
+ *      aim ('switch': the branch the fork's switch is set to), the signature
+ *      (MAP_SIGNATURE.delta `clouds`: from wave 4 the wave's new enemies
+ *      come as Incendiary Missiles that burst on the mouth of the switch's
+ *      branch, foes.ts, game.ts branchMouth), the map's own convoy, flow step 3 in
+ *      a Spread (MAP_CONVOY.delta), and a new boss on the Escort
+ *      Run, the Burning Delta (MAP_BOSS.delta: `burn`: burning oil closes
+ *      the fork's branches, the switch's own first, and a raid comes at the
+ *      ships bunched on the way in). The bots throw the switch away from a
+ *      burning branch (quieterBranch). A Delta card log before v57 played today's
+ *      convoy controls and the shared waves and no longer replays to the
+ *      same game; the campaign plays as it did. (56: the Coves, built
+ *      alongside.)
+ *  58: chapter 4's third map, Dunmar Crossing, rebuilt to the map and wave
+ *      rules (docs/design/v3-ch4-crossing.md; lab, under the encounter
+ *      layer): ten encounters (CROSSING_R4) with their filler, a climb
+ *      (CROSSING_CLIMB), the map's own convoy, flow step 3 in a Spread
+ *      (MAP_CONVOY.crossing), two aims ('cross': the next two ships to
+ *      pass each other; Beat `lane`: one lane's ships only), spotter
+ *      beacons (BeaconCall, SPOTTER; Beat `beacon` from `{ water: 'cross' }`,
+ *      Launch `beacon` and `called`, foes.ts crossingPair, crossingSpot,
+ *      spotterCalls: a Lure Beacon that rises between the lanes where the
+ *      next ships cross, takes four hits and calls shells on the ship
+ *      nearest it), the signature (MAP_SIGNATURE.crossing `beacons`: half
+ *      the wave's new enemies from wave 4, their shells out of the wave's
+ *      own), and a new boss on Beacon Strike, the Beacon Line (MAP_BOSS
+ *      `line`: lines of spotter beacons calling volleys together). A
+ *      Crossing card log before v58 played today's convoy controls and the
+ *      shared waves and no longer replays to the same game; the campaign
+ *      plays as it did.
+ *  60: chapter 4's last map and the game's, the Citadel of Vey, rebuilt to
+ *      the map and wave rules (docs/design/v3-ch4-citadel.md; lab, under the
+ *      encounter layer): ten encounters (CITADEL_R4) with their filler, a
+ *      climb (CITADEL_CLIMB); the shield rises again every wave
+ *      (SHIELD_RISES: a generator brought down stands again, a silenced
+ *      Citadel is manned again; its fire, once silenced, comes off the far
+ *      silos); the generators and the Citadel count shots (SHOT_RIGS,
+ *      CITADEL); the signature (MAP_SIGNATURE.citadel `dome`: from wave 4
+ *      some of the wave's guided missiles and shells come off the Citadel
+ *      under its dome and can't be shot inside it while the shield stands,
+ *      game.ts `domed`; Beat `dome`); the map's own convoy, the campaign's
+ *      schedule in a Spread (MAP_CONVOY.citadel); and a new boss on the
+ *      Siege of Vey, the Last Stand (MAP_BOSS.citadel: the shield raised,
+ *      the Citadel's grand salvos under its dome). The bots leave the
+ *      Citadel's shielded fire alone until it leaves the dome
+ *      (worthShooting). A Citadel card log before v60 played today's convoy
+ *      controls and the shared waves and no longer replays to the same
+ *      game; the campaign plays as it did. (59: the Tide, built alongside.)
+ *  61: chapter 4's Tidewater Flats rebuilt to the map and wave rules
+ *      (docs/design/v3-ch4-tide.md; lab, under the encounter layer): the
+ *      tide keeps each wave's own clock (MAP_TIDE, Game `ebb`: one ebb a
+ *      wave, game.ts highTide, tideGauge), ten encounters (TIDE_R4) with
+ *      their filler, a climb (TIDE_CLIMB), two new aims ('crowd': a ship of
+ *      the most bunched hulls; 'flats': a ship on the flats lane), the
+ *      signature (MAP_SIGNATURE.tide `ebb`: the wave's own clusters, then
+ *      shells, as cluster missiles at the crowd at low water), the
+ *      Repair Ship and the Bodyguard Ring as Lure Beacons on its waves
+ *      (MAP_FOE_SWAP.tide), the map's own convoy, flow step 2 in a Box
+ *      (MAP_CONVOY.tide), and a new boss on the Firestorm, Low Water
+ *      (MAP_BOSS.tide: `ebb`, `strikes`: the round's tide out early and
+ *      the whole shore firing at the crowd). And the tide's turn itself, on
+ *      the campaign's clock too (sim/tide.ts; the player: "the ships did not
+ *      navigate off the low tide area"): the tide falls over 4 s and rises
+ *      over 3 s instead of snapping, the flats lane takes ships only at high
+ *      water, and as the tide falls every ship on the flats crosses to the
+ *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
+ *      (the card or the campaign) no longer replays to the same game; the
+ *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.)
+ *  62: Saltgate Canal's boss redone as a Missile Truck parade (docs/design/
+ *      v3-ch2-saltgate.md; lab, under the encounter layer; the player: "a
+ *      row of trucks going in a parade from the left to the right across
+ *      the road ... a truck every 1 to 3 seconds randomly ... fire out a
+ *      missile without stopping ... in an elaborate pattern"): the
+ *      Gatecrashers' trucks drive the road behind the silos west to east
+ *      and never stop (MAP_BOSS.saltgate `parade`, sim/parade.ts), a truck
+ *      every 1-3 s (seeded), each raising and lobbing its ballistic
+ *      missiles on the move as the round's patterns call them (ripples,
+ *      synchronized pairs, volleys at once, the rolling barrage), 3 hits a
+ *      truck (4 before). A Saltgate card log before v62 no longer replays
+ *      to the same game; the campaign and the other maps play as they
+ *      did.
+ *  64: the Test Lab's Armory and all cards (the player: "modify my armory
+ *      ... based on where the map is in the chapters ... and then have all
+ *      cards unlocked so I can test it out"): a Test Lab run's `lab` can
+ *      say `allCards`, and its drafts then deal every live weapon whatever
+ *      the map's chapter (game.ts draftChapterPool); a map card plays the
+ *      chapter's Test Lab Armory (data/labArmory.ts) in place of the
+ *      player's own, recorded as ever in the log's `armory`, with `lab.
+ *      armory` saying which chapter's range set it. A log without
+ *      `allCards` plays as it did (the map-lab baseline replays
+ *      unchanged); one with it needs this build. (62 is the
+ *      Saltgate parade, built alongside; 63 was never shipped.)
+ *  65: Watch mode in the Test Lab (the player: "I should be able to run a
+ *      simulator on that too ... watch it be played and I can jump in at
+ *      any time ... The game log should note that too, so it knows when it
+ *      was a full playtest or had sim"): a map card run the "you" bot plays
+ *      on screen, the player taking over and handing back at will. The log
+ *      says who played: `control` (mode 'watch', the bot, segments of
+ *      {fromTick, toTick, by}, the player's share of ticks and a label,
+ *      'full playtest' | 'sim' | 'mixed'), and each note made in it `by`
+ *      whom and on which `wave`. Both sides' inputs are ordinary commands
+ *      (the 'c' switches are UI only), so the log replays exactly. Nothing
+ *      in the sim changed: a v64 log plays the same game; the version
+ *      marks the logs that can carry the new fields. */
+export const LOG_VERSION = 65;
+/** The log versions this build replays exactly. Tools that replay logs
+ *  (Map Analytics, the map lab) take any of these. */
+export const LOG_REPLAYS: readonly number[] = [65];
+
+/** Does this build replay a log of this version exactly? */
+export function replaysHere(v: number): boolean {
+  return LOG_REPLAYS.includes(v);
+}
+/** V3 logs say so (and their ids start with "v3-"), so V2's tools and the
+ *  shared log store keep the two games apart. */
+export const LOG_GAME = 'v3';
+
+/** A Test Lab verdict, as the player gave it. */
+export interface LabResult {
+  verdict: 'keep' | 'tune' | 'cut' | null;
+  tags: string[];
+  note: string;
+  /** Waves played, how the test ended, and the evidence. */
+  waves: number;
+  ended: 'done' | 'length' | 'lost';
+  stats: LabStats;
+  /** The card's version when tested and the test round (absent: round 1,
+   *  version 1). */
+  rev?: number;
+  round?: number;
+  /** A map card (round 10): the full map or a quick slice. */
+  plays?: 'full' | 'slice';
+  /** A map card's full run (round 11, log v22): the player's scorecard
+   *  (data/scorecard.ts; absent when skipped or left blank), and the map's
+   *  encounter version played (absent: 'v1'). */
+  score?: Scorecard;
+  variant?: string;
+  /** A Watch run (log v65): played by the bot ('sim') or by both
+   *  ('mixed'); absent: played by hand, as every run before. */
+  played?: PlayKind;
+}
+export const SIM_DT = 1 / 60;
+
+/** Map & Convoy Lab telemetry for a run (sim/telemetry.ts): a sidecar to
+ *  its log, never part of it, so the log's format and version stay as they
+ *  are and a log without one replays as before. Call it before the game's
+ *  first step. `mode` and `player` say what kind of run this is; the events
+ *  do not depend on them, so a live run and the replay of its log make the
+ *  same sidecar. */
+export function logTelemetry(
+  g: Game,
+  log: Pick<PlayLog, 'id' | 'build' | 'v' | 'firstWave' | 'lab' | 'dev' | 'device'>,
+  mode: TelMode,
+  player?: string,
+  input?: TelHeader['input'],
+): Telemetry {
+  return attachTelemetry(g, {
+    runId: log.id,
+    build: log.build,
+    logVersion: log.v,
+    firstWave: log.firstWave,
+    mode,
+    player: player ?? log.dev?.bot ?? (log.device.ua === 'mimic' ? 'mimic' : 'human'),
+    ...(input ? { input } : {}),
+    ...(log.lab ? { lab: { card: log.lab.card, ...(log.lab.length ? { length: log.lab.length } : {}), ...(log.lab.rev !== undefined ? { rev: log.lab.rev } : {}), ...(log.lab.round !== undefined ? { round: log.lab.round } : {}), ...(log.lab.plays ? { plays: log.lab.plays } : {}) } } : {}),
+  });
+}
+
+/** How to replay: `telemetry` records a sidecar as the log plays (read it
+ *  from the game's `tel`). */
+export interface ReplayOpts {
+  telemetry?: boolean;
+}
+
+/** Compact input encoding: [step, code, ...args]. */
+export type LogCommand =
+  | [number, 't', number, number, number] // tap x y radius (world units, rounded)
+  | [number, 'd', number, number, number] // press down x y radius (a gesture weapon is loaded)
+  | [number, 'v', number, number] // the pressed finger moved to x y
+  | [number, 'r', number, number, number] // the finger lifted at x y radius
+  | [number, 'h', 0 | 1] // Focus: the holding finger down (1) or lifted (0)
+  | [number, 'b'] // Test Lab: bring the card's enemy (or weapon) in now; an event card: run the event again
+  | [number, 'f', number] // flow step
+  | [number, 'm', FormationId] // formation
+  | [number, 'k', CommandId] // a lab convoy command: rush, disperse, hold (sim/convoy.ts)
+  | [number, 'u', CardId, AbilityId?] // card picked [, ability it replaced]
+  | [number, 'x'] // Quartermaster: the draft dealt again
+  | [number, 'l', AbilityId] // Quartermaster 5: a free level-up of a held weapon, in a draft
+  | [number, 'n'] // Quartermaster 3+: the golden bomb set off
+  | [number, 'e'] // continue into endless
+  | [number, 's', number] // game speed (UI only; kept for context)
+  | [number, 'c', Controller] // who is playing from here on (watch mode; UI only)
+  | [number, 'g', FlagKind] // the player flagged this moment (UI only)
+  | [number, 'p', number]; // the watch-mode bot's own game speed from here on (UI only)
+
+/** Who is at the controls: the player, or the watch-mode bot. */
+export type Controller = 'you' | 'bot';
+
+/** Who played a stretch of a run, as the log's readers name it. */
+export type PlayedBy = 'bot' | 'player';
+/** A stretch of a run one side played: ticks (sim steps) from `fromTick`
+ *  up to, not including, `toTick`. */
+export interface ControlSegment {
+  fromTick: number;
+  toTick: number;
+  by: PlayedBy;
+}
+/** How a run was played: all by hand, all by the bot, or both. */
+export type PlayKind = 'full playtest' | 'sim' | 'mixed';
+/** A Test Lab Watch run (log v65): the bot that played, who was at the
+ *  controls tick by tick, and the run in one word. Worked out from the
+ *  log's 'c' commands as it is saved (see `controlSegments`); never read
+ *  by replay. */
+export interface PlayControl {
+  mode: 'watch';
+  bot: string;
+  segments: ControlSegment[];
+  /** Ticks played by each side, and the player's share of them (0-1). */
+  botTicks: number;
+  playerTicks: number;
+  playerShare: number;
+  /** Times the controls changed hands. */
+  switches: number;
+  label: PlayKind;
+}
+export type FlagKind = 'bug' | 'wrong' | 'hard' | 'easy';
+
+export interface PlayLog {
+  v: number;
+  game: typeof LOG_GAME;
+  id: string;
+  /** The Armory the run was played with (one upgrade from each bay). */
+  armory: ArmoryLevels;
+  build: string;
+  startedAt: string;
+  endedAt?: string;
+  map: MapId;
+  seed: number;
+  firstWave: number;
+  /** Developer playtest mode only: the tempo the run was played at (absent =
+   *  the real game), the preset's name, and the run a wave retry restarted
+   *  from. Balance analysis should leave these logs out. */
+  tempo?: Tempo;
+  dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
+  /** A Test Lab Watch run (log v65): the bot played it on screen and the
+   *  player could take over at any moment. Who played when, and the run's
+   *  label; `playKind` reads any log's. Never read by replay. */
+  control?: PlayControl;
+  /** A Free Play run (round 7): its setup, applied as the game is created. */
+  freePlay?: FreePlaySetup;
+  /** A Test Lab run: its card, applied after the Free Play setup. A map
+   *  card's full run (Test Lab round 10: `plays: 'full'`) has no Free Play
+   *  setup: it starts at wave 1 with the player's Armory, as the campaign
+   *  does, and `config` says the convoy policy and encounters it was set up
+   *  with. A log with `plays: 'full'` needs a build that has it; a log
+   *  without replays as before, so the version stays. */
+  lab?: LabSetup;
+  /** The Map & Convoy Lab: the convoy policy this run was played under
+   *  (absent: today's controls, as every campaign run). Applied last. A
+   *  log with it, or with a 'k' command, needs a build that has them; a
+   *  log without replays as before, so the version stays. */
+  convoy?: ConvoySetup;
+  /** The Map & Convoy Lab: the map's authored encounters were on (absent:
+   *  the shared waves alone, as every campaign run). Applied after the lab
+   *  card, before the convoy policy. */
+  encounters?: EncounterSetup;
+  /** The verdict the player gave after a Test Lab run, and the evidence
+   *  the game counted (none of it touches replay). */
+  labResult?: LabResult;
+  /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
+  ghost?: GhostResult;
+  device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
+  /** How the run ended: won (map cleared and stopped), lost, or quit.
+   *  Absent on a mid-run save. */
+  end?: 'won' | 'lost' | 'quit';
+  /** The app went to the background mid-run (on iPhone, often the last
+   *  thing that happens before it is closed): sealed `quit` in case it never
+   *  comes back. A run that resumes saves over it. */
+  left?: boolean;
+  /** Each time this run was continued from its saved state (the menu's
+   *  Continue, docs/design/v3-resume-run.md): when, the step it picked up
+   *  at, and the build. The run keeps its id and every input, so the log
+   *  is still one run (and replays as one); this only says it was played
+   *  in more than one sitting. Never read by replay. */
+  resumes?: { at: string; step: number; build: string }[];
+  /** Round 12: a Test Lab run started from another one's end screen or
+   *  pause menu. "Retry wave N" (`wave`, no `skip`): the run `of` replayed
+   *  to the start of its wave N, its inputs up to `step` carried over (they
+   *  were played in run `of`, whose log has them too; only what follows
+   *  `step` is new play). "Skip to boss" (`skip`): a new run from the first
+   *  boss round (`firstWave`) holding the weapons run `of` held (its lab
+   *  setup's `loadout`); `step` is 0. Either way this is not a whole run
+   *  from wave 1: the bot fit leaves it out. Never read by replay. */
+  retry?: { of: string; wave: number; step: number; skip?: boolean };
+  commands: LogCommand[];
+  summary?: PlaySummary;
+  /** Playtest feedback (none of it touches replay; see sim/feedback.ts):
+   *  the player's notes, the attack volleys as met (with any rating), the
+   *  run's hard moments marked automatically, and the whole run's rating. */
+  notes?: PlayNote[];
+  /** A note made on the menu: a log with no run in it, only `notes`. */
+  notesOnly?: boolean;
+  volleys?: Volley[];
+  moments?: Moment[];
+  rating?: Rating;
+  /** The player's rating of each wave, given on the weapon draft after it
+   *  (optional; docs/design/v3-rate-and-review.md), in the order given.
+   *  Like `rating` and `notes` it never touches replay: a log with it
+   *  replays exactly as one without, so the version stays. */
+  waveRatings?: WaveRating[];
+  /** Special events met (sim/events.ts): when each started and ended
+   *  (steps), what it sent, how it went and the shots fired in it (an older
+   *  log's Decoy Storm also counted the shots at decoys). Derived: replay
+   *  remakes them. */
+  events?: EventRecord[];
+}
+
+export interface GhostResult {
+  bot: string;
+  wave: number;
+  lost: number;
+  score: number;
+  cleared: boolean;
+  /** Ships sunk by the end of each wave, wave by wave. */
+  lostByWave: number[];
+}
+
+export interface PlaySummary {
+  score: number;
+  wave: number;
+  cleared: boolean;
+  endless: boolean;
+  delivered: number;
+  lost: number;
+  carrierHp: number;
+  shots: number;
+  steps: number;
+  seconds: number;
+  levels: Partial<Record<AbilityId, number>>;
+  /** Weapon pickups taken, by weapon. */
+  uses: Partial<Record<AbilityId, number>>;
+  /** Each card offered → picked, in order. */
+  drafts: { wave: number; offered: CardId[]; picked: CardId; replaced?: AbilityId }[];
+  waves: WaveRecord[];
+}
+
+/** Where the wave in play began: enough to rebuild the run at that moment
+ *  (dev "retry wave"). */
+export interface WaveMark {
+  wave: number;
+  steps: number;
+  commands: number;
+}
+
+export class Recorder {
+  readonly log: PlayLog;
+  private drafts: PlaySummary['drafts'] = [];
+  mark: WaveMark;
+  /** Volleys and moments, followed frame by frame (see `observe`). */
+  readonly watch: Watch;
+  /** Who is at the controls now (a Watch run starts with the bot). */
+  controller: Controller = 'you';
+
+  /** `from` continues an earlier run's inputs (a dev wave retry): the game
+   *  passed in must already be that run replayed up to `from.mark`. */
+  constructor(
+    readonly game: Game,
+    meta: Omit<PlayLog, 'v' | 'game' | 'commands' | 'map' | 'seed' | 'id' | 'armory'> & { id?: string },
+    from?: { log: PlayLog; mark: WaveMark },
+  ) {
+    this.log = {
+      v: LOG_VERSION,
+      game: LOG_GAME,
+      id: meta.id ?? `v3-${meta.startedAt.replace(/[^0-9]/g, '').slice(0, 14)}-${game.seed}`,
+      armory: { ...game.armory },
+      map: game.map.id,
+      seed: game.seed,
+      commands: from ? from.log.commands.slice(0, from.mark.commands) : [],
+      ...meta,
+    };
+    if (from) this.drafts = (from.log.summary?.drafts ?? []).filter((d) => d.wave < from.mark.wave);
+    this.mark = { wave: game.wave, steps: game.steps, commands: this.log.commands.length };
+    this.watch = new Watch(game);
+    this.controller = lastController(this.log);
+  }
+
+  /** Map & Convoy Lab telemetry for this run, from here on (call it before
+   *  the first step; a wave retry's game already carries its own). */
+  telemetry(mode: TelMode, player?: string, input?: TelHeader['input']): Telemetry {
+    return this.game.tel ?? logTelemetry(this.game, this.log, mode, player, input);
+  }
+
+  /** Continue a saved run (docs/design/v3-resume-run.md): `game` is its log
+   *  replayed to the step it was saved at, and this recorder carries on the
+   *  same log, id and all: every input so far, the draft picks, the notes,
+   *  the volleys and moments as they were marked, and the wave mark. What
+   *  the log said about its end (a background's `quit`, `left`) is dropped:
+   *  the run is not over. */
+  static resume(game: Game, log: PlayLog, mark: WaveMark, build: string, at = new Date().toISOString()): Recorder {
+    const { v, game: _game, commands, map: _map, seed: _seed, armory, summary, volleys, moments, events: _events, end: _end, endedAt: _endedAt, left: _left, notes, resumes, ...meta } = log;
+    const { waveRatings, ...rest } = meta;
+    const rec = new Recorder(game, { ...rest, ...(notes ? { notes: notes.map((n) => ({ ...n })) } : {}), ...(waveRatings ? { waveRatings: waveRatings.map((w) => ({ ...w, rating: { ...w.rating } })) } : {}) });
+    rec.log.v = v;
+    rec.log.armory = { ...armory };
+    rec.log.commands = [...commands];
+    rec.log.resumes = [...(resumes ?? []), { at, step: game.steps, build }];
+    rec.drafts = (summary?.drafts ?? []).map((d) => ({ ...d, offered: [...d.offered] }));
+    rec.mark = { ...mark };
+    rec.watch.restore(game, volleys ?? [], moments ?? []);
+    rec.controller = lastController(rec.log);
+    return rec;
+  }
+
+  /** Once a frame (and before the UI drains the game's events): keeps the
+   *  volleys and the marked moments up to date. */
+  observe(): void {
+    this.watch.observe(this.game);
+  }
+
+  /** The player's note, stamped with this step and the game as it stands. */
+  note(n: Omit<PlayNote, 'step' | 'at' | 'ctx'>): PlayNote {
+    // A Watch run's note says who was playing as it was written, and the
+    // wave (its tick is `step`).
+    const who = this.log.control ? { by: (this.controller === 'bot' ? 'bot' : 'player') as PlayedBy, wave: this.game.wave } : {};
+    const note: PlayNote = { step: this.game.steps, at: new Date().toISOString(), ...n, ...who, ctx: noteContext(this.game) };
+    (this.log.notes ??= []).push(note);
+    return note;
+  }
+
+  /** The player's rating of the wave just played (on the draft after it):
+   *  any of the three axes and a short note. Rated again, the wave's rating
+   *  is replaced; nothing left (no axis, no note) removes it. The game is
+   *  not touched. */
+  rateWave(wave: number, rating: Rating, note?: string): WaveRating | undefined {
+    const list = (this.log.waveRatings ??= []);
+    const at = list.findIndex((w) => w.wave === wave);
+    const r: Rating = {};
+    for (const k of ['difficulty', 'fun', 'intensity'] as const) {
+      const v = rating[k];
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5) r[k] = v;
+    }
+    const text = (note ?? '').trim().slice(0, WAVE_NOTE_MAX);
+    if (!Object.keys(r).length && !text) {
+      if (at >= 0) list.splice(at, 1);
+      if (!list.length) delete this.log.waveRatings;
+      return undefined;
+    }
+    const w: WaveRating = { wave, step: this.game.steps, at: new Date().toISOString(), rating: r, ...(text ? { note: text } : {}) };
+    if (at >= 0) list[at] = w;
+    else list.push(w);
+    return w;
+  }
+
+  /** The rating given for a wave, if any. */
+  waveRating(wave: number): WaveRating | undefined {
+    return this.log.waveRatings?.find((w) => w.wave === wave);
+  }
+
+  /** The player's rating of a finished volley. */
+  rateVolley(index: number, rating: Rating): void {
+    const v = this.watch.volleys[index];
+    if (v) v.rating = { ...v.rating, ...rating };
+  }
+
+  tap(x: number, y: number, radius: number): TapResult {
+    const rx = Math.round(x);
+    const ry = Math.round(y);
+    const rr = Math.round(radius);
+    // Only taps that could change the game are worth a log line.
+    if (this.game.phase === 'wave') this.log.commands.push([this.game.steps, 't', rx, ry, rr]);
+    return tap(this.game, rx, ry, rr);
+  }
+
+  /** A finger down with a gesture weapon loaded (Charge Lance, Laser
+   *  Cutter, Grapnel): the sim's press. */
+  press(x: number, y: number, radius: number): void {
+    const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
+    if (this.game.phase !== 'wave') return;
+    this.log.commands.push([this.game.steps, 'd', rx, ry, rr]);
+    press(this.game, rx, ry, rr);
+  }
+
+  /** The pressed finger moved (the UI sends at most one a step). */
+  move(x: number, y: number): void {
+    if (!this.game.press || this.game.phase !== 'wave') return;
+    const [rx, ry] = [Math.round(x), Math.round(y)];
+    if (rx === Math.round(this.game.press.x) && ry === Math.round(this.game.press.y)) return;
+    this.log.commands.push([this.game.steps, 'v', rx, ry]);
+    pressMove(this.game, rx, ry);
+  }
+
+  /** Focus (a boost): the holding finger down or lifted. It only slows
+   *  time; the other finger taps. */
+  /** Test Lab: bring the card's enemy (or weapon) in now. (Never on a map
+   *  card's full run: it has nothing of its own to bring.) */
+  bring(): void {
+    if (this.game.phase !== 'wave' || !this.game.lab || this.game.lab.full) return;
+    this.log.commands.push([this.game.steps, 'b']);
+    labBring(this.game);
+  }
+
+  focus(down: boolean): void {
+    if (this.game.phase !== 'wave' || this.game.finger === down) return;
+    this.log.commands.push([this.game.steps, 'h', down ? 1 : 0]);
+    focusHold(this.game, down);
+  }
+
+  release(x: number, y: number, radius: number): TapResult | null {
+    if (!this.game.press) return null;
+    const [rx, ry, rr] = [Math.round(x), Math.round(y), Math.round(radius)];
+    this.log.commands.push([this.game.steps, 'r', rx, ry, rr]);
+    return release(this.game, rx, ry, rr);
+  }
+
+  flow(v: number): void {
+    this.log.commands.push([this.game.steps, 'f', v]);
+    setFlow(this.game, v);
+  }
+
+  formation(id: FormationId): void {
+    this.log.commands.push([this.game.steps, 'm', id]);
+    setFormation(this.game, id);
+  }
+
+  /** A lab convoy command (Rush, Disperse, Hold): logged whether or not
+   *  it was accepted, so the replay refuses the same ones. */
+  command(id: CommandId): CommandResult {
+    if (this.game.phase !== 'wave' || !this.game.convoy) return { ok: false, why: 'policy' };
+    this.log.commands.push([this.game.steps, 'k', id]);
+    return convoyCommand(this.game, id);
+  }
+
+  pick(id: CardId, replace?: AbilityId): void {
+    if (this.game.phase !== 'draft' || !this.game.offer.includes(id)) return;
+    this.drafts.push({ wave: this.game.wave, offered: [...this.game.offer], picked: id, ...(replace ? { replaced: replace } : {}) });
+    this.log.commands.push(replace ? [this.game.steps, 'u', id, replace] : [this.game.steps, 'u', id]);
+    pickUpgrade(this.game, id, replace);
+    if ((this.game.phase as Phase) === 'wave') this.mark = { wave: this.game.wave, steps: this.game.steps, commands: this.log.commands.length };
+  }
+
+  /** Quartermaster: deal the draft again (only a re-roll that happened is
+   *  logged). */
+  reroll(): boolean {
+    if (this.game.phase !== 'draft' || this.game.rerolls <= 0) return false;
+    this.log.commands.push([this.game.steps, 'x']);
+    return rerollDraft(this.game);
+  }
+
+  /** Quartermaster 5: a free level-up of a held weapon, in a draft (only
+   *  one that happened is logged). */
+  freeLevel(id: AbilityId): boolean {
+    const g = this.game;
+    const lv = g.levels[id] ?? 0;
+    if (g.phase !== 'draft' || g.freeLevelsLeft <= 0 || lv <= 0 || lv >= ABILITY_MAX) return false;
+    this.log.commands.push([g.steps, 'l', id]);
+    return freeLevelUp(g, id);
+  }
+
+  /** Quartermaster 3+: set off the golden bomb (only one that went off is
+   *  logged). */
+  goldBomb(): boolean {
+    if (this.game.phase !== 'wave' || this.game.bombsLeft <= 0) return false;
+    this.log.commands.push([this.game.steps, 'n']);
+    return goldBomb(this.game);
+  }
+
+
+  endless(): void {
+    this.log.commands.push([this.game.steps, 'e']);
+    continueEndless(this.game);
+  }
+
+  speed(v: number): void {
+    this.log.commands.push([this.game.steps, 's', v]);
+  }
+
+  /** Watch mode: the game speed the bot plays at from here on (its
+   *  persona's, and faster on a wave it rushes). UI only: the sim doesn't
+   *  read it, the analysis tools do. */
+  pace(v: number): void {
+    this.log.commands.push([this.game.steps, 'p', v]);
+  }
+
+  /** Watch mode: the bot or the player takes the controls from this step. */
+  control(who: Controller): void {
+    this.log.commands.push([this.game.steps, 'c', who]);
+    this.controller = who;
+  }
+
+  /** The player marked this moment for Claude to look at. */
+  flag(kind: FlagKind): void {
+    this.log.commands.push([this.game.steps, 'g', kind]);
+  }
+
+  /** The log so far, mid-run (no `end` yet): saved after each wave so a run
+   *  that never reaches a result screen still leaves a log. A copy, so later
+   *  inputs can't leak into it while it is being sent. */
+  snapshot(): PlayLog {
+    // A map cleared and continued into endless was sealed 'won' once; until
+    // it ends again it is still in progress.
+    const { end: _end, endedAt: _endedAt, ...log } = this.copy();
+    return log;
+  }
+
+  /** The app is going to the background mid-run: the run so far, sealed as
+   *  a quit in case the app is closed now (playtest: an iPhone swipe-away
+   *  left logs with no ending). If the player comes back and plays on, the
+   *  next save of this id replaces it. */
+  left(): PlayLog {
+    return { ...this.snapshot(), end: 'quit', endedAt: new Date().toISOString(), left: true };
+  }
+
+  /** Seal the log with how it ended and a readable summary. */
+  finish(end: PlayLog['end']): PlayLog {
+    this.log.end = end;
+    this.log.endedAt = new Date().toISOString();
+    return this.copy();
+  }
+
+  private copy(): PlayLog {
+    const g = this.game;
+    this.log.summary = {
+      score: g.score,
+      wave: g.wave,
+      cleared: g.cleared,
+      endless: g.endless,
+      delivered: g.delivered,
+      lost: g.lost,
+      carrierHp: g.carrierHp,
+      shots: g.shots,
+      steps: g.steps,
+      seconds: Math.round(g.t),
+      levels: { ...g.levels },
+      uses: { ...g.uses },
+      drafts: [...this.drafts],
+      waves: [...g.history],
+    };
+    // A Watch run: who played, from its switches up to now.
+    if (this.log.control) this.log.control = playControl(this.log.control.bot, controlSegments(this.log.commands, g.steps, startController(this.log)));
+    const { volleys, moments } = this.watch;
+    return {
+      ...this.log,
+      ...(this.log.control ? { control: { ...this.log.control, segments: this.log.control.segments.map((x) => ({ ...x })) } } : {}),
+      commands: [...this.log.commands],
+      ...(this.log.notes ? { notes: this.log.notes.map((n) => ({ ...n })) } : {}),
+      ...(this.log.waveRatings ? { waveRatings: this.log.waveRatings.map((w) => ({ ...w, rating: { ...w.rating } })) } : {}),
+      ...(volleys.length ? { volleys: volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })) } : {}),
+      ...(moments.length ? { moments: [...moments] } : {}),
+      ...(g.eventLog.length ? { events: g.eventLog.map((e) => ({ ...e, sent: { ...e.sent } })) } : {}),
+    };
+  }
+}
+
+/** One logged input, applied to a game as the live run applied it. The UI-
+ *  only codes ('s', 'c', 'g', 'p') change nothing. */
+export function applyCommand(g: Game, c: LogCommand): void {
+  switch (c[1]) {
+    case 't':
+      tap(g, c[2], c[3], c[4]);
+      break;
+    case 'd':
+      press(g, c[2], c[3], c[4]);
+      break;
+    case 'v':
+      pressMove(g, c[2], c[3]);
+      break;
+    case 'r':
+      release(g, c[2], c[3], c[4]);
+      break;
+    case 'h':
+      focusHold(g, c[2] === 1);
+      break;
+    case 'b':
+      labBring(g);
+      break;
+    case 'f':
+      setFlow(g, c[2]);
+      break;
+    case 'm':
+      setFormation(g, c[2]);
+      break;
+    case 'k':
+      convoyCommand(g, c[2]);
+      break;
+    case 'u':
+      pickUpgrade(g, c[2], c[3]);
+      break;
+    case 'x':
+      rerollDraft(g);
+      break;
+    case 'l':
+      freeLevelUp(g, c[2]);
+      break;
+    case 'n':
+      goldBomb(g);
+      break;
+    case 'e':
+      continueEndless(g);
+      break;
+  }
+}
+
+/** Re-run a log from its seed and inputs. Stops at the last recorded step
+ *  for a quit, or when the game ends. */
+export function replay(log: PlayLog, opts: ReplayOpts = {}): Game {
+  const g = replayTo(log, log.summary?.steps ?? Infinity, log.commands.length, opts);
+  // A run that was left (a quit, a Test Lab "Done"): its telemetry ends
+  // there, as the live run's did.
+  if (g.tel && log.end === 'quit' && g.phase !== 'lost' && g.phase !== 'won') g.tel.leave(g);
+  return g;
+}
+
+/** A log's game as it stood before its first step: the map, seed, wave,
+ *  tempo and Armory, then its Free Play setup, lab card, encounters and
+ *  convoy policy, in the order the live run applied them. */
+export function setupGame(log: PlayLog): Game {
+  const g = createGame(log.map, log.seed, log.firstWave, log.tempo, log.armory ?? {});
+  if (log.freePlay) applyFreePlay(g, log.freePlay);
+  if (log.lab) applyLab(g, log.lab);
+  if (log.encounters) applyEncounters(g, log.encounters);
+  if (log.convoy) applyConvoy(g, log.convoy);
+  return g;
+}
+
+/** Re-run a log's first `commands` inputs, stopping at step `lastStep`:
+ *  with a `WaveMark`, the run exactly as that wave began. */
+export function replayTo(log: PlayLog, lastStep: number, commands: number, opts: ReplayOpts = {}): Game {
+  const g = setupGame(log);
+  if (opts.telemetry) logTelemetry(g, log, 'replay');
+  const cmds = log.commands.slice(0, commands);
+  let i = 0;
+  for (let guard = 0; guard < 10_000_000; guard++) {
+    while (i < cmds.length && cmds[i][0] <= g.steps) applyCommand(g, cmds[i++]);
+    if (g.steps >= lastStep && i >= cmds.length) break;
+    if (g.phase === 'lost') break;
+    if (g.phase !== 'wave') {
+      // Waiting in a draft or on the win screen: only a command at this very
+      // step can move it on. Anything else means the log is inconsistent.
+      if (i >= cmds.length || cmds[i][0] > g.steps) break;
+      continue;
+    }
+    step(g, SIM_DT);
+  }
+  return g;
+}
+
+/** Plays a log back from a step onwards, inputs and all, a step at a time:
+ *  the result screen's "watch it" on a marked moment. */
+export class Playback {
+  readonly game: Game;
+  private i: number;
+  private cmds: LogCommand[];
+
+  constructor(log: PlayLog, from: number, opts: ReplayOpts = {}) {
+    const start = Math.max(0, from);
+    let upto = log.commands.findIndex((c) => c[0] > start);
+    if (upto < 0) upto = log.commands.length;
+    this.game = replayTo(log, start, upto, opts);
+    this.cmds = log.commands;
+    this.i = upto;
+  }
+
+  /** One step: the inputs due now, then the sim. False once it can't go on
+   *  (the run ended, or it waits on a draft pick the log doesn't have). */
+  advance(): boolean {
+    const g = this.game;
+    while (this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps) {
+      applyCommand(g, this.cmds[this.i++]);
+    }
+    if (g.phase !== 'wave') return this.i < this.cmds.length && this.cmds[this.i][0] <= g.steps;
+    step(g, SIM_DT);
+    return true;
+  }
+}
+
+/** Who holds the controls as a log's run starts: the bot on a Watch run,
+ *  a dev watch run, or a bot's own run (a sweep, the map lab); else the
+ *  player. */
+export function startController(log: Pick<PlayLog, 'control' | 'dev' | 'device'>): Controller {
+  return log.control || log.dev?.watch || log.device?.ua === 'mimic' ? 'bot' : 'you';
+}
+
+/** Who holds the controls after a log's last input. */
+function lastController(log: PlayLog): Controller {
+  let who = startController(log);
+  for (const c of log.commands) if (c[1] === 'c') who = c[2];
+  return who;
+}
+
+/** Who played which ticks, from the 'c' switches: segments in order, none
+ *  empty, the last ending at `end` (the run's last tick). */
+export function controlSegments(commands: readonly LogCommand[], end: number, start: Controller = 'you'): ControlSegment[] {
+  const out: ControlSegment[] = [];
+  let who = start;
+  let from = 0;
+  const close = (to: number) => {
+    if (to <= from) return;
+    const by: PlayedBy = who === 'bot' ? 'bot' : 'player';
+    const last = out[out.length - 1];
+    if (last && last.by === by && last.toTick === from) last.toTick = to;
+    else out.push({ fromTick: from, toTick: to, by });
+  };
+  for (const c of commands) {
+    if (c[1] !== 'c' || c[2] === who) continue;
+    const at = Math.min(c[0], end);
+    close(at);
+    from = Math.max(from, at);
+    who = c[2];
+  }
+  close(end);
+  return out;
+}
+
+/** A Watch run's control summary, from its segments. */
+export function playControl(bot: string, segments: ControlSegment[]): PlayControl {
+  const botTicks = ticksBy(segments, 'bot');
+  const playerTicks = ticksBy(segments, 'player');
+  const total = botTicks + playerTicks;
+  return {
+    mode: 'watch',
+    bot,
+    segments,
+    botTicks,
+    playerTicks,
+    playerShare: total ? Math.round((playerTicks / total) * 1000) / 1000 : 0,
+    switches: Math.max(0, segments.length - 1),
+    label: kindOf(botTicks, playerTicks, 'sim'),
+  };
+}
+
+const ticksBy = (segs: readonly ControlSegment[], by: PlayedBy) => segs.filter((x) => x.by === by).reduce((a, x) => a + x.toTick - x.fromTick, 0);
+
+function kindOf(botTicks: number, playerTicks: number, none: PlayKind): PlayKind {
+  if (!botTicks && !playerTicks) return none;
+  if (!botTicks) return 'full playtest';
+  if (!playerTicks) return 'sim';
+  return 'mixed';
+}
+
+type ControlFields = Pick<PlayLog, 'control' | 'dev' | 'device' | 'commands' | 'summary'>;
+
+/** A log's segments: its `control`'s, else worked out from its commands
+ *  (a dev watch run, a bot's run, or a run with no bot: one player
+ *  segment). */
+export function logSegments(log: ControlFields): ControlSegment[] {
+  if (log.control?.segments?.length) return log.control.segments;
+  const end = log.summary?.steps ?? log.commands.reduce((m, c) => Math.max(m, c[0]), 0);
+  return controlSegments(log.commands, end, startController(log));
+}
+
+/** How a log's run was played: 'full playtest' (every tick by hand),
+ *  'sim' (every tick by a bot: a Watch run never taken over, a dev watch
+ *  run, a sweep's log) or 'mixed'. */
+export function playKind(log: ControlFields): PlayKind {
+  if (log.control?.label) return log.control.label;
+  const segs = logSegments(log);
+  return kindOf(ticksBy(segs, 'bot'), ticksBy(segs, 'player'), startController(log) === 'bot' ? 'sim' : 'full playtest');
+}
+
+/** Was the run played by hand from start to end? The tools that read how
+ *  the player plays take only these whole, or only their player ticks
+ *  (`byPlayer`). */
+export function handPlayed(log: ControlFields): boolean {
+  return playKind(log) === 'full playtest';
+}
+
+/** Was this tick played by the player? A tick past the last segment
+ *  belongs to whoever held the controls at the end. */
+export function byPlayer(log: ControlFields): (tick: number) => boolean {
+  const segs = logSegments(log);
+  const end = segs[segs.length - 1];
+  const start = startController(log);
+  return (tick) => {
+    if (!end) return start === 'you';
+    const x = tick >= end.toTick ? end : segs.find((sg) => tick >= sg.fromTick && tick < sg.toTick);
+    return (x ?? segs[0]).by === 'player';
+  };
+}

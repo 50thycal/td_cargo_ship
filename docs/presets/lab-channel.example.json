@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "id": "LabChannel",
+  "name": "Lab Channel",
+  "tagline": "The water under you turns hostile too",
+  "description": "Open water, no shore leaning over you — and for the first time the threat is not all in the air. Drifting minefields go in ahead of the convoy, and nothing you built to cover the sky will find one. The crossing is wider and quieter than the coast was; what it asks is whether you can see.",
+  "completionRound": 8,
+  "environmentPresetId": "headlands",
+  "shapeType": "headlands",
+  "campaign": {
+    "completionXp": 90,
+    "unlocks": null
+  },
+  "start": {
+    "cash": 350,
+    "ammo": 28,
+    "droneAmmo": 0,
+    "pdAmmo": 0,
+    "bases": 1,
+    "escorts": 1,
+    "capacity": 20,
+    "confidence": 60,
+    "fleet": {
+      "cargo": 15,
+      "tanker": 3,
+      "freighter": 2
+    }
+  },
+  "pressure": {
+    "defaultBudget": null,
+    "defaultBranchCeilings": {}
+  },
+  "milestones": [
+    {
+      "round": 1,
+      "add": [
+        {
+          "branch": "missiles",
+          "nodeId": "unguided"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "add": [
+        {
+          "branch": "missiles",
+          "nodeId": "guided"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "add": [
+        {
+          "branch": "mines",
+          "nodeId": "standard"
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "add": [],
+      "beats": [
+        {
+          "id": "beat-missiles-r4-mtlpoldj",
+          "pattern": "salvo",
+          "ref": {
+            "branch": "missiles",
+            "nodeId": "guided"
+          },
+          "units": 6,
+          "groups": 1,
+          "budget": "charged"
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "add": [
+        {
+          "branch": "mines",
+          "nodeId": "lowSig"
+        }
+      ],
+      "intelWarning": "Hydrophone chatter: shore torpedo tubes are being manned."
+    },
+    {
+      "round": 6,
+      "add": [
+        {
+          "branch": "torpedoes",
+          "nodeId": "straight"
+        }
+      ],
+      "remove": [
+        {
+          "branch": "mines",
+          "nodeId": "standard"
+        }
+      ]
+    }
+  ]
+}

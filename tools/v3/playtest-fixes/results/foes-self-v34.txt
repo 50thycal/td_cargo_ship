@@ -1,0 +1,12 @@
+island (12 runs, the bot drafting for itself; ships lost a run, every wave played: 11.17, waves 1-10 6.33)
+  attack helicopters: 288; first volley 6.56 s after coming in (213 never fired); volleys 0.57 each; shot down 0.99; missiles a run: waves 1-10 10.08, boss rounds 14.25 (from 12 helicopters)
+  torpedo subs: 12; torpedoes 0.42 a sub; steps with a sub hurt 461
+  sunk by, waves 1-10 (a run): drone 2.25, ballistic 2.25, bomber 0.67, attackHeli 0.5, guided 0.33, supersonic 0.08, heavy 0.08, cluster 0.08, strafer 0.08
+  sunk by (a run): drone 3.83, ballistic 2.92, attackHeli 2.33, guided 1.08, bomber 0.67, supersonic 0.08, heavy 0.08, cluster 0.08, strafer 0.08
+  scavengers: 12; shot down 0.83; alive 2.12 s
+behemoth (12 runs, the bot drafting for itself; ships lost a run, every wave played: 10.25, waves 1-10 4.92)
+  attack helicopters: 34; first volley 6.16 s after coming in (26 never fired); volleys 0.47 each; shot down 0.94; missiles a run: waves 1-10 2.5, boss rounds 0 (from 0 helicopters)
+  torpedo subs: 66; torpedoes 0.36 a sub; steps with a sub hurt 2548
+  sunk by, waves 1-10 (a run): drone 1.17, ballistic 1, guided 0.58, cluster 0.42, heavy 0.42, torpedoSub 0.25, bomber 0.17, rocketTruck 0.08
+  sunk by (a run): torpedoSub 1.58, drone 1.17, strafer 1.17, heavy 1.08, ballistic 1, guided 0.58, cluster 0.42, bomber 0.17, rocketTruck 0.08
+  scavengers: 36; shot down 0.97; alive 2.52 s

@@ -9,7 +9,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#12140d" />
+    <meta name="apple-mobile-web-app-title" content="Straitwatch" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Straitwatch</title>
+    <script>
+      // The front door is V3 (docs/design/v3-ui-overhaul.md): this page
+      // forwards to it before anything loads. The classic game and its
+      // version picker stay here for developers only: ?legacy=1.
+      if (!/[?&]legacy=1(&|$)/.test(location.search)) location.replace('./v3.html' + location.search + location.hash);
+    </script>
     <link rel="stylesheet" href="/src/ui/style.css" />
   </head>
   <body>

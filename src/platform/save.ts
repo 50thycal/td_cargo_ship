@@ -28,6 +28,9 @@ import { newProfile, PROFILE_VERSION, type CommanderProfile } from '../sim/comma
 import type { CampaignState } from '../sim/types';
 
 const RUN_KEY = 'straitwatch.run.v1';
+/** Region Workshop playtests live in their OWN slot so a designer's test run
+ *  can never overwrite the player's campaign save. */
+const WORKSHOP_RUN_KEY = 'straitwatch.workshopRun.v1';
 const PROFILE_KEY = 'straitwatch.commander.v1';
 
 interface KeyValueStore {
@@ -109,15 +112,32 @@ export function migrateRun(raw: unknown): CampaignState | null {
 
 export function saveRun(c: CampaignState): void {
   try {
-    store.setItem(RUN_KEY, JSON.stringify({ v: c.version, run: c }));
+    store.setItem(c.workshop ? WORKSHOP_RUN_KEY : RUN_KEY, JSON.stringify({ v: c.version, run: c }));
   } catch {
     // Quota/serialization failures must never crash the game loop.
   }
 }
 
 export function loadRun(): CampaignState | null {
+  return loadRunFrom(RUN_KEY);
+}
+
+/** The saved Region Workshop playtest, if one is in progress. */
+export function loadWorkshopRun(): CampaignState | null {
+  return loadRunFrom(WORKSHOP_RUN_KEY);
+}
+
+export function clearWorkshopRun(): void {
   try {
-    const raw = store.getItem(RUN_KEY);
+    store.removeItem(WORKSHOP_RUN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function loadRunFrom(key: string): CampaignState | null {
+  try {
+    const raw = store.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { v?: number; run?: unknown };
     if (!parsed || parsed.run === undefined) return null;

@@ -1,0 +1,9 @@
+{
+ "read": "2026-11-18",
+ "source": "The player's playtest of the three rebuilt maps (Test Lab map cards, log v26, encounters rev 4): their scorecards and in-game notes, from the play logs v3-20261117234133-80824 (The Strait), v3-20261118021019-98843 (The Gauntlet), v3-20261118022237-98844 (Harbor Mouth). The player said in chat that all three were played; the hub item r3-play-reference was not marked on the page.",
+ "runs": {
+  "map-strait": { "end": "lost", "wave": 10, "lost": 6, "verdict": "keep", "tags": ["Fun"], "score": { "rev": 2, "fun": 4, "difficulty": "right", "vs": "better", "vsCard": "map-strait-v2", "again": "yes", "best": 10 }, "notes": ["w5: I looked away for a few seconds so that is why I lost that ships lol"] },
+  "map-gauntlet": { "end": "won", "wave": 13, "lost": 5, "boss": [0, 0, 1], "verdict": "keep", "tags": ["Fun"], "score": { "rev": 2, "fun": 5, "difficulty": "right", "boss": 5, "vs": "better", "vsCard": "map-strait", "again": "yes", "best": 10, "weakest": 1 } },
+  "map-harbor": { "end": "lost", "wave": 13, "lost": 10, "boss": [2, 0, 4], "verdict": "keep", "tags": ["Fun"], "score": { "rev": 2, "fun": 5, "difficulty": "right", "boss": 5, "vs": "better", "vsCard": "map-gauntlet", "again": "yes", "best": 13, "weakest": 1 }, "notes": ["w5: I think the invinciblity of the super sonic missle is just a tad to long as soo as it is launching is when you can attack it basically n as soon as it is off the truck", "w8: Something that we should learn how to track with our data and try to reproduce with the bots is “close calls” where that nuke or ammo drop really saved us from getting a lot of damage or destroying a heavy right before it took out our last ship senarjos like that is what make the game more fun"] }
+ }
+}

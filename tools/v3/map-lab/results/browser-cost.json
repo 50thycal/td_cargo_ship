@@ -1,0 +1,26 @@
+{
+ "1x-off": {
+  "usPerStep": 13.9,
+  "steps": 2205,
+  "events": 0,
+  "tel": false
+ },
+ "1x-on": {
+  "usPerStep": 20.5,
+  "steps": 2206,
+  "events": 314,
+  "tel": true
+ },
+ "4x-off": {
+  "usPerStep": 66.4,
+  "steps": 2206,
+  "events": 0,
+  "tel": false
+ },
+ "4x-on": {
+  "usPerStep": 78.5,
+  "steps": 2206,
+  "events": 314,
+  "tel": true
+ }
+}

@@ -552,6 +552,40 @@ describe('attack-boat counters', () => {
     expect(state.events.some((e) => e.type === 'boatSunk')).toBe(true);
   });
 
+  it('two guns holding one boat sink it once, not twice', () => {
+    // The candidate list every gun shoots from is built once per tick, before
+    // any of them fire, so a boat broken by the first gun is still in the
+    // second gun's hands when its turn comes — and "is it dead" was only ever
+    // asked as `hp <= 0`, which stays true after the first kill. Both guns
+    // therefore counted a sinking, both were paid a deck-gun kill, and the
+    // same boat dropped two salvage fields.
+    //
+    // Distributed fire normally steers the second gun elsewhere and hides it.
+    // This is the loadout that cannot: two base guns, one boat in reach.
+    const { state, rng, fleet } = engage([spawn('smallArms')], gunboatEscorts);
+    const boat = fleet[0];
+    const gunners = state.escorts.filter((e) => e.alive && e.modules.includes('deckGun'));
+    expect(gunners.length).toBeGreaterThan(1);
+    // Line every gun up on the same boat, loaded, with the hull one hit from
+    // going down — the exact tick the double count used to happen on.
+    const wreckageBefore = state.wreckage.length;
+    boat.hp = 1;
+    for (const gunner of gunners) {
+      gunner.gunTargetId = boat.id;
+      gunner.gunCooldown = 0;
+      gunner.x = boat.x + 20;
+      gunner.y = boat.y + 20;
+    }
+    let guard = 0;
+    while (state.stats.boatsSunk === 0 && guard++ < Math.ceil(20 / SIM.dt) && !state.over) {
+      stepTransit(state, [], rng);
+    }
+    // One boat, one sinking, one kill credited, one wreck in the water.
+    expect(state.stats.boatsSunk).toBe(1);
+    expect(state.stats.counter.deckGunKills).toBe(1);
+    expect(state.wreckage.length - wreckageBefore).toBeLessThanOrEqual(1);
+  });
+
   it('a convoy with no deck gun cannot touch the boat at all', () => {
     const { state, rng, fleet } = engage([spawn('smallArms')]);
     run(state, rng, Math.ceil(40 / SIM.dt));

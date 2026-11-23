@@ -1,0 +1,151 @@
+{
+ "about": "The player's marks on enemy round 1 (https://claude.ai/artifact/Sm8d5jmPVxTwihiTiKdtGX), read back from its store on 2026-11-07. Notes are quoted exactly. Answer choices are 0-based indices into QUESTIONS in enemies.mjs; the chosen option's text is copied beside it. p-dive-bomber has a note but no verdict button set; its note opens \"I like this\", so the build reads it as go, with the player's redesign.",
+ "reviews": {
+  "acoustic": {
+   "name": "Acoustic Mine",
+   "verdict": "maybe"
+  },
+  "barge": {
+   "name": "Supply Barge",
+   "verdict": "go"
+  },
+  "bodyguard": {
+   "name": "Bodyguard Ring",
+   "verdict": "go"
+  },
+  "cloud": {
+   "name": "Fuel Cloud",
+   "verdict": "drop"
+  },
+  "hydra": {
+   "name": "Hydra Missile",
+   "verdict": "go"
+  },
+  "lure": {
+   "name": "Lure Beacon",
+   "verdict": "go",
+   "note": "Yeah so passive attacks will hit this "
+  },
+  "p-armored-drone": {
+   "name": "Armored Drone",
+   "verdict": "go"
+  },
+  "p-attack-heli": {
+   "name": "Attack Helicopter",
+   "verdict": "go"
+  },
+  "p-crossing-wing": {
+   "name": "Crossing Attack Wing",
+   "verdict": "go"
+  },
+  "p-decoy": {
+   "name": "Decoy Drone",
+   "verdict": "go"
+  },
+  "p-dive-bomber": {
+   "name": "Dive Bomber",
+   "verdict": null,
+   "note": "I like this but it should not show the plane to last minute so this is a quick reaction attack. The player will see a circle where it is coming and then I will appear outta the sky as a dive bomber and the players has a small window to hit the plane before the bomb drops. Physical bomb can not be intercepted once it falls "
+  },
+  "p-emp-drone": {
+   "name": "EMP Attack Drone",
+   "verdict": "drop"
+  },
+  "p-gunboat": {
+   "name": "Broadside Gunboat",
+   "verdict": "maybe",
+   "note": "Yeah I need to play the dreadnut map first keep as a maybe "
+  },
+  "p-jammer": {
+   "name": "Jammer Drone",
+   "verdict": "maybe"
+  },
+  "p-loiter": {
+   "name": "Loitering Ambush Drones",
+   "verdict": "go"
+  },
+  "p-minelayer": {
+   "name": "Minelayer Boat",
+   "verdict": "maybe",
+   "note": "I need to play the mine map first to see how this plays keep it as an option "
+  },
+  "p-repair-tender": {
+   "name": "Repair Tender",
+   "verdict": "go"
+  },
+  "p-rocket-truck": {
+   "name": "Rocket Artillery Truck",
+   "verdict": "go"
+  },
+  "p-siege-battery": {
+   "name": "Coastal Siege Battery",
+   "verdict": "go"
+  },
+  "p-spotter": {
+   "name": "Target-Spotter Aircraft",
+   "verdict": "go"
+  },
+  "p-sprint-drones": {
+   "name": "Sprint Drones",
+   "verdict": "go"
+  },
+  "p-stealth-bomber": {
+   "name": "Stealth Bomber",
+   "verdict": "go",
+   "note": "Make this one look like a B2 bomber and give it more health too "
+  },
+  "p-stealth-strafer": {
+   "name": "Stealth Strafer",
+   "verdict": "go"
+  },
+  "p-torpedo-sub": {
+   "name": "Torpedo Attack Submarine",
+   "verdict": "go"
+  },
+  "picket": {
+   "name": "Flak Picket",
+   "verdict": "go"
+  },
+  "radar": {
+   "name": "Counter-Battery Site",
+   "verdict": "maybe"
+  },
+  "scavenger": {
+   "name": "Scavenger Drone",
+   "verdict": "go",
+   "note": " I like this one but once the drone gets to it the drip is gone "
+  },
+  "tug": {
+   "name": "Hijacker Tug",
+   "verdict": "drop"
+  },
+  "volatile": {
+   "name": "Volatile Cloud",
+   "verdict": "revive",
+   "note": "I like that so if you explode it above your ships it does damage "
+  }
+ },
+ "answers": {
+  "en-chapters": {
+   "choice": 0,
+   "chosen": "A few debut in each chapter, like the weapons (recommended)"
+  },
+  "en-count": {
+   "choice": 1,
+   "chosen": "All the ones you mark “Go further”"
+  },
+  "en-stealth": {
+   "choice": 1,
+   "chosen": "Two separate enemies"
+  },
+  "en-taxonomy": {
+   "choice": 0,
+   "chosen": "Yes: Strikes, Platforms, Support (recommended)"
+  },
+  "en-unstoppable": {
+   "choice": 0,
+   "chosen": "Always a clear tell first, and the source is always killable (recommended)"
+  }
+ },
+ "notMarked": []
+}

@@ -1,0 +1,443 @@
+{
+ "date": "2026-11-10",
+ "round": 5,
+ "source": "Test Lab session of 2026-11-09 to 2026-11-10 (20:58 to 02:32 UTC), the special event cards of test round 5, played on build 2026-11-09T19:13; play logs on the Vercel playlog store. The notes were dictated; they are kept as the logs have them. Built in Test Lab round 6 (docs/design/v3-events-round6.md). \"events\" lists how each run of the event went.",
+ "verdicts": {
+  "ev-rush": [
+   {
+    "verdict": "tune",
+    "tags": [],
+    "note": "That was hard! I will try again",
+    "log": "v3-20261109210119-5459",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 1,
+    "events": [
+     "held",
+     "broken"
+    ]
+   }
+  ],
+  "ev-gunship-wall": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "That was good you really do need a good power up or weapon drop to deal with it tho which is fine just observe to make but why also three rounds not following that I thought it would be one and done",
+    "log": "v3-20261109210232-5460",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "broken",
+     "broken",
+     "held"
+    ]
+   }
+  ],
+  "ev-rocket-convoy": [
+   {
+    "verdict": "keep",
+    "tags": [
+     "Too easy"
+    ],
+    "note": "Too easy",
+    "log": "v3-20261109210640-5462",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "held",
+     "clean",
+     "clean"
+    ]
+   }
+  ],
+  "ev-blackout": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Hard but doable",
+    "log": "v3-20261109210926-5464",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "broken",
+     "clean",
+     "broken"
+    ]
+   }
+  ],
+  "ev-decoy-storm": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "This one was a lot of fun. I would definitely make the drones more I guess visible for which ones are the decoys make them like a different color slightly than the other one so it’s easier to point out. Apply that for just this enemy attack in general not just this special event.",
+    "log": "v3-20261109221235-46743",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "broken",
+     "held",
+     "clean"
+    ]
+   }
+  ],
+  "ev-hydra-bloom": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "I think we need to slow down Hydro a bit at least the initial break of them. You can keep the speed after it splits, but make the initial stage slower than that. Applies for the whole hydra not just this.",
+    "log": "v3-20261109221558-46745",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "broken",
+     "held",
+     "broken"
+    ]
+   }
+  ],
+  "ev-wolf-pack": [
+   {
+    "verdict": "tune",
+    "tags": [
+     "Too easy"
+    ],
+    "note": "Make sure they shoot multiple torpedoes each in different directions and then maybe you can give them one or two fast torpedoes too just total not for each you could do that for the actual enemy attack two doesn’t always have to be a fast one, but you can add in a fast one every once in a while add a little bit of variability to that one",
+    "log": "v3-20261109221740-46746",
+    "round": 5,
+    "rev": 5,
+    "ended": "done",
+    "waves": 1,
+    "events": [
+     "clean"
+    ]
+   }
+  ],
+  "ev-shield-wall": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "You can spread them out a bit they all come from the same launcher",
+    "log": "v3-20261109221901-46747",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "held",
+     "held",
+     "broken"
+    ]
+   }
+  ],
+  "ev-supply-raid": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Yeah, this one’s more fun than anything. Just make it so there’s no nukes that get dropped during the special event cause I just kind of run up rivers of it and then add more drones that take them and have them come from all side.",
+    "log": "v3-20261109222413-46748",
+    "round": 5,
+    "rev": 5,
+    "ended": "done",
+    "waves": 2,
+    "events": [
+     "clean",
+     "clean"
+    ]
+   }
+  ],
+  "ev-carpet-run": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109222559-46749",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "clean",
+     "broken",
+     "broken"
+    ]
+   }
+  ],
+  "ev-dive-circus": [
+   {
+    "verdict": "tune",
+    "tags": [
+     "Too easy"
+    ],
+    "note": "Fun but could have more than planes",
+    "log": "v3-20261109234135-81717",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "clean",
+     "clean",
+     "held"
+    ]
+   }
+  ],
+  "ev-bombardment": [
+   {
+    "verdict": "tune",
+    "tags": [],
+    "note": "",
+    "log": "v3-20261109234402-81718",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "broken",
+     "broken",
+     "broken"
+    ]
+   },
+   {
+    "verdict": "tune",
+    "tags": [
+     "Too hard"
+    ],
+    "note": "Add in some drones to allow some drips that. I think we needed so I can have more of a chance",
+    "log": "v3-20261109234611-81719",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "broken",
+     "broken",
+     "broken"
+    ]
+   }
+  ],
+  "ev-fire-mission": [
+   {
+    "verdict": "tune",
+    "tags": [
+     "Too easy"
+    ],
+    "note": "Wayyyyto easy let’s rework this completely need a different idea for this one",
+    "log": "v3-20261109234828-81720",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "held",
+     "clean",
+     "clean"
+    ]
+   }
+  ],
+  "ev-repair-yard": [
+   {
+    "verdict": "tune",
+    "tags": [],
+    "note": "Worked good but it had a ship stuck that didn’t travel at all I think it would be better to have the repair ships come from multiple directions on convert on the same spot",
+    "log": "v3-20261110001809-81721",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "broken",
+     "clean",
+     "clean"
+    ]
+   }
+  ],
+  "ev-escort-run": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Was hard but I think it is a good balance",
+    "log": "v3-20261110003312-81722",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 2,
+    "events": [
+     "held",
+     "held",
+     "broken"
+    ]
+   }
+  ],
+  "ev-siren-field": [
+   {
+    "verdict": "keep",
+    "tags": [
+     "Fun"
+    ],
+    "note": "This one’s really good and we should save it and only play on the player has a lot of passive pick up so make it like a only activate if there is at least two passive pickups because it’ll be a challenging one for them so this one should be able to work on any map put that in its own category there might be other categories like that too",
+    "log": "v3-20261110022602-56829",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 1,
+    "events": [
+     "broken",
+     "broken"
+    ]
+   }
+  ],
+  "ev-firestorm": [
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Really fun idea might be hard to master. I think kind of keep it as it is, but we’ll test it out more. Probably need to be tuned down",
+    "log": "v3-20261110022748-56830",
+    "round": 5,
+    "rev": 5,
+    "ended": "lost",
+    "waves": 1,
+    "events": [
+     "broken",
+     "broken"
+    ]
+   },
+   {
+    "verdict": "keep",
+    "tags": [],
+    "note": "Really fun idea might be hard to master. I think kind of keep it as it is, but we’ll test it out more. Probably need to be tuned down\n\nI beat it the second time. It was fine. I’ll keep it as it is.",
+    "log": "v3-20261110022924-56831",
+    "round": 5,
+    "rev": 5,
+    "ended": "length",
+    "waves": 3,
+    "events": [
+     "held",
+     "held",
+     "broken"
+    ]
+   }
+  ]
+ },
+ "notes": [
+  {
+   "card": "ev-rush",
+   "log": "v3-20261109210119-5459",
+   "text": "That was hard! I will try again",
+   "built": "No change (the player: \"I will try again\")."
+  },
+  {
+   "card": "ev-gunship-wall",
+   "log": "v3-20261109210232-5460",
+   "text": "That was good you really do need a good power up or weapon drop to deal with it tho which is fine just observe to make but why also three rounds not following that I thought it would be one and done",
+   "built": "No change (\"which is fine\"). The \"one and done\" confusion: the lab bar now reads \"Run 1 of 3\" in an event card's Full test."
+  },
+  {
+   "card": "ev-rocket-convoy",
+   "log": "v3-20261109210640-5462",
+   "text": "Too easy",
+   "built": "Harder: two columns of four trucks, one down each shore road, driving in faster and raising closer together (salvos overlap); 5 hits and 2 salvos a truck."
+  },
+  {
+   "card": "ev-blackout",
+   "log": "v3-20261109210926-5464",
+   "text": "Hard but doable",
+   "built": "No change."
+  },
+  {
+   "card": "ev-decoy-storm",
+   "log": "v3-20261109221235-46743",
+   "text": "This one was a lot of fun. I would definitely make the drones more I guess visible for which ones are the decoys make them like a different color slightly than the other one so it’s easier to point out. Apply that for just this enemy attack in general not just this special event.",
+   "built": "No change in this build. Recolouring the decoys is for the enemy everywhere: not in this build."
+  },
+  {
+   "card": "ev-hydra-bloom",
+   "log": "v3-20261109221558-46745",
+   "text": "I think we need to slow down Hydro a bit at least the initial break of them. You can keep the speed after it splits, but make the initial stage slower than that. Applies for the whole hydra not just this.",
+   "built": "No change in this build. Slowing the Hydra is for the enemy everywhere: not in this build."
+  },
+  {
+   "card": "ev-wolf-pack",
+   "log": "v3-20261109221740-46746",
+   "text": "Make sure they shoot multiple torpedoes each in different directions and then maybe you can give them one or two fast torpedoes too just total not for each you could do that for the actual enemy attack two doesn’t always have to be a fast one, but you can add in a fast one every once in a while add a little bit of variability to that one",
+   "built": "Each sub fires a spread of two or three torpedoes on different headings (a dashed line each); two torpedoes in the whole event are fast (an amber line in quick dashes). The normal Torpedo Sub is not changed in this build."
+  },
+  {
+   "card": "ev-shield-wall",
+   "log": "v3-20261109221901-46747",
+   "text": "You can spread them out a bit they all come from the same launcher",
+   "built": "Each row of the block comes from its own launch point along the shore; the rows form up at a muster point, then the block goes on as before."
+  },
+  {
+   "card": "ev-supply-raid",
+   "log": "v3-20261109222413-46748",
+   "text": "Yeah, this one’s more fun than anything. Just make it so there’s no nukes that get dropped during the special event cause I just kind of run up rivers of it and then add more drones that take them and have them come from all side.",
+   "built": "No Nuke in the cargo (no Nuke in any event); twelve scavengers (six a run, six before), from all four sides, each leaving the way it came."
+  },
+  {
+   "card": "ev-dive-circus",
+   "log": "v3-20261109234135-81717",
+   "text": "Fun but could have more than planes",
+   "built": "Pairs of guided missiles on the off-beats between the dives."
+  },
+  {
+   "card": "ev-bombardment",
+   "log": "v3-20261109234402-81718",
+   "where": "pause",
+   "text": "Not for all of these special events \n\nI like the three waves actually after doing it more \n\nThen also no nukes for these special events events",
+   "built": "No Nuke drops or appears in any special event (kill drops, the Supply Raid's cargo, Airdrop's planes, anything else). Full stays three runs, and the lab bar says which run it is."
+  },
+  {
+   "card": "ev-bombardment",
+   "log": "v3-20261109234611-81719",
+   "text": "Add in some drones to allow some drips that. I think we needed so I can have more of a chance",
+   "built": "Four supply swarms of four drones: each one shot down drops a pickup (repairs, ammo, your weapons; never a Nuke). They fly at the carrier, not the ships. The guns take turns further apart (2.2 s to 3 s). No Nuke in any event."
+  },
+  {
+   "card": "ev-fire-mission",
+   "log": "v3-20261109234828-81720",
+   "text": "Wayyyyto easy let’s rework this completely need a different idea for this one",
+   "built": "A new Fire Mission: three spotters take turns, each from its own side, painting a ship and calling a walking barrage down its course (docs/design/v3-events-round6.md)."
+  },
+  {
+   "card": "ev-repair-yard",
+   "log": "v3-20261110001809-81721",
+   "text": "Worked good but it had a ship stuck that didn’t travel at all I think it would be better to have the repair ships come from multiple directions on convert on the same spot",
+   "built": "The stuck ship was a repair ship placed in the closed cove on Smugglers' Coves, which no straight run from a screen edge could reach, so it rose there and never moved. Now the three repair ships sail in from different sides to one meeting spot on open water on the mothership's course, and a repair ship blocked by a shore works its way round it."
+  },
+  {
+   "card": "ev-escort-run",
+   "log": "v3-20261110003312-81722",
+   "text": "Was hard but I think it is a good balance",
+   "built": "No change."
+  },
+  {
+   "card": "ev-siren-field",
+   "log": "v3-20261110022602-56829",
+   "text": "This one’s really good and we should save it and only play on the player has a lot of passive pick up so make it like a only activate if there is at least two passive pickups because it’ll be a challenging one for them so this one should be able to work on any map put that in its own category there might be other categories like that too",
+   "built": "No change in this build: moving it to a category of its own is a question for the player first."
+  },
+  {
+   "card": "ev-firestorm",
+   "log": "v3-20261110022748-56830",
+   "text": "Really fun idea might be hard to master. I think kind of keep it as it is, but we’ll test it out more. Probably need to be tuned down",
+   "built": "No change."
+  },
+  {
+   "card": "ev-firestorm",
+   "log": "v3-20261110022924-56831",
+   "text": "Really fun idea might be hard to master. I think kind of keep it as it is, but we’ll test it out more. Probably need to be tuned down\n\nI beat it the second time. It was fine. I’ll keep it as it is.",
+   "built": "No change."
+  }
+ ]
+}

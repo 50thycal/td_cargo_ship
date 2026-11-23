@@ -1,0 +1,492 @@
+{
+ "note": "Prototype results: each idea added to real bot-played games (all 20 maps x 8 seeds = 160 runs per player type), on in the same two 15 s windows each wave. average = the bot's average skill (accurate); spammer = taps without waiting, 20% misses (tap-happy). clear = % of runs won. Made by tools/v3/weapon-ideas/proto.mts.",
+ "runsPerIdea": 160,
+ "runs": {
+  "adrenaline": {
+   "average": {
+    "clear": 48,
+    "lost": 4.07,
+    "wave": 9.1,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 9,
+    "lost": 5.47,
+    "wave": 7.5,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "bomber": {
+   "average": {
+    "clear": 59,
+    "lost": 3.52,
+    "wave": 9.6,
+    "raidersKilled": 1.2,
+    "silenced": 118.1,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 20,
+    "lost": 5.24,
+    "wave": 8.1,
+    "raidersKilled": 0.9,
+    "silenced": 82.3,
+    "dodges": 0.0
+   }
+  },
+  "bomberDelay": {
+   "average": {
+    "clear": 36,
+    "lost": 4.6,
+    "wave": 8.9,
+    "raidersKilled": 1.1,
+    "silenced": 156.3,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 6,
+    "lost": 5.76,
+    "wave": 7.0,
+    "raidersKilled": 0.7,
+    "silenced": 104.8,
+    "dodges": 0.0
+   }
+  },
+  "drones": {
+   "average": {
+    "clear": 83,
+    "lost": 2.46,
+    "wave": 9.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 44,
+    "lost": 4.61,
+    "wave": 9.1,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "drones12": {
+   "average": {
+    "clear": 69,
+    "lost": 3.11,
+    "wave": 9.7,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 25,
+    "lost": 5.33,
+    "wave": 8.7,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "fireatwill": {
+   "average": {
+    "clear": 74,
+    "lost": 3.17,
+    "wave": 9.7,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 19,
+    "lost": 5.4,
+    "wave": 8.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "gunship": {
+   "average": {
+    "clear": 84,
+    "lost": 2.33,
+    "wave": 9.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 41,
+    "lost": 4.86,
+    "wave": 9.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "helm": {
+   "average": {
+    "clear": 52,
+    "lost": 3.62,
+    "wave": 9.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 13.1
+   },
+   "spammer": {
+    "clear": 18,
+    "lost": 4.92,
+    "wave": 7.7,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 14.2
+   }
+  },
+  "hijack": {
+   "average": {
+    "clear": 59,
+    "lost": 3.46,
+    "wave": 9.5,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 30,
+    "lost": 4.89,
+    "wave": 8.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "hunter": {
+   "average": {
+    "clear": 48,
+    "lost": 3.94,
+    "wave": 9.1,
+    "raidersKilled": 8.4,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 15,
+    "lost": 5.36,
+    "wave": 7.3,
+    "raidersKilled": 5.5,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "lance": {
+   "average": {
+    "clear": 57,
+    "lost": 3.63,
+    "wave": 9.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 31,
+    "lost": 4.76,
+    "wave": 8.4,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "longshot": {
+   "average": {
+    "clear": 45,
+    "lost": 4.04,
+    "wave": 9.0,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 14,
+    "lost": 5.41,
+    "wave": 7.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "longshotA": {
+   "average": {
+    "clear": 56,
+    "lost": 3.64,
+    "wave": 9.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 20,
+    "lost": 5.06,
+    "wave": 7.8,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "none": {
+   "average": {
+    "clear": 38,
+    "lost": 4.5,
+    "wave": 8.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 9,
+    "lost": 5.53,
+    "wave": 6.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "orbital": {
+   "average": {
+    "clear": 71,
+    "lost": 3.25,
+    "wave": 9.6,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 23,
+    "lost": 5.15,
+    "wave": 8.0,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "overclock": {
+   "average": {
+    "clear": 54,
+    "lost": 3.59,
+    "wave": 9.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 21,
+    "lost": 5.15,
+    "wave": 7.4,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "overwatch": {
+   "average": {
+    "clear": 33,
+    "lost": 4.59,
+    "wave": 8.7,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 9,
+    "lost": 5.69,
+    "wave": 7.1,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "ricochet": {
+   "average": {
+    "clear": 41,
+    "lost": 4.44,
+    "wave": 8.8,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 17,
+    "lost": 5.36,
+    "wave": 7.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "scavenger": {
+   "average": {
+    "clear": 66,
+    "lost": 3.24,
+    "wave": 9.6,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 16,
+    "lost": 5.48,
+    "wave": 7.8,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "shore": {
+   "average": {
+    "clear": 49,
+    "lost": 4.01,
+    "wave": 9.2,
+    "raidersKilled": 9.7,
+    "silenced": 46.8,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 9,
+    "lost": 5.42,
+    "wave": 7.5,
+    "raidersKilled": 5.3,
+    "silenced": 21.6,
+    "dodges": 0.0
+   }
+  },
+  "shoreA": {
+   "average": {
+    "clear": 61,
+    "lost": 3.42,
+    "wave": 9.5,
+    "raidersKilled": 11.2,
+    "silenced": 62.7,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 14,
+    "lost": 5.26,
+    "wave": 8.0,
+    "raidersKilled": 7.2,
+    "silenced": 41.7,
+    "dodges": 0.0
+   }
+  },
+  "slice": {
+   "average": {
+    "clear": 74,
+    "lost": 2.69,
+    "wave": 9.8,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 43,
+    "lost": 4.22,
+    "wave": 9.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "streak": {
+   "average": {
+    "clear": 59,
+    "lost": 3.61,
+    "wave": 9.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 11,
+    "lost": 5.38,
+    "wave": 7.0,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "supply": {
+   "average": {
+    "clear": 68,
+    "lost": 3.16,
+    "wave": 9.5,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 18,
+    "lost": 5.36,
+    "wave": 7.6,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "tug": {
+   "average": {
+    "clear": 48,
+    "lost": 3.86,
+    "wave": 9.1,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 14,
+    "lost": 5.16,
+    "wave": 7.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "volatile": {
+   "average": {
+    "clear": 44,
+    "lost": 4.13,
+    "wave": 8.9,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 9,
+    "lost": 5.69,
+    "wave": 7.2,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  },
+  "wingman": {
+   "average": {
+    "clear": 58,
+    "lost": 3.5,
+    "wave": 9.3,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   },
+   "spammer": {
+    "clear": 19,
+    "lost": 5.24,
+    "wave": 7.8,
+    "raidersKilled": 0.0,
+    "silenced": 0.0,
+    "dodges": 0.0
+   }
+  }
+ }
+}

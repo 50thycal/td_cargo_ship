@@ -1,0 +1,20 @@
+{
+  "source": "hub answers collection",
+  "read": "2026-11-20T10:40Z",
+  "answers": {
+    "r11-shield-hits": {
+      "at": "2026-11-20T08:41:11.485Z",
+      "choice": 1,
+      "note": ""
+    },
+    "r11-rating-where": {
+      "at": "2026-11-20T08:42:07.276Z",
+      "choice": 0,
+      "note": ""
+    },
+    "r11-bot-gap": {
+      "at": "2026-11-20T08:44:39.517Z",
+      "note": "Could have been me just not trying that hard \n\nIn the end games score card add in a rating for me to rate how hard I tired so we know if it was a fluk or if it truly is hard "
+    }
+  }
+}

@@ -1,0 +1,390 @@
+// PLAYTEST FEEDBACK (playtest-notes round). What a run's log carries beyond
+// its inputs, so the player's comments reach Claude with their context:
+//
+//   - notes: the player paused and said something (tags and text), stamped
+//     with the step and a snapshot of the game as it stood, because a later
+//     build can no longer replay an old log to that moment;
+//   - volleys: the attack groups as the player meets them (a run of raids of
+//     one kind back to back, the way the warning cards call them out), each
+//     with what it did, and the player's rating of it if they gave one;
+//   - moments: the run's hard moments, marked automatically (a ship sunk, the
+//     carrier hit, three ships lost in ten seconds, tapping an empty rack, a
+//     new threat), so the player can comment on them after the run.
+//
+// Pure: no DOM. The Recorder owns a Watch and feeds it the game each frame.
+
+import { RAID, STRUCTURE_KINDS, type RaidTheme, type ThreatKind } from '../data/config';
+import type { AbilityId } from '../data/abilities';
+import type { FormationId } from '../data/formations';
+import type { Game } from './game';
+
+export type NoteTag = 'bug' | 'hard' | 'easy' | 'unfair' | 'confusing' | 'fun' | 'idea';
+export const NOTE_TAGS: { id: NoteTag; label: string }[] = [
+  { id: 'bug', label: 'Bug' },
+  { id: 'hard', label: 'Too hard' },
+  { id: 'easy', label: 'Too easy' },
+  { id: 'unfair', label: 'Unfair' },
+  { id: 'confusing', label: 'Confusing' },
+  { id: 'fun', label: 'Fun' },
+  { id: 'idea', label: 'Idea' },
+];
+
+/** 1 to 5 each. Difficulty: 1 easy, 5 brutal. Fun: 1 a chore, 5 a blast.
+ *  Intensity: 1 calm, 5 frantic. Effort (the whole run's rating only): 1
+ *  casual, not really trying; 5 full focus, all-out. */
+export interface Rating {
+  difficulty?: number;
+  fun?: number;
+  intensity?: number;
+  effort?: number;
+}
+export type RatingAxis = { id: keyof Rating; label: string; low: string; high: string };
+/** The axes a volley, a wave and the whole run are rated on. */
+export const RATING_AXES: RatingAxis[] = [
+  { id: 'difficulty', label: 'Difficulty', low: 'easy', high: 'brutal' },
+  { id: 'fun', label: 'Fun', low: 'a chore', high: 'a blast' },
+  { id: 'intensity', label: 'Intensity', low: 'calm', high: 'frantic' },
+];
+/** How hard the player tried (the player, round 11: "a rating for me to
+ *  rate how hard I tried, so we know if it was a fluke or if it truly is
+ *  hard"). Asked of the whole run only, never of a volley or a wave. */
+export const EFFORT_AXIS: RatingAxis = { id: 'effort', label: 'Effort', low: 'casual / not really trying', high: 'full focus, all-out' };
+/** The whole run's rows on the review screen: the three axes and Effort. */
+export const RUN_RATING_AXES: RatingAxis[] = [...RATING_AXES, EFFORT_AXIS];
+/** An effort this low or lower marks a run the player didn't try hard on:
+ *  the bot fit and the seesaw read weigh it less. */
+export const LOW_EFFORT = 2;
+
+/** How hard the player said they tried on a run (1-5), from its log: the
+ *  run's rating (the normal game's review screen) or, on a Test Lab map
+ *  card, its scorecard. Absent: not rated. */
+export function runEffort(log: { rating?: Rating; labResult?: { score?: { effort?: number } } }): number | undefined {
+  const v = log.rating?.effort ?? log.labResult?.score?.effort;
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5 ? v : undefined;
+}
+
+/** Did the player say they weren't really trying (effort <= LOW_EFFORT)? */
+export function lowEffort(effort: number | undefined): boolean {
+  return effort !== undefined && effort <= LOW_EFFORT;
+}
+
+/** The player's rating of a whole wave, given (optionally) on the weapon
+ *  draft straight after it (docs/design/v3-rate-and-review.md): the same
+ *  three 1–5 axes as a volley's or the run's, and a short note. One per
+ *  wave (rated again, it replaces the earlier one). `step` is the sim step
+ *  it was given on (the draft's), `at` the wall clock. None of it touches
+ *  replay: the log carries it beside `volleys` and `notes`. */
+export interface WaveRating {
+  wave: number;
+  step: number;
+  at: string;
+  rating: Rating;
+  note?: string;
+}
+
+/** The longest note a wave rating keeps. */
+export const WAVE_NOTE_MAX = 280;
+
+/** The game as it stood when a note was made. */
+export interface NoteContext {
+  phase: Game['phase'];
+  wave: number;
+  waveT: number;
+  score: number;
+  lost: number;
+  carrierHp: number;
+  ammo: number;
+  rack: number;
+  flow: number;
+  formation: FormationId;
+  weapons: { id: AbilityId; level: number }[];
+  loaded?: AbilityId;
+  /** Threats in play, by kind (enemy structures left out). */
+  threats: Partial<Record<ThreatKind, number>>;
+}
+
+export interface PlayNote {
+  /** The sim step it was made on (the game was paused there). */
+  step: number;
+  at: string;
+  /** Where it was made: the pause screen, a volley's rating, the result
+   *  screen's review (about a marked moment, or the run), or the menu. */
+  where: 'pause' | 'volley' | 'review' | 'menu';
+  tags: NoteTag[];
+  text: string;
+  ctx?: NoteContext;
+  /** The volley it rates or the moment it is about (indexes into the log's
+   *  `volleys` and `moments`). */
+  volley?: number;
+  moment?: number;
+  /** A small JPEG of the battlefield (data URL). */
+  thumb?: string;
+  /** A Test Lab Watch run (log v65): who was at the controls as it was
+   *  written, and the wave (the tick is `step`). */
+  by?: 'bot' | 'player';
+  wave?: number;
+}
+
+export interface Volley {
+  wave: number;
+  theme: RaidTheme;
+  /** Raids in the group. */
+  raids: number;
+  /** Steps it started (its warning) and ended (launches over and the field
+   *  clear, or the next volley's warning); `to` is absent while it runs. */
+  from: number;
+  to?: number;
+  /** Threats it brought, by kind (children such as bomblets left out). */
+  threats: Partial<Record<ThreatKind, number>>;
+  sunk: number;
+  carrierHits: number;
+  /** Shots fired, and taps on an empty rack. */
+  shots: number;
+  dry: number;
+  rating?: Rating;
+}
+
+export type MomentKind = 'sunk' | 'carrier' | 'burst' | 'dry' | 'debut';
+export interface Moment {
+  step: number;
+  wave: number;
+  waveT: number;
+  kind: MomentKind;
+  text: string;
+}
+
+/** Three ships lost within this many seconds is a burst. */
+export const BURST = { ships: 3, seconds: 10 };
+/** This many dry taps within this many seconds is worth a mark (at most one
+ *  per `gap` seconds). */
+export const DRY_STREAK = { taps: 5, seconds: 3, gap: 10 };
+const MAX_MOMENTS = 60;
+
+/** A wave's raids grouped the way the player meets them: back-to-back raids
+ *  of one theme are one volley. Each group: its theme, raid count, when its
+ *  warning starts and when its launches are over (wave seconds). */
+export function volleyPlan(g: Game): { theme: RaidTheme; raids: number; start: number; launched: number }[] {
+  const out: { theme: RaidTheme; raids: number; start: number; launched: number }[] = [];
+  for (const r of [...g.raids].sort((a, b) => a.at - b.at)) {
+    const last = out[out.length - 1];
+    if (last && last.theme === r.theme) {
+      last.raids++;
+      last.launched = r.at + RAID.window;
+    } else out.push({ theme: r.theme, raids: 1, start: Math.max(0, r.at - RAID.warn), launched: r.at + RAID.window });
+  }
+  return out;
+}
+
+const hostile = (kind: ThreatKind) => !STRUCTURE_KINDS.includes(kind);
+
+/** Threats that come out of another (counted under the one that sent them). */
+const PARENT: Partial<Record<ThreatKind, ThreatKind[]>> = { bomblet: ['cluster'], minidrone: ['mothership'], guided: ['bomber', 'stealthBomber'], dart: ['hydra'], heliRocket: ['attackHeli'] };
+
+export function noteContext(g: Game): NoteContext {
+  const threats: Partial<Record<ThreatKind, number>> = {};
+  for (const th of g.threats) if (!th.dead && hostile(th.kind)) threats[th.kind] = (threats[th.kind] ?? 0) + 1;
+  return {
+    phase: g.phase,
+    wave: g.wave,
+    waveT: Math.round(g.waveT * 10) / 10,
+    score: g.score,
+    lost: g.lost,
+    carrierHp: g.carrierHp,
+    ammo: g.ammo,
+    rack: g.stats.rack,
+    flow: g.flow,
+    formation: g.formation,
+    weapons: g.slots.map((id) => ({ id, level: g.levels[id] ?? 0 })),
+    ...(g.weapon ? { loaded: g.weapon.id } : {}),
+    threats,
+  };
+}
+
+/** A volley stays open at most this long after its last launch, even if
+ *  something it sent is still in the air (trickling drones). */
+const VOLLEY_TAIL = 8;
+
+/** Follows a run frame by frame and writes its volleys and moments. */
+export class Watch {
+  readonly volleys: Volley[] = [];
+  readonly moments: Moment[] = [];
+  /** Volleys finished so far (the UI offers to rate the newest). */
+  closed = 0;
+  private wave = -1;
+  private plan: ReturnType<typeof volleyPlan> = [];
+  /** How many of this wave's planned volleys have opened. */
+  private opened = 0;
+  /** Open volleys: index into `volleys`, the plan entry, and the ids of the
+   *  threats it sent. Raids overlap (the next warning comes up while the
+   *  last one's missiles are still in the air), so more than one can be open. */
+  private live: { index: number; plan: ReturnType<typeof volleyPlan>[number]; ids: Set<number> }[] = [];
+  private seen = new Set<number>();
+  private lost = 0;
+  private hp = 0;
+  private shots = 0;
+  private dry = 0;
+  private sunkBy: Partial<Record<ThreatKind, number>> = {};
+  private sinks: number[] = [];
+  private dryAt: number[] = [];
+  private lastDryMark = -Infinity;
+
+  constructor(g: Game) {
+    this.sync(g);
+  }
+
+  private sync(g: Game): void {
+    this.lost = g.lost;
+    this.hp = g.carrierHp;
+    this.shots = g.shots;
+    this.dry = g.taps.dry;
+    this.sunkBy = { ...g.sunkBy };
+  }
+
+  private mark(g: Game, kind: MomentKind, text: string): void {
+    if (this.moments.length >= MAX_MOMENTS) return;
+    this.moments.push({ step: g.steps, wave: g.wave, waveT: Math.round(g.waveT * 10) / 10, kind, text });
+  }
+
+  private closeAll(g: Game): void {
+    for (const l of this.live) this.finish(g, l.index);
+    this.live = [];
+  }
+
+  private finish(g: Game, index: number): void {
+    const v = this.volleys[index];
+    if (v.to === undefined) {
+      v.to = g.steps;
+      this.closed++;
+    }
+  }
+
+  /** A saved run continued (docs/design/v3-resume-run.md): the volleys and
+   *  moments as they were marked (ratings and all), picked up at `g`, the
+   *  game replayed to the step it was saved at. The wave in play carries on
+   *  from where the plan stood; the volleys still open take the threats in
+   *  the air now (which one sent each is not in the save: the newest one
+   *  launching takes them, as a new threat would be filed). */
+  restore(g: Game, volleys: readonly Volley[], moments: readonly Moment[]): void {
+    this.volleys.length = 0;
+    this.volleys.push(...volleys.map((v) => ({ ...v, threats: { ...v.threats }, ...(v.rating ? { rating: { ...v.rating } } : {}) })));
+    this.moments.length = 0;
+    this.moments.push(...moments.map((m) => ({ ...m })));
+    this.closed = this.volleys.filter((v) => v.to !== undefined).length;
+    this.seen = new Set(g.threats.map((t) => t.id));
+    this.live = [];
+    this.sinks = [];
+    this.dryAt = [];
+    this.lastDryMark = -Infinity;
+    if (g.phase === 'wave') {
+      this.wave = g.wave;
+      this.plan = volleyPlan(g);
+      // This wave's volleys are the newest ones, opened in the plan's order.
+      let mine = 0;
+      while (mine < this.volleys.length && this.volleys[this.volleys.length - 1 - mine].wave === g.wave) mine++;
+      this.opened = Math.min(this.plan.length, mine, this.plan.filter((p) => g.waveT >= p.start).length);
+      const first = this.volleys.length - this.opened;
+      for (let k = 0; k < this.opened; k++) {
+        const index = first + k;
+        if (this.volleys[index].to === undefined) this.live.push({ index, plan: this.plan[k], ids: new Set() });
+      }
+      const launching = [...this.live].reverse().find((l) => g.waveT >= l.plan.start + RAID.warn) ?? this.live[0];
+      if (launching) for (const th of g.threats) if (!th.dead && hostile(th.kind)) launching.ids.add(th.id);
+    } else this.wave = -1;
+    this.sync(g);
+  }
+
+  /** Call once a frame, before the UI drains `g.events`. */
+  observe(g: Game): void {
+    // What was open when this frame began: a loss that ends the run closes
+    // every volley this frame, and still belongs to one of them.
+    const open = [...this.live];
+    if (g.phase === 'wave' && g.wave !== this.wave) {
+      this.closeAll(g);
+      this.wave = g.wave;
+      this.plan = volleyPlan(g);
+      this.opened = 0;
+    }
+    if (g.phase !== 'wave') this.closeAll(g);
+    else {
+      // A volley opens with its warning.
+      while (this.opened < this.plan.length && g.waveT >= this.plan[this.opened].start) {
+        const p = this.plan[this.opened++];
+        this.live.push({ index: this.volleys.length, plan: p, ids: new Set() });
+        this.volleys.push({ wave: g.wave, theme: p.theme, raids: p.raids, from: g.steps, threats: {}, sunk: 0, carrierHits: 0, shots: 0, dry: 0 });
+      }
+      // A new threat belongs to the newest volley whose launches have begun.
+      const launching = [...this.live].reverse().find((l) => g.waveT >= l.plan.start + RAID.warn) ?? this.live[0];
+      for (const th of g.threats) {
+        if (this.seen.has(th.id)) continue;
+        this.seen.add(th.id);
+        if (!launching || th.dead || !hostile(th.kind)) continue;
+        launching.ids.add(th.id);
+        if (!th.parent) {
+          const v = this.volleys[launching.index];
+          v.threats[th.kind] = (v.threats[th.kind] ?? 0) + 1;
+        }
+      }
+    }
+    if (this.seen.size > 4000) this.seen = new Set(g.threats.map((t) => t.id));
+
+    // Losses and shots count against the oldest volley still open (what hits
+    // now was mostly launched earlier), else the newest.
+    const was = open.length ? open : this.live;
+    const v = was.length ? this.volleys[was[0].index] : this.volleys[this.volleys.length - 1];
+    for (const ev of g.events) if (ev.kind === 'debut') this.mark(g, 'debut', `New threat: ${ev.threat}`);
+
+    if (g.lost > this.lost) {
+      const n = g.lost - this.lost;
+      const by = (Object.keys(g.sunkBy) as ThreatKind[]).filter((k) => g.sunkBy[k] > (this.sunkBy[k] ?? 0));
+      // A sinking belongs to the open volley that sent its killer (a bomblet
+      // to its cluster, a mini-drone to its mothership, a missile to its
+      // bomber). Playtest logs: two ships sunk by strafers were filed under
+      // an empty missile volley that opened the frame the run was lost.
+      const sent = (vol: Volley) => by.some((k) => (vol.threats[k] ?? 0) > 0 || PARENT[k]?.some((p) => (vol.threats[p] ?? 0) > 0));
+      const owner = [...was].reverse().map((l) => this.volleys[l.index]).find(sent) ?? v;
+      if (owner) owner.sunk += n;
+      this.mark(g, 'sunk', `${n > 1 ? `${n} ships` : 'Ship'} sunk${by.length ? ` by ${by.join(', ')}` : ''} (${g.lost} lost)`);
+      for (let i = 0; i < n; i++) this.sinks.push(g.t);
+      const recent = this.sinks.filter((t) => g.t - t <= BURST.seconds);
+      // One burst mark per burst: when it reaches the threshold.
+      if (recent.length >= BURST.ships && recent.length - n < BURST.ships) this.mark(g, 'burst', `${recent.length} ships lost in ${BURST.seconds} s`);
+    }
+    if (g.carrierHp < this.hp) {
+      if (v) v.carrierHits++;
+      this.mark(g, 'carrier', `Carrier hit: ${this.hp} → ${g.carrierHp} hull`);
+    }
+    if (v) v.shots += Math.max(0, g.shots - this.shots);
+    if (g.taps.dry > this.dry) {
+      const n = g.taps.dry - this.dry;
+      if (v) v.dry += n;
+      for (let i = 0; i < n; i++) this.dryAt.push(g.t);
+      this.dryAt = this.dryAt.filter((t) => g.t - t <= DRY_STREAK.seconds);
+      if (this.dryAt.length >= DRY_STREAK.taps && g.t - this.lastDryMark >= DRY_STREAK.gap) {
+        this.lastDryMark = g.t;
+        this.mark(g, 'dry', `Out of ammo: ${this.dryAt.length} taps on an empty rack in ${DRY_STREAK.seconds} s`);
+      }
+    }
+
+    // A volley is over once its launches are done and nothing it sent is
+    // still in the air (or a while after its last launch, whatever is left).
+    if (g.phase === 'wave') {
+      const alive = new Set(g.threats.filter((t) => !t.dead).map((t) => t.id));
+      this.live = this.live.filter((l) => {
+        if (g.waveT < l.plan.launched) return true;
+        const done = ![...l.ids].some((id) => alive.has(id)) || g.waveT >= l.plan.launched + VOLLEY_TAIL;
+        if (done) this.finish(g, l.index);
+        return !done;
+      });
+    }
+    this.sync(g);
+  }
+
+  /** The newest finished volley, if it hasn't been rated. */
+  latest(): { index: number; volley: Volley } | null {
+    for (let i = this.volleys.length - 1; i >= 0; i--) {
+      const v = this.volleys[i];
+      if (v.to !== undefined) return { index: i, volley: v };
+    }
+    return null;
+  }
+}

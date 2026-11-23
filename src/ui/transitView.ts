@@ -6,6 +6,7 @@ import { COMBAT, SIM, SURVIVORS, WORLD, WRECKAGE } from '../data/tuning';
 import { stepTransit } from '../sim/transit';
 import { escortStatus, resolveEscortOrder, type EscortStatus } from '../sim/escortOrders';
 import { escortHull } from '../data/escortHulls';
+import { islandHalfHeight } from '../data/geography';
 import type { RNG } from '../sim/rng';
 import type {
   AutoSystem,
@@ -1506,6 +1507,46 @@ export class TransitView {
     ctx.lineTo(this.cw, this.sy(WORLD.height) + 60);
     ctx.closePath();
     ctx.fill();
+
+    // ISLANDS — land inside the water.
+    //
+    // Drawn from the SAME definition the sim navigates against (the island's
+    // centre line, its lens half-height and its wave), for exactly the reason
+    // the two coastlines are: a rock the renderer invents and the sim does not
+    // know about is one ships sail through, and a rock the sim enforces and
+    // the renderer omits is an invisible wall. The wave is the drawn meander
+    // and is bounded by the island's own `wave`, which is the clearance every
+    // navigable edge already allows for.
+    for (const island of geo.islands) {
+      // Toned to sit with the two coastlines rather than above them. A rock is
+      // an obstacle to be read at a glance, but it is not the subject: at the
+      // olive this started on it out-shone both shores and pulled the eye off
+      // the convoy. This is a hair lighter than the friendly coast and a
+      // different hue from either, so it reads as land, and as NEITHER side's.
+      ctx.fillStyle = '#2e3226';
+      ctx.beginPath();
+      let started = false;
+      for (let x = island.fromX; x <= island.toX; x += 20) {
+        const h = islandHalfHeight(island, x);
+        const y = island.centerY - h - island.wave * Math.sin(x * 0.006) * (h > 0 ? 1 : 0);
+        if (!started) {
+          ctx.moveTo(this.sx(x), this.sy(y));
+          started = true;
+        } else ctx.lineTo(this.sx(x), this.sy(y));
+      }
+      for (let x = island.toX; x >= island.fromX; x -= 20) {
+        const h = islandHalfHeight(island, x);
+        const y = island.centerY + h + island.wave * Math.sin(x * 0.005 + 1.7) * (h > 0 ? 1 : 0);
+        ctx.lineTo(this.sx(x), this.sy(y));
+      }
+      ctx.closePath();
+      ctx.fill();
+      // A surf line, so the rock reads as land standing in water rather than a
+      // hole in the sea.
+      ctx.strokeStyle = 'rgba(198, 210, 160, 0.20)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
 
     // Launch sites
     ctx.fillStyle = '#7a3b45';

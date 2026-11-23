@@ -1,0 +1,3824 @@
+{
+ "about": "The chapter 1 playtest of 2026-11-18/19 (log v28), measured on the v28 build it was played on: the player's runs against the \"you\" bot's mirrors of them (same map, seed, Armory, card setup and draft picks, 12 dice), the player's saves and tension per wave, the scorecard's Best moment against the tension peaks and saves, and the Battery run's clutch nuke. Made by tools/v3/bot-fit/playtest.ts (runs) and fit.ts --fun (pooled). See docs/design/v3-ch1-kesh.md and v3-ch1-marrow.md, \"After the playtest\".",
+ "build": "v28 (origin/claude/v3-hub-r6, ea82942)",
+ "lostByWave": "Per wave. The review file's lostByWave is cumulative: Kesh lost 1 on wave 8, 0 on wave 9 and 2 on wave 10 (4 in all, 0/0/1 in the boss rounds); Marrow 2 on wave 10 and 1/0/1; Battery 1 on wave 2, 1 on wave 6 and 4 on wave 7.",
+ "summary": {
+  "kesh": {
+   "you": {
+    "lost1to10": 3,
+    "boss": [
+     0,
+     0,
+     1
+    ]
+   },
+   "botMirror12": {
+    "lost1to10": 3,
+    "boss": [
+     0.25,
+     1.25,
+     1
+    ],
+    "won": 0.92,
+    "curve": [
+     0,
+     0,
+     0,
+     0.17,
+     0.17,
+     0,
+     0.58,
+     0.5,
+     0.83,
+     0.75,
+     0.25,
+     1.25,
+     1
+    ]
+   },
+   "cardPrediction": {
+    "lost1to10": 3.7,
+    "boss": [
+     0.6,
+     1.3,
+     1.3
+    ]
+   }
+  },
+  "marrow": {
+   "you": {
+    "lost1to10": 2,
+    "boss": [
+     1,
+     0,
+     1
+    ]
+   },
+   "botMirror12": {
+    "lost1to10": 4.25,
+    "boss": [
+     0.29,
+     1,
+     1.71
+    ],
+    "won": 0.58,
+    "curve": [
+     0,
+     0,
+     0.08,
+     0,
+     0.08,
+     0.58,
+     0.83,
+     0.42,
+     1,
+     1.36,
+     0.29,
+     1,
+     1.71
+    ]
+   },
+   "cardPrediction": {
+    "lost1to10": 4.0,
+    "boss": [
+     0.61,
+     0.56,
+     1.44
+    ]
+   }
+  }
+ },
+ "clutchNuke": {
+  "run": "battery v3-20261119001829-48103",
+  "note": "pause note at step 6546 (wave 3, 28.6 s): \"Now that was a clutch nuke\"",
+  "nuke": {
+   "step": 6315,
+   "wave": 3,
+   "t": 24.7,
+   "board": "rack 0 of 6; a guided missile 0.6 s from impact, a stealth bomber 1.8 s, drones 2.3 s and 3.3 s",
+   "after": "board clear; no ship lost in the next 9 s"
+  },
+  "detector": "Not caught as built (saved 0 on 6 of 6 rolls): in the branch without the grab, the nuke stays on the water and the warm bot grabs it itself on its first step. With the new opt-in `gone` (funOfLog option: that branch has no such pickup) it is a nuke save, 1 ship on 6 of 6 rolls (all causes 1.17).",
+  "goneFinds": {
+   "battery": [
+    "w3 24.7 s nuke, saved 1.0",
+    "w5 17.1 s repair, saved 1.0"
+   ],
+   "marrow": [
+    "w10 66.9 s nuke, saved 1.17"
+   ],
+   "kesh": [
+    "B2 15.4 s weapon pickup, saved 1.0"
+   ]
+  }
+ },
+ "pooledFun": {
+  "dice": 6,
+  "funDice": 3,
+  "columns": [
+   {
+    "name": "you",
+    "n": 3,
+    "lost1to5": 0.333,
+    "lost6to10": 3.333,
+    "bossRound": 0.5,
+    "fun": {
+     "n": 3,
+     "savesWave": 0.074,
+     "savesBoss": 0.5,
+     "savedWave": 0.05,
+     "bigRun": 0,
+     "peak": 0.755,
+     "peaks": 0.778,
+     "releaseS": 0.889,
+     "hotShare": 0.027,
+     "calmShare": 0.804,
+     "tapR": 0.487,
+     "waves": [
+      {
+       "wave": 1,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.127,
+       "peaks": 0,
+       "releaseS": 0,
+       "hotShare": 0,
+       "calmShare": 0.952,
+       "shape": "flat",
+       "shapes": {
+        "flat": 1
+       },
+       "tapR": 0.663
+      },
+      {
+       "wave": 2,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.417,
+       "peaks": 0,
+       "releaseS": 0,
+       "hotShare": 0,
+       "calmShare": 0.902,
+       "shape": "flat",
+       "shapes": {
+        "flat": 1
+       },
+       "tapR": 0.344
+      },
+      {
+       "wave": 3,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.7,
+       "peaks": 1,
+       "releaseS": 0.667,
+       "hotShare": 0.035,
+       "calmShare": 0.78,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.667,
+        "sawtooth": 0.333
+       },
+       "tapR": 0.461
+      },
+      {
+       "wave": 4,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.653,
+       "peaks": 0.333,
+       "releaseS": 0.333,
+       "hotShare": 0.007,
+       "calmShare": 0.803,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.667,
+        "single": 0.333
+       },
+       "tapR": 0.504
+      },
+      {
+       "wave": 5,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.76,
+       "peaks": 1,
+       "releaseS": 1.223,
+       "hotShare": 0.036,
+       "calmShare": 0.777,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.667,
+        "sawtooth": 0.333
+       },
+       "tapR": 0.522
+      },
+      {
+       "wave": 6,
+       "n": 3,
+       "saves": 0.333,
+       "saved": 0.223,
+       "big": 0,
+       "clutch": 0.333,
+       "kinds": {
+        "kill": 0.333
+       },
+       "none": 0.667,
+       "peak": 0.913,
+       "peaks": 1,
+       "releaseS": 1.333,
+       "hotShare": 0.025,
+       "calmShare": 0.738,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.333,
+        "rising": 0.333,
+        "single": 0.333
+       },
+       "tapR": 0.496
+      },
+      {
+       "wave": 7,
+       "n": 3,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.77,
+       "peaks": 0.333,
+       "releaseS": 0.667,
+       "hotShare": 0.045,
+       "calmShare": 0.813,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.667,
+        "single": 0.333
+       },
+       "tapR": 0.442
+      },
+      {
+       "wave": 8,
+       "n": 2,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 1.115,
+       "peaks": 1.5,
+       "releaseS": 1.75,
+       "hotShare": 0.05,
+       "calmShare": 0.765,
+       "shape": "single",
+       "shapes": {
+        "single": 0.5,
+        "sawtooth": 0.5
+       },
+       "tapR": 0.51
+      },
+      {
+       "wave": 9,
+       "n": 2,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.985,
+       "peaks": 1,
+       "releaseS": 1.5,
+       "hotShare": 0.032,
+       "calmShare": 0.771,
+       "shape": "single",
+       "shapes": {
+        "single": 1
+       },
+       "tapR": 0.379
+      },
+      {
+       "wave": 10,
+       "n": 2,
+       "saves": 0.5,
+       "saved": 0.335,
+       "big": 0,
+       "clutch": 0.5,
+       "kinds": {
+        "lastSecond": 0.5
+       },
+       "none": 0.5,
+       "peak": 1.58,
+       "peaks": 2.5,
+       "releaseS": 2.415,
+       "hotShare": 0.064,
+       "calmShare": 0.669,
+       "shape": "sawtooth",
+       "shapes": {
+        "sawtooth": 0.5,
+        "rising": 0.5
+       },
+       "tapR": 0.536
+      },
+      {
+       "wave": 11,
+       "n": 2,
+       "saves": 0.5,
+       "saved": 0.5,
+       "big": 0,
+       "clutch": 0.5,
+       "kinds": {
+        "cover": 0.5
+       },
+       "none": 0.5,
+       "peak": 1.265,
+       "peaks": 1.5,
+       "releaseS": 2,
+       "hotShare": 0.212,
+       "calmShare": 0.337,
+       "shape": "rising",
+       "shapes": {
+        "rising": 0.5,
+        "single": 0.5
+       },
+       "tapR": 0.353
+      },
+      {
+       "wave": 12,
+       "n": 2,
+       "saves": 0.5,
+       "saved": 0.335,
+       "big": 0,
+       "clutch": 0.5,
+       "kinds": {
+        "lastSecond": 0.5
+       },
+       "none": 0.5,
+       "peak": 1.32,
+       "peaks": 1.5,
+       "releaseS": 2.25,
+       "hotShare": 0.334,
+       "calmShare": 0.333,
+       "shape": "pinned",
+       "shapes": {
+        "pinned": 0.5,
+        "sawtooth": 0.5
+       },
+       "tapR": 0.371
+      },
+      {
+       "wave": 13,
+       "n": 2,
+       "saves": 0.5,
+       "saved": 0.335,
+       "big": 0,
+       "clutch": 0.5,
+       "kinds": {
+        "cover": 0.5
+       },
+       "none": 0.5,
+       "peak": 1.91,
+       "peaks": 1.5,
+       "releaseS": 3,
+       "hotShare": 0.382,
+       "calmShare": 0.327,
+       "shape": "pinned",
+       "shapes": {
+        "pinned": 1
+       },
+       "tapR": 0.461
+      }
+     ]
+    }
+   },
+   {
+    "name": "you",
+    "n": 18,
+    "lost1to5": 1.167,
+    "lost6to10": 2.882,
+    "bossRound": 0.848,
+    "fun": {
+     "n": 18,
+     "savesWave": 0.13,
+     "savesBoss": 0.333,
+     "savedWave": 0.098,
+     "bigRun": 0.056,
+     "peak": 0.748,
+     "peaks": 0.652,
+     "releaseS": 0.878,
+     "hotShare": 0.025,
+     "calmShare": 0.808,
+     "tapR": 0.427,
+     "waves": [
+      {
+       "wave": 1,
+       "n": 18,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.116,
+       "peaks": 0,
+       "releaseS": 0,
+       "hotShare": 0,
+       "calmShare": 0.973,
+       "shape": "flat",
+       "shapes": {
+        "flat": 1
+       },
+       "tapR": 0.607
+      },
+      {
+       "wave": 2,
+       "n": 18,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.387,
+       "peaks": 0,
+       "releaseS": 0,
+       "hotShare": 0,
+       "calmShare": 0.927,
+       "shape": "flat",
+       "shapes": {
+        "flat": 1
+       },
+       "tapR": 0.445
+      },
+      {
+       "wave": 3,
+       "n": 18,
+       "saves": 0.056,
+       "saved": 0.037,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {
+        "cover": 0.056
+       },
+       "none": 0.944,
+       "peak": 0.531,
+       "peaks": 0.056,
+       "releaseS": 0.111,
+       "hotShare": 0.004,
+       "calmShare": 0.837,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.944,
+        "single": 0.056
+       },
+       "tapR": 0.392
+      },
+      {
+       "wave": 4,
+       "n": 18,
+       "saves": 0,
+       "saved": 0,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {},
+       "none": 1,
+       "peak": 0.701,
+       "peaks": 0.5,
+       "releaseS": 0.778,
+       "hotShare": 0.02,
+       "calmShare": 0.787,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.667,
+        "single": 0.222,
+        "sawtooth": 0.111
+       },
+       "tapR": 0.4
+      },
+      {
+       "wave": 5,
+       "n": 18,
+       "saves": 0.167,
+       "saved": 0.112,
+       "big": 0,
+       "clutch": 0.111,
+       "kinds": {
+        "pickup": 0.167
+       },
+       "none": 0.889,
+       "peak": 0.804,
+       "peaks": 0.889,
+       "releaseS": 0.917,
+       "hotShare": 0.038,
+       "calmShare": 0.772,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.611,
+        "sawtooth": 0.278,
+        "rising": 0.111
+       },
+       "tapR": 0.476
+      },
+      {
+       "wave": 6,
+       "n": 17,
+       "saves": 0.235,
+       "saved": 0.196,
+       "big": 0,
+       "clutch": 0.059,
+       "kinds": {
+        "kill": 0.176,
+        "pickup": 0.059
+       },
+       "none": 0.882,
+       "peak": 0.842,
+       "peaks": 0.882,
+       "releaseS": 1.51,
+       "hotShare": 0.031,
+       "calmShare": 0.76,
+       "shape": "single",
+       "shapes": {
+        "single": 0.471,
+        "flat": 0.353,
+        "sawtooth": 0.176
+       },
+       "tapR": 0.371
+      },
+      {
+       "wave": 7,
+       "n": 15,
+       "saves": 0.2,
+       "saved": 0.134,
+       "big": 0,
+       "clutch": 0.133,
+       "kinds": {
+        "kill": 0.133,
+        "pickup": 0.067
+       },
+       "none": 0.867,
+       "peak": 1.044,
+       "peaks": 1.067,
+       "releaseS": 1.4,
+       "hotShare": 0.046,
+       "calmShare": 0.751,
+       "shape": "single",
+       "shapes": {
+        "single": 0.4,
+        "rising": 0.133,
+        "flat": 0.333,
+        "sawtooth": 0.133
+       },
+       "tapR": 0.397
+      },
+      {
+       "wave": 8,
+       "n": 14,
+       "saves": 0.143,
+       "saved": 0.119,
+       "big": 0.071,
+       "clutch": 0.143,
+       "kinds": {
+        "kill": 0.071,
+        "pickup": 0.071
+       },
+       "none": 0.857,
+       "peak": 0.909,
+       "peaks": 1,
+       "releaseS": 1.416,
+       "hotShare": 0.046,
+       "calmShare": 0.73,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.429,
+        "sawtooth": 0.286,
+        "single": 0.214,
+        "rising": 0.071
+       },
+       "tapR": 0.417
+      },
+      {
+       "wave": 9,
+       "n": 13,
+       "saves": 0.231,
+       "saved": 0.155,
+       "big": 0,
+       "clutch": 0.154,
+       "kinds": {
+        "pickup": 0.231
+       },
+       "none": 0.769,
+       "peak": 1.044,
+       "peaks": 1.538,
+       "releaseS": 1.442,
+       "hotShare": 0.039,
+       "calmShare": 0.716,
+       "shape": "rising",
+       "shapes": {
+        "single": 0.231,
+        "rising": 0.462,
+        "sawtooth": 0.077,
+        "flat": 0.231
+       },
+       "tapR": 0.352
+      },
+      {
+       "wave": 10,
+       "n": 12,
+       "saves": 0.417,
+       "saved": 0.334,
+       "big": 0,
+       "clutch": 0.333,
+       "kinds": {
+        "pickup": 0.333,
+        "cover": 0.083
+       },
+       "none": 0.667,
+       "peak": 1.537,
+       "peaks": 1.167,
+       "releaseS": 1.973,
+       "hotShare": 0.044,
+       "calmShare": 0.754,
+       "shape": "single",
+       "shapes": {
+        "rising": 0.25,
+        "single": 0.583,
+        "flat": 0.167
+       },
+       "tapR": 0.362
+      },
+      {
+       "wave": 11,
+       "n": 11,
+       "saves": 0.091,
+       "saved": 0.061,
+       "big": 0,
+       "clutch": 0,
+       "kinds": {
+        "kill": 0.091
+       },
+       "none": 0.909,
+       "peak": 1.065,
+       "peaks": 1,
+       "releaseS": 2.136,
+       "hotShare": 0.154,
+       "calmShare": 0.383,
+       "shape": "flat",
+       "shapes": {
+        "flat": 0.273,
+        "pinned": 0.273,
+        "sawtooth": 0.273,
+        "single": 0.182
+       },
+       "tapR": 0.54
+      },
+      {
+       "wave": 12,
+       "n": 11,
+       "saves": 0.273,
+       "saved": 0.183,
+       "big": 0,
+       "clutch": 0.273,
+       "kinds": {
+        "cover": 0.091,
+        "pickup": 0.182
+       },
+       "none": 0.727,
+       "peak": 1.23,
+       "peaks": 1.182,
+       "releaseS": 2.636,
+       "hotShare": 0.252,
+       "calmShare": 0.336,
+       "shape": "pinned",
+       "shapes": {
+        "pinned": 0.273,
+        "single": 0.182,
+        "flat": 0.182,
+        "sawtooth": 0.273,
+        "rising": 0.091
+       },
+       "tapR": 0.513
+      },
+      {
+       "wave": 13,
+       "n": 11,
+       "saves": 0.636,
+       "saved": 0.456,
+       "big": 0,
+       "clutch": 0.545,
+       "kinds": {
+        "pickup": 0.182,
+        "kill": 0.091,
+        "lastSecond": 0.182,
+        "cover": 0.182
+       },
+       "none": 0.636,
+       "peak": 1.401,
+       "peaks": 1.182,
+       "releaseS": 4.727,
+       "hotShare": 0.269,
+       "calmShare": 0.34,
+       "shape": "single",
+       "shapes": {
+        "pinned": 0.364,
+        "single": 0.545,
+        "sawtooth": 0.091
+       },
+       "tapR": 0.495
+      }
+     ]
+    }
+   }
+  ],
+  "perMap": {
+   "kesh": [
+    {
+     "name": "you",
+     "fun": {
+      "n": 1,
+      "savesWave": 0.1,
+      "savesBoss": 0.333,
+      "savedWave": 0.067,
+      "bigRun": 0,
+      "peak": 0.685,
+      "peaks": 0.5,
+      "releaseS": 0.633,
+      "hotShare": 0.018,
+      "calmShare": 0.86,
+      "tapR": 0.501,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.02,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 1,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.814
+       },
+       {
+        "wave": 2,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.2,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.968,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.19
+       },
+       {
+        "wave": 3,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.34,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.87,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.232
+       },
+       {
+        "wave": 4,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.67,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.867,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.55
+       },
+       {
+        "wave": 5,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.36,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.879,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.646
+       },
+       {
+        "wave": 6,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.62,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.808,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.38
+       },
+       {
+        "wave": 7,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.49,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.87,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.584
+       },
+       {
+        "wave": 8,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.02,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.055,
+        "calmShare": 0.818,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.496
+       },
+       {
+        "wave": 9,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.09,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.029,
+        "calmShare": 0.8,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.478
+       },
+       {
+        "wave": 10,
+        "n": 1,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 1,
+        "kinds": {
+         "lastSecond": 1
+        },
+        "none": 0,
+        "peak": 2.04,
+        "peaks": 3,
+        "releaseS": 2.33,
+        "hotShare": 0.1,
+        "calmShare": 0.717,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.644
+       },
+       {
+        "wave": 11,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.09,
+        "peaks": 2,
+        "releaseS": 2,
+        "hotShare": 0.235,
+        "calmShare": 0.235,
+        "shape": "rising",
+        "shapes": {
+         "rising": 1
+        },
+        "tapR": 0.395
+       },
+       {
+        "wave": 12,
+        "n": 1,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 1,
+        "kinds": {
+         "lastSecond": 1
+        },
+        "none": 0,
+        "peak": 1.43,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.389,
+        "calmShare": 0.333,
+        "shape": "pinned",
+        "shapes": {
+         "pinned": 1
+        },
+        "tapR": 0.507
+       },
+       {
+        "wave": 13,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.97,
+        "peaks": 1,
+        "releaseS": 3,
+        "hotShare": 0.389,
+        "calmShare": 0.278,
+        "shape": "pinned",
+        "shapes": {
+         "pinned": 1
+        },
+        "tapR": 0.522
+       }
+      ]
+     }
+    },
+    {
+     "name": "you",
+     "fun": {
+      "n": 6,
+      "savesWave": 0.083,
+      "savesBoss": 0.167,
+      "savedWave": 0.061,
+      "bigRun": 0,
+      "peak": 0.755,
+      "peaks": 0.483,
+      "releaseS": 0.671,
+      "hotShare": 0.017,
+      "calmShare": 0.867,
+      "tapR": 0.486,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.025,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 1,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.636
+       },
+       {
+        "wave": 2,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.175,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.989,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.463
+       },
+       {
+        "wave": 3,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.363,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.92,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.553
+       },
+       {
+        "wave": 4,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.73,
+        "peaks": 0.167,
+        "releaseS": 0.333,
+        "hotShare": 0.011,
+        "calmShare": 0.87,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.833,
+         "single": 0.167
+        },
+        "tapR": 0.544
+       },
+       {
+        "wave": 5,
+        "n": 6,
+        "saves": 0.333,
+        "saved": 0.223,
+        "big": 0,
+        "clutch": 0.167,
+        "kinds": {
+         "pickup": 0.333
+        },
+        "none": 0.833,
+        "peak": 0.668,
+        "peaks": 0.333,
+        "releaseS": 0.417,
+        "hotShare": 0.017,
+        "calmShare": 0.862,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.833,
+         "sawtooth": 0.167
+        },
+        "tapR": 0.544
+       },
+       {
+        "wave": 6,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.623,
+        "peaks": 0.333,
+        "releaseS": 0.667,
+        "hotShare": 0.006,
+        "calmShare": 0.851,
+        "shape": "flat",
+        "shapes": {
+         "single": 0.333,
+         "flat": 0.667
+        },
+        "tapR": 0.429
+       },
+       {
+        "wave": 7,
+        "n": 6,
+        "saves": 0.167,
+        "saved": 0.112,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {
+         "kill": 0.167
+        },
+        "none": 0.833,
+        "peak": 0.935,
+        "peaks": 0.833,
+        "releaseS": 1.25,
+        "hotShare": 0.031,
+        "calmShare": 0.79,
+        "shape": "single",
+        "shapes": {
+         "single": 0.5,
+         "rising": 0.167,
+         "flat": 0.333
+        },
+        "tapR": 0.447
+       },
+       {
+        "wave": 8,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.768,
+        "peaks": 0.5,
+        "releaseS": 0.833,
+        "hotShare": 0.012,
+        "calmShare": 0.805,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.667,
+         "sawtooth": 0.167,
+         "single": 0.167
+        },
+        "tapR": 0.432
+       },
+       {
+        "wave": 9,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.172,
+        "peaks": 1.667,
+        "releaseS": 1.792,
+        "hotShare": 0.047,
+        "calmShare": 0.794,
+        "shape": "single",
+        "shapes": {
+         "single": 0.333,
+         "rising": 0.333,
+         "sawtooth": 0.167,
+         "flat": 0.167
+        },
+        "tapR": 0.412
+       },
+       {
+        "wave": 10,
+        "n": 6,
+        "saves": 0.333,
+        "saved": 0.278,
+        "big": 0,
+        "clutch": 0.167,
+        "kinds": {
+         "pickup": 0.167,
+         "cover": 0.167
+        },
+        "none": 0.667,
+        "peak": 2.092,
+        "peaks": 1,
+        "releaseS": 1.417,
+        "hotShare": 0.042,
+        "calmShare": 0.786,
+        "shape": "single",
+        "shapes": {
+         "rising": 0.167,
+         "single": 0.667,
+         "flat": 0.167
+        },
+        "tapR": 0.399
+       },
+       {
+        "wave": 11,
+        "n": 6,
+        "saves": 0.167,
+        "saved": 0.112,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {
+         "kill": 0.167
+        },
+        "none": 0.833,
+        "peak": 1.058,
+        "peaks": 0.5,
+        "releaseS": 2.333,
+        "hotShare": 0.167,
+        "calmShare": 0.316,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.5,
+         "pinned": 0.5
+        },
+        "tapR": 0.578
+       },
+       {
+        "wave": 12,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.213,
+        "peaks": 0.667,
+        "releaseS": 1.833,
+        "hotShare": 0.284,
+        "calmShare": 0.364,
+        "shape": "pinned",
+        "shapes": {
+         "pinned": 0.5,
+         "single": 0.167,
+         "flat": 0.333
+        },
+        "tapR": 0.542
+       },
+       {
+        "wave": 13,
+        "n": 6,
+        "saves": 0.333,
+        "saved": 0.278,
+        "big": 0,
+        "clutch": 0.333,
+        "kinds": {
+         "pickup": 0.167,
+         "kill": 0.167
+        },
+        "none": 0.833,
+        "peak": 1.133,
+        "peaks": 1,
+        "releaseS": 4.333,
+        "hotShare": 0.227,
+        "calmShare": 0.363,
+        "shape": "single",
+        "shapes": {
+         "pinned": 0.333,
+         "single": 0.667
+        },
+        "tapR": 0.492
+       }
+      ]
+     }
+    }
+   ],
+   "marrow": [
+    {
+     "name": "you",
+     "fun": {
+      "n": 1,
+      "savesWave": 0,
+      "savesBoss": 0.667,
+      "savedWave": 0,
+      "bigRun": 0,
+      "peak": 0.654,
+      "peaks": 0.7,
+      "releaseS": 0.7,
+      "hotShare": 0.014,
+      "calmShare": 0.832,
+      "tapR": 0.508,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.04,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 1,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.46
+       },
+       {
+        "wave": 2,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.31,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.886,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.615
+       },
+       {
+        "wave": 3,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.56,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.927,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.776
+       },
+       {
+        "wave": 4,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.35,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.929,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.572
+       },
+       {
+        "wave": 5,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.56,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.828,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.451
+       },
+       {
+        "wave": 6,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1,
+        "peaks": 2,
+        "releaseS": 2,
+        "hotShare": 0.038,
+        "calmShare": 0.792,
+        "shape": "rising",
+        "shapes": {
+         "rising": 1
+        },
+        "tapR": 0.636
+       },
+       {
+        "wave": 7,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.51,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.887,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.344
+       },
+       {
+        "wave": 8,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.21,
+        "peaks": 2,
+        "releaseS": 1.5,
+        "hotShare": 0.045,
+        "calmShare": 0.712,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.523
+       },
+       {
+        "wave": 9,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.88,
+        "peaks": 1,
+        "releaseS": 1,
+        "hotShare": 0.034,
+        "calmShare": 0.741,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.28
+       },
+       {
+        "wave": 10,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.12,
+        "peaks": 2,
+        "releaseS": 2.5,
+        "hotShare": 0.028,
+        "calmShare": 0.62,
+        "shape": "rising",
+        "shapes": {
+         "rising": 1
+        },
+        "tapR": 0.428
+       },
+       {
+        "wave": 11,
+        "n": 1,
+        "saves": 1,
+        "saved": 1,
+        "big": 0,
+        "clutch": 1,
+        "kinds": {
+         "cover": 1
+        },
+        "none": 0,
+        "peak": 1.44,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.188,
+        "calmShare": 0.438,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.311
+       },
+       {
+        "wave": 12,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.21,
+        "peaks": 2,
+        "releaseS": 2.5,
+        "hotShare": 0.278,
+        "calmShare": 0.333,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.235
+       },
+       {
+        "wave": 13,
+        "n": 1,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 1,
+        "kinds": {
+         "cover": 1
+        },
+        "none": 0,
+        "peak": 1.85,
+        "peaks": 2,
+        "releaseS": 3,
+        "hotShare": 0.375,
+        "calmShare": 0.375,
+        "shape": "pinned",
+        "shapes": {
+         "pinned": 1
+        },
+        "tapR": 0.4
+       }
+      ]
+     }
+    },
+    {
+     "name": "you",
+     "fun": {
+      "n": 6,
+      "savesWave": 0.2,
+      "savesBoss": 0.533,
+      "savedWave": 0.156,
+      "bigRun": 0,
+      "peak": 0.641,
+      "peaks": 0.517,
+      "releaseS": 0.842,
+      "hotShare": 0.017,
+      "calmShare": 0.823,
+      "tapR": 0.401,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.03,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 1,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.602
+       },
+       {
+        "wave": 2,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.473,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.88,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.417
+       },
+       {
+        "wave": 3,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.492,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.93,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.373
+       },
+       {
+        "wave": 4,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.462,
+        "peaks": 0.167,
+        "releaseS": 0.333,
+        "hotShare": 0.007,
+        "calmShare": 0.889,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.833,
+         "single": 0.167
+        },
+        "tapR": 0.403
+       },
+       {
+        "wave": 5,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.423,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.864,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.417
+       },
+       {
+        "wave": 6,
+        "n": 6,
+        "saves": 0.667,
+        "saved": 0.557,
+        "big": 0,
+        "clutch": 0.167,
+        "kinds": {
+         "kill": 0.5,
+         "pickup": 0.167
+        },
+        "none": 0.667,
+        "peak": 0.818,
+        "peaks": 0.667,
+        "releaseS": 1.167,
+        "hotShare": 0.019,
+        "calmShare": 0.784,
+        "shape": "single",
+        "shapes": {
+         "single": 0.667,
+         "flat": 0.333
+        },
+        "tapR": 0.408
+       },
+       {
+        "wave": 7,
+        "n": 6,
+        "saves": 0.333,
+        "saved": 0.223,
+        "big": 0,
+        "clutch": 0.333,
+        "kinds": {
+         "pickup": 0.167,
+         "kill": 0.167
+        },
+        "none": 0.833,
+        "peak": 0.982,
+        "peaks": 0.667,
+        "releaseS": 1.417,
+        "hotShare": 0.032,
+        "calmShare": 0.773,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.5,
+         "single": 0.333,
+         "sawtooth": 0.167
+        },
+        "tapR": 0.353
+       },
+       {
+        "wave": 8,
+        "n": 6,
+        "saves": 0.167,
+        "saved": 0.167,
+        "big": 0,
+        "clutch": 0.167,
+        "kinds": {
+         "kill": 0.167
+        },
+        "none": 0.833,
+        "peak": 0.862,
+        "peaks": 1.167,
+        "releaseS": 1.805,
+        "hotShare": 0.042,
+        "calmShare": 0.692,
+        "shape": "single",
+        "shapes": {
+         "single": 0.333,
+         "flat": 0.333,
+         "rising": 0.167,
+         "sawtooth": 0.167
+        },
+        "tapR": 0.426
+       },
+       {
+        "wave": 9,
+        "n": 6,
+        "saves": 0.333,
+        "saved": 0.223,
+        "big": 0,
+        "clutch": 0.333,
+        "kinds": {
+         "pickup": 0.333
+        },
+        "none": 0.667,
+        "peak": 0.885,
+        "peaks": 1.167,
+        "releaseS": 1.167,
+        "hotShare": 0.026,
+        "calmShare": 0.699,
+        "shape": "rising",
+        "shapes": {
+         "flat": 0.333,
+         "rising": 0.5,
+         "single": 0.167
+        },
+        "tapR": 0.291
+       },
+       {
+        "wave": 10,
+        "n": 6,
+        "saves": 0.5,
+        "saved": 0.39,
+        "big": 0,
+        "clutch": 0.5,
+        "kinds": {
+         "pickup": 0.5
+        },
+        "none": 0.667,
+        "peak": 0.982,
+        "peaks": 1.333,
+        "releaseS": 2.528,
+        "hotShare": 0.046,
+        "calmShare": 0.721,
+        "shape": "single",
+        "shapes": {
+         "single": 0.5,
+         "rising": 0.333,
+         "flat": 0.167
+        },
+        "tapR": 0.325
+       },
+       {
+        "wave": 11,
+        "n": 5,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.072,
+        "peaks": 1.6,
+        "releaseS": 1.9,
+        "hotShare": 0.139,
+        "calmShare": 0.465,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 0.6,
+         "single": 0.4
+        },
+        "tapR": 0.493
+       },
+       {
+        "wave": 12,
+        "n": 5,
+        "saves": 0.6,
+        "saved": 0.402,
+        "big": 0,
+        "clutch": 0.6,
+        "kinds": {
+         "cover": 0.2,
+         "pickup": 0.4
+        },
+        "none": 0.4,
+        "peak": 1.25,
+        "peaks": 1.8,
+        "releaseS": 3.6,
+        "hotShare": 0.214,
+        "calmShare": 0.302,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 0.6,
+         "rising": 0.2,
+         "single": 0.2
+        },
+        "tapR": 0.478
+       },
+       {
+        "wave": 13,
+        "n": 5,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 0.8,
+        "kinds": {
+         "lastSecond": 0.4,
+         "cover": 0.4,
+         "pickup": 0.2
+        },
+        "none": 0.4,
+        "peak": 1.722,
+        "peaks": 1.4,
+        "releaseS": 5.2,
+        "hotShare": 0.32,
+        "calmShare": 0.312,
+        "shape": "single",
+        "shapes": {
+         "single": 0.4,
+         "sawtooth": 0.2,
+         "pinned": 0.4
+        },
+        "tapR": 0.499
+       }
+      ]
+     }
+    }
+   ],
+   "battery": [
+    {
+     "name": "you",
+     "fun": {
+      "n": 1,
+      "savesWave": 0.143,
+      "savesBoss": null,
+      "savedWave": 0.096,
+      "bigRun": 0,
+      "peak": 0.999,
+      "peaks": 1.286,
+      "releaseS": 1.524,
+      "hotShare": 0.058,
+      "calmShare": 0.683,
+      "tapR": 0.436,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.32,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.857,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.716
+       },
+       {
+        "wave": 2,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.74,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.851,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.227
+       },
+       {
+        "wave": 3,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.2,
+        "peaks": 3,
+        "releaseS": 2,
+        "hotShare": 0.104,
+        "calmShare": 0.542,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.375
+       },
+       {
+        "wave": 4,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.94,
+        "peaks": 1,
+        "releaseS": 1,
+        "hotShare": 0.02,
+        "calmShare": 0.612,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.391
+       },
+       {
+        "wave": 5,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.36,
+        "peaks": 3,
+        "releaseS": 3.67,
+        "hotShare": 0.107,
+        "calmShare": 0.625,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.469
+       },
+       {
+        "wave": 6,
+        "n": 1,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 1,
+        "kinds": {
+         "kill": 1
+        },
+        "none": 0,
+        "peak": 1.12,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.038,
+        "calmShare": 0.615,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.473
+       },
+       {
+        "wave": 7,
+        "n": 1,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.31,
+        "peaks": 1,
+        "releaseS": 2,
+        "hotShare": 0.136,
+        "calmShare": 0.682,
+        "shape": "single",
+        "shapes": {
+         "single": 1
+        },
+        "tapR": 0.399
+       },
+       {
+        "wave": 8,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 9,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 10,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 11,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 12,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 13,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "you",
+     "fun": {
+      "n": 6,
+      "savesWave": 0.098,
+      "savesBoss": null,
+      "savedWave": 0.065,
+      "bigRun": 0.167,
+      "peak": 0.894,
+      "peaks": 1.098,
+      "releaseS": 1.236,
+      "hotShare": 0.048,
+      "calmShare": 0.699,
+      "tapR": 0.379,
+      "waves": [
+       {
+        "wave": 1,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.293,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.918,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.585
+       },
+       {
+        "wave": 2,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.513,
+        "peaks": 0,
+        "releaseS": 0,
+        "hotShare": 0,
+        "calmShare": 0.911,
+        "shape": "flat",
+        "shapes": {
+         "flat": 1
+        },
+        "tapR": 0.454
+       },
+       {
+        "wave": 3,
+        "n": 6,
+        "saves": 0.167,
+        "saved": 0.112,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {
+         "cover": 0.167
+        },
+        "none": 0.833,
+        "peak": 0.737,
+        "peaks": 0.167,
+        "releaseS": 0.333,
+        "hotShare": 0.011,
+        "calmShare": 0.66,
+        "shape": "flat",
+        "shapes": {
+         "flat": 0.833,
+         "single": 0.167
+        },
+        "tapR": 0.252
+       },
+       {
+        "wave": 4,
+        "n": 6,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 0.912,
+        "peaks": 1.167,
+        "releaseS": 1.667,
+        "hotShare": 0.041,
+        "calmShare": 0.601,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 0.333,
+         "flat": 0.333,
+         "single": 0.333
+        },
+        "tapR": 0.254
+       },
+       {
+        "wave": 5,
+        "n": 6,
+        "saves": 0.167,
+        "saved": 0.112,
+        "big": 0,
+        "clutch": 0.167,
+        "kinds": {
+         "pickup": 0.167
+        },
+        "none": 0.833,
+        "peak": 1.322,
+        "peaks": 2.333,
+        "releaseS": 2.333,
+        "hotShare": 0.098,
+        "calmShare": 0.589,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 0.667,
+         "rising": 0.333
+        },
+        "tapR": 0.466
+       },
+       {
+        "wave": 6,
+        "n": 5,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.134,
+        "peaks": 1.8,
+        "releaseS": 2.934,
+        "hotShare": 0.074,
+        "calmShare": 0.622,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 0.6,
+         "single": 0.4
+        },
+        "tapR": 0.256
+       },
+       {
+        "wave": 7,
+        "n": 3,
+        "saves": 0,
+        "saved": 0,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {},
+        "none": 1,
+        "peak": 1.387,
+        "peaks": 2.333,
+        "releaseS": 1.667,
+        "hotShare": 0.106,
+        "calmShare": 0.633,
+        "shape": "rising",
+        "shapes": {
+         "rising": 0.333,
+         "single": 0.333,
+         "sawtooth": 0.333
+        },
+        "tapR": 0.384
+       },
+       {
+        "wave": 8,
+        "n": 2,
+        "saves": 0.5,
+        "saved": 0.335,
+        "big": 0.5,
+        "clutch": 0.5,
+        "kinds": {
+         "pickup": 0.5
+        },
+        "none": 0.5,
+        "peak": 1.47,
+        "peaks": 2,
+        "releaseS": 2,
+        "hotShare": 0.158,
+        "calmShare": 0.621,
+        "shape": "sawtooth",
+        "shapes": {
+         "sawtooth": 1
+        },
+        "tapR": 0.34
+       },
+       {
+        "wave": 9,
+        "n": 1,
+        "saves": 1,
+        "saved": 0.67,
+        "big": 0,
+        "clutch": 0,
+        "kinds": {
+         "pickup": 1
+        },
+        "none": 0,
+        "peak": 1.23,
+        "peaks": 3,
+        "releaseS": 1,
+        "hotShare": 0.075,
+        "calmShare": 0.35,
+        "shape": "rising",
+        "shapes": {
+         "rising": 1
+        },
+        "tapR": 0.364
+       },
+       {
+        "wave": 10,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 11,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 12,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       },
+       {
+        "wave": 13,
+        "n": 0,
+        "saves": null,
+        "saved": null,
+        "big": null,
+        "clutch": null,
+        "kinds": {},
+        "none": null,
+        "peak": null,
+        "peaks": null,
+        "releaseS": null,
+        "hotShare": null,
+        "calmShare": null,
+        "shape": "flat",
+        "shapes": {},
+        "tapR": null
+       }
+      ]
+     }
+    }
+   ]
+  }
+ },
+ "runs": {
+  "kesh": {
+   "log": "v3-20261118105818-35190",
+   "map": "kesh",
+   "exact": true,
+   "lost": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    2,
+    0,
+    0,
+    1
+   ],
+   "saves": [
+    {
+     "wave": "10",
+     "t": 44.4,
+     "step": 30759,
+     "kind": "last-second kill",
+     "what": "drone",
+     "margin": 0.85,
+     "saved": 0.67,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 11,
+     "left": 4
+    },
+    {
+     "wave": "B2",
+     "t": 8.3,
+     "step": 33190,
+     "kind": "last-second kill",
+     "what": "drone",
+     "margin": 0.98,
+     "saved": 0.67,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 12,
+     "left": 6
+    }
+   ],
+   "tested": 173,
+   "waves": [
+    {
+     "wave": "1",
+     "lost": 0,
+     "sec": 27,
+     "peak": 0.02,
+     "peakAt": 22,
+     "mean": 0,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.81,
+     "saves": []
+    },
+    {
+     "wave": "2",
+     "lost": 0,
+     "sec": 31,
+     "peak": 0.2,
+     "peakAt": 28,
+     "mean": 0.03,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.19,
+     "saves": []
+    },
+    {
+     "wave": "3",
+     "lost": 0,
+     "sec": 54,
+     "peak": 0.34,
+     "peakAt": 31,
+     "mean": 0.08,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.23,
+     "saves": []
+    },
+    {
+     "wave": "4",
+     "lost": 0,
+     "sec": 45,
+     "peak": 0.67,
+     "peakAt": 27,
+     "mean": 0.09,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.55,
+     "saves": []
+    },
+    {
+     "wave": "5",
+     "lost": 0,
+     "sec": 58,
+     "peak": 0.36,
+     "peakAt": 5,
+     "mean": 0.06,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.65,
+     "saves": []
+    },
+    {
+     "wave": "6",
+     "lost": 0,
+     "sec": 52,
+     "peak": 0.62,
+     "peakAt": 12,
+     "mean": 0.09,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.38,
+     "saves": []
+    },
+    {
+     "wave": "7",
+     "lost": 0,
+     "sec": 54,
+     "peak": 0.49,
+     "peakAt": 6,
+     "mean": 0.08,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.58,
+     "saves": []
+    },
+    {
+     "wave": "8",
+     "lost": 1,
+     "sec": 55,
+     "peak": 1.02,
+     "peakAt": 33,
+     "mean": 0.12,
+     "hot": 0.05,
+     "peaks": [
+      {
+       "from": 32,
+       "to": 34,
+       "at": 33,
+       "top": 1.02
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.5,
+     "saves": []
+    },
+    {
+     "wave": "9",
+     "lost": 0,
+     "sec": 70,
+     "peak": 1.09,
+     "peakAt": 34,
+     "mean": 0.09,
+     "hot": 0.03,
+     "peaks": [
+      {
+       "from": 34,
+       "to": 35,
+       "at": 34,
+       "top": 1.09
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.48,
+     "saves": []
+    },
+    {
+     "wave": "10",
+     "lost": 2,
+     "sec": 60,
+     "peak": 2.04,
+     "peakAt": 43,
+     "mean": 0.22,
+     "hot": 0.1,
+     "peaks": [
+      {
+       "from": 33,
+       "to": 33,
+       "at": 33,
+       "top": 0.83
+      },
+      {
+       "from": 42,
+       "to": 45,
+       "at": 43,
+       "top": 2.04
+      },
+      {
+       "from": 52,
+       "to": 52,
+       "at": 52,
+       "top": 0.78
+      }
+     ],
+     "shape": "sawtooth",
+     "tapR": 0.64,
+     "saves": [
+      {
+       "wave": "10",
+       "t": 44.4,
+       "step": 30759,
+       "kind": "last-second kill",
+       "what": "drone",
+       "margin": 0.85,
+       "saved": 0.67,
+       "clutch": true,
+       "stakes": [],
+       "afloat": 11,
+       "left": 4
+      }
+     ]
+    },
+    {
+     "wave": "B1",
+     "lost": 0,
+     "sec": 17,
+     "peak": 1.09,
+     "peakAt": 11,
+     "mean": 0.4,
+     "hot": 0.24,
+     "peaks": [
+      {
+       "from": 6,
+       "to": 7,
+       "at": 7,
+       "top": 0.81
+      },
+      {
+       "from": 10,
+       "to": 11,
+       "at": 11,
+       "top": 1.09
+      }
+     ],
+     "shape": "sawtooth rising",
+     "tapR": 0.4,
+     "saves": []
+    },
+    {
+     "wave": "B2",
+     "lost": 0,
+     "sec": 18,
+     "peak": 1.43,
+     "peakAt": 14,
+     "mean": 0.59,
+     "hot": 0.39,
+     "peaks": [
+      {
+       "from": 6,
+       "to": 14,
+       "at": 14,
+       "top": 1.43
+      }
+     ],
+     "shape": "pinned",
+     "tapR": 0.51,
+     "saves": [
+      {
+       "wave": "B2",
+       "t": 8.3,
+       "step": 33190,
+       "kind": "last-second kill",
+       "what": "drone",
+       "margin": 0.98,
+       "saved": 0.67,
+       "clutch": true,
+       "stakes": [],
+       "afloat": 12,
+       "left": 6
+      }
+     ]
+    },
+    {
+     "wave": "B3",
+     "lost": 1,
+     "sec": 18,
+     "peak": 1.97,
+     "peakAt": 13,
+     "mean": 0.67,
+     "hot": 0.39,
+     "peaks": [
+      {
+       "from": 6,
+       "to": 13,
+       "at": 13,
+       "top": 1.97
+      }
+     ],
+     "shape": "pinned",
+     "tapR": 0.52,
+     "saves": []
+    }
+   ],
+   "best": {
+    "wave": "10",
+    "t": 35.7,
+    "tensionThen": 0,
+    "waveTop": 2.04,
+    "waveTopAt": 43,
+    "nearestPeak": {
+     "from": 33,
+     "to": 33,
+     "at": 33,
+     "top": 0.83,
+     "off": 2
+    },
+    "nearestSave": {
+     "wave": "10",
+     "t": 44.4,
+     "step": 30759,
+     "kind": "last-second kill",
+     "what": "drone",
+     "margin": 0.85,
+     "saved": 0.67,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 11,
+     "left": 4,
+     "off": 8.75
+    },
+    "runTopWave": "10",
+    "runTop": 2.04,
+    "lossesThatWave": 2
+   },
+   "nukes": [
+    {
+     "wave": "5",
+     "t": 19.4,
+     "step": 10484,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 99,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 10,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "6",
+     "t": 42,
+     "step": 15276,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 99,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 10,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "7",
+     "t": 27.1,
+     "step": 19018,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 0.04,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 11,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "8",
+     "t": 55,
+     "step": 23913,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 0.59,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 10,
+     "left": 5,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    }
+   ],
+   "notes": [
+    {
+     "step": 12067,
+     "wave": 5,
+     "t": 45.7,
+     "text": "Frigates are a little jittery on the turn"
+    },
+    {
+     "step": 23976,
+     "wave": 9,
+     "t": 1,
+     "text": "Not sure if it does or not but the nuke should not clear out the players passive weapons"
+    }
+   ],
+   "bot": {
+    "dice": 12,
+    "won": 0.92,
+    "endWave": 13,
+    "lost1to10": 3,
+    "curve": [
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0.17
+     },
+     {
+      "n": 12,
+      "mean": 0.17
+     },
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0.58
+     },
+     {
+      "n": 12,
+      "mean": 0.5
+     },
+     {
+      "n": 12,
+      "mean": 0.83
+     },
+     {
+      "n": 12,
+      "mean": 0.75
+     },
+     {
+      "n": 12,
+      "mean": 0.25
+     },
+     {
+      "n": 12,
+      "mean": 1.25
+     },
+     {
+      "n": 12,
+      "mean": 1
+     }
+    ],
+    "boss": [
+     0.25,
+     1.25,
+     1
+    ]
+   },
+   "you": {
+    "lost1to10": 3,
+    "boss": [
+     0,
+     0,
+     1
+    ]
+   },
+   "cardPrediction": {
+    "lost1to10": 3.7,
+    "boss": [
+     0.6,
+     1.3,
+     1.3
+    ]
+   }
+  },
+  "marrow": {
+   "log": "v3-20261118180044-83324",
+   "map": "marrow",
+   "exact": true,
+   "lost": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2,
+    1,
+    0,
+    1
+   ],
+   "saves": [
+    {
+     "wave": "B1",
+     "t": 7.2,
+     "step": 30376,
+     "kind": "cover choice",
+     "what": "guided",
+     "margin": 0.7,
+     "saved": 1,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 10,
+     "left": 6
+    },
+    {
+     "wave": "B3",
+     "t": 7.2,
+     "step": 32392,
+     "kind": "cover choice",
+     "what": "guided",
+     "margin": 0.64,
+     "saved": 0.67,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 9,
+     "left": 4
+    }
+   ],
+   "tested": 167,
+   "waves": [
+    {
+     "wave": "1",
+     "lost": 0,
+     "sec": 27,
+     "peak": 0.04,
+     "peakAt": 25,
+     "mean": 0.01,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.46,
+     "saves": []
+    },
+    {
+     "wave": "2",
+     "lost": 0,
+     "sec": 35,
+     "peak": 0.31,
+     "peakAt": 24,
+     "mean": 0.05,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.61,
+     "saves": []
+    },
+    {
+     "wave": "3",
+     "lost": 0,
+     "sec": 41,
+     "peak": 0.56,
+     "peakAt": 33,
+     "mean": 0.07,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.78,
+     "saves": []
+    },
+    {
+     "wave": "4",
+     "lost": 0,
+     "sec": 42,
+     "peak": 0.35,
+     "peakAt": 25,
+     "mean": 0.05,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.57,
+     "saves": []
+    },
+    {
+     "wave": "5",
+     "lost": 0,
+     "sec": 58,
+     "peak": 0.56,
+     "peakAt": 22,
+     "mean": 0.08,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.45,
+     "saves": []
+    },
+    {
+     "wave": "6",
+     "lost": 0,
+     "sec": 53,
+     "peak": 1,
+     "peakAt": 32,
+     "mean": 0.14,
+     "hot": 0.04,
+     "peaks": [
+      {
+       "from": 26,
+       "to": 26,
+       "at": 26,
+       "top": 0.83
+      },
+      {
+       "from": 32,
+       "to": 32,
+       "at": 32,
+       "top": 1
+      }
+     ],
+     "shape": "sawtooth rising",
+     "tapR": 0.64,
+     "saves": []
+    },
+    {
+     "wave": "7",
+     "lost": 0,
+     "sec": 53,
+     "peak": 0.51,
+     "peakAt": 35,
+     "mean": 0.08,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.34,
+     "saves": []
+    },
+    {
+     "wave": "8",
+     "lost": 0,
+     "sec": 66,
+     "peak": 1.21,
+     "peakAt": 26,
+     "mean": 0.16,
+     "hot": 0.05,
+     "peaks": [
+      {
+       "from": 25,
+       "to": 26,
+       "at": 26,
+       "top": 1.21
+      },
+      {
+       "from": 32,
+       "to": 32,
+       "at": 32,
+       "top": 0.75
+      }
+     ],
+     "shape": "sawtooth",
+     "tapR": 0.52,
+     "saves": []
+    },
+    {
+     "wave": "9",
+     "lost": 0,
+     "sec": 58,
+     "peak": 0.88,
+     "peakAt": 50,
+     "mean": 0.14,
+     "hot": 0.03,
+     "peaks": [
+      {
+       "from": 49,
+       "to": 50,
+       "at": 50,
+       "top": 0.88
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.28,
+     "saves": []
+    },
+    {
+     "wave": "10",
+     "lost": 2,
+     "sec": 71,
+     "peak": 1.12,
+     "peakAt": 46,
+     "mean": 0.2,
+     "hot": 0.03,
+     "peaks": [
+      {
+       "from": 35,
+       "to": 35,
+       "at": 35,
+       "top": 0.82
+      },
+      {
+       "from": 46,
+       "to": 46,
+       "at": 46,
+       "top": 1.12
+      }
+     ],
+     "shape": "sawtooth rising",
+     "tapR": 0.43,
+     "saves": []
+    },
+    {
+     "wave": "B1",
+     "lost": 1,
+     "sec": 16,
+     "peak": 1.44,
+     "peakAt": 6,
+     "mean": 0.38,
+     "hot": 0.19,
+     "peaks": [
+      {
+       "from": 5,
+       "to": 7,
+       "at": 6,
+       "top": 1.44
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.31,
+     "saves": [
+      {
+       "wave": "B1",
+       "t": 7.2,
+       "step": 30376,
+       "kind": "cover choice",
+       "what": "guided",
+       "margin": 0.7,
+       "saved": 1,
+       "clutch": true,
+       "stakes": [],
+       "afloat": 10,
+       "left": 6
+      }
+     ]
+    },
+    {
+     "wave": "B2",
+     "lost": 0,
+     "sec": 18,
+     "peak": 1.21,
+     "peakAt": 5,
+     "mean": 0.45,
+     "hot": 0.28,
+     "peaks": [
+      {
+       "from": 5,
+       "to": 6,
+       "at": 5,
+       "top": 1.21
+      },
+      {
+       "from": 15,
+       "to": 17,
+       "at": 16,
+       "top": 1.15
+      }
+     ],
+     "shape": "sawtooth",
+     "tapR": 0.24,
+     "saves": []
+    },
+    {
+     "wave": "B3",
+     "lost": 1,
+     "sec": 16,
+     "peak": 1.85,
+     "peakAt": 6,
+     "mean": 0.62,
+     "hot": 0.38,
+     "peaks": [
+      {
+       "from": 5,
+       "to": 9,
+       "at": 6,
+       "top": 1.85
+      },
+      {
+       "from": 14,
+       "to": 15,
+       "at": 15,
+       "top": 1.13
+      }
+     ],
+     "shape": "pinned",
+     "tapR": 0.4,
+     "saves": [
+      {
+       "wave": "B3",
+       "t": 7.2,
+       "step": 32392,
+       "kind": "cover choice",
+       "what": "guided",
+       "margin": 0.64,
+       "saved": 0.67,
+       "clutch": true,
+       "stakes": [],
+       "afloat": 9,
+       "left": 4
+      }
+     ]
+    }
+   ],
+   "best": {
+    "wave": "10",
+    "t": 44,
+    "tensionThen": 0.2,
+    "waveTop": 1.12,
+    "waveTopAt": 46,
+    "nearestPeak": {
+     "from": 46,
+     "to": 46,
+     "at": 46,
+     "top": 1.12,
+     "off": 2
+    },
+    "nearestSave": null,
+    "runTopWave": "B3",
+    "runTop": 1.85,
+    "lossesThatWave": 2
+   },
+   "nukes": [
+    {
+     "wave": "4",
+     "t": 19.5,
+     "step": 7262,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 99,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 12,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "4",
+     "t": 41.3,
+     "step": 8570,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 99,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 10,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "6",
+     "t": 33.8,
+     "step": 14021,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 1.42,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 12,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "7",
+     "t": 35.8,
+     "step": 17280,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 0.33,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 10,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "10",
+     "t": 37,
+     "step": 27915,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 1.33,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 12,
+     "left": 6,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    },
+    {
+     "wave": "10",
+     "t": 66.9,
+     "step": 29710,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 1.3,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 9,
+     "left": 4,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    }
+   ],
+   "notes": [
+    {
+     "step": 784,
+     "wave": 1,
+     "t": 13.1,
+     "text": "Have the radar slow enemy down that are in the radius instead of speeding up my munitions I think that makes more sense"
+    }
+   ],
+   "bot": {
+    "dice": 12,
+    "won": 0.58,
+    "endWave": 11.67,
+    "lost1to10": 4.25,
+    "curve": [
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0.08
+     },
+     {
+      "n": 12,
+      "mean": 0
+     },
+     {
+      "n": 12,
+      "mean": 0.08
+     },
+     {
+      "n": 12,
+      "mean": 0.58
+     },
+     {
+      "n": 12,
+      "mean": 0.83
+     },
+     {
+      "n": 12,
+      "mean": 0.42
+     },
+     {
+      "n": 12,
+      "mean": 1
+     },
+     {
+      "n": 11,
+      "mean": 1.36
+     },
+     {
+      "n": 7,
+      "mean": 0.29
+     },
+     {
+      "n": 7,
+      "mean": 1
+     },
+     {
+      "n": 7,
+      "mean": 1.71
+     }
+    ],
+    "boss": [
+     0.29,
+     1,
+     1.71
+    ]
+   },
+   "you": {
+    "lost1to10": 2,
+    "boss": [
+     1,
+     0,
+     1
+    ]
+   },
+   "cardPrediction": {
+    "lost1to10": 4,
+    "boss": [
+     0.61,
+     0.56,
+     1.44
+    ]
+   }
+  },
+  "battery": {
+   "log": "v3-20261119001829-48103",
+   "map": "battery",
+   "exact": true,
+   "lost": [
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    4
+   ],
+   "saves": [
+    {
+     "wave": "6",
+     "t": 17.6,
+     "step": 14944,
+     "kind": "kill save",
+     "what": "drone",
+     "margin": 2.51,
+     "saved": 0.67,
+     "clutch": true,
+     "stakes": [],
+     "afloat": 21,
+     "left": 5
+    }
+   ],
+   "tested": 78,
+   "waves": [
+    {
+     "wave": "1",
+     "lost": 0,
+     "sec": 35,
+     "peak": 0.32,
+     "peakAt": 13,
+     "mean": 0.06,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.72,
+     "saves": []
+    },
+    {
+     "wave": "2",
+     "lost": 1,
+     "sec": 47,
+     "peak": 0.74,
+     "peakAt": 23,
+     "mean": 0.09,
+     "hot": 0,
+     "peaks": [],
+     "shape": "flat",
+     "tapR": 0.23,
+     "saves": []
+    },
+    {
+     "wave": "3",
+     "lost": 0,
+     "sec": 48,
+     "peak": 1.2,
+     "peakAt": 31,
+     "mean": 0.25,
+     "hot": 0.1,
+     "peaks": [
+      {
+       "from": 23,
+       "to": 24,
+       "at": 23,
+       "top": 0.8
+      },
+      {
+       "from": 31,
+       "to": 32,
+       "at": 31,
+       "top": 1.2
+      },
+      {
+       "from": 35,
+       "to": 35,
+       "at": 35,
+       "top": 0.76
+      }
+     ],
+     "shape": "sawtooth",
+     "tapR": 0.37,
+     "saves": []
+    },
+    {
+     "wave": "4",
+     "lost": 0,
+     "sec": 49,
+     "peak": 0.94,
+     "peakAt": 30,
+     "mean": 0.21,
+     "hot": 0.02,
+     "peaks": [
+      {
+       "from": 30,
+       "to": 30,
+       "at": 30,
+       "top": 0.94
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.39,
+     "saves": []
+    },
+    {
+     "wave": "5",
+     "lost": 0,
+     "sec": 56,
+     "peak": 1.36,
+     "peakAt": 40,
+     "mean": 0.25,
+     "hot": 0.11,
+     "peaks": [
+      {
+       "from": 16,
+       "to": 16,
+       "at": 16,
+       "top": 0.82
+      },
+      {
+       "from": 38,
+       "to": 41,
+       "at": 40,
+       "top": 1.36
+      },
+      {
+       "from": 44,
+       "to": 44,
+       "at": 44,
+       "top": 0.83
+      }
+     ],
+     "shape": "sawtooth",
+     "tapR": 0.47,
+     "saves": []
+    },
+    {
+     "wave": "6",
+     "lost": 1,
+     "sec": 52,
+     "peak": 1.12,
+     "peakAt": 19,
+     "mean": 0.21,
+     "hot": 0.04,
+     "peaks": [
+      {
+       "from": 18,
+       "to": 19,
+       "at": 19,
+       "top": 1.12
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.47,
+     "saves": [
+      {
+       "wave": "6",
+       "t": 17.6,
+       "step": 14944,
+       "kind": "kill save",
+       "what": "drone",
+       "margin": 2.51,
+       "saved": 0.67,
+       "clutch": true,
+       "stakes": [],
+       "afloat": 21,
+       "left": 5
+      }
+     ]
+    },
+    {
+     "wave": "7",
+     "lost": 4,
+     "sec": 22,
+     "peak": 1.31,
+     "peakAt": 20,
+     "mean": 0.27,
+     "hot": 0.14,
+     "peaks": [
+      {
+       "from": 19,
+       "to": 21,
+       "at": 20,
+       "top": 1.31
+      }
+     ],
+     "shape": "one peak",
+     "tapR": 0.4,
+     "saves": []
+    }
+   ],
+   "best": null,
+   "nukes": [
+    {
+     "wave": "3",
+     "t": 24.7,
+     "step": 6315,
+     "kind": "nuke save",
+     "what": "nuke",
+     "margin": 0.6,
+     "saved": 0,
+     "clutch": false,
+     "stakes": [],
+     "afloat": 12,
+     "left": 5,
+     "perDie": [
+      0,
+      0,
+      0
+     ],
+     "save": false
+    }
+   ],
+   "notes": [
+    {
+     "step": 2304,
+     "wave": 2,
+     "t": 4,
+     "text": "Just posted paying this for fun while I was for credits on Claude to reset one thing I like about this is the \u201cdark waters\u201d note on the weapons that appear in this chapter we shore retain that when rebuilding all the maps"
+    },
+    {
+     "step": 6546,
+     "wave": 3,
+     "t": 28.6,
+     "text": "Now that was a clutch nuke"
+    },
+    {
+     "step": 7750,
+     "wave": 4,
+     "t": 1.1,
+     "text": "I was trying really hard that last wave"
+    },
+    {
+     "step": 18642,
+     "wave": 7,
+     "t": 1.4,
+     "text": "Those last two waves were really fun"
+    },
+    {
+     "step": 19606,
+     "wave": 7,
+     "t": 17.5,
+     "text": "Quentin. Are we running bit test on all possible combination of the weapon load outs?? I e def should so we can see the best combos and synergies and we should do that same with the armory too"
+    },
+    {
+     "step": 16305,
+     "wave": 7,
+     "t": 21.3,
+     "text": "This score card here on the normal game is wayyyyyy better apply this to the test lab and retain the question for the test lab tho so you will need to merge this idea\n\nAnd the. Let\u2019s also have the option to include this ranking after each wave in the weapon selection so that will help with the can\u2019t remember what happened in the last wave"
+    }
+   ]
+  }
+ }
+}

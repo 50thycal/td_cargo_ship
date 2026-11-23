@@ -5,3 +5,10 @@ e2e/shots/
 .DS_Store
 playtest-out*/
 e2e/shots-batch/
+moments/
+card-sheet/
+assets-src/audio/synth/
+assets-src/audio/uisfx/
+assets-src/audio/stems/
+__pycache__/
+video/out/

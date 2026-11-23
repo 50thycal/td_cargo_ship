@@ -1,0 +1,21 @@
+diff --git a/src/v3/sim/game.ts b/src/v3/sim/game.ts
+index 4cb802c..902e4ca 100644
+--- a/src/v3/sim/game.ts
++++ b/src/v3/sim/game.ts
+@@ -2051,6 +2051,7 @@ const SPLASH_WEAPONS: ThreatKind[] = ['ballistic', 'heavy', 'cluster', 'bomblet'
+  *  splash spilling over from a neighbour's hit is not reduced. Spread's
+  *  blast cut applies to splash weapons either way. */
+ function damageShip(g: Game, s: Ship, amount: number, by: ThreatKind, direct = true): void {
++  if ((globalThis as any).__helm?.(g, s, by)) return;
+   if (g.shieldT > 0) {
+     addFx(g, 'block', s.x, s.y, { life: 0.4, r: 30 });
+     cue(g, 'shield.block', s.x, s.y);
+@@ -2708,7 +2709,7 @@ function predict(th: Threat, ahead: number): Point {
+   return { x: th.x + th.vx * ahead, y: th.y + th.vy * ahead };
+ }
+ 
+-function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
++export function damageThreat(g: Game, th: Threat, amount: number, drops = true): void {
+   if (th.dead) return;
+   // The Citadel can't be hurt while any shield generator stands.
+   if (th.kind === 'citadel' && shieldUp(g)) {

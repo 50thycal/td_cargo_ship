@@ -9,6 +9,50 @@ wreckage your escorts can recover and turn into technology.
 This is the desktop-testable MVP. It is built to be ported to iPhone/App Store
 later (see [docs/IOS_PORT.md](docs/IOS_PORT.md)).
 
+## Straitwatch V2 (bare-bones rebuild)
+
+A stripped-down version lives beside the classic game: cargo ships, a
+stationary carrier, and enemy drones / ballistic / guided missiles you tap to
+intercept. Three maps, 10 waves each, pick-1-of-3 upgrade cards, a left-rail
+ship-flow slider with formations and a right-rail game-speed slider.
+
+```bash
+npm run dev:v2          # opens /v2.html
+npm run v2:sweep -- 16  # bot balance sweep across maps and skill levels
+npm run e2e:v2          # browser smoke test (needs `npm run preview -- --port 4173`)
+```
+
+Design, rules and where to tune: [docs/design/v2-plan.md](docs/design/v2-plan.md).
+
+## Straitwatch V3 (weapon drops and the Armory)
+
+V2's game with new upgrades, after Survivor.io: the in-run draft deals
+twelve **weapons** (Air Strike, Shrapnel Shell, Frigate Escort, Thermobaric
+Shell, Scattergun, Boomerang, Flak Cannon, Seeker Pod, Aegis Launchers, Gravity
+Well, Railgun, Tesla Arc). Hold three, level each to 3 (**MAX**, where it
+takes a new name). A weapon you hold **drops as a pickup**; tap it and the main
+gun fires that weapon for 15 s, each shot spending a round as usual. The
+main gun has no upgrades inside a run: the **Armory** sets it beforehand.
+Its eleven upgrades are cards in three bays (Gun, Hull and Supply), won at
+random at the end of a run (a card won again adds a level); a run takes one
+from each bay. **Free Play** tests any weapon and card, at any level, from
+any wave.
+
+```bash
+npm run dev:v3          # opens /v3.html
+npm run v3:sweep -- 12  # bot sweep: clear rates, minutes a run, salvage, whole-game time
+npm run e2e:v3          # browser smoke test (needs `npm run preview -- --port 4173`)
+```
+
+Design, the weapon table, measurements and where to tune:
+[docs/design/v3-plan.md](docs/design/v3-plan.md).
+
+**Next V3 development phase (design only):** [Map & Convoy Lab plan](docs/design/v3-map-convoy-lab-plan.md) — spatial telemetry, launch/damage/pickup heatmaps, convoy control experiments, map-specific tactical commands, and three reference-map encounter redesigns. Start with the plan's Slice 0/1; no implementation is included in this documentation change.
+
+**Map & Convoy Lab, slices 0 and 1 (built):** [the baseline and the telemetry](docs/design/v3-map-lab-slice0-1.md) — twelve stored baseline runs on The Strait, The Gauntlet and Harbor Mouth, and a telemetry sidecar (launches, hits with the attacker named, pickups, taps, convoy commands, ship positions) that any play log replays to. `npm run v3:map-lab -- baseline | telemetry <log.json> | audit | bench | preview`; browser check `node e2e/v3-map-lab.mjs`.
+
+**Map & Convoy Lab, slices 2 to 5 (built, Test Lab only):** [the viewer, convoy policies, commands and encounters](docs/design/v3-map-lab-slices2-5.md) — a Map Analytics screen in the Test Lab (heatmaps of launches, damage, pickups, shots and convoy traffic, with a jump to the replay), four convoy policies to compare (`?convoy=auto|formation|tactical`), three map commands (Rush, Disperse, Hold) and nine authored encounters on the three reference maps (`?enc=1`). The campaign is unchanged; `npm run v3:map-lab -- experiment` runs the policy comparison.
+
 ## Play it
 
 ```bash
@@ -46,7 +90,45 @@ npm test           # headless simulation tests (full campaigns, no browser)
 npm run build      # type-check + production bundle
 npm run preview -- --port 4173 &
 npm run e2e        # Playwright browser smoke test (screenshots in e2e/shots/)
+npm run e2e:workshop  # Region Workshop smoke test (library, timeline, mobile, playtest)
 ```
+
+## Region Workshop (level authoring)
+
+Settings → **Developer mode** → **Region Workshop** (also on the Dev Mode
+screen). It opens on the **Round planner**: pick a round, set it to **Auto**
+(the adaptive enemy spends its budget) or **Scripted** (exactly the attacks you
+place — weapon, count, launch point on the map, and a Salvo / Volleys / Stream /
+Spread pattern), and the map replays the real round underneath with a bot
+player defending. **Compare patterns** plays the same attack all four ways on
+the same seed. **Scale R1 to later rounds** stretches one tuned round across the
+region (+N units or +% per round), and **Adapt to player** lets scripted
+counts rise and fall with how the player is doing. An **All rounds** table
+(sortable, phone-friendly) shows every round's counts and lets you edit them
+in place. **Play every round** charts how hard each round hits the convoy,
+**Pin this result** shows before → after for any tweak, and **set pieces** save a
+round's attacks to reuse anywhere. The adaptive menu, region settings and balance
+sweep sit on their own tabs. A region editor for everything else: built-in regions ship as
+read-only templates, drafts save on the device, **Export JSON** / **Copy JSON**
+produce a portable v1 preset you can hand to a Claude session (or drop into
+`docs/presets/`) and **Import JSON** brings one back. **Playtest** launches an
+isolated run on the region that never touches the campaign save. The design
+and data contract are in
+[docs/design/region-workshop.md](docs/design/region-workshop.md); the pure
+compiler is `src/data/regionAuthoring.ts`.
+
+The builder's **Balance sweep** panel plays the bot-persona sweep on the region
+you are editing (seeds and personas are yours to choose), reports win/loss
+rates, how campaigns ended, money at the end and per round, losses by enemy
+branch and the enemy economy, and keeps results per preset version so edits can
+be compared. `npm run playtest -- --preset region.json` runs the same sweep
+headlessly on an export.
+
+Four environments ship: Open Water, Coastal Squeeze, Headlands and the Island
+Channel — a rock amidships that splits the strait into two passages a hull must
+commit to. Terrain is a typed feature of the canonical geography, so the
+renderer, the lane builder, navigation and the torpedo run all read one
+definition (`src/data/geography.ts`).
 
 ## Architecture
 

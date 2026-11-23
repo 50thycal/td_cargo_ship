@@ -1,0 +1,47 @@
+{
+ "about": "The player's marks on the lock-in round (round 4) of the review page, https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ, read back from its store on 2026-11-07. Notes are quoted exactly. Answer choices are 0-based indices into the options in lockin.mjs (LOCK_QUESTIONS, NOTE_QUESTIONS); the chosen option's text is copied beside it.",
+ "lockin": {
+  "cutter": { "verdict": "keep", "chapter": 1 },
+  "droneScreen": { "verdict": "keep", "chapter": 1 },
+  "overdrive": { "verdict": "keep", "chapter": 1 },
+  "timeWarp": { "verdict": "keep", "chapter": 1 },
+  "supplyRun": { "verdict": "change", "chapter": 1 },
+  "lance": { "verdict": "keep", "chapter": 2 },
+  "gunships": { "verdict": "change", "chapter": 2 },
+  "overclock": { "verdict": "keep", "chapter": 2 },
+  "shield": { "verdict": "keep", "chapter": 2 },
+  "fullSteam": { "verdict": "keep", "chapter": 2 },
+  "grapnel": { "verdict": "keep", "chapter": 3 },
+  "bomberWing": { "verdict": "keep", "chapter": 3 },
+  "orbital": { "verdict": "keep", "chapter": 3 },
+  "focus": { "verdict": "keep", "chapter": 3 },
+  "dualWield": { "verdict": "change", "chapter": null, "chapterUsed": 3, "chapterWhy": "left unmarked: the card's proposed chapter" },
+  "cadence": { "verdict": "keep", "chapter": 4 },
+  "wildCard": { "verdict": "keep", "chapter": 4 },
+  "chainshot": { "verdict": "cut" },
+  "firecontrol": { "verdict": "cut" },
+  "fireAtWill": { "verdict": "cut" },
+  "hotStreak": { "verdict": "cut" },
+  "tidal": { "verdict": "cut" },
+  "storm": { "verdict": "cut" },
+  "ammoShip": { "verdict": "cut" }
+ },
+ "answers": {
+  "lk-drops": { "choice": 0, "text": "Yes, and check running dry in the pacing pass (recommended)" },
+  "lk-pool": { "choice": 0, "text": "A few per chapter, as marked on the cards (recommended)" },
+  "lk-cutter": { "choice": 0, "text": "Leave it until you have played it (recommended)" },
+  "lk-hands": { "choice": 1, "text": "Buff them up to the middle of the table now" },
+  "lk-sounds": { "choice": 0, "text": "Before the weapons go live in the campaign (recommended)" },
+  "lk-next": { "choice": 0, "text": "Lock in the keeps, rework the changes, then the pacing pass (recommended)" },
+  "lk-notes": { "note": "And in an AC 130 as an active. It will but a gun ship that fires from above with a circling gunship \n\nLong hold send a large radius explosive round and taps is smaller rounds " },
+  "pt-fc-cs": { "choice": 0, "text": "Out: cut Fire Control and Chain Shot (keep Grapnel)" },
+  "pt-dual": { "choice": 1, "text": "Both weapons end exactly when the boost ends" },
+  "pt-cadence": { "choice": 0, "text": "A beat every 0.9 s (recommended)" },
+  "pt-focus": { "choice": 0, "text": "The holding finger only slows time (no shots); the other finger taps (recommended)" }
+ },
+ "checks": {
+  "c-lance": "ok", "c-drones": "ok", "c-orbital": "ok", "c-bomber": "ok", "c-freeplay": "ok", "c-dual-call": "ok", "c-dual-hands": "ok",
+  "n-heli-missiles": "ok", "n-heli-move": "ok", "n-supply-plane": "ok",
+  "n-dry": { "note": "Idk what this is ignore it \n" }
+ }
+}

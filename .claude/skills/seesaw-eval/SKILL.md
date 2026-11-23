@@ -121,3 +121,11 @@ call out a mechanics change only when numbers can't reach the target.
   formation; see [`docs/PLAYTEST_FIDELITY.md`](../../../docs/PLAYTEST_FIDELITY.md)
   for the measured gaps and run the **`playtest-fidelity`** skill before tuning
   a number one of them touches.
+- **Weigh a low-effort run less.** A V3 play log can carry the player's
+  **Effort** rating, 1 casual / not really trying to 5 full focus, all-out
+  (`rating.effort`, or `labResult.score.effort` on a Test Lab map card; read
+  it with `runEffort` in `src/v3/sim/feedback.ts`). At 2 or less
+  (`lowEffort`), a loss may be a fluke of attention, not a hard game: say so,
+  and don't tune a number on that run alone. The bot fit
+  (`tools/v3/bot-fit/fit.ts`) flags these runs and can leave them out
+  (`--skip-low-effort`).

@@ -1,0 +1,8443 @@
+{
+ "seeds": 8,
+ "convoyRev": 1,
+ "encounters": 1,
+ "rows": [
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.125,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 461.25,
+     "min": 302,
+     "max": 560
+    },
+    "scheduled": {
+     "mean": 58,
+     "min": 38,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 116,
+     "min": 76,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 96.625,
+     "min": 62,
+     "max": 114
+    },
+    "sunk": {
+     "mean": 10.875,
+     "min": 5,
+     "max": 19
+    },
+    "hpShip": {
+     "mean": 75.625,
+     "min": 43,
+     "max": 102
+    },
+    "hpCarrier": {
+     "mean": 10,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 75.40314166666681,
+     "min": 49.59325,
+     "max": 90.56201666666685
+    },
+    "risk": {
+     "mean": 0.9857215411051903,
+     "min": 0.7101445306571237,
+     "max": 1.2051155975630643
+    },
+    "deliveredShare": {
+     "mean": 0.8321894034235261,
+     "min": 0.8071428571428572,
+     "max": 0.8518518518518519
+    },
+    "score": {
+     "mean": 32217.5,
+     "min": 16760,
+     "max": 44720
+    },
+    "shots": {
+     "mean": 295.25,
+     "min": 176,
+     "max": 390
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3880.25,
+     "min": 2502,
+     "max": 4779
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 11.375,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 477.25,
+     "min": 390,
+     "max": 530
+    },
+    "scheduled": {
+     "mean": 52.125,
+     "min": 35,
+     "max": 122
+    },
+    "sailed": {
+     "mean": 120.75,
+     "min": 99,
+     "max": 133
+    },
+    "delivered": {
+     "mean": 97.875,
+     "min": 80,
+     "max": 111
+    },
+    "sunk": {
+     "mean": 13.625,
+     "min": 7,
+     "max": 28
+    },
+    "hpShip": {
+     "mean": 108,
+     "min": 70,
+     "max": 151
+    },
+    "hpCarrier": {
+     "mean": 10.25,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 94.14244791666671,
+     "min": 76.63646666666664,
+     "max": 104.43276666666674
+    },
+    "risk": {
+     "mean": 1.13718448894067,
+     "min": 0.8446226195970546,
+     "max": 1.600555990045459
+    },
+    "deliveredShare": {
+     "mean": 0.8093908352639587,
+     "min": 0.728,
+     "max": 0.8604651162790697
+    },
+    "score": {
+     "mean": 32680,
+     "min": 21600,
+     "max": 42500
+    },
+    "shots": {
+     "mean": 300.5,
+     "min": 226,
+     "max": 375
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 4015.375,
+     "min": 3256,
+     "max": 4445
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 32.375,
+     "lower": 1,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 2.75,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 1.25,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 462.5,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.125,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 461.25,
+     "min": 302,
+     "max": 560
+    },
+    "scheduled": {
+     "mean": 58,
+     "min": 38,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 116,
+     "min": 76,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 96.625,
+     "min": 62,
+     "max": 114
+    },
+    "sunk": {
+     "mean": 10.875,
+     "min": 5,
+     "max": 19
+    },
+    "hpShip": {
+     "mean": 75.625,
+     "min": 43,
+     "max": 102
+    },
+    "hpCarrier": {
+     "mean": 10,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 75.40314166666681,
+     "min": 49.59325,
+     "max": 90.56201666666685
+    },
+    "risk": {
+     "mean": 0.9857215411051903,
+     "min": 0.7101445306571237,
+     "max": 1.2051155975630643
+    },
+    "deliveredShare": {
+     "mean": 0.8321894034235261,
+     "min": 0.8071428571428572,
+     "max": 0.8518518518518519
+    },
+    "score": {
+     "mean": 32217.5,
+     "min": 16760,
+     "max": 44720
+    },
+    "shots": {
+     "mean": 295.25,
+     "min": 176,
+     "max": 390
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3880.25,
+     "min": 2502,
+     "max": 4779
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 11.875,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 498.875,
+     "min": 436,
+     "max": 562
+    },
+    "scheduled": {
+     "mean": 62.875,
+     "min": 55,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 125.75,
+     "min": 110,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 108,
+     "min": 99,
+     "max": 123
+    },
+    "sunk": {
+     "mean": 9.5,
+     "min": 2,
+     "max": 16
+    },
+    "hpShip": {
+     "mean": 73.75,
+     "min": 33,
+     "max": 105
+    },
+    "hpCarrier": {
+     "mean": 11.5,
+     "min": 4,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 84.4209875000002,
+     "min": 74.87503333333346,
+     "max": 95.1161666666669
+    },
+    "risk": {
+     "mean": 0.8603674515403944,
+     "min": 0.44073436138703925,
+     "max": 1.2358170378760245
+    },
+    "deliveredShare": {
+     "mean": 0.8599223119585141,
+     "min": 0.8,
+     "max": 0.9
+    },
+    "score": {
+     "mean": 36440,
+     "min": 26820,
+     "max": 43340
+    },
+    "shots": {
+     "mean": 323.75,
+     "min": 266,
+     "max": 373
+    },
+    "commands": {
+     "mean": 10.5,
+     "min": 9,
+     "max": 15
+    },
+    "refused": {
+     "mean": 4203.125,
+     "min": 3640,
+     "max": 4800
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -1.875,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.375,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 11.375,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 4222.5,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.25,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 474.625,
+     "min": 382,
+     "max": 569
+    },
+    "scheduled": {
+     "mean": 59.75,
+     "min": 48,
+     "max": 72
+    },
+    "sailed": {
+     "mean": 119.5,
+     "min": 96,
+     "max": 144
+    },
+    "delivered": {
+     "mean": 99.75,
+     "min": 84,
+     "max": 112
+    },
+    "sunk": {
+     "mean": 11.125,
+     "min": 3,
+     "max": 27
+    },
+    "hpShip": {
+     "mean": 79.125,
+     "min": 35,
+     "max": 129
+    },
+    "hpCarrier": {
+     "mean": 11.25,
+     "min": 6,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 79.2495145833335,
+     "min": 64.74588333333344,
+     "max": 92.4305833333336
+    },
+    "risk": {
+     "mean": 0.9754762843182105,
+     "min": 0.5263041817624067,
+     "max": 1.395641954728184
+    },
+    "deliveredShare": {
+     "mean": 0.838156524122807,
+     "min": 0.7708333333333334,
+     "max": 0.875
+    },
+    "score": {
+     "mean": 33542.5,
+     "min": 22320,
+     "max": 44000
+    },
+    "shots": {
+     "mean": 295.75,
+     "min": 236,
+     "max": 372
+    },
+    "commands": {
+     "mean": 32,
+     "min": 26,
+     "max": 38
+    },
+    "refused": {
+     "mean": 3995.25,
+     "min": 3185,
+     "max": 4853
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 3.5,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.25,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 3.125,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 1325,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.125,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 495.625,
+     "min": 379,
+     "max": 565
+    },
+    "scheduled": {
+     "mean": 62.5,
+     "min": 48,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 125,
+     "min": 96,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 107.625,
+     "min": 80,
+     "max": 127
+    },
+    "sunk": {
+     "mean": 9.25,
+     "min": 2,
+     "max": 16
+    },
+    "hpShip": {
+     "mean": 73,
+     "min": 46,
+     "max": 93
+    },
+    "hpCarrier": {
+     "mean": 9.25,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 81.2995208333335,
+     "min": 61.72665000000009,
+     "max": 93.5528000000002
+    },
+    "risk": {
+     "mean": 0.8898087630088234,
+     "min": 0.6375104201771112,
+     "max": 1.1120167559800769
+    },
+    "deliveredShare": {
+     "mean": 0.8603504122146217,
+     "min": 0.8333333333333334,
+     "max": 0.8943661971830986
+    },
+    "score": {
+     "mean": 38047.5,
+     "min": 21600,
+     "max": 45500
+    },
+    "shots": {
+     "mean": 315.875,
+     "min": 229,
+     "max": 372
+    },
+    "commands": {
+     "mean": 42,
+     "min": 32,
+     "max": 48
+    },
+    "refused": {
+     "mean": 4175,
+     "min": 3162,
+     "max": 4749
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -2.625,
+     "lower": 6,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.625,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 11,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 5830,
+     "lower": 1,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 11.25,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 474.375,
+     "min": 351,
+     "max": 546
+    },
+    "scheduled": {
+     "mean": 125.25,
+     "min": 93,
+     "max": 144
+    },
+    "sailed": {
+     "mean": 250.5,
+     "min": 186,
+     "max": 288
+    },
+    "delivered": {
+     "mean": 220.625,
+     "min": 161,
+     "max": 253
+    },
+    "sunk": {
+     "mean": 8.5,
+     "min": 4,
+     "max": 13
+    },
+    "hpShip": {
+     "mean": 106.375,
+     "min": 41,
+     "max": 153
+    },
+    "hpCarrier": {
+     "mean": 12.5,
+     "min": 8,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 166.3738916666668,
+     "min": 121.73931666666675,
+     "max": 191.91171666666693
+    },
+    "risk": {
+     "mean": 0.6188700114113201,
+     "min": 0.3367851990845464,
+     "max": 0.8721478721967033
+    },
+    "deliveredShare": {
+     "mean": 0.8802643516561347,
+     "min": 0.8655913978494624,
+     "max": 0.8928571428571429
+    },
+    "score": {
+     "mean": 82925,
+     "min": 53900,
+     "max": 101600
+    },
+    "shots": {
+     "mean": 307.125,
+     "min": 201,
+     "max": 382
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 11.375,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 480.375,
+     "min": 391,
+     "max": 539
+    },
+    "scheduled": {
+     "mean": 103.875,
+     "min": 76,
+     "max": 209
+    },
+    "sailed": {
+     "mean": 248.75,
+     "min": 209,
+     "max": 286
+    },
+    "delivered": {
+     "mean": 215.25,
+     "min": 177,
+     "max": 248
+    },
+    "sunk": {
+     "mean": 6.875,
+     "min": 1,
+     "max": 11
+    },
+    "hpShip": {
+     "mean": 131.5,
+     "min": 107,
+     "max": 185
+    },
+    "hpCarrier": {
+     "mean": 10.75,
+     "min": 6,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 199.39597916666676,
+     "min": 162.63085000000004,
+     "max": 234.18543333333352
+    },
+    "risk": {
+     "mean": 0.6597489083480019,
+     "min": 0.4918015774648394,
+     "max": 0.7899722769548854
+    },
+    "deliveredShare": {
+     "mean": 0.8642625979604763,
+     "min": 0.8355555555555556,
+     "max": 0.8843283582089553
+    },
+    "score": {
+     "mean": 80762.5,
+     "min": 60300,
+     "max": 96800
+    },
+    "shots": {
+     "mean": 297.5,
+     "min": 225,
+     "max": 369
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 25.125,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.625,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -5.375,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -2162.5,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.125,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 500.375,
+     "min": 426,
+     "max": 568
+    },
+    "scheduled": {
+     "mean": 132.25,
+     "min": 113,
+     "max": 150
+    },
+    "sailed": {
+     "mean": 264.5,
+     "min": 226,
+     "max": 300
+    },
+    "delivered": {
+     "mean": 236.5,
+     "min": 201,
+     "max": 269
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 3,
+     "max": 9
+    },
+    "hpShip": {
+     "mean": 94.5,
+     "min": 50,
+     "max": 120
+    },
+    "hpCarrier": {
+     "mean": 9.75,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 179.78049375000006,
+     "min": 152.48626666666664,
+     "max": 203.94913333333346
+    },
+    "risk": {
+     "mean": 0.5203189457544214,
+     "min": 0.3278983812312716,
+     "max": 0.642265283928979
+    },
+    "deliveredShare": {
+     "mean": 0.8935848198935676,
+     "min": 0.8717948717948718,
+     "max": 0.9067164179104478
+    },
+    "score": {
+     "mean": 91687.5,
+     "min": 67500,
+     "max": 104600
+    },
+    "shots": {
+     "mean": 319.875,
+     "min": 262,
+     "max": 370
+    },
+    "commands": {
+     "mean": 10.25,
+     "min": 8,
+     "max": 12
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -11.875,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -2.5,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 15.875,
+     "lower": 1,
+     "n": 8
+    },
+    "score": {
+     "mean": 8762.5,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 8.375,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 360.25,
+     "min": 265,
+     "max": 470
+    },
+    "scheduled": {
+     "mean": 45.625,
+     "min": 34,
+     "max": 59
+    },
+    "sailed": {
+     "mean": 91.25,
+     "min": 68,
+     "max": 118
+    },
+    "delivered": {
+     "mean": 77.125,
+     "min": 53,
+     "max": 106
+    },
+    "sunk": {
+     "mean": 5.875,
+     "min": 5,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 44.625,
+     "min": 33,
+     "max": 58
+    },
+    "hpCarrier": {
+     "mean": 5.75,
+     "min": 2,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 59.36782916666674,
+     "min": 42.63431666666668,
+     "max": 78.75733333333349
+    },
+    "risk": {
+     "mean": 0.7619957943581253,
+     "min": 0.6464797382475365,
+     "max": 0.8845870026234988
+    },
+    "deliveredShare": {
+     "mean": 0.8373394871054852,
+     "min": 0.7794117647058824,
+     "max": 0.8983050847457628
+    },
+    "score": {
+     "mean": 20207.5,
+     "min": 13740,
+     "max": 28080
+    },
+    "shots": {
+     "mean": 221.875,
+     "min": 150,
+     "max": 331
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3015.875,
+     "min": 2166,
+     "max": 3937
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 9,
+     "min": 6,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 382.5,
+     "min": 280,
+     "max": 512
+    },
+    "scheduled": {
+     "mean": 44.125,
+     "min": 24,
+     "max": 122
+    },
+    "sailed": {
+     "mean": 96.75,
+     "min": 71,
+     "max": 129
+    },
+    "delivered": {
+     "mean": 80.25,
+     "min": 57,
+     "max": 111
+    },
+    "sunk": {
+     "mean": 6.875,
+     "min": 6,
+     "max": 10
+    },
+    "hpShip": {
+     "mean": 66,
+     "min": 50,
+     "max": 94
+    },
+    "hpCarrier": {
+     "mean": 6.5,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 75.60872500000002,
+     "min": 56.62221666666666,
+     "max": 97.55650000000023
+    },
+    "risk": {
+     "mean": 0.8686118259300566,
+     "min": 0.7514621574929415,
+     "max": 1.1054322373109169
+    },
+    "deliveredShare": {
+     "mean": 0.8259117904867999,
+     "min": 0.8024691358024691,
+     "max": 0.8604651162790697
+    },
+    "score": {
+     "mean": 22332.5,
+     "min": 14460,
+     "max": 37080
+    },
+    "shots": {
+     "mean": 231.75,
+     "min": 147,
+     "max": 373
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 3204.375,
+     "min": 2383,
+     "max": 4337
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 21.375,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 1,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 3.125,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 2125,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 10,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 441.125,
+     "min": 390,
+     "max": 506
+    },
+    "scheduled": {
+     "mean": 92.875,
+     "min": 68,
+     "max": 176
+    },
+    "sailed": {
+     "mean": 225.25,
+     "min": 189,
+     "max": 266
+    },
+    "delivered": {
+     "mean": 195,
+     "min": 164,
+     "max": 231
+    },
+    "sunk": {
+     "mean": 6.125,
+     "min": 3,
+     "max": 8
+    },
+    "hpShip": {
+     "mean": 100.25,
+     "min": 70,
+     "max": 150
+    },
+    "hpCarrier": {
+     "mean": 6.5,
+     "min": 0,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 180.86848541666672,
+     "min": 145.28836666666675,
+     "max": 219.65868333333313
+    },
+    "risk": {
+     "mean": 0.5519721994972413,
+     "min": 0.4047235845050543,
+     "max": 0.682877625066951
+    },
+    "deliveredShare": {
+     "mean": 0.8651530266204507,
+     "min": 0.8472906403940886,
+     "max": 0.8818897637795275
+    },
+    "score": {
+     "mean": 67850,
+     "min": 57880,
+     "max": 90180
+    },
+    "shots": {
+     "mean": 267.25,
+     "min": 231,
+     "max": 309
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 55.625,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.25,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 117.875,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 47642.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 9.5,
+     "min": 7,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 413.875,
+     "min": 315,
+     "max": 514
+    },
+    "scheduled": {
+     "mean": 52.25,
+     "min": 40,
+     "max": 65
+    },
+    "sailed": {
+     "mean": 104.5,
+     "min": 80,
+     "max": 130
+    },
+    "delivered": {
+     "mean": 89.625,
+     "min": 65,
+     "max": 111
+    },
+    "sunk": {
+     "mean": 5.75,
+     "min": 2,
+     "max": 11
+    },
+    "hpShip": {
+     "mean": 47.5,
+     "min": 33,
+     "max": 81
+    },
+    "hpCarrier": {
+     "mean": 9.25,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 69.95467291666678,
+     "min": 51.67485000000004,
+     "max": 86.8839500000002
+    },
+    "risk": {
+     "mean": 0.6739375206094669,
+     "min": 0.44073436138703925,
+     "max": 0.9322780559585495
+    },
+    "deliveredShare": {
+     "mean": 0.8532607232765533,
+     "min": 0.8125,
+     "max": 0.9
+    },
+    "score": {
+     "mean": 24882.5,
+     "min": 15900,
+     "max": 38580
+    },
+    "shots": {
+     "mean": 256.375,
+     "min": 180,
+     "max": 324
+    },
+    "commands": {
+     "mean": 8.625,
+     "min": 5,
+     "max": 10
+    },
+    "refused": {
+     "mean": 3474.125,
+     "min": 2678,
+     "max": 4366
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 2.875,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.125,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 12.5,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 4675,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 516.5,
+     "min": 501,
+     "max": 543
+    },
+    "scheduled": {
+     "mean": 65,
+     "min": 63,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 130,
+     "min": 126,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 115.5,
+     "min": 109,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 4.75,
+     "min": 1,
+     "max": 9
+    },
+    "hpShip": {
+     "mean": 50.5,
+     "min": 37,
+     "max": 76
+    },
+    "hpCarrier": {
+     "mean": 2,
+     "min": 0,
+     "max": 6
+    },
+    "shipMinutes": {
+     "mean": 86.22697083333351,
+     "min": 82.76331666666685,
+     "max": 90.90311666666686
+    },
+    "risk": {
+     "mean": 0.5874202457492819,
+     "min": 0.4284135919849068,
+     "max": 0.9182812272506378
+    },
+    "deliveredShare": {
+     "mean": 0.8883381921463571,
+     "min": 0.8650793650793651,
+     "max": 0.9166666666666666
+    },
+    "score": {
+     "mean": 46302.5,
+     "min": 43220,
+     "max": 47900
+    },
+    "shots": {
+     "mean": 293.5,
+     "min": 259,
+     "max": 328
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4646.625,
+     "min": 4497,
+     "max": 4925
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 519.625,
+     "min": 504,
+     "max": 554
+    },
+    "scheduled": {
+     "mean": 55.625,
+     "min": 43,
+     "max": 122
+    },
+    "sailed": {
+     "mean": 131.375,
+     "min": 127,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 112,
+     "min": 105,
+     "max": 118
+    },
+    "sunk": {
+     "mean": 7,
+     "min": 3,
+     "max": 13
+    },
+    "hpShip": {
+     "mean": 74.75,
+     "min": 55,
+     "max": 119
+    },
+    "hpCarrier": {
+     "mean": 5,
+     "min": 0,
+     "max": 10
+    },
+    "shipMinutes": {
+     "mean": 104.83429583333336,
+     "min": 97.13678333333355,
+     "max": 113.50393333333335
+    },
+    "risk": {
+     "mean": 0.7196437692245949,
+     "min": 0.497497362133305,
+     "max": 1.14007169997145
+    },
+    "deliveredShare": {
+     "mean": 0.8523899500835979,
+     "min": 0.8267716535433071,
+     "max": 0.8805970149253731
+    },
+    "score": {
+     "mean": 45860,
+     "min": 41600,
+     "max": 48260
+    },
+    "shots": {
+     "mean": 305.375,
+     "min": 279,
+     "max": 333
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 4672.25,
+     "min": 4522,
+     "max": 5021
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 24.25,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 2.25,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -3.5,
+     "lower": 6,
+     "n": 8
+    },
+    "score": {
+     "mean": -442.5,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 516.5,
+     "min": 501,
+     "max": 543
+    },
+    "scheduled": {
+     "mean": 65,
+     "min": 63,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 130,
+     "min": 126,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 115.5,
+     "min": 109,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 4.75,
+     "min": 1,
+     "max": 9
+    },
+    "hpShip": {
+     "mean": 50.5,
+     "min": 37,
+     "max": 76
+    },
+    "hpCarrier": {
+     "mean": 2,
+     "min": 0,
+     "max": 6
+    },
+    "shipMinutes": {
+     "mean": 86.22697083333351,
+     "min": 82.76331666666685,
+     "max": 90.90311666666686
+    },
+    "risk": {
+     "mean": 0.5874202457492819,
+     "min": 0.4284135919849068,
+     "max": 0.9182812272506378
+    },
+    "deliveredShare": {
+     "mean": 0.8883381921463571,
+     "min": 0.8650793650793651,
+     "max": 0.9166666666666666
+    },
+    "score": {
+     "mean": 46302.5,
+     "min": 43220,
+     "max": 47900
+    },
+    "shots": {
+     "mean": 293.5,
+     "min": 259,
+     "max": 328
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4646.625,
+     "min": 4497,
+     "max": 4925
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 514.5,
+     "min": 496,
+     "max": 562
+    },
+    "scheduled": {
+     "mean": 65,
+     "min": 63,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 130,
+     "min": 126,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 115.75,
+     "min": 111,
+     "max": 123
+    },
+    "sunk": {
+     "mean": 3.75,
+     "min": 0,
+     "max": 8
+    },
+    "hpShip": {
+     "mean": 45.5,
+     "min": 35,
+     "max": 64
+    },
+    "hpCarrier": {
+     "mean": 5,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 87.98833958333353,
+     "min": 84.60655000000017,
+     "max": 95.1336166666669
+    },
+    "risk": {
+     "mean": 0.5147260003274451,
+     "min": 0.4136795555426847,
+     "max": 0.6727380104158749
+    },
+    "deliveredShare": {
+     "mean": 0.8906722018129796,
+     "min": 0.8661971830985915,
+     "max": 0.921875
+    },
+    "score": {
+     "mean": 46722.5,
+     "min": 44360,
+     "max": 48440
+    },
+    "shots": {
+     "mean": 296.125,
+     "min": 247,
+     "max": 339
+    },
+    "commands": {
+     "mean": 9.75,
+     "min": 8,
+     "max": 12
+    },
+    "refused": {
+     "mean": 4629,
+     "min": 4446,
+     "max": 5087
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -5,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0.25,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 420,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 515.125,
+     "min": 494,
+     "max": 546
+    },
+    "scheduled": {
+     "mean": 64.875,
+     "min": 62,
+     "max": 69
+    },
+    "sailed": {
+     "mean": 129.75,
+     "min": 124,
+     "max": 138
+    },
+    "delivered": {
+     "mean": 115,
+     "min": 107,
+     "max": 124
+    },
+    "sunk": {
+     "mean": 4.75,
+     "min": 1,
+     "max": 9
+    },
+    "hpShip": {
+     "mean": 52.25,
+     "min": 37,
+     "max": 73
+    },
+    "hpCarrier": {
+     "mean": 5.25,
+     "min": 0,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 87.83945833333351,
+     "min": 83.12351666666682,
+     "max": 94.16613333333359
+    },
+    "risk": {
+     "mean": 0.5963605671293252,
+     "min": 0.4222996269115946,
+     "max": 0.8065246741308849
+    },
+    "deliveredShare": {
+     "mean": 0.8861601201529462,
+     "min": 0.8582089552238806,
+     "max": 0.9166666666666666
+    },
+    "score": {
+     "mean": 46400,
+     "min": 41000,
+     "max": 52520
+    },
+    "shots": {
+     "mean": 302.125,
+     "min": 269,
+     "max": 351
+    },
+    "commands": {
+     "mean": 34.625,
+     "min": 33,
+     "max": 36
+    },
+    "refused": {
+     "mean": 4636,
+     "min": 4436,
+     "max": 4957
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 1.75,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -0.5,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 97.5,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 518.5,
+     "min": 489,
+     "max": 571
+    },
+    "scheduled": {
+     "mean": 65.125,
+     "min": 62,
+     "max": 72
+    },
+    "sailed": {
+     "mean": 130.25,
+     "min": 124,
+     "max": 144
+    },
+    "delivered": {
+     "mean": 116.625,
+     "min": 111,
+     "max": 129
+    },
+    "sunk": {
+     "mean": 4.625,
+     "min": 1,
+     "max": 9
+    },
+    "hpShip": {
+     "mean": 47,
+     "min": 23,
+     "max": 64
+    },
+    "hpCarrier": {
+     "mean": 4.75,
+     "min": 2,
+     "max": 10
+    },
+    "shipMinutes": {
+     "mean": 85.80617083333352,
+     "min": 81.52825000000016,
+     "max": 94.79335000000023
+    },
+    "risk": {
+     "mean": 0.544877607103136,
+     "min": 0.27150603215575725,
+     "max": 0.7066373117750054
+    },
+    "deliveredShare": {
+     "mean": 0.8956943200886596,
+     "min": 0.8695652173913043,
+     "max": 0.9140625
+    },
+    "score": {
+     "mean": 46880,
+     "min": 44300,
+     "max": 50420
+    },
+    "shots": {
+     "mean": 304.75,
+     "min": 272,
+     "max": 335
+    },
+    "commands": {
+     "mean": 43.875,
+     "min": 42,
+     "max": 48
+    },
+    "refused": {
+     "mean": 4663.5,
+     "min": 4380,
+     "max": 5170
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -3.5,
+     "lower": 3,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.125,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 1.125,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 577.5,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.625,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 509.75,
+     "min": 455,
+     "max": 551
+    },
+    "scheduled": {
+     "mean": 134.625,
+     "min": 120,
+     "max": 146
+    },
+    "sailed": {
+     "mean": 269.25,
+     "min": 240,
+     "max": 292
+    },
+    "delivered": {
+     "mean": 240.375,
+     "min": 208,
+     "max": 260
+    },
+    "sunk": {
+     "mean": 6.5,
+     "min": 3,
+     "max": 11
+    },
+    "hpShip": {
+     "mean": 77.25,
+     "min": 48,
+     "max": 100
+    },
+    "hpCarrier": {
+     "mean": 6,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 179.48569583333347,
+     "min": 157.52335000000008,
+     "max": 194.26026666666678
+    },
+    "risk": {
+     "mean": 0.43065417254785165,
+     "min": 0.2687234460646849,
+     "max": 0.5472131933100906
+    },
+    "deliveredShare": {
+     "mean": 0.892369862773612,
+     "min": 0.8666666666666667,
+     "max": 0.9060150375939849
+    },
+    "score": {
+     "mean": 96475,
+     "min": 71400,
+     "max": 105200
+    },
+    "shots": {
+     "mean": 294.5,
+     "min": 267,
+     "max": 320
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 516,
+     "min": 494,
+     "max": 550
+    },
+    "scheduled": {
+     "mean": 110,
+     "min": 88,
+     "max": 212
+    },
+    "sailed": {
+     "mean": 266.625,
+     "min": 226,
+     "max": 292
+    },
+    "delivered": {
+     "mean": 236.875,
+     "min": 201,
+     "max": 261
+    },
+    "sunk": {
+     "mean": 3.625,
+     "min": 0,
+     "max": 10
+    },
+    "hpShip": {
+     "mean": 86.375,
+     "min": 56,
+     "max": 126
+    },
+    "hpCarrier": {
+     "mean": 3.75,
+     "min": 0,
+     "max": 10
+    },
+    "shipMinutes": {
+     "mean": 216.58120833333348,
+     "min": 174.03536666666668,
+     "max": 243.04833333333357
+    },
+    "risk": {
+     "mean": 0.4032091725188296,
+     "min": 0.25342495148156674,
+     "max": 0.5876943793329338
+    },
+    "deliveredShare": {
+     "mean": 0.8882311952217634,
+     "min": 0.8587786259541985,
+     "max": 0.9035714285714286
+    },
+    "score": {
+     "mean": 97700,
+     "min": 84500,
+     "max": 105500
+    },
+    "shots": {
+     "mean": 301.375,
+     "min": 267,
+     "max": 324
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 9.125,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -2.875,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -3.5,
+     "lower": 6,
+     "n": 8
+    },
+    "score": {
+     "mean": 1225,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.625,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 510.875,
+     "min": 450,
+     "max": 556
+    },
+    "scheduled": {
+     "mean": 135.25,
+     "min": 119,
+     "max": 147
+    },
+    "sailed": {
+     "mean": 270.5,
+     "min": 238,
+     "max": 294
+    },
+    "delivered": {
+     "mean": 246.375,
+     "min": 212,
+     "max": 271
+    },
+    "sunk": {
+     "mean": 1.375,
+     "min": 0,
+     "max": 2
+    },
+    "hpShip": {
+     "mean": 49.25,
+     "min": 36,
+     "max": 59
+    },
+    "hpCarrier": {
+     "mean": 6.75,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 184.44547500000004,
+     "min": 161.99391666666662,
+     "max": 200.4555166666666
+    },
+    "risk": {
+     "mean": 0.2680109650395807,
+     "min": 0.18989551878224942,
+     "max": 0.3270019656143574
+    },
+    "deliveredShare": {
+     "mean": 0.9103814352374741,
+     "min": 0.8907563025210085,
+     "max": 0.9217687074829932
+    },
+    "score": {
+     "mean": 98837.5,
+     "min": 72600,
+     "max": 110000
+    },
+    "shots": {
+     "mean": 291.125,
+     "min": 231,
+     "max": 332
+    },
+    "commands": {
+     "mean": 9.125,
+     "min": 8,
+     "max": 11
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -28,
+     "lower": 7,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -5.125,
+     "lower": 8,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 6,
+     "lower": 1,
+     "n": 8
+    },
+    "score": {
+     "mean": 2362.5,
+     "lower": 1,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.5,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 502,
+     "min": 386,
+     "max": 543
+    },
+    "scheduled": {
+     "mean": 63.25,
+     "min": 49,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 126.5,
+     "min": 98,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 112.5,
+     "min": 85,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 4.375,
+     "min": 1,
+     "max": 8
+    },
+    "hpShip": {
+     "mean": 46.625,
+     "min": 37,
+     "max": 59
+    },
+    "hpCarrier": {
+     "mean": 1.5,
+     "min": 0,
+     "max": 6
+    },
+    "shipMinutes": {
+     "mean": 83.88924166666683,
+     "min": 64.06148333333343,
+     "max": 90.90311666666686
+    },
+    "risk": {
+     "mean": 0.5604413638701229,
+     "min": 0.4284135919849068,
+     "max": 0.7024501722173662
+    },
+    "deliveredShare": {
+     "mean": 0.8886216388583753,
+     "min": 0.8671875,
+     "max": 0.9166666666666666
+    },
+    "score": {
+     "mean": 43637.5,
+     "min": 22500,
+     "max": 47900
+    },
+    "shots": {
+     "mean": 280.5,
+     "min": 188,
+     "max": 328
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4521.75,
+     "min": 3498,
+     "max": 4925
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.125,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 467.875,
+     "min": 325,
+     "max": 533
+    },
+    "scheduled": {
+     "mean": 50.25,
+     "min": 28,
+     "max": 108
+    },
+    "sailed": {
+     "mean": 118.75,
+     "min": 83,
+     "max": 134
+    },
+    "delivered": {
+     "mean": 102.125,
+     "min": 66,
+     "max": 118
+    },
+    "sunk": {
+     "mean": 5.125,
+     "min": 3,
+     "max": 8
+    },
+    "hpShip": {
+     "mean": 57.75,
+     "min": 45,
+     "max": 65
+    },
+    "hpCarrier": {
+     "mean": 3.5,
+     "min": 0,
+     "max": 8
+    },
+    "shipMinutes": {
+     "mean": 94.72965416666668,
+     "min": 65.07664999999999,
+     "max": 110.6624166666667
+    },
+    "risk": {
+     "mean": 0.6291934344451959,
+     "min": 0.43833403196201864,
+     "max": 0.9219896844720804
+    },
+    "deliveredShare": {
+     "mean": 0.857060107672998,
+     "min": 0.7951807228915663,
+     "max": 0.8805970149253731
+    },
+    "score": {
+     "mean": 34895,
+     "min": 17480,
+     "max": 47180
+    },
+    "shots": {
+     "mean": 261.5,
+     "min": 162,
+     "max": 316
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 4229.5,
+     "min": 2974,
+     "max": 4771
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 11.125,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.75,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -10.375,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -8742.5,
+     "lower": 6,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.625,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 511.125,
+     "min": 496,
+     "max": 532
+    },
+    "scheduled": {
+     "mean": 107.125,
+     "min": 87,
+     "max": 206
+    },
+    "sailed": {
+     "mean": 260.75,
+     "min": 219,
+     "max": 276
+    },
+    "delivered": {
+     "mean": 232.75,
+     "min": 197,
+     "max": 249
+    },
+    "sunk": {
+     "mean": 1.625,
+     "min": 0,
+     "max": 4
+    },
+    "hpShip": {
+     "mean": 80.375,
+     "min": 52,
+     "max": 157
+    },
+    "hpCarrier": {
+     "mean": 5.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 212.66889583333344,
+     "min": 170.37678333333326,
+     "max": 230.71476666666706
+    },
+    "risk": {
+     "mean": 0.37629042444977545,
+     "min": 0.2395248747734013,
+     "max": 0.7190860004719098
+    },
+    "deliveredShare": {
+     "mean": 0.892673104483364,
+     "min": 0.8759398496240601,
+     "max": 0.9021739130434783
+    },
+    "score": {
+     "mean": 94010,
+     "min": 77380,
+     "max": 101580
+    },
+    "shots": {
+     "mean": 297.875,
+     "min": 269,
+     "max": 351
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 33.75,
+     "lower": 1,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -2.75,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 120.25,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 50372.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "strait",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.5,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 498.625,
+     "min": 435,
+     "max": 530
+    },
+    "scheduled": {
+     "mean": 63,
+     "min": 55,
+     "max": 67
+    },
+    "sailed": {
+     "mean": 126,
+     "min": 110,
+     "max": 134
+    },
+    "delivered": {
+     "mean": 112,
+     "min": 93,
+     "max": 120
+    },
+    "sunk": {
+     "mean": 3.5,
+     "min": 0,
+     "max": 7
+    },
+    "hpShip": {
+     "mean": 42.125,
+     "min": 35,
+     "max": 53
+    },
+    "hpCarrier": {
+     "mean": 4.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 85.24187083333352,
+     "min": 73.1618666666668,
+     "max": 90.78003333333348
+    },
+    "risk": {
+     "mean": 0.49384974132746123,
+     "min": 0.4136795555426847,
+     "max": 0.607963519129915
+    },
+    "deliveredShare": {
+     "mean": 0.8880793721074738,
+     "min": 0.8454545454545455,
+     "max": 0.921875
+    },
+    "score": {
+     "mean": 43922.5,
+     "min": 23940,
+     "max": 48440
+    },
+    "shots": {
+     "mean": 284.25,
+     "min": 227,
+     "max": 339
+    },
+    "commands": {
+     "mean": 9.5,
+     "min": 8,
+     "max": 12
+    },
+    "refused": {
+     "mean": 4493,
+     "min": 3999,
+     "max": 4744
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -4.5,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.875,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -0.5,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": 285,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 1,
+   "m": {
+    "wave": {
+     "mean": 8.5,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 365,
+     "min": 293,
+     "max": 446
+    },
+    "scheduled": {
+     "mean": 46,
+     "min": 37,
+     "max": 56
+    },
+    "sailed": {
+     "mean": 92,
+     "min": 74,
+     "max": 112
+    },
+    "delivered": {
+     "mean": 73.5,
+     "min": 61,
+     "max": 96
+    },
+    "sunk": {
+     "mean": 9.5,
+     "min": 6,
+     "max": 18
+    },
+    "hpShip": {
+     "mean": 62.5,
+     "min": 46,
+     "max": 89
+    },
+    "hpCarrier": {
+     "mean": 14.5,
+     "min": 14,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 58.44029791666674,
+     "min": 46.29493333333337,
+     "max": 73.77071666666681
+    },
+    "risk": {
+     "mean": 1.091015574548995,
+     "min": 0.6506646833443157,
+     "max": 1.6483343488801492
+    },
+    "deliveredShare": {
+     "mean": 0.7969493398326151,
+     "min": 0.7111111111111111,
+     "max": 0.8571428571428571
+    },
+    "score": {
+     "mean": 19680,
+     "min": 15180,
+     "max": 26280
+    },
+    "shots": {
+     "mean": 244.625,
+     "min": 183,
+     "max": 311
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3055.25,
+     "min": 2412,
+     "max": 3733
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 3,
+   "m": {
+    "wave": {
+     "mean": 10,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 422.375,
+     "min": 356,
+     "max": 569
+    },
+    "scheduled": {
+     "mean": 44.375,
+     "min": 30,
+     "max": 84
+    },
+    "sailed": {
+     "mean": 106.875,
+     "min": 89,
+     "max": 144
+    },
+    "delivered": {
+     "mean": 80.625,
+     "min": 62,
+     "max": 105
+    },
+    "sunk": {
+     "mean": 15.375,
+     "min": 4,
+     "max": 35
+    },
+    "hpShip": {
+     "mean": 102.875,
+     "min": 40,
+     "max": 189
+    },
+    "hpCarrier": {
+     "mean": 12.25,
+     "min": 8,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 80.9939,
+     "min": 68.92058333333345,
+     "max": 105.0783166666667
+    },
+    "risk": {
+     "mean": 1.2141996839793796,
+     "min": 0.5803781405409839,
+     "max": 1.8044466721563865
+    },
+    "deliveredShare": {
+     "mean": 0.7571052739486241,
+     "min": 0.6526315789473685,
+     "max": 0.8260869565217391
+    },
+    "score": {
+     "mean": 25050,
+     "min": 18360,
+     "max": 40100
+    },
+    "shots": {
+     "mean": 281.125,
+     "min": 225,
+     "max": 377
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 3546.5,
+     "min": 3029,
+     "max": 4776
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 40.375,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 5.875,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 7.125,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 5370,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 1,
+   "m": {
+    "wave": {
+     "mean": 8.5,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 365,
+     "min": 293,
+     "max": 446
+    },
+    "scheduled": {
+     "mean": 46,
+     "min": 37,
+     "max": 56
+    },
+    "sailed": {
+     "mean": 92,
+     "min": 74,
+     "max": 112
+    },
+    "delivered": {
+     "mean": 73.5,
+     "min": 61,
+     "max": 96
+    },
+    "sunk": {
+     "mean": 9.5,
+     "min": 6,
+     "max": 18
+    },
+    "hpShip": {
+     "mean": 62.5,
+     "min": 46,
+     "max": 89
+    },
+    "hpCarrier": {
+     "mean": 14.5,
+     "min": 14,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 58.44029791666674,
+     "min": 46.29493333333337,
+     "max": 73.77071666666681
+    },
+    "risk": {
+     "mean": 1.091015574548995,
+     "min": 0.6506646833443157,
+     "max": 1.6483343488801492
+    },
+    "deliveredShare": {
+     "mean": 0.7969493398326151,
+     "min": 0.7111111111111111,
+     "max": 0.8571428571428571
+    },
+    "score": {
+     "mean": 19680,
+     "min": 15180,
+     "max": 26280
+    },
+    "shots": {
+     "mean": 244.625,
+     "min": 183,
+     "max": 311
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3055.25,
+     "min": 2412,
+     "max": 3733
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 10,
+     "min": 6,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 435.875,
+     "min": 229,
+     "max": 555
+    },
+    "scheduled": {
+     "mean": 55,
+     "min": 29,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 110,
+     "min": 58,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 88.25,
+     "min": 48,
+     "max": 113
+    },
+    "sunk": {
+     "mean": 13.5,
+     "min": 1,
+     "max": 35
+    },
+    "hpShip": {
+     "mean": 85.25,
+     "min": 28,
+     "max": 161
+    },
+    "hpCarrier": {
+     "mean": 15.25,
+     "min": 10,
+     "max": 22
+    },
+    "shipMinutes": {
+     "mean": 71.33109583333348,
+     "min": 37.88103333333332,
+     "max": 90.66910000000028
+    },
+    "risk": {
+     "mean": 1.1205172958582152,
+     "min": 0.49272761415266936,
+     "max": 1.9011616373134608
+    },
+    "deliveredShare": {
+     "mean": 0.8072291468033265,
+     "min": 0.7246376811594203,
+     "max": 0.8586956521739131
+    },
+    "score": {
+     "mean": 25985,
+     "min": 11640,
+     "max": 38540
+    },
+    "shots": {
+     "mean": 293.25,
+     "min": 135,
+     "max": 380
+    },
+    "commands": {
+     "mean": 9.375,
+     "min": 5,
+     "max": 13
+    },
+    "refused": {
+     "mean": 3663.625,
+     "min": 1926,
+     "max": 4657
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 22.75,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 4,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 14.75,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 6305,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 10.5,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 452.25,
+     "min": 341,
+     "max": 575
+    },
+    "scheduled": {
+     "mean": 57,
+     "min": 43,
+     "max": 72
+    },
+    "sailed": {
+     "mean": 114,
+     "min": 86,
+     "max": 144
+    },
+    "delivered": {
+     "mean": 89.875,
+     "min": 70,
+     "max": 112
+    },
+    "sunk": {
+     "mean": 15.625,
+     "min": 4,
+     "max": 33
+    },
+    "hpShip": {
+     "mean": 90.375,
+     "min": 42,
+     "max": 156
+    },
+    "hpCarrier": {
+     "mean": 13.25,
+     "min": 4,
+     "max": 22
+    },
+    "shipMinutes": {
+     "mean": 73.21925416666681,
+     "min": 56.895650000000046,
+     "max": 90.08440000000024
+    },
+    "risk": {
+     "mean": 1.1735642388637553,
+     "min": 0.7014317000366291,
+     "max": 1.7613459091423969
+    },
+    "deliveredShare": {
+     "mean": 0.7899510312846069,
+     "min": 0.75,
+     "max": 0.8229166666666666
+    },
+    "score": {
+     "mean": 27527.5,
+     "min": 18200,
+     "max": 38360
+    },
+    "shots": {
+     "mean": 303.375,
+     "min": 205,
+     "max": 421
+    },
+    "commands": {
+     "mean": 30.25,
+     "min": 22,
+     "max": 39
+    },
+    "refused": {
+     "mean": 3803.875,
+     "min": 2825,
+     "max": 4878
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 27.875,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 6.125,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 16.375,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 7847.5,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 3,
+   "m": {
+    "wave": {
+     "mean": 9.75,
+     "min": 7,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 428.75,
+     "min": 291,
+     "max": 592
+    },
+    "scheduled": {
+     "mean": 54.125,
+     "min": 37,
+     "max": 75
+    },
+    "sailed": {
+     "mean": 108.25,
+     "min": 74,
+     "max": 150
+    },
+    "delivered": {
+     "mean": 88.125,
+     "min": 62,
+     "max": 118
+    },
+    "sunk": {
+     "mean": 11.75,
+     "min": 0,
+     "max": 35
+    },
+    "hpShip": {
+     "mean": 80.125,
+     "min": 20,
+     "max": 182
+    },
+    "hpCarrier": {
+     "mean": 13.625,
+     "min": 12,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 67.85424583333347,
+     "min": 47.48515000000005,
+     "max": 91.39720000000025
+    },
+    "risk": {
+     "mean": 1.0793206871213203,
+     "min": 0.4211843070939016,
+     "max": 2.171152854330351
+    },
+    "deliveredShare": {
+     "mean": 0.8216047672605049,
+     "min": 0.7357142857142858,
+     "max": 0.8557692307692307
+    },
+    "score": {
+     "mean": 25462.5,
+     "min": 15360,
+     "max": 39440
+    },
+    "shots": {
+     "mean": 287,
+     "min": 172,
+     "max": 447
+    },
+    "commands": {
+     "mean": 36.25,
+     "min": 25,
+     "max": 50
+    },
+    "refused": {
+     "mean": 3601.125,
+     "min": 2393,
+     "max": 5057
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 17.625,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 2.25,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 14.625,
+     "lower": 1,
+     "n": 8
+    },
+    "score": {
+     "mean": 5782.5,
+     "lower": 1,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 8.625,
+     "min": 6,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 376.125,
+     "min": 234,
+     "max": 470
+    },
+    "scheduled": {
+     "mean": 99.375,
+     "min": 62,
+     "max": 124
+    },
+    "sailed": {
+     "mean": 198.75,
+     "min": 124,
+     "max": 248
+    },
+    "delivered": {
+     "mean": 169.25,
+     "min": 101,
+     "max": 212
+    },
+    "sunk": {
+     "mean": 8.875,
+     "min": 1,
+     "max": 17
+    },
+    "hpShip": {
+     "mean": 84.875,
+     "min": 20,
+     "max": 137
+    },
+    "hpCarrier": {
+     "mean": 14.75,
+     "min": 12,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 130.04542500000002,
+     "min": 79.40534999999998,
+     "max": 162.82580000000004
+    },
+    "risk": {
+     "mean": 0.6251448209172759,
+     "min": 0.25187219752825224,
+     "max": 0.8549961009229533
+    },
+    "deliveredShare": {
+     "mean": 0.8496197804880108,
+     "min": 0.8145161290322581,
+     "max": 0.8802083333333334
+    },
+    "score": {
+     "mean": 57500,
+     "min": 33300,
+     "max": 72600
+    },
+    "shots": {
+     "mean": 243.625,
+     "min": 113,
+     "max": 362
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 9.625,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 415.875,
+     "min": 332,
+     "max": 566
+    },
+    "scheduled": {
+     "mean": 94,
+     "min": 66,
+     "max": 205
+    },
+    "sailed": {
+     "mean": 220.375,
+     "min": 176,
+     "max": 300
+    },
+    "delivered": {
+     "mean": 185.375,
+     "min": 148,
+     "max": 249
+    },
+    "sunk": {
+     "mean": 9,
+     "min": 3,
+     "max": 25
+    },
+    "hpShip": {
+     "mean": 119.75,
+     "min": 73,
+     "max": 232
+    },
+    "hpCarrier": {
+     "mean": 12.5,
+     "min": 10,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 174.16765000000007,
+     "min": 133.97816666666662,
+     "max": 242.0419500000003
+    },
+    "risk": {
+     "mean": 0.6650089652641263,
+     "min": 0.4988177618387585,
+     "max": 0.9585115307491107
+    },
+    "deliveredShare": {
+     "mean": 0.8416661147181916,
+     "min": 0.8284313725490197,
+     "max": 0.8597285067873304
+    },
+    "score": {
+     "mean": 65212.5,
+     "min": 50000,
+     "max": 95900
+    },
+    "shots": {
+     "mean": 272.25,
+     "min": 215,
+     "max": 422
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 34.875,
+     "lower": 3,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.125,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 16.125,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 7712.5,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 8.625,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 358.375,
+     "min": 286,
+     "max": 434
+    },
+    "scheduled": {
+     "mean": 94.875,
+     "min": 76,
+     "max": 115
+    },
+    "sailed": {
+     "mean": 189.75,
+     "min": 152,
+     "max": 230
+    },
+    "delivered": {
+     "mean": 161.5,
+     "min": 126,
+     "max": 199
+    },
+    "sunk": {
+     "mean": 5.375,
+     "min": 0,
+     "max": 14
+    },
+    "hpShip": {
+     "mean": 53.625,
+     "min": 26,
+     "max": 84
+    },
+    "hpCarrier": {
+     "mean": 13.75,
+     "min": 12,
+     "max": 20
+    },
+    "shipMinutes": {
+     "mean": 126.01681458333331,
+     "min": 99.90665000000003,
+     "max": 153.23733333333328
+    },
+    "risk": {
+     "mean": 0.4149298974567921,
+     "min": 0.26024293678148547,
+     "max": 0.5649873315042994
+    },
+    "deliveredShare": {
+     "mean": 0.8502177683830865,
+     "min": 0.8289473684210527,
+     "max": 0.8652173913043478
+    },
+    "score": {
+     "mean": 55125,
+     "min": 42000,
+     "max": 68700
+    },
+    "shots": {
+     "mean": 221.5,
+     "min": 160,
+     "max": 301
+    },
+    "commands": {
+     "mean": 7.75,
+     "min": 6,
+     "max": 10
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -31.25,
+     "lower": 7,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -3.5,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -7.75,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -2375,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.125,
+     "min": 6,
+     "max": 9
+    },
+    "seconds": {
+     "mean": 292.5,
+     "min": 219,
+     "max": 416
+    },
+    "scheduled": {
+     "mean": 36.875,
+     "min": 28,
+     "max": 52
+    },
+    "sailed": {
+     "mean": 73.75,
+     "min": 56,
+     "max": 104
+    },
+    "delivered": {
+     "mean": 59.75,
+     "min": 42,
+     "max": 91
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 6,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 41.375,
+     "min": 30,
+     "max": 54
+    },
+    "hpCarrier": {
+     "mean": 6,
+     "min": 2,
+     "max": 8
+    },
+    "shipMinutes": {
+     "mean": 47.080785416666686,
+     "min": 33.98156666666664,
+     "max": 69.31743333333344
+    },
+    "risk": {
+     "mean": 0.9002988835470497,
+     "min": 0.6203345671098603,
+     "max": 1.2087161867242664
+    },
+    "deliveredShare": {
+     "mean": 0.8024932661152234,
+     "min": 0.75,
+     "max": 0.875
+    },
+    "score": {
+     "mean": 15380,
+     "min": 10560,
+     "max": 23580
+    },
+    "shots": {
+     "mean": 185.375,
+     "min": 141,
+     "max": 291
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 2433.125,
+     "min": 1823,
+     "max": 3469
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.375,
+     "min": 6,
+     "max": 9
+    },
+    "seconds": {
+     "mean": 292.125,
+     "min": 204,
+     "max": 365
+    },
+    "scheduled": {
+     "mean": 33.625,
+     "min": 18,
+     "max": 84
+    },
+    "sailed": {
+     "mean": 74.625,
+     "min": 52,
+     "max": 92
+    },
+    "delivered": {
+     "mean": 57.25,
+     "min": 35,
+     "max": 76
+    },
+    "sunk": {
+     "mean": 5.75,
+     "min": 4,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 50.625,
+     "min": 40,
+     "max": 76
+    },
+    "hpCarrier": {
+     "mean": 4.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 56.03941458333335,
+     "min": 37.93438333333334,
+     "max": 72.09085000000002
+    },
+    "risk": {
+     "mean": 0.9317537834143013,
+     "min": 0.5803781405409839,
+     "max": 1.2059697966095022
+    },
+    "deliveredShare": {
+     "mean": 0.7569823864802278,
+     "min": 0.6730769230769231,
+     "max": 0.8314606741573034
+    },
+    "score": {
+     "mean": 15130,
+     "min": 9300,
+     "max": 20880
+    },
+    "shots": {
+     "mean": 182.5,
+     "min": 114,
+     "max": 268
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 2429.5,
+     "min": 1645,
+     "max": 3078
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 9.25,
+     "lower": 1,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.25,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -2.5,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -250,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 1,
+   "m": {
+    "wave": {
+     "mean": 8.25,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 349.25,
+     "min": 285,
+     "max": 427
+    },
+    "scheduled": {
+     "mean": 80.875,
+     "min": 49,
+     "max": 207
+    },
+    "sailed": {
+     "mean": 181.875,
+     "min": 146,
+     "max": 222
+    },
+    "delivered": {
+     "mean": 150.75,
+     "min": 114,
+     "max": 193
+    },
+    "sunk": {
+     "mean": 5.25,
+     "min": 3,
+     "max": 7
+    },
+    "hpShip": {
+     "mean": 76.25,
+     "min": 54,
+     "max": 96
+    },
+    "hpCarrier": {
+     "mean": 9,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 141.8168229166667,
+     "min": 114.81741666666669,
+     "max": 168.04751666666672
+    },
+    "risk": {
+     "mean": 0.5446554801748547,
+     "min": 0.39187246824986327,
+     "max": 0.6993426421990635
+    },
+    "deliveredShare": {
+     "mean": 0.8250864124949655,
+     "min": 0.7808219178082192,
+     "max": 0.8693693693693694
+    },
+    "score": {
+     "mean": 50987.5,
+     "min": 37600,
+     "max": 66580
+    },
+    "shots": {
+     "mean": 216.625,
+     "min": 158,
+     "max": 304
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 34.875,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.75,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 91,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 35607.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.875,
+     "min": 6,
+     "max": 9
+    },
+    "seconds": {
+     "mean": 322,
+     "min": 229,
+     "max": 399
+    },
+    "scheduled": {
+     "mean": 40.75,
+     "min": 29,
+     "max": 50
+    },
+    "sailed": {
+     "mean": 81.5,
+     "min": 58,
+     "max": 100
+    },
+    "delivered": {
+     "mean": 67.875,
+     "min": 48,
+     "max": 86
+    },
+    "sunk": {
+     "mean": 4.75,
+     "min": 1,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 39.5,
+     "min": 28,
+     "max": 52
+    },
+    "hpCarrier": {
+     "mean": 9,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 53.59478750000005,
+     "min": 37.88103333333332,
+     "max": 66.84843333333345
+    },
+    "risk": {
+     "mean": 0.7487477416783854,
+     "min": 0.49272761415266936,
+     "max": 0.9498107916597566
+    },
+    "deliveredShare": {
+     "mean": 0.8305497472484584,
+     "min": 0.7948717948717948,
+     "max": 0.86
+    },
+    "score": {
+     "mean": 17917.5,
+     "min": 11640,
+     "max": 22680
+    },
+    "shots": {
+     "mean": 205.375,
+     "min": 135,
+     "max": 250
+    },
+    "commands": {
+     "mean": 6.875,
+     "min": 3,
+     "max": 10
+    },
+    "refused": {
+     "mean": 2687.375,
+     "min": 1926,
+     "max": 3322
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -1.875,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.25,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 8.125,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 2537.5,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.5,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 524.875,
+     "min": 383,
+     "max": 559
+    },
+    "scheduled": {
+     "mean": 66,
+     "min": 48,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 132,
+     "min": 96,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 108,
+     "min": 80,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 19.125,
+     "min": 6,
+     "max": 28
+    },
+    "hpShip": {
+     "mean": 98.125,
+     "min": 33,
+     "max": 131
+    },
+    "hpCarrier": {
+     "mean": 10,
+     "min": 0,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 84.01171458333353,
+     "min": 62.31091666666673,
+     "max": 92.11003333333359
+    },
+    "risk": {
+     "mean": 1.148757115487265,
+     "min": 0.5296022232594337,
+     "max": 1.5532025218001615
+    },
+    "deliveredShare": {
+     "mean": 0.8187370373197949,
+     "min": 0.7794117647058824,
+     "max": 0.8642857142857143
+    },
+    "score": {
+     "mean": 37015,
+     "min": 21600,
+     "max": 42980
+    },
+    "shots": {
+     "mean": 354.75,
+     "min": 216,
+     "max": 402
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4717.75,
+     "min": 3481,
+     "max": 5051
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 12,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 506.75,
+     "min": 368,
+     "max": 551
+    },
+    "scheduled": {
+     "mean": 51.375,
+     "min": 35,
+     "max": 84
+    },
+    "sailed": {
+     "mean": 128.25,
+     "min": 92,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 103.25,
+     "min": 76,
+     "max": 117
+    },
+    "sunk": {
+     "mean": 16.125,
+     "min": 5,
+     "max": 32
+    },
+    "hpShip": {
+     "mean": 107.625,
+     "min": 43,
+     "max": 150
+    },
+    "hpCarrier": {
+     "mean": 9.5,
+     "min": 2,
+     "max": 22
+    },
+    "shipMinutes": {
+     "mean": 99.86416458333335,
+     "min": 68.6819500000001,
+     "max": 113.48891666666667
+    },
+    "risk": {
+     "mean": 1.0640587131318395,
+     "min": 0.6260742451255379,
+     "max": 1.472413835978335
+    },
+    "deliveredShare": {
+     "mean": 0.8050931555546589,
+     "min": 0.7482014388489209,
+     "max": 0.8357142857142857
+    },
+    "score": {
+     "mean": 34972.5,
+     "min": 20880,
+     "max": 41900
+    },
+    "shots": {
+     "mean": 335,
+     "min": 235,
+     "max": 402
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 4561.625,
+     "min": 3393,
+     "max": 4976
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 9.5,
+     "lower": 3,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -3,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -4.75,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -2042.5,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.5,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 524.875,
+     "min": 383,
+     "max": 559
+    },
+    "scheduled": {
+     "mean": 66,
+     "min": 48,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 132,
+     "min": 96,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 108,
+     "min": 80,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 19.125,
+     "min": 6,
+     "max": 28
+    },
+    "hpShip": {
+     "mean": 98.125,
+     "min": 33,
+     "max": 131
+    },
+    "hpCarrier": {
+     "mean": 10,
+     "min": 0,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 84.01171458333353,
+     "min": 62.31091666666673,
+     "max": 92.11003333333359
+    },
+    "risk": {
+     "mean": 1.148757115487265,
+     "min": 0.5296022232594337,
+     "max": 1.5532025218001615
+    },
+    "deliveredShare": {
+     "mean": 0.8187370373197949,
+     "min": 0.7794117647058824,
+     "max": 0.8642857142857143
+    },
+    "score": {
+     "mean": 37015,
+     "min": 21600,
+     "max": 42980
+    },
+    "shots": {
+     "mean": 354.75,
+     "min": 216,
+     "max": 402
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4717.75,
+     "min": 3481,
+     "max": 5051
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 10.875,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 462.625,
+     "min": 312,
+     "max": 588
+    },
+    "scheduled": {
+     "mean": 58.125,
+     "min": 39,
+     "max": 74
+    },
+    "sailed": {
+     "mean": 116.25,
+     "min": 78,
+     "max": 148
+    },
+    "delivered": {
+     "mean": 97.25,
+     "min": 66,
+     "max": 125
+    },
+    "sunk": {
+     "mean": 11.625,
+     "min": 1,
+     "max": 21
+    },
+    "hpShip": {
+     "mean": 68.25,
+     "min": 22,
+     "max": 112
+    },
+    "hpCarrier": {
+     "mean": 11,
+     "min": 4,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 76.26376250000015,
+     "min": 52.34075000000004,
+     "max": 96.19968333333354
+    },
+    "risk": {
+     "mean": 0.8334543847557478,
+     "min": 0.41064516711080606,
+     "max": 1.1642449966484618
+    },
+    "deliveredShare": {
+     "mean": 0.8391598718376441,
+     "min": 0.8142857142857143,
+     "max": 0.8673469387755102
+    },
+    "score": {
+     "mean": 30405,
+     "min": 17480,
+     "max": 43700
+    },
+    "shots": {
+     "mean": 296.25,
+     "min": 160,
+     "max": 390
+    },
+    "commands": {
+     "mean": 8.625,
+     "min": 5,
+     "max": 11
+    },
+    "refused": {
+     "mean": 4183.375,
+     "min": 2875,
+     "max": 5314
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -29.875,
+     "lower": 6,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -7.5,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -10.75,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -6610,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 11,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 479,
+     "min": 353,
+     "max": 585
+    },
+    "scheduled": {
+     "mean": 60.375,
+     "min": 45,
+     "max": 74
+    },
+    "sailed": {
+     "mean": 120.75,
+     "min": 90,
+     "max": 148
+    },
+    "delivered": {
+     "mean": 102.625,
+     "min": 77,
+     "max": 122
+    },
+    "sunk": {
+     "mean": 11,
+     "min": 3,
+     "max": 26
+    },
+    "hpShip": {
+     "mean": 64.25,
+     "min": 38,
+     "max": 125
+    },
+    "hpCarrier": {
+     "mean": 10.75,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 79.91392708333349,
+     "min": 59.59590000000007,
+     "max": 95.62056666666693
+    },
+    "risk": {
+     "mean": 0.7898366116379869,
+     "min": 0.4607523843935884,
+     "max": 1.3072501487650634
+    },
+    "deliveredShare": {
+     "mean": 0.8517163457866994,
+     "min": 0.7972972972972973,
+     "max": 0.8934426229508197
+    },
+    "score": {
+     "mean": 32885,
+     "min": 19460,
+     "max": 44660
+    },
+    "shots": {
+     "mean": 304.125,
+     "min": 189,
+     "max": 390
+    },
+    "commands": {
+     "mean": 32.25,
+     "min": 23,
+     "max": 38
+    },
+    "refused": {
+     "mean": 4324.25,
+     "min": 3214,
+     "max": 5290
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -33.875,
+     "lower": 6,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -8.125,
+     "lower": 8,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -5.375,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": -4130,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 11.25,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 473.375,
+     "min": 313,
+     "max": 565
+    },
+    "scheduled": {
+     "mean": 59.625,
+     "min": 40,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 119.25,
+     "min": 80,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 100.625,
+     "min": 66,
+     "max": 122
+    },
+    "sunk": {
+     "mean": 13,
+     "min": 3,
+     "max": 32
+    },
+    "hpShip": {
+     "mean": 72.125,
+     "min": 17,
+     "max": 141
+    },
+    "hpCarrier": {
+     "mean": 7,
+     "min": 0,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 75.50410833333349,
+     "min": 50.97785000000005,
+     "max": 89.6544166666669
+    },
+    "risk": {
+     "mean": 0.8949994175288144,
+     "min": 0.33347816747862025,
+     "max": 1.7044135850224316
+    },
+    "deliveredShare": {
+     "mean": 0.8463701282676146,
+     "min": 0.7571428571428571,
+     "max": 0.9090909090909091
+    },
+    "score": {
+     "mean": 32912.5,
+     "min": 17480,
+     "max": 45800
+    },
+    "shots": {
+     "mean": 302.25,
+     "min": 160,
+     "max": 418
+    },
+    "commands": {
+     "mean": 40.25,
+     "min": 27,
+     "max": 48
+    },
+    "refused": {
+     "mean": 4276,
+     "min": 2886,
+     "max": 5120
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -26,
+     "lower": 6,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -6.125,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -7.375,
+     "lower": 6,
+     "n": 8
+    },
+    "score": {
+     "mean": -4102.5,
+     "lower": 6,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.75,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 495.625,
+     "min": 344,
+     "max": 575
+    },
+    "scheduled": {
+     "mean": 131.125,
+     "min": 91,
+     "max": 152
+    },
+    "sailed": {
+     "mean": 262.25,
+     "min": 182,
+     "max": 304
+    },
+    "delivered": {
+     "mean": 230.375,
+     "min": 157,
+     "max": 269
+    },
+    "sunk": {
+     "mean": 11.375,
+     "min": 3,
+     "max": 23
+    },
+    "hpShip": {
+     "mean": 106.625,
+     "min": 39,
+     "max": 163
+    },
+    "hpCarrier": {
+     "mean": 11.25,
+     "min": 2,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 173.6718000000001,
+     "min": 119.13251666666665,
+     "max": 202.63186666666672
+    },
+    "risk": {
+     "mean": 0.5877897391863741,
+     "min": 0.3273665418243634,
+     "max": 0.8595900142359707
+    },
+    "deliveredShare": {
+     "mean": 0.8770846314701392,
+     "min": 0.84375,
+     "max": 0.8993055555555556
+    },
+    "score": {
+     "mean": 86412.5,
+     "min": 52700,
+     "max": 98900
+    },
+    "shots": {
+     "mean": 327,
+     "min": 177,
+     "max": 400
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 11.375,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 484.75,
+     "min": 354,
+     "max": 576
+    },
+    "scheduled": {
+     "mean": 111.625,
+     "min": 69,
+     "max": 273
+    },
+    "sailed": {
+     "mean": 256.25,
+     "min": 189,
+     "max": 304
+    },
+    "delivered": {
+     "mean": 223,
+     "min": 159,
+     "max": 270
+    },
+    "sunk": {
+     "mean": 7.75,
+     "min": 2,
+     "max": 18
+    },
+    "hpShip": {
+     "mean": 111.25,
+     "min": 45,
+     "max": 178
+    },
+    "hpCarrier": {
+     "mean": 9.25,
+     "min": 2,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 205.75484583333346,
+     "min": 143.55906666666667,
+     "max": 252.92993333333362
+    },
+    "risk": {
+     "mean": 0.5206947503668097,
+     "min": 0.2685927085037943,
+     "max": 0.7698053509688912
+    },
+    "deliveredShare": {
+     "mean": 0.8680681849452713,
+     "min": 0.8412698412698413,
+     "max": 0.8993055555555556
+    },
+    "score": {
+     "mean": 83962.5,
+     "min": 53300,
+     "max": 106700
+    },
+    "shots": {
+     "mean": 306.375,
+     "min": 176,
+     "max": 403
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 4.625,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -3.625,
+     "lower": 7,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -7.375,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": -2450,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 11.25,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 487.125,
+     "min": 382,
+     "max": 557
+    },
+    "scheduled": {
+     "mean": 128.625,
+     "min": 101,
+     "max": 147
+    },
+    "sailed": {
+     "mean": 257.25,
+     "min": 202,
+     "max": 294
+    },
+    "delivered": {
+     "mean": 227.125,
+     "min": 176,
+     "max": 262
+    },
+    "sunk": {
+     "mean": 10.125,
+     "min": 1,
+     "max": 17
+    },
+    "hpShip": {
+     "mean": 93.625,
+     "min": 18,
+     "max": 132
+    },
+    "hpCarrier": {
+     "mean": 10.75,
+     "min": 2,
+     "max": 20
+    },
+    "shipMinutes": {
+     "mean": 174.21175833333336,
+     "min": 136.10576666666663,
+     "max": 199.4371333333338
+    },
+    "risk": {
+     "mean": 0.5160379886745087,
+     "min": 0.13161741595770984,
+     "max": 0.6654335478585132
+    },
+    "deliveredShare": {
+     "mean": 0.8820112692220498,
+     "min": 0.847457627118644,
+     "max": 0.9
+    },
+    "score": {
+     "mean": 82037.5,
+     "min": 60000,
+     "max": 98900
+    },
+    "shots": {
+     "mean": 320.75,
+     "min": 209,
+     "max": 391
+    },
+    "commands": {
+     "mean": 10.375,
+     "min": 9,
+     "max": 12
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -13,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.25,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -3.25,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": -4375,
+     "lower": 6,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 10.375,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 441.875,
+     "min": 347,
+     "max": 548
+    },
+    "scheduled": {
+     "mean": 55.625,
+     "min": 44,
+     "max": 69
+    },
+    "sailed": {
+     "mean": 111.25,
+     "min": 88,
+     "max": 138
+    },
+    "delivered": {
+     "mean": 96,
+     "min": 74,
+     "max": 120
+    },
+    "sunk": {
+     "mean": 7.25,
+     "min": 6,
+     "max": 10
+    },
+    "hpShip": {
+     "mean": 52,
+     "min": 28,
+     "max": 84
+    },
+    "hpCarrier": {
+     "mean": 6.5,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 72.89490416666679,
+     "min": 56.345683333333376,
+     "max": 91.24950000000022
+    },
+    "risk": {
+     "mean": 0.6948903513968582,
+     "min": 0.4969324772291041,
+     "max": 0.9205529893314461
+    },
+    "deliveredShare": {
+     "mean": 0.8607185481918957,
+     "min": 0.8409090909090909,
+     "max": 0.8809523809523809
+    },
+    "score": {
+     "mean": 27630,
+     "min": 20520,
+     "max": 40200
+    },
+    "shots": {
+     "mean": 279.25,
+     "min": 186,
+     "max": 388
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4006.875,
+     "min": 3177,
+     "max": 4940
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 9.125,
+     "min": 6,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 382.25,
+     "min": 266,
+     "max": 540
+    },
+    "scheduled": {
+     "mean": 41,
+     "min": 23,
+     "max": 84
+    },
+    "sailed": {
+     "mean": 97.125,
+     "min": 67,
+     "max": 137
+    },
+    "delivered": {
+     "mean": 79.5,
+     "min": 52,
+     "max": 114
+    },
+    "sunk": {
+     "mean": 7.125,
+     "min": 5,
+     "max": 11
+    },
+    "hpShip": {
+     "mean": 56.375,
+     "min": 29,
+     "max": 111
+    },
+    "hpCarrier": {
+     "mean": 5.25,
+     "min": 2,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 75.82810833333333,
+     "min": 49.65044999999997,
+     "max": 111.99029999999999
+    },
+    "risk": {
+     "mean": 0.7109914284811524,
+     "min": 0.4234663642370486,
+     "max": 1.0906604096166779
+    },
+    "deliveredShare": {
+     "mean": 0.8150697064232171,
+     "min": 0.7647058823529411,
+     "max": 0.8372093023255814
+    },
+    "score": {
+     "mean": 22360,
+     "min": 13560,
+     "max": 36120
+    },
+    "shots": {
+     "mean": 231.625,
+     "min": 125,
+     "max": 363
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 3494.875,
+     "min": 2473,
+     "max": 4889
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 4.375,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.125,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -16.5,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -5270,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 3,
+   "m": {
+    "wave": {
+     "mean": 9.625,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 414.75,
+     "min": 331,
+     "max": 552
+    },
+    "scheduled": {
+     "mean": 97.875,
+     "min": 63,
+     "max": 274
+    },
+    "sailed": {
+     "mean": 216.125,
+     "min": 171,
+     "max": 288
+    },
+    "delivered": {
+     "mean": 187,
+     "min": 144,
+     "max": 257
+    },
+    "sunk": {
+     "mean": 5.625,
+     "min": 2,
+     "max": 7
+    },
+    "hpShip": {
+     "mean": 73.125,
+     "min": 53,
+     "max": 104
+    },
+    "hpCarrier": {
+     "mean": 6.75,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 172.37366250000002,
+     "min": 132.09861666666671,
+     "max": 223.44346666666655
+    },
+    "risk": {
+     "mean": 0.4259545135869257,
+     "min": 0.336683225552351,
+     "max": 0.5002495220507579
+    },
+    "deliveredShare": {
+     "mean": 0.8623063050271481,
+     "min": 0.8421052631578947,
+     "max": 0.8923611111111112
+    },
+    "score": {
+     "mean": 65497.5,
+     "min": 48480,
+     "max": 99480
+    },
+    "shots": {
+     "mean": 245.5,
+     "min": 163,
+     "max": 397
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 21.125,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.625,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 91,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 37867.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "gauntlet",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 10,
+     "min": 8,
+     "max": 12
+    },
+    "seconds": {
+     "mean": 432.5,
+     "min": 312,
+     "max": 548
+    },
+    "scheduled": {
+     "mean": 54.375,
+     "min": 39,
+     "max": 69
+    },
+    "sailed": {
+     "mean": 108.75,
+     "min": 78,
+     "max": 138
+    },
+    "delivered": {
+     "mean": 95.5,
+     "min": 66,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 6.375,
+     "min": 1,
+     "max": 11
+    },
+    "hpShip": {
+     "mean": 49.625,
+     "min": 22,
+     "max": 75
+    },
+    "hpCarrier": {
+     "mean": 10.5,
+     "min": 4,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 73.07726875000014,
+     "min": 52.34075000000004,
+     "max": 92.66030000000018
+    },
+    "risk": {
+     "mean": 0.6489983434376219,
+     "min": 0.41064516711080606,
+     "max": 0.834928943101717
+    },
+    "deliveredShare": {
+     "mean": 0.8760023489059166,
+     "min": 0.8461538461538461,
+     "max": 0.9016393442622951
+    },
+    "score": {
+     "mean": 26815,
+     "min": 17480,
+     "max": 37980
+    },
+    "shots": {
+     "mean": 268.375,
+     "min": 160,
+     "max": 357
+    },
+    "commands": {
+     "mean": 8.5,
+     "min": 5,
+     "max": 11
+    },
+    "refused": {
+     "mean": 3927.625,
+     "min": 2875,
+     "max": 4972
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -2.375,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.875,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -0.5,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -815,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 9.875,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 421.875,
+     "min": 349,
+     "max": 582
+    },
+    "scheduled": {
+     "mean": 53.25,
+     "min": 44,
+     "max": 73
+    },
+    "sailed": {
+     "mean": 106.5,
+     "min": 88,
+     "max": 146
+    },
+    "delivered": {
+     "mean": 79.875,
+     "min": 72,
+     "max": 103
+    },
+    "sunk": {
+     "mean": 17.875,
+     "min": 6,
+     "max": 34
+    },
+    "hpShip": {
+     "mean": 97.5,
+     "min": 49,
+     "max": 166
+    },
+    "hpCarrier": {
+     "mean": 13.75,
+     "min": 12,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 66.63600000000011,
+     "min": 56.57540000000005,
+     "max": 90.77005000000024
+    },
+    "risk": {
+     "mean": 1.4266138893456528,
+     "min": 0.8661008141347645,
+     "max": 1.828797053653706
+    },
+    "deliveredShare": {
+     "mean": 0.7552671254195641,
+     "min": 0.6982758620689655,
+     "max": 0.8181818181818182
+    },
+    "score": {
+     "mean": 24190,
+     "min": 20160,
+     "max": 41240
+    },
+    "shots": {
+     "mean": 258.5,
+     "min": 170,
+     "max": 417
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3542.25,
+     "min": 2902,
+     "max": 4968
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 10.5,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 457.625,
+     "min": 353,
+     "max": 565
+    },
+    "scheduled": {
+     "mean": 51.5,
+     "min": 31,
+     "max": 135
+    },
+    "sailed": {
+     "mean": 115.75,
+     "min": 91,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 83.75,
+     "min": 65,
+     "max": 107
+    },
+    "sunk": {
+     "mean": 22.375,
+     "min": 13,
+     "max": 34
+    },
+    "hpShip": {
+     "mean": 135.5,
+     "min": 89,
+     "max": 187
+    },
+    "hpCarrier": {
+     "mean": 13.75,
+     "min": 12,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 86.79431458333336,
+     "min": 68.08219999999999,
+     "max": 103.86569999999998
+    },
+    "risk": {
+     "mean": 1.5526707262562611,
+     "min": 1.2604726630860434,
+     "max": 2.039405605966115
+    },
+    "deliveredShare": {
+     "mean": 0.7235959714905699,
+     "min": 0.6690140845070423,
+     "max": 0.7985074626865671
+    },
+    "score": {
+     "mean": 27050,
+     "min": 18900,
+     "max": 44960
+    },
+    "shots": {
+     "mean": 295.625,
+     "min": 228,
+     "max": 390
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 3848.625,
+     "min": 2922,
+     "max": 4792
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 38,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 4.5,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 3.875,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 2860,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 9.875,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 421.875,
+     "min": 349,
+     "max": 582
+    },
+    "scheduled": {
+     "mean": 53.25,
+     "min": 44,
+     "max": 73
+    },
+    "sailed": {
+     "mean": 106.5,
+     "min": 88,
+     "max": 146
+    },
+    "delivered": {
+     "mean": 79.875,
+     "min": 72,
+     "max": 103
+    },
+    "sunk": {
+     "mean": 17.875,
+     "min": 6,
+     "max": 34
+    },
+    "hpShip": {
+     "mean": 97.5,
+     "min": 49,
+     "max": 166
+    },
+    "hpCarrier": {
+     "mean": 13.75,
+     "min": 12,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 66.63600000000011,
+     "min": 56.57540000000005,
+     "max": 90.77005000000024
+    },
+    "risk": {
+     "mean": 1.4266138893456528,
+     "min": 0.8661008141347645,
+     "max": 1.828797053653706
+    },
+    "deliveredShare": {
+     "mean": 0.7552671254195641,
+     "min": 0.6982758620689655,
+     "max": 0.8181818181818182
+    },
+    "score": {
+     "mean": 24190,
+     "min": 20160,
+     "max": 41240
+    },
+    "shots": {
+     "mean": 258.5,
+     "min": 170,
+     "max": 417
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3542.25,
+     "min": 2902,
+     "max": 4968
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 10.375,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 436.375,
+     "min": 323,
+     "max": 560
+    },
+    "scheduled": {
+     "mean": 55,
+     "min": 41,
+     "max": 70
+    },
+    "sailed": {
+     "mean": 110,
+     "min": 82,
+     "max": 140
+    },
+    "delivered": {
+     "mean": 84.5,
+     "min": 66,
+     "max": 111
+    },
+    "sunk": {
+     "mean": 16.875,
+     "min": 9,
+     "max": 30
+    },
+    "hpShip": {
+     "mean": 100.125,
+     "min": 56,
+     "max": 161
+    },
+    "hpCarrier": {
+     "mean": 12.25,
+     "min": 10,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 69.44407708333344,
+     "min": 52.348000000000035,
+     "max": 91.15236666666688
+    },
+    "risk": {
+     "mean": 1.3927249833095137,
+     "min": 0.9996715364951508,
+     "max": 1.947294047448657
+    },
+    "deliveredShare": {
+     "mean": 0.7697958473335944,
+     "min": 0.7019230769230769,
+     "max": 0.8061224489795918
+    },
+    "score": {
+     "mean": 28235,
+     "min": 17480,
+     "max": 44180
+    },
+    "shots": {
+     "mean": 276.125,
+     "min": 203,
+     "max": 392
+    },
+    "commands": {
+     "mean": 16.625,
+     "min": 12,
+     "max": 23
+    },
+    "refused": {
+     "mean": 3667.375,
+     "min": 2669,
+     "max": 4762
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 2.625,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 4.625,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": 4045,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 10,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 422.5,
+     "min": 314,
+     "max": 542
+    },
+    "scheduled": {
+     "mean": 53.25,
+     "min": 40,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 106.5,
+     "min": 80,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 83.25,
+     "min": 65,
+     "max": 105
+    },
+    "sunk": {
+     "mean": 14.875,
+     "min": 3,
+     "max": 24
+    },
+    "hpShip": {
+     "mean": 88.875,
+     "min": 47,
+     "max": 135
+    },
+    "hpCarrier": {
+     "mean": 12.75,
+     "min": 8,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 67.60415833333343,
+     "min": 51.54658333333335,
+     "max": 86.3913500000002
+    },
+    "risk": {
+     "mean": 1.2912841136382727,
+     "min": 0.9017341988159946,
+     "max": 1.5765785113359498
+    },
+    "deliveredShare": {
+     "mean": 0.7844116497609144,
+     "min": 0.7037037037037037,
+     "max": 0.8392857142857143
+    },
+    "score": {
+     "mean": 26485,
+     "min": 17300,
+     "max": 43100
+    },
+    "shots": {
+     "mean": 268,
+     "min": 181,
+     "max": 392
+    },
+    "commands": {
+     "mean": 19.125,
+     "min": 14,
+     "max": 25
+    },
+    "refused": {
+     "mean": 3548.75,
+     "min": 2594,
+     "max": 4555
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -8.625,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -3,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 3.375,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": 2295,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 10.625,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 453.5,
+     "min": 327,
+     "max": 582
+    },
+    "scheduled": {
+     "mean": 57.25,
+     "min": 41,
+     "max": 73
+    },
+    "sailed": {
+     "mean": 114.25,
+     "min": 82,
+     "max": 146
+    },
+    "delivered": {
+     "mean": 85.25,
+     "min": 66,
+     "max": 115
+    },
+    "sunk": {
+     "mean": 20.375,
+     "min": 9,
+     "max": 35
+    },
+    "hpShip": {
+     "mean": 108.5,
+     "min": 62,
+     "max": 177
+    },
+    "hpCarrier": {
+     "mean": 10,
+     "min": 2,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 71.61030833333344,
+     "min": 52.84360000000001,
+     "max": 93.8916000000002
+    },
+    "risk": {
+     "mean": 1.4858079026495907,
+     "min": 1.1732735846914288,
+     "max": 2.0600147071859745
+    },
+    "deliveredShare": {
+     "mean": 0.7473678858439998,
+     "min": 0.676056338028169,
+     "max": 0.8048780487804879
+    },
+    "score": {
+     "mean": 28045,
+     "min": 17480,
+     "max": 44900
+    },
+    "shots": {
+     "mean": 305.625,
+     "min": 188,
+     "max": 414
+    },
+    "commands": {
+     "mean": 26.5,
+     "min": 20,
+     "max": 33
+    },
+    "refused": {
+     "mean": 3813.375,
+     "min": 2713,
+     "max": 4968
+    },
+    "owed": {
+     "mean": 0.125,
+     "min": 0,
+     "max": 1
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 11,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 2.5,
+     "lower": 2,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 5.375,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 3855,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 9.75,
+     "min": 8,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 420.625,
+     "min": 321,
+     "max": 535
+    },
+    "scheduled": {
+     "mean": 111.25,
+     "min": 85,
+     "max": 141
+    },
+    "sailed": {
+     "mean": 222.5,
+     "min": 170,
+     "max": 282
+    },
+    "delivered": {
+     "mean": 184.875,
+     "min": 141,
+     "max": 241
+    },
+    "sunk": {
+     "mean": 16.125,
+     "min": 10,
+     "max": 24
+    },
+    "hpShip": {
+     "mean": 124.25,
+     "min": 74,
+     "max": 165
+    },
+    "hpCarrier": {
+     "mean": 12.5,
+     "min": 4,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 144.41805000000005,
+     "min": 109.99956666666668,
+     "max": 185.0546833333335
+    },
+    "risk": {
+     "mean": 0.8542599585160885,
+     "min": 0.5111039050065043,
+     "max": 1.0291972847430617
+    },
+    "deliveredShare": {
+     "mean": 0.8298880394594534,
+     "min": 0.8067226890756303,
+     "max": 0.8546099290780141
+    },
+    "score": {
+     "mean": 65662.5,
+     "min": 47900,
+     "max": 98000
+    },
+    "shots": {
+     "mean": 258,
+     "min": 204,
+     "max": 327
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 6,
+   "m": {
+    "wave": {
+     "mean": 10.875,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 470.875,
+     "min": 354,
+     "max": 583
+    },
+    "scheduled": {
+     "mean": 99.125,
+     "min": 63,
+     "max": 174
+    },
+    "sailed": {
+     "mean": 243.875,
+     "min": 187,
+     "max": 307
+    },
+    "delivered": {
+     "mean": 202.375,
+     "min": 151,
+     "max": 267
+    },
+    "sunk": {
+     "mean": 16.375,
+     "min": 2,
+     "max": 30
+    },
+    "hpShip": {
+     "mean": 170.25,
+     "min": 64,
+     "max": 235
+    },
+    "hpCarrier": {
+     "mean": 11.25,
+     "min": 8,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 193.29416250000008,
+     "min": 140.7551,
+     "max": 253.93963333333355
+    },
+    "risk": {
+     "mean": 0.8642591072886143,
+     "min": 0.4218518372855944,
+     "max": 1.124814542772947
+    },
+    "deliveredShare": {
+     "mean": 0.827365375127082,
+     "min": 0.7698744769874477,
+     "max": 0.8697068403908795
+    },
+    "score": {
+     "mean": 75525,
+     "min": 54300,
+     "max": 107300
+    },
+    "shots": {
+     "mean": 304.25,
+     "min": 191,
+     "max": 416
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 46,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.25,
+     "lower": 3,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 17.5,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 9862.5,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 11,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 476.125,
+     "min": 376,
+     "max": 571
+    },
+    "scheduled": {
+     "mean": 125.75,
+     "min": 99,
+     "max": 151
+    },
+    "sailed": {
+     "mean": 251.5,
+     "min": 198,
+     "max": 302
+    },
+    "delivered": {
+     "mean": 218.375,
+     "min": 171,
+     "max": 264
+    },
+    "sunk": {
+     "mean": 12.5,
+     "min": 6,
+     "max": 19
+    },
+    "hpShip": {
+     "mean": 134.5,
+     "min": 80,
+     "max": 182
+    },
+    "hpCarrier": {
+     "mean": 13.25,
+     "min": 10,
+     "max": 20
+    },
+    "shipMinutes": {
+     "mean": 165.6785750000001,
+     "min": 129.98036666666673,
+     "max": 199.8574333333334
+    },
+    "risk": {
+     "mean": 0.8081479600844244,
+     "min": 0.6154775682789013,
+     "max": 1.104066085178078
+    },
+    "deliveredShare": {
+     "mean": 0.8669161269371275,
+     "min": 0.8411214953271028,
+     "max": 0.8916083916083916
+    },
+    "score": {
+     "mean": 81112.5,
+     "min": 58500,
+     "max": 107900
+    },
+    "shots": {
+     "mean": 311.375,
+     "min": 223,
+     "max": 390
+    },
+    "commands": {
+     "mean": 18.875,
+     "min": 13,
+     "max": 21
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 10.25,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -3.625,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 33.5,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 15450,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.5,
+     "min": 6,
+     "max": 8
+    },
+    "seconds": {
+     "mean": 294.75,
+     "min": 231,
+     "max": 327
+    },
+    "scheduled": {
+     "mean": 37.25,
+     "min": 29,
+     "max": 41
+    },
+    "sailed": {
+     "mean": 74.5,
+     "min": 58,
+     "max": 82
+    },
+    "delivered": {
+     "mean": 60.25,
+     "min": 44,
+     "max": 69
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 6,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 42.375,
+     "min": 30,
+     "max": 54
+    },
+    "hpCarrier": {
+     "mean": 4.75,
+     "min": 0,
+     "max": 10
+    },
+    "shipMinutes": {
+     "mean": 47.46672916666669,
+     "min": 36.00604999999998,
+     "max": 53.022533333333364
+    },
+    "risk": {
+     "mean": 0.8935465422648734,
+     "min": 0.7414586213662907,
+     "max": 1.1000145446367566
+    },
+    "deliveredShare": {
+     "mean": 0.8053242922447612,
+     "min": 0.7424242424242424,
+     "max": 0.8414634146341463
+    },
+    "score": {
+     "mean": 15770,
+     "min": 10920,
+     "max": 18020
+    },
+    "shots": {
+     "mean": 166.5,
+     "min": 122,
+     "max": 203
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 2452.125,
+     "min": 1882,
+     "max": 2721
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.375,
+     "min": 5,
+     "max": 8
+    },
+    "seconds": {
+     "mean": 294,
+     "min": 169,
+     "max": 344
+    },
+    "scheduled": {
+     "mean": 33.25,
+     "min": 16,
+     "max": 77
+    },
+    "sailed": {
+     "mean": 75.5,
+     "min": 44,
+     "max": 88
+    },
+    "delivered": {
+     "mean": 57.625,
+     "min": 27,
+     "max": 69
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 6,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 55.5,
+     "min": 28,
+     "max": 84
+    },
+    "hpCarrier": {
+     "mean": 3.5,
+     "min": 0,
+     "max": 8
+    },
+    "shipMinutes": {
+     "mean": 56.289275,
+     "min": 30.097450000000002,
+     "max": 65.28314999999999
+    },
+    "risk": {
+     "mean": 0.991423669027085,
+     "min": 0.6584956105646245,
+     "max": 1.297826115506009
+    },
+    "deliveredShare": {
+     "mean": 0.7517825290585438,
+     "min": 0.6136363636363636,
+     "max": 0.8214285714285714
+    },
+    "score": {
+     "mean": 15347.5,
+     "min": 6860,
+     "max": 18020
+    },
+    "shots": {
+     "mean": 171.75,
+     "min": 103,
+     "max": 202
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 2444.5,
+     "min": 1350,
+     "max": 2852
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 13.125,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -2.625,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -422.5,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 2,
+   "m": {
+    "wave": {
+     "mean": 8.375,
+     "min": 7,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 340.875,
+     "min": 259,
+     "max": 433
+    },
+    "scheduled": {
+     "mean": 71.5,
+     "min": 45,
+     "max": 129
+    },
+    "sailed": {
+     "mean": 173.25,
+     "min": 134,
+     "max": 224
+    },
+    "delivered": {
+     "mean": 142.75,
+     "min": 103,
+     "max": 196
+    },
+    "sunk": {
+     "mean": 6.25,
+     "min": 6,
+     "max": 7
+    },
+    "hpShip": {
+     "mean": 98,
+     "min": 49,
+     "max": 159
+    },
+    "hpCarrier": {
+     "mean": 5.25,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 135.47515833333335,
+     "min": 104.78124999999994,
+     "max": 181.66283333333337
+    },
+    "risk": {
+     "mean": 0.6984407699500026,
+     "min": 0.4667220065617304,
+     "max": 0.8941179690250911
+    },
+    "deliveredShare": {
+     "mean": 0.8171970802990695,
+     "min": 0.762962962962963,
+     "max": 0.875
+    },
+    "score": {
+     "mean": 48812.5,
+     "min": 34460,
+     "max": 67160
+    },
+    "shots": {
+     "mean": 201.5,
+     "min": 135,
+     "max": 261
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 55.625,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0.25,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 82.5,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 33042.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "you",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 0,
+   "m": {
+    "wave": {
+     "mean": 7.5,
+     "min": 6,
+     "max": 9
+    },
+    "seconds": {
+     "mean": 294.375,
+     "min": 230,
+     "max": 368
+    },
+    "scheduled": {
+     "mean": 37.25,
+     "min": 29,
+     "max": 46
+    },
+    "sailed": {
+     "mean": 74.25,
+     "min": 58,
+     "max": 92
+    },
+    "delivered": {
+     "mean": 60.75,
+     "min": 45,
+     "max": 79
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 6,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 43.625,
+     "min": 29,
+     "max": 71
+    },
+    "hpCarrier": {
+     "mean": 2.5,
+     "min": 0,
+     "max": 6
+    },
+    "shipMinutes": {
+     "mean": 47.47795000000002,
+     "min": 35.97531666666666,
+     "max": 60.24818333333339
+    },
+    "risk": {
+     "mean": 0.9030137654538886,
+     "min": 0.6887167534285792,
+     "max": 1.1784587695728574
+    },
+    "deliveredShare": {
+     "mean": 0.813910490358204,
+     "min": 0.7424242424242424,
+     "max": 0.8589743589743589
+    },
+    "score": {
+     "mean": 16060,
+     "min": 11100,
+     "max": 21420
+    },
+    "shots": {
+     "mean": 167.125,
+     "min": 120,
+     "max": 233
+    },
+    "commands": {
+     "mean": 11,
+     "min": 6,
+     "max": 14
+    },
+    "refused": {
+     "mean": 2449.375,
+     "min": 1880,
+     "max": 3056
+    },
+    "owed": {
+     "mean": 0.125,
+     "min": 0,
+     "max": 1
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 1.25,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0.5,
+     "lower": 2,
+     "n": 8
+    },
+    "score": {
+     "mean": 290,
+     "lower": 2,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 533.25,
+     "min": 513,
+     "max": 567
+    },
+    "scheduled": {
+     "mean": 67.125,
+     "min": 65,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 134.25,
+     "min": 130,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 111.75,
+     "min": 103,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 11.75,
+     "min": 7,
+     "max": 21
+    },
+    "hpShip": {
+     "mean": 89,
+     "min": 69,
+     "max": 108
+    },
+    "hpCarrier": {
+     "mean": 5.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 87.89312500000021,
+     "min": 83.8286833333335,
+     "max": 93.34833333333356
+    },
+    "risk": {
+     "mean": 1.0113240097202425,
+     "min": 0.7920466274405876,
+     "max": 1.257116872293219
+    },
+    "deliveredShare": {
+     "mean": 0.83240098227748,
+     "min": 0.7686567164179104,
+     "max": 0.8642857142857143
+    },
+    "score": {
+     "mean": 46377.5,
+     "min": 44360,
+     "max": 48080
+    },
+    "shots": {
+     "mean": 345.125,
+     "min": 309,
+     "max": 387
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4790.875,
+     "min": 4638,
+     "max": 5135
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.625,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 514.125,
+     "min": 414,
+     "max": 543
+    },
+    "scheduled": {
+     "mean": 55.25,
+     "min": 39,
+     "max": 124
+    },
+    "sailed": {
+     "mean": 130,
+     "min": 104,
+     "max": 137
+    },
+    "delivered": {
+     "mean": 105.25,
+     "min": 88,
+     "max": 112
+    },
+    "sunk": {
+     "mean": 11.75,
+     "min": 4,
+     "max": 17
+    },
+    "hpShip": {
+     "mean": 94,
+     "min": 65,
+     "max": 115
+    },
+    "hpCarrier": {
+     "mean": 5.75,
+     "min": 2,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 102.01446875000003,
+     "min": 81.8135,
+     "max": 109.43886666666671
+    },
+    "risk": {
+     "mean": 0.9180804143831205,
+     "min": 0.7944899069224516,
+     "max": 1.0943089748085317
+    },
+    "deliveredShare": {
+     "mean": 0.8107071829036336,
+     "min": 0.7611940298507462,
+     "max": 0.8461538461538461
+    },
+    "score": {
+     "mean": 43307.5,
+     "min": 24840,
+     "max": 47360
+    },
+    "shots": {
+     "mean": 331.5,
+     "min": 250,
+     "max": 358
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 4625.125,
+     "min": 3744,
+     "max": 4931
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 5,
+     "lower": 4,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -6.5,
+     "lower": 6,
+     "n": 8
+    },
+    "score": {
+     "mean": -3070,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, never used",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 13,
+     "min": 13,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 533.25,
+     "min": 513,
+     "max": 567
+    },
+    "scheduled": {
+     "mean": 67.125,
+     "min": 65,
+     "max": 71
+    },
+    "sailed": {
+     "mean": 134.25,
+     "min": 130,
+     "max": 142
+    },
+    "delivered": {
+     "mean": 111.75,
+     "min": 103,
+     "max": 121
+    },
+    "sunk": {
+     "mean": 11.75,
+     "min": 7,
+     "max": 21
+    },
+    "hpShip": {
+     "mean": 89,
+     "min": 69,
+     "max": 108
+    },
+    "hpCarrier": {
+     "mean": 5.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 87.89312500000021,
+     "min": 83.8286833333335,
+     "max": 93.34833333333356
+    },
+    "risk": {
+     "mean": 1.0113240097202425,
+     "min": 0.7920466274405876,
+     "max": 1.257116872293219
+    },
+    "deliveredShare": {
+     "mean": 0.83240098227748,
+     "min": 0.7686567164179104,
+     "max": 0.8642857142857143
+    },
+    "score": {
+     "mean": 46377.5,
+     "min": 44360,
+     "max": 48080
+    },
+    "shots": {
+     "mean": 345.125,
+     "min": 309,
+     "max": 387
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 4790.875,
+     "min": 4638,
+     "max": 5135
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 0,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.25,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 509.75,
+     "min": 432,
+     "max": 543
+    },
+    "scheduled": {
+     "mean": 64,
+     "min": 54,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 128,
+     "min": 108,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 108,
+     "min": 88,
+     "max": 120
+    },
+    "sunk": {
+     "mean": 9.75,
+     "min": 5,
+     "max": 15
+    },
+    "hpShip": {
+     "mean": 72.875,
+     "min": 57,
+     "max": 87
+    },
+    "hpCarrier": {
+     "mean": 9,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 84.01328750000017,
+     "min": 69.76476666666677,
+     "max": 90.41660000000019
+    },
+    "risk": {
+     "mean": 0.869039576274777,
+     "min": 0.6414751273549313,
+     "max": 1.0291820427843967
+    },
+    "deliveredShare": {
+     "mean": 0.8426460905178813,
+     "min": 0.8076923076923077,
+     "max": 0.8823529411764706
+    },
+    "score": {
+     "mean": 41902.5,
+     "min": 24840,
+     "max": 48800
+    },
+    "shots": {
+     "mean": 319,
+     "min": 286,
+     "max": 371
+    },
+    "commands": {
+     "mean": 19,
+     "min": 17,
+     "max": 21
+    },
+    "refused": {
+     "mean": 4589.25,
+     "min": 3944,
+     "max": 4853
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -16.125,
+     "lower": 7,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -2,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -3.75,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -4475,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, random",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.25,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 506,
+     "min": 408,
+     "max": 547
+    },
+    "scheduled": {
+     "mean": 63.625,
+     "min": 51,
+     "max": 69
+    },
+    "sailed": {
+     "mean": 127,
+     "min": 102,
+     "max": 138
+    },
+    "delivered": {
+     "mean": 106.375,
+     "min": 83,
+     "max": 117
+    },
+    "sunk": {
+     "mean": 10.75,
+     "min": 5,
+     "max": 17
+    },
+    "hpShip": {
+     "mean": 76.625,
+     "min": 57,
+     "max": 96
+    },
+    "hpCarrier": {
+     "mean": 8.5,
+     "min": 4,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 83.19302291666682,
+     "min": 66.10201666666674,
+     "max": 90.11436666666685
+    },
+    "risk": {
+     "mean": 0.9185542954252677,
+     "min": 0.737635247313966,
+     "max": 1.0855346663422603
+    },
+    "deliveredShare": {
+     "mean": 0.8367025837014648,
+     "min": 0.7898550724637681,
+     "max": 0.8863636363636364
+    },
+    "score": {
+     "mean": 41610,
+     "min": 23940,
+     "max": 49580
+    },
+    "shots": {
+     "mean": 326.875,
+     "min": 255,
+     "max": 386
+    },
+    "commands": {
+     "mean": 23,
+     "min": 18,
+     "max": 25
+    },
+    "refused": {
+     "mean": 4556,
+     "min": 3692,
+     "max": 4959
+    },
+    "owed": {
+     "mean": 0.125,
+     "min": 0,
+     "max": 1
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -12.375,
+     "lower": 7,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1,
+     "lower": 5,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -5.375,
+     "lower": 4,
+     "n": 8
+    },
+    "score": {
+     "mean": -4767.5,
+     "lower": 3,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule (the map's flow, step 2; no run ends on ships lost)",
+   "policy": "D tactical, spam",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.25,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 508.5,
+     "min": 448,
+     "max": 551
+    },
+    "scheduled": {
+     "mean": 64,
+     "min": 56,
+     "max": 69
+    },
+    "sailed": {
+     "mean": 128,
+     "min": 112,
+     "max": 138
+    },
+    "delivered": {
+     "mean": 108.625,
+     "min": 91,
+     "max": 117
+    },
+    "sunk": {
+     "mean": 9.25,
+     "min": 4,
+     "max": 14
+    },
+    "hpShip": {
+     "mean": 71,
+     "min": 57,
+     "max": 85
+    },
+    "hpCarrier": {
+     "mean": 7.25,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 84.27405833333346,
+     "min": 73.78671666666678,
+     "max": 90.6722166666668
+    },
+    "risk": {
+     "mean": 0.8468474607737765,
+     "min": 0.6562736208131603,
+     "max": 1.0385393520979038
+    },
+    "deliveredShare": {
+     "mean": 0.84815547094579,
+     "min": 0.7844827586206896,
+     "max": 0.9
+    },
+    "score": {
+     "mean": 41827.5,
+     "min": 25380,
+     "max": 51080
+    },
+    "shots": {
+     "mean": 336.125,
+     "min": 282,
+     "max": 370
+    },
+    "commands": {
+     "mean": 29.375,
+     "min": 26,
+     "max": 32
+    },
+    "refused": {
+     "mean": 4577.625,
+     "min": 4096,
+     "max": 4998
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -18,
+     "lower": 7,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -2.5,
+     "lower": 6,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -3.125,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -4550,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 12.125,
+     "min": 6,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 486.625,
+     "min": 218,
+     "max": 541
+    },
+    "scheduled": {
+     "mean": 128.625,
+     "min": 58,
+     "max": 143
+    },
+    "sailed": {
+     "mean": 257.25,
+     "min": 116,
+     "max": 286
+    },
+    "delivered": {
+     "mean": 227.875,
+     "min": 94,
+     "max": 257
+    },
+    "sunk": {
+     "mean": 7.375,
+     "min": 1,
+     "max": 13
+    },
+    "hpShip": {
+     "mean": 94.5,
+     "min": 18,
+     "max": 121
+    },
+    "hpCarrier": {
+     "mean": 5.5,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 170.9994625000001,
+     "min": 73.34156666666667,
+     "max": 190.91325000000015
+    },
+    "risk": {
+     "mean": 0.529945579674501,
+     "min": 0.24542699069695356,
+     "max": 0.6827996100706352
+    },
+    "deliveredShare": {
+     "mean": 0.88021787286608,
+     "min": 0.8103448275862069,
+     "max": 0.9021739130434783
+    },
+    "score": {
+     "mean": 92912.5,
+     "min": 31200,
+     "max": 105500
+    },
+    "shots": {
+     "mean": 310.875,
+     "min": 109,
+     "max": 376
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 7,
+   "m": {
+    "wave": {
+     "mean": 11.375,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 473.5,
+     "min": 375,
+     "max": 538
+    },
+    "scheduled": {
+     "mean": 99.75,
+     "min": 73,
+     "max": 177
+    },
+    "sailed": {
+     "mean": 245.125,
+     "min": 191,
+     "max": 284
+    },
+    "delivered": {
+     "mean": 213,
+     "min": 165,
+     "max": 247
+    },
+    "sunk": {
+     "mean": 6.375,
+     "min": 1,
+     "max": 15
+    },
+    "hpShip": {
+     "mean": 112.5,
+     "min": 75,
+     "max": 174
+    },
+    "hpCarrier": {
+     "mean": 11,
+     "min": 0,
+     "max": 18
+    },
+    "shipMinutes": {
+     "mean": 197.46178958333346,
+     "min": 146.39285,
+     "max": 232.45123333333348
+    },
+    "risk": {
+     "mean": 0.5678935564457941,
+     "min": 0.4374652215148894,
+     "max": 0.7812708717748156
+    },
+    "deliveredShare": {
+     "mean": 0.8686106017355666,
+     "min": 0.8409893992932862,
+     "max": 0.8941605839416058
+    },
+    "score": {
+     "mean": 81962.5,
+     "min": 58200,
+     "max": 101300
+    },
+    "shots": {
+     "mean": 289.125,
+     "min": 203,
+     "max": 363
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 18,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -14.875,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": -10950,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "fixed schedule at the fastest flow (step 4)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 8,
+   "m": {
+    "wave": {
+     "mean": 12.625,
+     "min": 10,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 518.625,
+     "min": 441,
+     "max": 540
+    },
+    "scheduled": {
+     "mean": 137.125,
+     "min": 117,
+     "max": 143
+    },
+    "sailed": {
+     "mean": 274.25,
+     "min": 234,
+     "max": 286
+    },
+    "delivered": {
+     "mean": 239.875,
+     "min": 199,
+     "max": 253
+    },
+    "sunk": {
+     "mean": 12.25,
+     "min": 6,
+     "max": 20
+    },
+    "hpShip": {
+     "mean": 114.5,
+     "min": 74,
+     "max": 154
+    },
+    "hpCarrier": {
+     "mean": 6.75,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 181.7206250000001,
+     "min": 152.89251666666678,
+     "max": 190.0270833333333
+    },
+    "risk": {
+     "mean": 0.6311651946945793,
+     "min": 0.40864982833025687,
+     "max": 0.8434590254634245
+    },
+    "deliveredShare": {
+     "mean": 0.8741875759354754,
+     "min": 0.8464285714285714,
+     "max": 0.8985507246376812
+    },
+    "score": {
+     "mean": 96887.5,
+     "min": 68700,
+     "max": 104300
+    },
+    "shots": {
+     "mean": 333.875,
+     "min": 283,
+     "max": 367
+    },
+    "commands": {
+     "mean": 20.5,
+     "min": 19,
+     "max": 23
+    },
+    "refused": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 20,
+     "lower": 3,
+     "n": 8
+    },
+    "sunk": {
+     "mean": 4.875,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 12,
+     "lower": 3,
+     "n": 8
+    },
+    "score": {
+     "mean": 3975,
+     "lower": 4,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "A automatic",
+   "n": 8,
+   "finished": 4,
+   "m": {
+    "wave": {
+     "mean": 9.375,
+     "min": 8,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 401.625,
+     "min": 295,
+     "max": 440
+    },
+    "scheduled": {
+     "mean": 50.625,
+     "min": 37,
+     "max": 55
+    },
+    "sailed": {
+     "mean": 101.25,
+     "min": 74,
+     "max": 110
+    },
+    "delivered": {
+     "mean": 86.625,
+     "min": 59,
+     "max": 96
+    },
+    "sunk": {
+     "mean": 6,
+     "min": 6,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 49,
+     "min": 32,
+     "max": 56
+    },
+    "hpCarrier": {
+     "mean": 3.5,
+     "min": 0,
+     "max": 8
+    },
+    "shipMinutes": {
+     "mean": 66.45023958333343,
+     "min": 47.34538333333333,
+     "max": 73.21115000000013
+    },
+    "risk": {
+     "mean": 0.7372568745293638,
+     "min": 0.6203978542506202,
+     "max": 0.8657263572966033
+    },
+    "deliveredShare": {
+     "mean": 0.8531585964705911,
+     "min": 0.7972972972972973,
+     "max": 0.8727272727272727
+    },
+    "score": {
+     "mean": 23680,
+     "min": 16220,
+     "max": 26280
+    },
+    "shots": {
+     "mean": 235.75,
+     "min": 146,
+     "max": 312
+    },
+    "commands": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "refused": {
+     "mean": 3662.5,
+     "min": 2725,
+     "max": 3964
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": null,
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "B formations",
+   "n": 8,
+   "finished": 3,
+   "m": {
+    "wave": {
+     "mean": 9.125,
+     "min": 8,
+     "max": 10
+    },
+    "seconds": {
+     "mean": 376.625,
+     "min": 311,
+     "max": 417
+    },
+    "scheduled": {
+     "mean": 41,
+     "min": 27,
+     "max": 90
+    },
+    "sailed": {
+     "mean": 95.75,
+     "min": 80,
+     "max": 107
+    },
+    "delivered": {
+     "mean": 79,
+     "min": 62,
+     "max": 89
+    },
+    "sunk": {
+     "mean": 5.875,
+     "min": 4,
+     "max": 7
+    },
+    "hpShip": {
+     "mean": 56.25,
+     "min": 39,
+     "max": 77
+    },
+    "hpCarrier": {
+     "mean": 4.25,
+     "min": 0,
+     "max": 12
+    },
+    "shipMinutes": {
+     "mean": 74.89983958333336,
+     "min": 62.00723333333336,
+     "max": 85.09276666666669
+    },
+    "risk": {
+     "mean": 0.7497324417295795,
+     "min": 0.6107818883625078,
+     "max": 0.9048947756233097
+    },
+    "deliveredShare": {
+     "mean": 0.8233612018347488,
+     "min": 0.775,
+     "max": 0.8557692307692307
+    },
+    "score": {
+     "mean": 21695,
+     "min": 16760,
+     "max": 25020
+    },
+    "shots": {
+     "mean": 210.875,
+     "min": 159,
+     "max": 250
+    },
+    "commands": {
+     "mean": 1,
+     "min": 1,
+     "max": 1
+    },
+    "refused": {
+     "mean": 3445.5,
+     "min": 2864,
+     "max": 3759
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 7.25,
+     "lower": 2,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.125,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -7.625,
+     "lower": 6,
+     "n": 8
+    },
+    "score": {
+     "mean": -1985,
+     "lower": 6,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "C current controls",
+   "n": 8,
+   "finished": 5,
+   "m": {
+    "wave": {
+     "mean": 10.75,
+     "min": 9,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 444.5,
+     "min": 368,
+     "max": 537
+    },
+    "scheduled": {
+     "mean": 92.375,
+     "min": 64,
+     "max": 164
+    },
+    "sailed": {
+     "mean": 227.625,
+     "min": 176,
+     "max": 284
+    },
+    "delivered": {
+     "mean": 196.125,
+     "min": 151,
+     "max": 249
+    },
+    "sunk": {
+     "mean": 4.875,
+     "min": 1,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 92.625,
+     "min": 50,
+     "max": 134
+    },
+    "hpCarrier": {
+     "mean": 6.25,
+     "min": 0,
+     "max": 14
+    },
+    "shipMinutes": {
+     "mean": 182.61502291666667,
+     "min": 134.2387000000001,
+     "max": 235.61934999999957
+    },
+    "risk": {
+     "mean": 0.5151518026282272,
+     "min": 0.32307112270768934,
+     "max": 0.7541268749057337
+    },
+    "deliveredShare": {
+     "mean": 0.8585895220438554,
+     "min": 0.8241206030150754,
+     "max": 0.8872727272727273
+    },
+    "score": {
+     "mean": 73997.5,
+     "min": 53980,
+     "max": 104580
+    },
+    "shots": {
+     "mean": 264.625,
+     "min": 193,
+     "max": 364
+    },
+    "commands": {
+     "mean": 4,
+     "min": 4,
+     "max": 4
+    },
+    "refused": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    },
+    "owed": {
+     "mean": 0,
+     "min": 0,
+     "max": 0
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": 43.625,
+     "lower": 0,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -1.125,
+     "lower": 4,
+     "n": 8
+    },
+    "delivered": {
+     "mean": 109.5,
+     "lower": 0,
+     "n": 8
+    },
+    "score": {
+     "mean": 50317.5,
+     "lower": 0,
+     "n": 8
+    }
+   },
+   "problems": 0
+  },
+  {
+   "map": "harbor",
+   "persona": "tryhard",
+   "block": "each policy under its own rules (the game's loss limit; C keeps its flow slider and its score)",
+   "policy": "D tactical, sharp",
+   "n": 8,
+   "finished": 3,
+   "m": {
+    "wave": {
+     "mean": 9.375,
+     "min": 7,
+     "max": 13
+    },
+    "seconds": {
+     "mean": 388.75,
+     "min": 267,
+     "max": 536
+    },
+    "scheduled": {
+     "mean": 49.125,
+     "min": 34,
+     "max": 68
+    },
+    "sailed": {
+     "mean": 97.75,
+     "min": 68,
+     "max": 136
+    },
+    "delivered": {
+     "mean": 83.75,
+     "min": 53,
+     "max": 119
+    },
+    "sunk": {
+     "mean": 5.875,
+     "min": 5,
+     "max": 6
+    },
+    "hpShip": {
+     "mean": 44.875,
+     "min": 30,
+     "max": 75
+    },
+    "hpCarrier": {
+     "mean": 3.75,
+     "min": 0,
+     "max": 16
+    },
+    "shipMinutes": {
+     "mean": 63.93701250000009,
+     "min": 42.355216666666685,
+     "max": 90.30798333333355
+    },
+    "risk": {
+     "mean": 0.701650676794642,
+     "min": 0.5366582292067289,
+     "max": 0.8304913611365826
+    },
+    "deliveredShare": {
+     "mean": 0.8515635699206859,
+     "min": 0.7794117647058824,
+     "max": 0.8777777777777778
+    },
+    "score": {
+     "mean": 24837.5,
+     "min": 15240,
+     "max": 48620
+    },
+    "shots": {
+     "mean": 223.625,
+     "min": 142,
+     "max": 323
+    },
+    "commands": {
+     "mean": 16,
+     "min": 10,
+     "max": 21
+    },
+    "refused": {
+     "mean": 3550.25,
+     "min": 2558,
+     "max": 4794
+    },
+    "owed": {
+     "mean": 0.25,
+     "min": 0,
+     "max": 1
+    }
+   },
+   "vsA": {
+    "hull": {
+     "mean": -4.125,
+     "lower": 5,
+     "n": 8
+    },
+    "sunk": {
+     "mean": -0.125,
+     "lower": 1,
+     "n": 8
+    },
+    "delivered": {
+     "mean": -2.875,
+     "lower": 5,
+     "n": 8
+    },
+    "score": {
+     "mean": 1157.5,
+     "lower": 5,
+     "n": 8
+    }
+   },
+   "problems": 0
+  }
+ ]
+}

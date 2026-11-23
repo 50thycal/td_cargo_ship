@@ -478,7 +478,14 @@ export function createTransit(campaign: CampaignState, plan: RoundPlan, rng: RNG
       id: state.nextEntityId++,
       kind: 'mine',
       x: mine.x,
-      y: mine.y,
+      // Held in navigable water HERE, where a mine becomes a real object,
+      // rather than where the planner proposed it. A charge on land is not a
+      // hazard — it is an inert prop the convoy sails calmly past — and the
+      // lane jitter a minefield is laid with is easily enough to put one on a
+      // rock. The planner proposes a position; this is what places it, so this
+      // is the one place that has to be right however the plan was authored
+      // (the adaptive buyer, a scripted beat, or a test).
+      y: state.geo.clampWater(mine.x, mine.y),
       vx: 0,
       vy: 0,
       speed: 0,
@@ -606,7 +613,7 @@ function passSideBlocked(
  *  Everything here takes an X now, because on a map whose coast bends there is
  *  no single answer to "where is the water". */
 function overWater(t: TransitState, x: number, y: number): boolean {
-  return y >= t.geo.waterTop(x) && y <= t.geo.waterBottom(x);
+  return t.geo.inWater(x, y);
 }
 
 /** Hold a hull in the water. Ships and escorts steer from forces that know
@@ -622,7 +629,7 @@ function overWater(t: TransitState, x: number, y: number): boolean {
  *  that is the signal the lane curve is wrong, not that this needs to become a
  *  pathfinder. */
 function keepAfloat(t: TransitState, entity: { x: number; y: number }): void {
-  entity.y = clamp(entity.y, t.geo.waterTop(entity.x), t.geo.waterBottom(entity.x));
+  entity.y = t.geo.clampWater(entity.x, entity.y);
 }
 
 /** March from (x, y) along the unit vector (dx, dy) until the point leaves the
@@ -996,7 +1003,7 @@ function maybeSpawnWreckage(t: TransitState, threat: Threat, rng: RNG): void {
   t.wreckage.push({
     id: t.nextEntityId++,
     x: fieldX,
-    y: clamp(threat.y, t.geo.waterTop(fieldX), t.geo.waterBottom(fieldX)),
+    y: t.geo.clampWater(fieldX, threat.y),
     branch,
     threatKind: threat.kind,
     required: WRECKAGE.recoverSeconds,
@@ -1033,7 +1040,7 @@ function spawnSurvivors(t: TransitState, ship: Ship): void {
   t.survivors.push({
     id: t.nextEntityId++,
     x: crewX,
-    y: clamp(ship.y, t.geo.waterTop(crewX), t.geo.waterBottom(crewX)),
+    y: t.geo.clampWater(crewX, ship.y),
     shipName: ship.name,
     required: SURVIVORS.rescueSeconds,
     progress: 0,
@@ -2323,7 +2330,18 @@ function updateDeckGuns(t: TransitState, rng: RNG, dt: number): void {
         target = best;
       }
     }
-    if (!target) continue;
+    // A boat already sunk THIS TICK is not a target. The candidate list is
+    // built once, before the escorts fire, so once one gun breaks a boat every
+    // other gun still holding it is looking at a corpse — and the kill block
+    // below only tests `hp <= 0`, which stays true. The second shot therefore
+    // counted a second sinking, paid a second deck-gun kill to the escort that
+    // fired it and dropped a second wreckage field, all for the same boat.
+    //
+    // Distributed fire hides this by steering guns onto different boats, so it
+    // only surfaces on an un-upgraded flotilla with two guns and one target in
+    // reach — which is also the cheapest possible loadout, and the one a new
+    // player has.
+    if (!target || !target.alive) continue;
     if (target.engagedByEscortId === undefined) target.engagedByEscortId = escort.id;
     if (escort.gunCooldown > 0 || t.time < escort.disabledUntil) continue;
     // Every trigger pull draws a bought shell. An empty magazine holds its
@@ -2673,6 +2691,10 @@ function updateAttackBoats(t: TransitState, rng: RNG, dt: number): void {
       boat.x = fromX + ((boat.x - fromX) / moved) * limit;
       boat.y = fromY + ((boat.y - fromY) / moved) * limit;
     }
+    // The standoff nudge above is a position edit rather than a steering
+    // force, so it has to be held to the same rule everything afloat obeys:
+    // it may not put the boat on the beach (or on a rock).
+    keepAfloat(t, boat);
 
     const range =
       variant === 'boarding' ? fx.boardRange : (fx.engageRange[variant] ?? fx.engageRange.smallArms);
@@ -2729,6 +2751,15 @@ function steerBoat(
   gx /= gd;
   gy /= gd;
 
+  // Land ahead: bear away around it. Only ever changes the DIRECTION the boat
+  // wants to go; everything below — separation, the turn-rate limit, the speed
+  // a hard turn costs — then applies to the deflected course exactly as it
+  // does to the direct one, so avoiding a rock is a piece of ordinary steering
+  // rather than a special case that teleports a boat around it.
+  const clear = clearBearing(t, boat, gx, gy);
+  gx = clear.x;
+  gy = clear.y;
+
   // Separation: steer away from other boats crowding this one, so a group
   // converging on the same convoy spreads out instead of merging.
   let sx = 0;
@@ -2763,6 +2794,45 @@ function steerBoat(
   boat.x += boat.vx * dt;
   boat.y += boat.vy * dt;
   keepAfloat(t, boat);
+}
+
+/** The nearest course to `(gx, gy)` that does not run the boat onto land.
+ *
+ *  A local rule, not a route: it steps away from the direct bearing in both
+ *  directions and takes the first heading with clear water for one lookahead,
+ *  which on a lens-shaped island is always the way round the nearer tip. That
+ *  is enough because the thing being avoided is convex — there is no pocket
+ *  for a boat to get stuck in, so the greedy answer and the routed one agree.
+ *  Author a concave landmass and this would need to become a real path search;
+ *  the geography model does not currently permit one.
+ *
+ *  Returns the original bearing unchanged when nothing is in the way, so on
+ *  every island-free map this costs one segment test and changes nothing. */
+function clearBearing(
+  t: TransitState,
+  boat: { x: number; y: number },
+  gx: number,
+  gy: number,
+): { x: number; y: number } {
+  const look = COMBAT.attackBoat.landLookahead;
+  if (!t.geo.crossesLand(boat.x, boat.y, boat.x + gx * look, boat.y + gy * look)) {
+    return { x: gx, y: gy };
+  }
+  const base = Math.atan2(gy, gx);
+  const stepAngle = Math.PI / 12;
+  for (let step = 1; step <= 8; step++) {
+    for (const sign of [1, -1]) {
+      const a = base + sign * step * stepAngle;
+      const dx = Math.cos(a);
+      const dy = Math.sin(a);
+      if (!t.geo.crossesLand(boat.x, boat.y, boat.x + dx * look, boat.y + dy * look)) {
+        return { x: dx, y: dy };
+      }
+    }
+  }
+  // Boxed in on every bearing (a boat already hard against the land). Hold the
+  // course and let the hull clamp do what it has always done.
+  return { x: gx, y: gy };
 }
 
 /** Fire one visible round from a boat at its target, leading the hull and
@@ -3445,7 +3515,16 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
         id: t.nextEntityId++,
         kind: 'attackBoat',
         x: site.x,
-        y: site.y,
+        // AFLOAT FROM THE FIRST TICK. The emplacement she puts to sea from is
+        // an inland site, so taking its y literally launched every boat in the
+        // game standing on the beach for one frame. It never mattered while
+        // land was only ever the map's edge; it matters the moment a map has
+        // land in the MIDDLE of it, because "no surface unit is ever on land"
+        // stops being a tidy invariant and becomes the thing that says whether
+        // an island is real. She is put in the nearest navigable water instead,
+        // which on every existing map is the same shoreline she always
+        // appeared on, a hull's clearance out.
+        y: t.geo.clampWater(site.x, site.y),
         vx: 0,
         vy: 0,
         // Current speed, not a constant: she works up to her cruise.
@@ -4558,6 +4637,24 @@ export function stepTransit(t: TransitState, commands: TransitCommand[], rng: RN
 
     threat.x += threat.vx * dt;
     threat.y += threat.vy * dt;
+
+    // AGROUND. A torpedo runs UNDER the water, so unlike a missile it cannot
+    // pass over an island — the rock is in its way, not beneath it. This is
+    // what makes terrain shelter the water behind it rather than decorate it,
+    // and it is checked here (per tick, once the weapon is already at sea)
+    // rather than at launch, because every torpedo launches FROM the shore and
+    // so every launch point is on land by definition.
+    //
+    // Deliberately not applied to missiles, shells or aircraft: all three go
+    // over the top, and a shore battery firing across a rock is a shore
+    // battery doing its job.
+    if (!threat.afloat) {
+      if (!t.geo.isLand(threat.x, threat.y)) threat.afloat = true;
+    } else if (t.geo.isLand(threat.x, threat.y)) {
+      threat.alive = false;
+      pushEvent(t, { type: 'missileMiss', threatKind: 'torpedo' });
+      continue;
+    }
 
     // WAKE: a straight or homing torpedo leaves a trail any nearby hull can
     // read off the water with no equipment. The low-signature node leaves

@@ -1,0 +1,416 @@
+{
+ "measured": "2026-11-06",
+ "runs": 100,
+ "bot": "average",
+ "drops": "Free Play (the plan’s): ammo, repair, the Nuke",
+ "rows": {
+  "none": {
+   "l1": {
+    "clear": 5,
+    "lost": 5.84,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 5,
+    "lost": 5.84,
+    "skill": "average"
+   }
+  },
+  "campaign": {
+   "l1": {
+    "clear": 8,
+    "lost": 5.75,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 8,
+    "lost": 5.75,
+    "skill": "average"
+   }
+  },
+  "flak": {
+   "l1": {
+    "clear": 29,
+    "lost": 4.95,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 41,
+    "lost": 4.51,
+    "skill": "average"
+   }
+  },
+  "railgun": {
+   "l1": {
+    "clear": 15,
+    "lost": 5.22,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 40,
+    "lost": 4.26,
+    "skill": "average"
+   }
+  },
+  "airstrike": {
+   "l1": {
+    "clear": 8,
+    "lost": 5.47,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 47,
+    "lost": 4.15,
+    "skill": "average"
+   }
+  },
+  "scatter": {
+   "l1": {
+    "clear": 17,
+    "lost": 5.44,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 45,
+    "lost": 4.1,
+    "skill": "average"
+   }
+  },
+  "frigate": {
+   "l1": {
+    "clear": 39,
+    "lost": 4.59,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 52,
+    "lost": 3.73,
+    "skill": "average"
+   }
+  },
+  "aegis": {
+   "l1": {
+    "clear": 19,
+    "lost": 5,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 51,
+    "lost": 3.93,
+    "skill": "average"
+   }
+  },
+  "lance": {
+   "l1": {
+    "clear": 15,
+    "lost": 5.48,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 30,
+    "lost": 4.68,
+    "skill": "average"
+   }
+  },
+  "cutter": {
+   "l1": {
+    "clear": 26,
+    "lost": 4.81,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 56,
+    "lost": 3.63,
+    "skill": "average"
+   }
+  },
+  "grapnel": {
+   "l1": {
+    "clear": 21,
+    "lost": 5.18,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 47,
+    "lost": 4.04,
+    "skill": "average"
+   }
+  },
+  "chainshot": {
+   "l1": {
+    "clear": 19,
+    "lost": 5.28,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 22,
+    "lost": 5.17,
+    "skill": "average"
+   }
+  },
+  "firecontrol": {
+   "l1": {
+    "clear": 16,
+    "lost": 5.21,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 19,
+    "lost": 5.26,
+    "skill": "average"
+   }
+  },
+  "cadence": {
+   "l1": {
+    "clear": 19,
+    "lost": 5.31,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 28,
+    "lost": 4.87,
+    "skill": "average"
+   }
+  },
+  "droneScreen": {
+   "l1": {
+    "clear": 24,
+    "lost": 5.01,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 36,
+    "lost": 4.73,
+    "skill": "average"
+   }
+  },
+  "gunships": {
+   "l1": {
+    "clear": 31,
+    "lost": 4.88,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 54,
+    "lost": 3.84,
+    "skill": "average"
+   }
+  },
+  "bomberWing": {
+   "l1": {
+    "clear": 22,
+    "lost": 5.25,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 26,
+    "lost": 4.9,
+    "skill": "average"
+   }
+  },
+  "orbital": {
+   "l1": {
+    "clear": 17,
+    "lost": 5.34,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 34,
+    "lost": 4.57,
+    "skill": "average"
+   }
+  },
+  "fireAtWill": {
+   "l1": {
+    "clear": 21,
+    "lost": 5.23,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 47,
+    "lost": 4.32,
+    "skill": "average"
+   }
+  },
+  "supplyRun": {
+   "l1": {
+    "clear": 13,
+    "lost": 5.5,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 19,
+    "lost": 5.11,
+    "skill": "average"
+   }
+  },
+  "hotStreak": {
+   "l1": {
+    "clear": 9,
+    "lost": 5.62,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 10,
+    "lost": 5.71,
+    "skill": "average"
+   }
+  },
+  "wildCard": {
+   "l1": {
+    "clear": 20,
+    "lost": 5.16,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 47,
+    "lost": 4.24,
+    "skill": "average"
+   }
+  },
+  "focus": {
+   "l1": {
+    "clear": 8,
+    "lost": 5.83,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 6,
+    "lost": 5.75,
+    "skill": "average"
+   }
+  },
+  "overdrive": {
+   "l1": {
+    "clear": 31,
+    "lost": 4.88,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 52,
+    "lost": 4.15,
+    "skill": "average"
+   }
+  },
+  "timeWarp": {
+   "l1": {
+    "clear": 15,
+    "lost": 5.32,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 29,
+    "lost": 4.83,
+    "skill": "average"
+   }
+  },
+  "shield": {
+   "l1": {
+    "clear": 21,
+    "lost": 5.22,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 22,
+    "lost": 5.09,
+    "skill": "average"
+   }
+  },
+  "fullSteam": {
+   "l1": {
+    "clear": 7,
+    "lost": 5.67,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 12,
+    "lost": 5.46,
+    "skill": "average"
+   }
+  },
+  "tidal": {
+   "l1": {
+    "clear": 8,
+    "lost": 5.65,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 17,
+    "lost": 5.34,
+    "skill": "average"
+   }
+  },
+  "storm": {
+   "l1": {
+    "clear": 10,
+    "lost": 5.48,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 22,
+    "lost": 5.28,
+    "skill": "average"
+   }
+  },
+  "ammoShip": {
+   "l1": {
+    "clear": 27,
+    "lost": 4.88,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 42,
+    "lost": 4.31,
+    "skill": "average"
+   }
+  },
+  "flak+overclock": {
+   "l1": {
+    "clear": 32,
+    "lost": 4.71,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 47,
+    "lost": 4.04,
+    "skill": "average"
+   }
+  },
+  "flak+railgun": {
+   "l1": {
+    "clear": 14,
+    "lost": 5.24,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 41,
+    "lost": 4.2,
+    "skill": "average"
+   }
+  },
+  "flak+railgun+dualWield": {
+   "l1": {
+    "clear": 22,
+    "lost": 5.14,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 44,
+    "lost": 4.32,
+    "skill": "average"
+   }
+  },
+  "flak+railgun+scatter": {
+   "l1": {
+    "clear": 21,
+    "lost": 5.28,
+    "skill": "average"
+   },
+   "max": {
+    "clear": 42,
+    "lost": 4.32,
+    "skill": "average"
+   }
+  }
+ }
+}

@@ -1,0 +1,322 @@
+{
+ "runs": [
+  {
+   "id": "strait-campaign-tryhard",
+   "steps": 31973,
+   "offMs": 1283,
+   "onMs": 1361,
+   "events": 2533,
+   "samples": 2556,
+   "bytes": 1228339,
+   "gz": 222480,
+   "seconds": 533
+  },
+  {
+   "id": "strait-campaign-you",
+   "steps": 32063,
+   "offMs": 807,
+   "onMs": 876,
+   "events": 2590,
+   "samples": 2719,
+   "bytes": 1042475,
+   "gz": 218436,
+   "seconds": 534
+  },
+  {
+   "id": "strait-event",
+   "steps": 2870,
+   "offMs": 36,
+   "onMs": 45,
+   "events": 331,
+   "samples": 249,
+   "bytes": 76679,
+   "gz": 15951,
+   "seconds": 48
+  },
+  {
+   "id": "strait-bonus",
+   "steps": 21763,
+   "offMs": 779,
+   "onMs": 1012,
+   "events": 2044,
+   "samples": 1848,
+   "bytes": 860266,
+   "gz": 158933,
+   "seconds": 363
+  },
+  {
+   "id": "gauntlet-campaign-tryhard",
+   "steps": 31771,
+   "offMs": 1164,
+   "onMs": 1319,
+   "events": 2578,
+   "samples": 2594,
+   "bytes": 1173257,
+   "gz": 243711,
+   "seconds": 530
+  },
+  {
+   "id": "gauntlet-campaign-you",
+   "steps": 28816,
+   "offMs": 973,
+   "onMs": 1161,
+   "events": 2447,
+   "samples": 2426,
+   "bytes": 1069555,
+   "gz": 230167,
+   "seconds": 480
+  },
+  {
+   "id": "gauntlet-event",
+   "steps": 3199,
+   "offMs": 75,
+   "onMs": 88,
+   "events": 274,
+   "samples": 290,
+   "bytes": 85051,
+   "gz": 17137,
+   "seconds": 53
+  },
+  {
+   "id": "gauntlet-bonus",
+   "steps": 23541,
+   "offMs": 902,
+   "onMs": 1092,
+   "events": 2386,
+   "samples": 2042,
+   "bytes": 1023761,
+   "gz": 183131,
+   "seconds": 392
+  },
+  {
+   "id": "harbor-campaign-tryhard",
+   "steps": 26258,
+   "offMs": 633,
+   "onMs": 628,
+   "events": 2233,
+   "samples": 2188,
+   "bytes": 888565,
+   "gz": 218038,
+   "seconds": 438
+  },
+  {
+   "id": "harbor-campaign-you",
+   "steps": 19649,
+   "offMs": 523,
+   "onMs": 512,
+   "events": 1498,
+   "samples": 1638,
+   "bytes": 642413,
+   "gz": 159229,
+   "seconds": 327
+  },
+  {
+   "id": "harbor-event",
+   "steps": 4853,
+   "offMs": 87,
+   "onMs": 116,
+   "events": 470,
+   "samples": 427,
+   "bytes": 141654,
+   "gz": 34670,
+   "seconds": 81
+  },
+  {
+   "id": "harbor-bonus",
+   "steps": 17882,
+   "offMs": 736,
+   "onMs": 745,
+   "events": 1946,
+   "samples": 1560,
+   "bytes": 752787,
+   "gz": 168801,
+   "seconds": 298
+  }
+ ],
+ "addPct": 11.932712389930833,
+ "bytesPerSecond": 2203.61562798943,
+ "gzPerSecond": 458.8046010841173,
+ "samplingHz": 4,
+ "sampling": [
+  {
+   "run": "strait-campaign-tryhard",
+   "hz": 10,
+   "cells": 96,
+   "shipSeconds": 13237,
+   "worst": 0.0008139534883727055,
+   "mean": 0.0003562007922722945,
+   "misplaced": 0.00035633386594571565
+  },
+  {
+   "run": "strait-campaign-tryhard",
+   "hz": 4,
+   "cells": 96,
+   "shipSeconds": 13237,
+   "worst": 0.0008477655322763094,
+   "mean": 0.00035851297120732773,
+   "misplaced": 0.0003588521264824345
+  },
+  {
+   "run": "strait-campaign-tryhard",
+   "hz": 2,
+   "cells": 96,
+   "shipSeconds": 13237,
+   "worst": 0.0009202806856097959,
+   "mean": 0.00036597464219841947,
+   "misplaced": 0.000366406908092591
+  },
+  {
+   "run": "strait-campaign-tryhard",
+   "hz": 1,
+   "cells": 96,
+   "shipSeconds": 13237,
+   "worst": 0.0016556291390741147,
+   "mean": 0.0003756258973769831,
+   "misplaced": 0.00037647995023946636
+  },
+  {
+   "run": "strait-campaign-tryhard",
+   "hz": 0.5,
+   "cells": 96,
+   "shipSeconds": 13237,
+   "worst": 0.09757033248083112,
+   "mean": 0.0051157738871560965,
+   "misplaced": 0.005066740199876606
+  },
+  {
+   "run": "harbor-campaign-tryhard",
+   "hz": 10,
+   "cells": 149,
+   "shipSeconds": 8253,
+   "worst": 0.0095846645367416,
+   "mean": 0.0005276983952794526,
+   "misplaced": 0.0004361838757360542
+  },
+  {
+   "run": "harbor-campaign-tryhard",
+   "hz": 4,
+   "cells": 149,
+   "shipSeconds": 8253,
+   "worst": 0.006389776357827734,
+   "mean": 0.0005898079606366088,
+   "misplaced": 0.0004543582038917236
+  },
+  {
+   "run": "harbor-campaign-tryhard",
+   "hz": 2,
+   "cells": 149,
+   "shipSeconds": 8253,
+   "worst": 0.0041905602117334965,
+   "mean": 0.0007350073493873294,
+   "misplaced": 0.0005775397613912576
+  },
+  {
+   "run": "harbor-campaign-tryhard",
+   "hz": 1,
+   "cells": 149,
+   "shipSeconds": 8253,
+   "worst": 0.017467248908297584,
+   "mean": 0.0019057472253425102,
+   "misplaced": 0.0011631570019628218
+  },
+  {
+   "run": "harbor-campaign-tryhard",
+   "hz": 0.5,
+   "cells": 149,
+   "shipSeconds": 8253,
+   "worst": 0.18559122944399822,
+   "mean": 0.008011865993660336,
+   "misplaced": 0.007374738491611396
+  },
+  {
+   "run": "gauntlet-campaign-tryhard",
+   "hz": 10,
+   "cells": 217,
+   "shipSeconds": 12182,
+   "worst": 0.0026737967914439408,
+   "mean": 0.00041483672220321674,
+   "misplaced": 0.0004118154081897841
+  },
+  {
+   "run": "gauntlet-campaign-tryhard",
+   "hz": 4,
+   "cells": 217,
+   "shipSeconds": 12182,
+   "worst": 0.003090394025238156,
+   "mean": 0.00046023173067116107,
+   "misplaced": 0.0004528601332585337
+  },
+  {
+   "run": "gauntlet-campaign-tryhard",
+   "hz": 2,
+   "cells": 217,
+   "shipSeconds": 12182,
+   "worst": 0.006440772892746991,
+   "mean": 0.0005393207660415188,
+   "misplaced": 0.0005294769533868663
+  },
+  {
+   "run": "gauntlet-campaign-tryhard",
+   "hz": 1,
+   "cells": 217,
+   "shipSeconds": 12182,
+   "worst": 0.018897637795276343,
+   "mean": 0.000830638412572358,
+   "misplaced": 0.0007456458387489488
+  },
+  {
+   "run": "gauntlet-campaign-tryhard",
+   "hz": 0.5,
+   "cells": 217,
+   "shipSeconds": 12182,
+   "worst": 0.1720000000000058,
+   "mean": 0.008826323745375952,
+   "misplaced": 0.007992776128387783
+  },
+  {
+   "run": "kesh (a bend)",
+   "hz": 10,
+   "cells": 96,
+   "shipSeconds": 14897,
+   "worst": 0.020086448004084666,
+   "mean": 0.001538959993404522,
+   "misplaced": 0.0014085704632064266
+  },
+  {
+   "run": "kesh (a bend)",
+   "hz": 4,
+   "cells": 96,
+   "shipSeconds": 14897,
+   "worst": 0.025232018561484354,
+   "mean": 0.002920699277908906,
+   "misplaced": 0.002641489168888409
+  },
+  {
+   "run": "kesh (a bend)",
+   "hz": 2,
+   "cells": 96,
+   "shipSeconds": 14897,
+   "worst": 0.04675810473815349,
+   "mean": 0.006047072412791156,
+   "misplaced": 0.005034604515035403
+  },
+  {
+   "run": "kesh (a bend)",
+   "hz": 1,
+   "cells": 96,
+   "shipSeconds": 14897,
+   "worst": 0.10253829811032804,
+   "mean": 0.0124153545131264,
+   "misplaced": 0.01052679864043722
+  },
+  {
+   "run": "kesh (a bend)",
+   "hz": 0.5,
+   "cells": 96,
+   "shipSeconds": 14897,
+   "worst": 0.22978866152314514,
+   "mean": 0.02777404268860524,
+   "misplaced": 0.024223160523338574
+  }
+ ]
+}

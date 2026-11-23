@@ -1,0 +1,16 @@
+{
+  "name": "straitwatch-game-center",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Straitwatch's own Game Center plugin for Capacitor 8 (iOS): sign-in, leaderboard scores, achievements, the dashboard.",
+  "main": "index.js",
+  "files": ["ios/", "Package.swift", "index.js"],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

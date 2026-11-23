@@ -1,0 +1,23 @@
+[
+ {
+  "file": "foe.rotor.1.m4a",
+  "measured": -16.2,
+  "gain": -1.8,
+  "limited": 0.0,
+  "dur": 0.7
+ },
+ {
+  "file": "foe.shell.1.m4a",
+  "measured": -12.0,
+  "gain": -6.0,
+  "limited": 0.0,
+  "dur": 0.665
+ },
+ {
+  "file": "foe.ignite.1.m4a",
+  "measured": -17.7,
+  "gain": -0.3,
+  "limited": 0.6,
+  "dur": 0.735
+ }
+]

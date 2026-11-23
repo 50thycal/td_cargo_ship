@@ -1,0 +1,154 @@
+{
+ "source": "https://claude.ai/artifact/WdDGCXvCnQUzRL655GCmBQ",
+ "readOn": "2026-11-05",
+ "reviews": {
+  "ammoShip": {
+   "verdict": "maybe",
+   "note": "we can play around with this and see how it works"
+  },
+  "bomberWing": {
+   "verdict": "go",
+   "note": ""
+  },
+  "cadence": {
+   "verdict": "go",
+   "note": "with the \"pulse\" make it a full aura on the screen and not just the aircraft carrier so it is easier to see. Beat should change too, should just be a single beat beat beat with a  few ms between, should have a lead up too it, so the player can anticapate when the beat will hit."
+  },
+  "chainshot": {
+   "verdict": "go",
+   "note": ""
+  },
+  "cutter": {
+   "verdict": "go",
+   "note": ""
+  },
+  "droneScreen": {
+   "verdict": "go",
+   "note": ""
+  },
+  "dualWield": {
+   "verdict": "go",
+   "note": ""
+  },
+  "fireAtWill": {
+   "verdict": "go",
+   "note": ""
+  },
+  "firecontrol": {
+   "verdict": "go",
+   "note": ""
+  },
+  "focus": {
+   "verdict": "go",
+   "note": ""
+  },
+  "grapnel": {
+   "verdict": "go",
+   "note": ""
+  },
+  "gunships": {
+   "verdict": "go",
+   "note": ""
+  },
+  "helm": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "hotStreak": {
+   "verdict": "go",
+   "note": ""
+  },
+  "hunterKiller": {
+   "verdict": "maybe",
+   "note": "keep this idea alive but we wont test this yet. Need more enemy types for this to be useful"
+  },
+  "jammer": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "lance": {
+   "verdict": "go",
+   "note": ""
+  },
+  "limpet": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "orbital": {
+   "verdict": "go",
+   "note": "Yes it should be like the laser dots too triangulating on my spot and then the big beam hits"
+  },
+  "overclock": {
+   "verdict": "go",
+   "note": ""
+  },
+  "scavenger": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "shore": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "storm": {
+   "verdict": "maybe",
+   "note": "Let experiment with this, woudl be an interesting mechanic, but might not work well with the game."
+  },
+  "supplyRun": {
+   "verdict": "go",
+   "note": ""
+  },
+  "tidal": {
+   "verdict": "maybe",
+   "note": "Lets try this onje but i think mechincally it will not work well with the game"
+  },
+  "tug": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "turncoat": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "wildCard": {
+   "verdict": "go",
+   "note": ""
+  },
+  "wingman": {
+   "verdict": "drop",
+   "note": ""
+  },
+  "wireguide": {
+   "verdict": "drop",
+   "note": ""
+  }
+ },
+ "answers": {
+  "boostLength": {
+   "choice": 2,
+   "note": "Yes they can be longer and this will take one of the upgrade slots. But each level should change something just like it does for the normal passive and active weapons"
+  },
+  "droneOrigin": {
+   "choice": 1,
+   "note": ""
+  },
+  "general": {
+   "note": "Overall, i think we need to rework the existng boost too like the time warp and the hyper overdrive. Those can now be in boot category. Only onces that should remain as deafult in the game is the ammo drop, a heal and then a clear screen new boot that just kills everything curretnly on the screen, call it a nuke or somethign like that"
+  },
+  "hold": {
+   "choice": 0,
+   "note": ""
+  },
+  "launchers": {
+   "note": "Just see my responses on which ones to keep"
+  },
+  "next": {
+   "choice": 0,
+   "note": ""
+  },
+  "slots": {
+   "choice": 1,
+   "note": "Bascially players should have a boost only build if they want"
+  }
+ }
+}

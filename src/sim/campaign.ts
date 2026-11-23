@@ -187,6 +187,30 @@ export function newRegionalRun(
   return run;
 }
 
+/** REGION WORKSHOP: an isolated playtest of a compiled region. The region must
+ *  already be registered (registerCustomRegion) or packaged. Behaves like a
+ *  normal regional run on that region, with the dev clock available, the
+ *  workshop provenance attached, and — via the `workshop` flag — its own save
+ *  slot and no Commander Profile settlement. Dev cheats are opt-in so a
+ *  playtest is honest about difficulty by default. */
+export function newWorkshopPlaytest(
+  seed: string,
+  regionId: RegionId,
+  opts: { round?: number; god?: boolean; source: 'packaged' | 'local' },
+): CampaignState {
+  const region = regionDef(regionId);
+  const c = newRegionalRun(seed, regionId, []);
+  c.dev = true;
+  c.godMode = !!opts.god;
+  c.workshop = {
+    hash: region.authoring?.hash ?? '',
+    schemaVersion: region.authoring?.schemaVersion ?? 0,
+    source: opts.source,
+  };
+  if (opts.round && opts.round > 1) fastForwardEvolution(c, opts.round);
+  return c;
+}
+
 /** Dev/test-compat constructor: a run on the full-roster proving ground with
  *  no Commander Abilities. The pre-region test suite and headless harness
  *  keep their old threat dynamics through this. */
@@ -418,6 +442,12 @@ function buildEnemyTelemetry(c: CampaignState): EnemyRoundTelemetry {
     nodeDebuts: [...economy.nodeDebuts],
     targetingTier: economy.targetingTier,
     targetingName: targetingName(economy),
+    // Region Workshop attribution: which units the designer scripted versus
+    // what the adaptive allocator chose, so a timeline can be read against
+    // what actually reached the water.
+    ...(economy.authoredUnits
+      ? { authoredUnits: { ...economy.authoredUnits }, authoredSpend: economy.authoredSpend ?? 0 }
+      : {}),
   };
 }
 
