@@ -712,6 +712,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
   { map: 'tide', log: 61, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'citadel', log: 60, tag: 'New', note: 'The finale: the shield rises every wave; fire under the dome can\'t be shot. Break it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
@@ -721,7 +722,6 @@ export const READY_TO_TEST: ReadyToTest[] = [
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
   { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
-  { map: 'saltgate', log: 46, tag: 'Polished', note: 'Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?' },
   { map: 'battery', log: 45, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },
