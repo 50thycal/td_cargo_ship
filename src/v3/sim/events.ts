@@ -29,7 +29,9 @@ import { BONUS_EVENTS, EV, EVENT, EVENTS, EVENT_MAPS, EVENT_WAVE, endingRuns, gr
 import { ROSTER } from '../data/roster';
 import { FOE } from '../data/foes';
 import { PLANE, RULES, SUB, THREATS, VIEW, isStructure, type PickupKind, type ThreatKind } from '../data/config';
-import { bossTune, type BossFire, type BossRound, type TruckRun } from '../data/encounters';
+import { bossTune, paradeBeats, type BossFire, type BossRound } from '../data/encounters';
+import { layBeat, paradeCalls, paradeSpacing, paradeSpawns, type ParadeCall } from './parade';
+import { makeRng } from '../../sim/rng';
 import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
@@ -120,9 +122,12 @@ export interface EventRun {
   /** A heavy in rings of guards (the Escort Run, Siege of Vey's): its id,
    *  its own speed, and how much each ring stripped speeds it up. */
   escort?: { id: number; speed: number; slow: number; per: number; rings: number };
-  /** Saltgate Canal's Gatecrashers (log v42): each truck column's road,
-   *  down to the bank by its lock and along it over the chamber. */
-  roads?: Point[][];
+  /** Saltgate Canal's Gatecrashers (log v62): the round's parade (sim/
+   *  parade.ts): the road it drives, how far along it the screen begins and
+   *  ends, when its trucks set out and its calls come (seconds from the
+   *  parade's start), and each launch laid so far (wave seconds, the truck,
+   *  the lock, and the pattern: a beat's index, -1 a stray). */
+  parade?: { road: Point[]; on: number; off: number; spawns: number[]; calls: ParadeCall[]; shots: { at: number; id: number; lock: number; beat: number }[] };
 }
 
 /** An armored block's numbers (the Shield Wall's, or a finale's smaller
@@ -884,17 +889,16 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       ];
     }
     case 'run-the-canal': {
-      // Log v42 (encounters rev 4, lab only; docs/design/v3-ch2-saltgate.md):
-      // Saltgate Canal's boss is the Gatecrashers, columns of Rocket Trucks
-      // down to the banks by the locks (MAP_BOSS `trucks`), with drone
-      // swarms and launches of their own.
+      // Log v62 (encounters rev 4, lab only; docs/design/v3-ch2-saltgate.md):
+      // Saltgate Canal's boss is the Gatecrashers, a parade of Missile
+      // Trucks along the road west to east (MAP_BOSS `parade`), firing on
+      // the move in the round's patterns.
       const T = bossRound(g, ev);
-      if (T?.trucks) {
-        ev.roads = T.trucks.map((c) => bankRoad(g, c.lock, c.bank));
+      if (T?.parade) {
+        ev.parade = paradeOf(g, ev, T);
         return [
-          ...T.trucks.flatMap((c, col) => Array.from({ length: c.count }, (_, i): EventStep => ({ at: B + c.at + i * columnGap(g, c), op: 'ctruck', k: col * 100 + i }))),
-          // The swarm comes as the column sets up (and keeps a round going
-          // 15 s or so when its trucks are shot fast).
+          ...ev.parade.spawns.map((at, k): EventStep => ({ at: B + at, op: 'ptruck', k })),
+          ...ev.parade.calls.map((c, k): EventStep => ({ at: B + c.at, op: 'pbeat', k })),
           ...steps(T.swarms ?? 0, (k) => 11 + k * 5, 'swarm'),
           ...fireSteps(T),
         ];
@@ -1370,8 +1374,12 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'run-the-canal': {
-      if (s.op === 'ctruck') {
-        gateTruck(g, ev, Math.floor(s.k / 100), s.k % 100);
+      if (s.op === 'ptruck') {
+        paradeTruck(g, ev);
+        return;
+      }
+      if (s.op === 'pbeat') {
+        paradeBeat(g, ev, s.k);
         return;
       }
       const E = canalRound(g, ev);
@@ -1458,53 +1466,73 @@ function truck(g: Game, ev: EventRun, col: number, i: number, E: { trucks: numbe
   sent(ev, 'rocketTruck');
 }
 
-/** The road a Gatecrashers column takes to lock `lock` (log v42): on the
- *  enemy's bank (`north`) down the pop-up road by the lock's exit, on your
- *  own (`south`) up from the bottom of the screen at the same x, then along
- *  the bank, 29 px back from the lock's water, to just short of its entry
- *  gate, so a column parks along the chamber. */
-function bankRoad(g: Game, lock: number, bank: 'north' | 'south'): Point[] {
-  const l = (g.map.locks ?? [])[lock] ?? { x0: VIEW.width * 0.35, x1: VIEW.width * 0.45 };
-  const ch = g.map.channels[0];
-  const half = 66; // a lock's half-width (data/maps20.ts, Saltgate's widths)
-  const popup = g.map.roads.popups.reduce((m, r) => (Math.abs(r.to.x - (l.x1 + 30)) < Math.abs(m.to.x - (l.x1 + 30)) ? r : m), g.map.roads.popups[0] ?? { from: { x: l.x1 + 30, y: -40 }, to: { x: l.x1 + 30, y: 0 } });
-  const x = popup.to.x;
-  const y = bank === 'north' ? ch.y - half - 29 : ch.y + half + 29;
-  const y0 = bank === 'north' ? -40 : VIEW.height + 40;
-  return [{ x, y: y0 }, { x, y }, { x: l.x0 - 30, y }];
+/** The Gatecrashers' road (log v62): the map's road behind the silos,
+ *  west to east (its first runner, driven from its western end). */
+function paradeRoad(g: Game): Point[] {
+  const r = g.map.roads.runners[0] ?? [{ x: -60, y: 200 }, { x: VIEW.width + 60, y: 200 }];
+  return r[0].x <= r[r.length - 1].x ? r : [...r].reverse();
 }
 
-/** Truck `i` of a Gatecrashers column (log v42): down its road in line,
- *  parking `spacing` px behind the one ahead along the bank, its salvos at
- *  the ship held at the lock nearest it (each marked first), the column's
- *  last `clusters` firing a cluster missile in place of their first. */
-function gateTruck(g: Game, ev: EventRun, col: number, i: number): void {
-  const tune = bossTune(g.map.id, g.enc?.setup.rev);
-  const c = bossRound(g, ev)?.trucks?.[col];
-  const path = ev.roads?.[col];
-  if (!tune?.truck || !c || !path) return;
-  const T = tune.truck;
-  const L = pathLength(path);
-  // Log v46: a missile column is Missile Trucks (one ballistic missile
-  // each, or `missiles`), the rest Rocket Trucks as at v42.
-  const kind = c.missiles !== undefined ? 'missileTruck' : 'rocketTruck';
-  const th = spawnThreat(g, kind, path[0].x, path[0].y, 'truck');
+/** A seeded stream for the round's parade: the run's seed, the wave, the
+ *  round and the step it began on (a Test Lab rerun plays a new parade),
+ *  and what it is for. */
+function paradeRng(g: Game, ev: EventRun, what: string) {
+  return makeRng(g.seed).fork(`parade:${ev.wave}:${ev.run}:${ev.step}:${what}`);
+}
+
+/** The round's parade (sim/parade.ts): its road, the stretch of it on
+ *  screen (x 40 to VIEW.width - 40), when the trucks set out and when its
+ *  calls come. */
+function paradeOf(g: Game, ev: EventRun, R: BossRound): NonNullable<EventRun['parade']> {
+  const T = bossTune(g.map.id, g.enc?.setup.rev)!.truck!;
+  const road = paradeRoad(g);
+  const L = pathLength(road);
+  const at = (x: number) => {
+    let d = 0;
+    for (let k = 1; k < road.length; k++) {
+      const a = road[k - 1];
+      const b = road[k];
+      const len = dist(a.x, a.y, b.x, b.y);
+      if ((x - a.x) * (x - b.x) <= 0 && a.x !== b.x) return d + (len * (x - a.x)) / (b.x - a.x);
+      d += len;
+    }
+    return x <= road[0].x ? 0 : L;
+  };
+  return { road, on: at(40), off: at(VIEW.width - 40), spawns: paradeSpawns(R.parade!, paradeRng(g, ev, 'spawns')), calls: paradeCalls(R.parade!, paradeRng(g, ev, 'calls'), T.lift), shots: [] };
+}
+
+/** The parade's next truck sets out from the road's west end, with its
+ *  missiles and no launch called for yet. */
+function paradeTruck(g: Game, ev: EventRun): void {
+  const T = bossTune(g.map.id, g.enc?.setup.rev)?.truck;
+  const R = bossRound(g, ev)?.parade;
+  if (!T || !R || !ev.parade) return;
+  const path = ev.parade.road;
+  const th = spawnThreat(g, 'missileTruck', path[0].x, path[0].y, 'truck');
   th.target = CARRIER_TARGET;
   th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
-  th.hp = th.maxHp = T.hp;
-  const n = c.missiles ?? c.salvos ?? 1;
-  th.foe = foeData({ path, along: 0, n, full: n, stop: Math.max(60, L - i * T.spacing), drive: T.drive, aim: 'lock', ...(kind === 'rocketTruck' ? { clusters: i >= c.count - (c.clusters ?? 0) ? 1 : 0 } : {}) });
-  sent(ev, kind);
+  th.hp = th.maxHp = R.hp ?? T.hp;
+  th.foe = foeData({ path, along: 0, n: R.missiles, full: R.missiles, drive: T.drive, lift: T.lift, aim: 'lock', fires: [] });
+  sent(ev, 'missileTruck');
 }
 
-/** Log v46: seconds between a column's trucks setting out (TruckRun `gap`;
- *  absent, nose to tail at the parade's own pace, `spacing` apart, so the
- *  column parks together and raises and fires as one volley). */
-export function columnGap(g: Game, c: TruckRun): number {
-  if (c.gap !== undefined) return c.gap;
+/** Call `k` of the parade: its pattern laid on the trucks driving now. */
+function paradeBeat(g: Game, ev: EventRun, k: number): void {
   const T = bossTune(g.map.id, g.enc?.setup.rev)?.truck;
-  const kind = c.missiles !== undefined ? 'missileTruck' : 'rocketTruck';
-  return T ? T.spacing / (THREATS[kind].speed * T.drive) : 1;
+  const R = bossRound(g, ev)?.parade;
+  const P = ev.parade;
+  if (!T || !R || !P) return;
+  const call = P.calls[k];
+  const trucks = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead && t.foe?.fires);
+  const slots = trucks.map((t) => ({ id: t.id, along: t.foe!.along ?? 0, fires: t.foe!.fires!.map((f) => f.at), left: t.foe!.n - t.foe!.fires!.length }));
+  const speed = THREATS.missileTruck.speed * T.drive;
+  const shots = layBeat(call.beat >= 0 ? paradeBeats(R)[call.beat] : undefined, g.waveT, slots, { on: P.on, off: P.off, speed }, T.lift, paradeSpacing(T.lift, FOE.missileTruck.lower), paradeRng(g, ev, `call${k}`));
+  for (const s of shots) {
+    const f = trucks.find((t) => t.id === s.id)!.foe!;
+    f.fires!.push({ at: s.at, lock: s.lock });
+    f.fires!.sort((a, b) => a.at - b.at);
+    P.shots.push({ at: s.at, id: s.id, lock: s.lock, beat: call.beat });
+  }
 }
 
 /** An attack helicopter flown in from the nearer side to hold at `x` over
@@ -2048,9 +2076,9 @@ export function eventFoeDown(g: Game, th: Threat): void {
     }
     return;
   }
-  const gate = ev.id === 'run-the-canal' && !!ev.roads ? bossTune(g.map.id, g.enc?.setup.rev)?.truck : undefined;
-  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout' && !gate) || (th.kind !== 'rocketTruck' && !(gate && th.kind === 'missileTruck'))) return;
-  const E = gate ?? (ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy']);
+  // Log v62: the Gatecrashers' parade never stops, a wreck or not.
+  if ((ev.id !== 'rocket-convoy' && ev.id !== 'breakout') || th.kind !== 'rocketTruck') return;
+  const E = ev.id === 'breakout' ? EV.breakout : EV['rocket-convoy'];
   const at = th.foe?.along ?? 0;
   for (const t of g.threats) {
     const f = t.foe;

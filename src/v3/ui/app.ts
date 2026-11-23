@@ -214,7 +214,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  missileTruck: 'It stops and raises one long ballistic missile at a ship. Kill the truck while the red ring fills (four hits), or shoot the missile in the air.',
+  missileTruck: 'A parade of them drives the road, raising ballistic missiles on the move. Kill a truck while its red ring fills (four hits), or shoot the missile in the air.',
   attackHeli: 'Fires missile pairs on sight, hovers, moves. Five hits, or shoot its missiles.',
   torpedoSub: 'Under water, out of reach. It fires two torpedoes, each at a ship, now and then a fast amber one, then dives. Shoot the torpedoes, or get off the dashed lines.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',

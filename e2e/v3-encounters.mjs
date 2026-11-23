@@ -180,9 +180,9 @@ try {
   check(/Boss rounds: Gatecrashers/.test(arcLine), `Saltgate's script names its boss, the Gatecrashers (${arcLine})`);
   check(!/torpedo sub/i.test(await page.evaluate(() => document.querySelector('.v3-enc-script, [data-enc-version]')?.textContent ?? '')), 'and its script sends no torpedo sub');
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
-  // Log v46: Skip to boss. The Gatecrashers are a parade of Missile Trucks
-  // (no Rocket Truck): they drive in, raise their missiles and lob
-  // ballistic missiles at the locks.
+  // Log v62: Skip to boss. The Gatecrashers are a parade of Missile Trucks
+  // (no Rocket Truck) along the road behind the silos, west to east, never
+  // stopping, lobbing ballistic missiles at the locks on the move.
   await page.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
   await page.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
   let parade = { trucks: 0, rockets: 0, lobs: 0, raised: 0 };
@@ -203,7 +203,13 @@ try {
       };
     });
   }
-  check(parade.trucks > 0 && parade.rockets === 0 && parade.lobs > 0, `the Gatecrashers' parade: Missile Trucks on the banks lobbing ballistic missiles, no Rocket Truck (${JSON.stringify(parade)})`);
+  check(parade.trucks > 0 && parade.rockets === 0 && parade.lobs > 0, `the Gatecrashers' parade: Missile Trucks on the road lobbing ballistic missiles, no Rocket Truck (${JSON.stringify(parade)})`);
+  const along = () => page.evaluate(() => Object.fromEntries(window.__v3.game().threats.filter((t) => t.kind === 'missileTruck' && !t.dead).map((t) => [t.id, { a: t.foe?.along ?? 0, y: t.y }])));
+  const a0 = await along();
+  await page.evaluate(() => window.__v3.advance(0.25));
+  const a1 = await along();
+  const both = Object.keys(a0).filter((id) => a1[id]);
+  check(both.length > 0 && both.every((id) => a1[id].a > a0[id].a) && both.every((id) => a1[id].y < 300), `and every truck drives on along the road behind the silos (${JSON.stringify(both.map((id) => [a0[id].a | 0, a1[id].a | 0, a1[id].y | 0]))})`);
   check(errs.length === 0, `no page errors in the missile parade (${errs[0] ?? 'none'})`);
   await page.screenshot({ path: `${OUT_DIR}/saltgate-missile-parade.png` });
 

@@ -513,7 +513,7 @@ function drawMissileTruck(ctx: CanvasRenderingContext2D, g: Game, th: Threat): v
   const up = erectorUp(th);
   const loaded = (f?.n ?? 0) > 0 && st !== 2;
   drawTruckMark(ctx, g, th);
-  if (st === 1 && !((f?.wait ?? 0) > 0)) drawRaiseRing(ctx, g, th, Math.min(1, (f?.t ?? 0) / FOE.missileTruck.raise), 44);
+  if (st === 1) drawRaiseRing(ctx, g, th, Math.min(1, (f?.t ?? 0) / (f?.lift ?? FOE.missileTruck.raise)), 44);
   ctx.save();
   ctx.translate(th.x, th.y);
   ctx.rotate(th.heading);
