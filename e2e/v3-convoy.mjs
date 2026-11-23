@@ -3,12 +3,14 @@
 // Disperse are cut, and Hold is on Sowers' Reach only, where mines drift
 // across the lane). Expects `vite preview` (or dev) at BASE_URL. On a
 // landscape phone, by touch:
-// - under the Tactical policy The Strait has no command: the foot of the rail
-//   shows nothing (round 16: no "CONVOY sails itself");
-// - on Sowers' Reach, Hold is the big button at the foot of the rail, a
-//   thumb's size;
+// - under the Tactical policy The Strait has no command: the dock shows
+//   nothing (round 16: no "CONVOY sails itself");
+// - round 16, full width: no left rail; the battlefield starts at the
+//   screen's left edge and the right rail is the only column kept;
+// - on Sowers' Reach, Hold is the big button in the dock, over the
+//   battlefield's lower-left corner, a thumb's size;
 // - a touch on it gives it and never fires the gun; a touch on the water
-//   beside the rail fires and never gives a command;
+//   right beside it fires and never gives a command;
 // - Hold (at 874 x 402 and 667 x 375): every ship afloat stops and stays
 //   stopped, the button and the board say so, it ends by itself, and a press
 //   while it cools down is refused with the reason on the screen;
@@ -175,7 +177,7 @@ try {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
     return { policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length, foot: document.querySelector('.v3-commands').children.length, note: !!document.querySelector('.v3-convoy-auto'), formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider') };
   });
-  check(strait.policy === 'tactical' && strait.cmds === 0 && strait.foot === 0 && !strait.note && !strait.formation && !strait.flow, `The Strait's production setup: no command, and the foot of the rail shows nothing (no "sails itself") (${JSON.stringify(strait)})`);
+  check(strait.policy === 'tactical' && strait.cmds === 0 && strait.foot === 0 && !strait.note && !strait.formation && !strait.flow, `The Strait's production setup: no command, and the dock shows nothing (no "sails itself") (${JSON.stringify(strait)})`);
   await page.screenshot({ path: `${OUT_DIR}/strait-tactical-none.png` });
   await open(page, 'lab=map-harbor&seed=7');
   const harbor = await page.evaluate(() => ({ policy: window.__v3.game().convoy?.setup.policy, cmds: document.querySelectorAll('.v3-command').length }));
@@ -186,10 +188,17 @@ try {
   const rail = await page.evaluate(() => {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
     const btns = [...document.querySelectorAll('.v3-command')].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.command, w: r.width, h: r.height, top: r.top, bottom: r.bottom, label: b.textContent, aria: b.getAttribute('aria-label') }; });
-    const railBox = document.querySelector('.v2-rail-left').getBoundingClientRect();
-    return { btns, formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), cls: document.querySelector('.v2-root').className, h: innerHeight, railRight: railBox.right };
+    const hb = document.querySelector('[data-command="hold"]').getBoundingClientRect();
+    const tl = window.__v3.toClient(0, 0);
+    const br = window.__v3.toClient(1600, 900);
+    const right = document.querySelector('.v2-rail-right').getBoundingClientRect();
+    return { btns, formation: vis('.v2-formation-btn'), flow: vis('[data-flow]'), cls: document.querySelector('.v2-root').className, h: innerHeight, w: innerWidth, holdRight: hb.right, hold: { l: hb.left, b: hb.bottom }, map: { l: tl.x, t: tl.y, r: br.x, b: br.y }, rightRail: { l: right.left, r: right.right } };
   });
-  check(rail.btns.map((b) => b.id).join() === 'hold' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls) && /convoy-command/.test(rail.cls), `Sowers' Reach under Tactical: Hold is the big button at the foot of the rail (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
+  check(rail.btns.map((b) => b.id).join() === 'hold' && !rail.formation && !rail.flow && /convoy-tactical/.test(rail.cls) && /convoy-command/.test(rail.cls), `Sowers' Reach under Tactical: Hold is the big button in the dock (${rail.btns.map((b) => b.id).join()}; formation ${rail.formation}, flow ${rail.flow})`);
+  // Round 16, full width: no dead strip on the left. The battlefield starts
+  // at the screen's edge and runs to the right rail; Hold sits over its
+  // lower-left corner.
+  check(Math.abs(rail.map.l) < 0.5 && Math.abs(rail.map.r - rail.rightRail.l) < 0.5 && Math.abs(rail.rightRail.r - rail.w) < 0.5 && rail.hold.l >= rail.map.l + 4 && rail.hold.l < rail.map.l + 24 && rail.hold.b <= rail.map.b && rail.hold.b > rail.map.b - 24, `full width: the battlefield runs from the left edge to the right rail, and Hold sits in its lower-left corner (${JSON.stringify({ map: rail.map, rightRail: rail.rightRail, hold: rail.hold })})`);
   check(rail.btns.every((b) => b.w >= 44 && b.h >= 44 && b.top >= 0 && b.bottom <= rail.h), `the button is a thumb's size and on the screen (${rail.btns.map((b) => `${b.id} ${b.w.toFixed(0)}x${b.h.toFixed(0)}`).join(', ')})`);
   check(/Hold: Every ship stops where it is \(up to 6 s\)\. Tap again to release\./.test(rail.btns[0].aria ?? ''), `its label says what it does and what it costs ("${rail.btns[0].aria}")`);
 
@@ -199,12 +208,26 @@ try {
   await page.waitForTimeout(250);
   const s1 = await snap(page);
   check(s1.ks.join() === 'hold' && s1.holding && s1.taps === s0.taps && s1.shots === s0.shots, `a touch on Hold gives it, as a logged input, and fires nothing (commands ${s1.ks.join()}; taps ${s0.taps} to ${s1.taps}, shots ${s0.shots} to ${s1.shots})`);
-  // The water right beside the rail: the gun's, never a command's.
-  const edge = await page.evaluate(() => window.__v3.toClient(0, 450));
-  await page.touchscreen.tap(edge.x + 10, hold.y);
+  // The field right beside the button: the gun's, never a command's.
+  await page.touchscreen.tap(rail.holdRight + 12, hold.y);
   await page.waitForTimeout(80);
   const s3 = await snap(page);
-  check(edge.x + 10 - rail.railRight < 24 && s3.taps === s1.taps + 1 && s3.ks.length === s1.ks.length, `a touch on the water ${(edge.x + 10 - rail.railRight).toFixed(0)} px from the rail is a tap on the water, not a command (taps ${s1.taps} to ${s3.taps})`);
+  check(s3.taps === s1.taps + 1 && s3.ks.length === s1.ks.length, `a touch on the field 12 px right of the button is a tap on the field, not a command (taps ${s1.taps} to ${s3.taps})`);
+  // Round 16, full width: a touch maps to the world by the new layout, worked
+  // out here on its own (not through the game's toClient): at 874 x 402 with
+  // no insets the 1600 x 900 field is height-bound (402 / 900) and starts at
+  // the screen's left edge. A touch on a live threat lands on it.
+  const k = 402 / 900;
+  const foe = await page.evaluate(() => {
+    const t = window.__v3.game().threats.find((t) => !t.dead && t.x > 150 && t.x < 1450 && t.y > 80 && t.y < 820);
+    return t ? { x: t.x, y: t.y } : null;
+  });
+  if (foe) {
+    await page.touchscreen.tap(foe.x * k, foe.y * k);
+    await page.waitForTimeout(40);
+    const last = await page.evaluate(() => window.__v3.log().commands.filter((c) => c[1] === 't').at(-1));
+    check(Math.hypot(last[2] - foe.x, last[3] - foe.y) < 6, `a touch on a threat at (${foe.x.toFixed(0)}, ${foe.y.toFixed(0)}) lands on it in the world (${last[2]}, ${last[3]})`);
+  } else fail('no live threat on the field to touch');
   // Paused: the button does nothing.
   await page.tap('.v2-pause');
   await page.waitForTimeout(150);
@@ -260,7 +283,7 @@ try {
       const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
       return { formation: vis('.v2-formation-btn'), flow: vis('[data-flow], .v2-slider'), note: !!document.querySelector('.v3-convoy-auto'), foot: document.querySelector('.v3-commands').children.length, cmds: document.querySelectorAll('.v3-command').length, policy: window.__v3.game().convoy?.setup.policy ?? 'current' };
     });
-    check(r.policy === policy && !r.formation && !r.flow && !r.note && r.foot === 0 && r.cmds === 0, `${policy}: nothing in the rail for the convoy (${JSON.stringify(r)})`);
+    check(r.policy === policy && !r.formation && !r.flow && !r.note && r.foot === 0 && r.cmds === 0, `${policy}: nothing in the dock for the convoy (${JSON.stringify(r)})`);
     if (policy === 'auto') await page.screenshot({ path: `${OUT_DIR}/strait-auto.png` });
   }
 
@@ -282,15 +305,15 @@ try {
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
 
-  // ---- A smaller phone: the rail still fits ----
+  // ---- A smaller phone: the dock still fits ----
   const small = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   await open(small, 'lab=map-sowers&seed=7');
   const fit = await small.evaluate(() => {
-    const kids = [...document.querySelector('.v2-rail-left').children].filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getBoundingClientRect());
+    const kids = [...document.querySelector('.v3-dock-col').children].filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getBoundingClientRect());
     const overlap = kids.some((a, i) => kids.some((b, j) => j > i && a.bottom > b.top + 1 && b.bottom > a.top + 1 && a.right > b.left + 1 && b.right > a.left + 1));
     return { overlap, bottom: Math.max(...kids.map((k) => k.bottom)), h: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth };
   });
-  check(!fit.overlap && fit.bottom <= fit.h && fit.sw <= fit.iw, `at 667 x 375 the rail's parts fit without overlapping (${JSON.stringify(fit)})`);
+  check(!fit.overlap && fit.bottom <= fit.h && fit.sw <= fit.iw, `at 667 x 375 the dock's parts fit without overlapping (${JSON.stringify(fit)})`);
   await small.screenshot({ path: `${OUT_DIR}/sowers-tactical-667.png` });
   await holdCheck(small, 'sowers-holding');
   await small.close();
