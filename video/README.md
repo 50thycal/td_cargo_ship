@@ -42,6 +42,13 @@ Waves are random, so each clip is recorded several times (`VIDEO_TAKES`, default
 take with the most real hits and the least dead time is kept, the way you would pick from raw footage.
 The caption start is set after the fact, so the clip opens on a few seconds of ordinary play.
 
+## Smooth capture
+
+Playwright's built-in video is a fixed 25 fps screen grab, which looks steppy on fast scenes (about 18% exact
+repeat frames after conversion to 30 fps). A clip can set `capture: 'cdp'` (or run with `VIDEO_CAPTURE=cdp`) to
+record Chromium's own frame stream instead, at about 60 fps with real timestamps, and the clip is encoded at 60 fps
+(0% repeats). The game itself holds 60 fps headless; the stutter was only ever in the recorder. `convoy` uses it.
+
 ## How it works
 
 `make-clips.mjs` plays the real game in headless Chromium with real mouse clicks (the

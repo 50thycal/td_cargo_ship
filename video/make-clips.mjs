@@ -216,6 +216,7 @@ const CLIPS = {
   convoy: {
     title: 'Defend the convoy',
     takes: 4,
+    capture: 'cdp',
     async play(page, t) {
       await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
       t.start = t.now();
@@ -384,17 +385,40 @@ async function serve() {
   throw new Error('preview server did not start');
 }
 
+/**
+ * Two ways to capture the page:
+ *  - Playwright's recordVideo: a fixed 25 fps screen grab (simple, but steppy on fast motion).
+ *  - 'cdp': Chromium's own frame stream (about 60 fps, each frame with its real timestamp),
+ *    laid out on a constant 60 fps timeline by ffmpeg. Smooth; use it for fast scenes.
+ * A clip picks with `capture: 'cdp'`, or set VIDEO_CAPTURE=cdp for all.
+ */
 async function recordTake(browser, name, clip, take) {
+  const cdpMode = (process.env.VIDEO_CAPTURE ?? clip.capture) === 'cdp';
   const dir = join(WORK, `${name}-${take}`);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir, size: { width: W, height: H } } });
+  const ctx = await browser.newContext({ viewport: { width: W, height: H }, ...(cdpMode ? {} : { recordVideo: { dir, size: { width: W, height: H } } }) });
   const page = await ctx.newPage();
   const t0 = Date.now();
   const now = () => (Date.now() - t0) / 1000;
   const t = { now, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+
+  const frames = [];
+  let cdp = null;
+  if (cdpMode) {
+    mkdirSync(join(dir, 'f'), { recursive: true });
+    cdp = await ctx.newCDPSession(page);
+    cdp.on('Page.screencastFrame', (f) => {
+      const file = join(dir, 'f', `${String(frames.length).padStart(6, '0')}.jpg`);
+      writeFileSync(file, Buffer.from(f.data, 'base64'));
+      frames.push({ file, ts: f.metadata.timestamp });
+      cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
+    });
+    await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, everyNthFrame: 1 });
+  }
+
   let failed = null;
   try {
     await clip.play(page, t);
@@ -402,11 +426,28 @@ async function recordTake(browser, name, clip, take) {
     failed = e;
   }
   const end = t.stopAt ?? now();
-  const video = page.video();
-  await ctx.close();
-  const raw = join(dir, `${name}.webm`);
-  renameSync(await video.path(), raw);
-  return { raw, t, end, failed, errors, take };
+  let raw;
+  let fps = 30;
+  let offset = 0; // seconds between the director's clock and the first captured frame
+  if (cdpMode) {
+    await cdp.send('Page.stopScreencast').catch(() => {});
+    await ctx.close();
+    if (frames.length < 10) throw new Error('screencast produced no frames');
+    // A constant 60 fps timeline: each frame is held until the next one arrives.
+    const list = frames.map((f, i) => `file '${f.file}'\nduration ${(((frames[i + 1]?.ts ?? f.ts + 1 / 60) - f.ts) || 1 / 60).toFixed(5)}`).join('\n') + `\nfile '${frames.at(-1).file}'\n`;
+    writeFileSync(join(dir, 'list.txt'), list);
+    raw = join(dir, `${name}.mkv`);
+    ffmpeg(['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', 'fps=60', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
+    rmSync(join(dir, 'f'), { recursive: true, force: true });
+    fps = 60;
+    offset = frames[0].ts - t0 / 1000;
+  } else {
+    const video = page.video();
+    await ctx.close();
+    raw = join(dir, `${name}.webm`);
+    renameSync(await video.path(), raw);
+  }
+  return { raw, t, end, failed, errors, take, fps, offset };
 }
 
 /** Record `clip.takes` real runs (the game's waves are random) and keep the best-scoring one. */
@@ -450,25 +491,25 @@ function ffmpeg(args) {
   if (r.status) throw new Error('ffmpeg failed');
 }
 
-function encode(name, { raw, t, end }) {
+function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
   const start = Math.max(0, t.start - 0.1);
   t.cues = t.cues.filter((c) => c.at >= start); // nothing from before the clip starts
   const dur = Math.min(end - start + 0.6, 25);
   const tail = Math.max(0, dur - 0.6);
   // Silent AAC track: X's uploader and some players reject video with no audio stream.
   const silent = ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100'];
-  const enc = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-r', '30', '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart'];
+  const enc = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-r', String(fps), '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart'];
   const fadeOut = `fade=t=out:st=${tail.toFixed(2)}:d=0.6`;
-  const base = ['-ss', start.toFixed(2), '-t', dur.toFixed(2), '-i', raw];
+  const base = ['-ss', Math.max(0, start - offset).toFixed(3), '-t', dur.toFixed(2), '-i', raw];
 
   // 16:9
   const land = captionFilters(t.cues, start, { headSize: 40, subSize: 24, yHead: 'h*0.80', ySub: 'h*0.80+62', boxPad: 14 });
-  ffmpeg([...base, ...silent, '-vf', ['fps=30', ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
+  ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
 
   // 9:16: sharp game in the middle band over a blurred, zoomed copy of itself.
   const vert = captionFilters(t.cues, start, { headSize: 54, subSize: 34, yHead: 'h*0.18', ySub: 'h*0.18+100', boxPad: 20 });
   const graph = [
-    `[0:v]fps=30,split=2[a][b]`,
+    `[0:v]fps=${fps},split=2[a][b]`,
     `[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:4,eq=brightness=-0.12[bg]`,
     `[b]scale=1080:-2[fg]`,
     `[bg][fg]overlay=0:(H-h)/2[v0]`,
