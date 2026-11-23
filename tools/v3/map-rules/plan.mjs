@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-22',
-  headline: 'All 20 maps are rebuilt. Chapter 4 is done: The Coves, The Delta, Dunmar Crossing, The Tide (your low-tide fix: the tide now moves and ships leave the flats) and The Citadel, all in the Test Lab → Ready to test. Next: your call on what comes after the maps (Needs you), and your play of the new maps.',
+  updated: '2026-11-23',
+  headline: 'All 20 maps are rebuilt. Building from your notes: Saltgate’s boss redone as a Missile Truck parade (trucks enter every 1–3 s and fire on the move in patterns), and the old convoy controls (slider, formation button, “sails itself”) gone from every mode in favour of the big button; and in the Test Lab, your Armory editor (levels set by the map’s chapter: 1–3 for chapter 1, 2–4 for chapter 2, 3–5, then 4–5), every card unlocked, and each map’s change history in its notes. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -159,6 +159,8 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-23', what: 'Your answer built: the ship-flow slider, the formation button and its picker are gone from Campaign and Free Play, and “CONVOY sails itself” is gone from the Test Lab. The rail’s foot now shows the big command button where a map has one (Sowers’ Hold) and nothing otherwise. Runs sail the default schedule in Pairs (what a run did when you left the controls alone), so new scores sit at ×1.4 points a ship and will read below old bests made at a higher flow. Raid cards say only what is coming. UI only: old runs and Continue still load.' },
+    { date: '2026-11-23', what: 'Your Saltgate run read: you reached the boss and lost runs 2 and 3 to the trucks’ ballistic missiles (6 of 7 ships), out of ammo; your note says redo it. Building (log v62): the Missile Truck parade. A column of trucks drives left to right along the road without stopping, a new one every 1–3 s, each firing ballistic missiles on the move in patterns that build over the three rounds (ripples, synced pairs, a rolling barrage), tuned so the ammo lasts. Also building, from your answer: the ship-flow slider, the formation button and “CONVOY sails itself” come out of every mode; the big convoy button is the one control. Your Rig Field run: Keep, fun 5, a bit hard.' },
     { date: '2026-11-22', what: 'Merged #226 (log v61). The Tide rebuilt, the last map (Test Lab, log v61), with your note fixed. What was broken: the tide snapped from high to low in one frame, and ships already on the flats sailed on across dry sand. Now the tide falls over 4 s and rises over 3 s; sand grows from the shore behind a line of surf; every ship on the flats crosses to the deep channel the moment the tide starts to fall (it keeps sailing while it crosses); the gauge sits mid-map and warns “THE TIDE TURNS · N s” 5 s ahead. A test checks every step of whole runs: no hull ever on exposed sand, none in the flats at low water, none stalled; with the fix off it fails in 18 s. This is the mechanic itself, so the campaign’s Tide gets it too. The question: at low water every ship crowds into the deep channel under the guns. Signature, the ebb strike: cluster missiles at the crowd at low water. Boss, Low Water: the tide runs out early and stays out while the silos fire converging strikes at the bunched convoy. Bot with your usual Armory: wins 52%, boss rounds 0.7 / 1.3 / 2.1. Its best kits are all its own (Gravity Well leads; no Air Strike).' },
     { date: '2026-11-22', what: 'Merged #225 (log v60). The Citadel of Vey rebuilt, the finale (Test Lab, log v60). The question: the Citadel fires the shortest flights on the map over the narrows where ships deliver, and its shield rises again every wave. Three generators (3 shots each) drop the shield; 14 more shots silence the Citadel for that wave. Spend the shots, or shoot what’s coming? Structures count shots, not damage (the Rig Field rule), so area weapons can’t shred them. Signature from wave 4, under the dome: what the Citadel fires can’t be shot inside its dome while the shield stands (a spinning cyan ring). Boss, The Last Stand: each round the shield rises again and grand salvos of three missiles hit the lead ship in the narrows (GRAND SALVO lit 2.5 s ahead); silencing the Citadel stops them. Bot with your usual Armory: wins 49% (a point under the band), boss rounds 0.3 / 1.2 / 2.4, no cliff. Short: the bot silences the Citadel almost every wave, so the signature is only 6% of hits (31% in the boss). Air Strike again leads its best kits.' },
     { date: '2026-11-22', what: 'Merged #224 (log v58). Dunmar Crossing rebuilt (Test Lab, log v58). The question: two convoys pass each other, outbound in the north lane and inbound in the south. Which lane do you cover, and when they pass, which ship? Signature from wave 4, spotters at the crossing: Lure Beacons rise between the lanes where the next two ships will pass. Each takes four hits of your own (helpers can’t sink it), marks the nearest ship and calls three shells on it. Boss, Beacon Line: lines of spotters rise together and fire volleys off both shores. Bot with your usual Armory: wins 53%, boss rounds 0.5 / 1.4 / 2.2; the latest Armory wins only 8% (it has no Quick Reload, and the spotters want your taps). The signature is 15% of hits, twice the Coves and the Delta. Its best kits share nothing with the other 12 rebuilt maps.' },
@@ -224,12 +226,6 @@ export const STATUS = {
 export const NEEDS = [
 
   {
-    id: 'r14-play-missiles',
-    kind: 'item',
-    title: 'Play Saltgate’s new boss: the Missile Truck parade',
-    text: 'Test Lab → Ready to test → Saltgate Canal, then Skip to boss from the pause menu to get straight there. Missile trucks drive in nose to tail, raise their missiles (red ring and a dashed line to the ship), and lob ballistic missiles at the ships held at the lock gates; round 3 has up to 7 missiles in the air at once. Kill the trucks as they raise, or shoot the missiles. Is it intense and different enough from the rocket trucks?',
-  },
-  {
     id: 'r15-play-dreadnought',
     kind: 'item',
     title: 'Play the rebuilt Dreadnought, chapter 3’s finale (Test Lab → Ready to test)',
@@ -246,13 +242,6 @@ export const NEEDS = [
     kind: 'item',
     title: 'Play the Sowers and the Rig Field again with your notes built in (Test Lab → Ready to test, v55)',
     text: 'Sowers: mines stay hidden until about 2.5 s before a ship reaches them; the big Hold button bottom left glows NOW! when holding saves a ship. Rigs: each rig shows its shots left (32 standing); watch the new tug tow. Look for: is 2.5 s enough warning on your phone? Do the rigs feel sturdy but fair?',
-  },
-  {
-    id: 'r16-rail-leftovers',
-    kind: 'question',
-    title: 'Campaign and Free Play still have the ship-flow slider and the formation button, and lab maps with no command show “CONVOY sails itself” at the foot of the rail. Keep them, drop the label, or fold them into the big button?',
-    text: 'They are convoy controls, not commands, so they were left alone this round.',
-    options: ['Keep both as they are', 'Drop the “sails itself” label only', 'Fold the slider and formation into the big button too'],
   },
   {
     id: 'r16-play-coves',
@@ -298,11 +287,35 @@ export const NEEDS = [
     text: 'The rebuilt maps run only in the Test Lab. The plan after the maps, in my order: (1) Rollout: move the rebuilt maps into the campaign chapter by chapter as you OK them (they replace the old waves and bosses). (2) An OP-combo pass: Air Strike (+ Flak) leads the bot’s best kits on most maps; give it real counters. (3) Armory balance: the latest Armory wins 8–15% on the chapter 4 maps against 50%+ for your usual one. (4) Boss tuning: most bosses sit under the target loss a round. (5) Leftovers: re-sweep the kits on the Tide and the Citadel, your open play notes. Which first?',
     options: ['Rollout first (in that order)', 'Air Strike / OP combos first', 'Armory balance first', 'Wait for my play of chapter 4 first'],
   },
+  {
+    id: 'r17-rail-check',
+    kind: 'item',
+    title: 'Check the cleaned-up rail (slider and formation button gone)',
+    text: 'Play a campaign map and a lab map. The left rail is now empty on most maps (only Sowers shows HOLD). Is a bare strip fine, or should it shrink or show something? Note: the campaign’s old Sowers has no Hold; it comes with the rollout.',
+  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r16-rail-leftovers',
+    kind: 'question',
+    choice: 1,
+    note: "Drop the slider and all that old stuff; go with the new big button like the canal map. Building: slider, formation button and “CONVOY sails itself” gone from every mode.",
+    at: '2026-11-23',
+    title: 'Campaign and Free Play still have the ship-flow slider and the formation button, and lab maps with no command show “CONVOY sails itself” at the foot of the rail. Keep them, drop the label, or fold them into the big button?',
+    text: '',
+  },
+  {
+    id: 'r14-play-missiles',
+    kind: 'item',
+    verdict: 'change',
+    note: "“This boss is really bad.” Wants a parade: a row of trucks driving left to right across the road, a new one every 1–3 s at random, each firing missiles on the move without stopping, the whole column firing in elaborate patterns. Being rebuilt (log v62).",
+    at: '2026-11-23',
+    title: 'Play Saltgate’s new boss: the Missile Truck parade',
+    text: '',
+  },
   {
     id: 'r14-play-battery',
     kind: 'item',

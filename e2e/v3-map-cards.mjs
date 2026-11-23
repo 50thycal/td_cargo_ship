@@ -305,16 +305,17 @@ try {
   const sh0 = await page.evaluate(() => {
     const p = document.querySelector('[data-lab-production]');
     const on = (k) => [...document.querySelectorAll(`[data-${k}]`)].filter((b) => b.classList.contains('on')).map((b) => b.textContent);
-    return { prod: p.dataset.labProduction, text: p.textContent, reset: document.querySelector('[data-lab-reset]').disabled, plays: on('lab-plays'), convoy: on('lab-convoy'), enc: on('lab-encounters'), slice: document.querySelector('.v3-lab-slice').hidden, wave: !!document.querySelector('.v3-lab-wave')?.offsetParent };
+    return { prod: p.dataset.labProduction, text: p.textContent, reset: document.querySelector('[data-lab-reset]').disabled, plays: on('lab-plays'), convoy: document.querySelectorAll('[data-lab-convoy]').length, enc: on('lab-encounters'), slice: document.querySelector('.v3-lab-slice').hidden, wave: !!document.querySelector('.v3-lab-wave')?.offsetParent };
   });
-  check(sh0.prod === '1' && /^Production setup/.test(sh0.text) && sh0.reset && sh0.plays.join() === 'Full map · 13 waves' && sh0.convoy.join() === 'Commands (none here)' && sh0.enc.join() === 'Authored encounters' && sh0.slice && !sh0.wave, `the sheet marks the production setup; the lab's wave, kit, mix and length are folded away (${JSON.stringify(sh0)})`);
+  check(sh0.prod === '1' && /^Production setup/.test(sh0.text) && sh0.reset && sh0.plays.join() === 'Full map · 13 waves' && sh0.convoy === 0 && sh0.enc.join() === 'Authored encounters' && sh0.slice && !sh0.wave, `the sheet marks the production setup; the lab's wave, kit, mix and length are folded away (${JSON.stringify(sh0)})`);
   await shot(page, 'setup-production');
-  await page.tap('[data-lab-convoy="current"]');
+  // Round 16: no Convoy row on the sheet; the waves are the change here.
+  await page.tap('[data-lab-encounters="shared"]');
   const sh1 = await page.evaluate(() => ({ prod: document.querySelector('[data-lab-production]').dataset.labProduction, text: document.querySelector('[data-lab-production] b').textContent, reset: document.querySelector('[data-lab-reset]').disabled }));
-  check(sh1.prod === '0' && sh1.text === 'Changed from the production setup' && !sh1.reset, `changing the convoy leaves the production setup, and Reset is offered (${JSON.stringify(sh1)})`);
+  check(sh1.prod === '0' && sh1.text === 'Changed from the production setup' && !sh1.reset, `changing the waves leaves the production setup, and Reset is offered (${JSON.stringify(sh1)})`);
   await page.tap('[data-lab-reset]');
-  const sh2 = await page.evaluate(() => ({ prod: document.querySelector('[data-lab-production]').dataset.labProduction, convoy: [...document.querySelectorAll('[data-lab-convoy].on')].map((b) => b.dataset.labConvoy) }));
-  check(sh2.prod === '1' && sh2.convoy.join() === 'tactical', `Reset to production setup puts it back in one tap (${JSON.stringify(sh2)})`);
+  const sh2 = await page.evaluate(() => ({ prod: document.querySelector('[data-lab-production]').dataset.labProduction, enc: [...document.querySelectorAll('[data-lab-encounters].on')].map((b) => b.dataset.labEncounters) }));
+  check(sh2.prod === '1' && sh2.enc.join() === 'authored', `Reset to production setup puts it back in one tap (${JSON.stringify(sh2)})`);
   await page.tap('[data-lab-plays="slice"]');
   const sh3 = await page.evaluate(() => ({ slice: document.querySelector('.v3-lab-slice').hidden, prod: document.querySelector('[data-lab-production]').dataset.labProduction }));
   check(!sh3.slice && sh3.prod === '0', 'the Quick slice shows the lab\'s wave, kit, mix and length, and is not the production setup');
@@ -483,7 +484,7 @@ try {
   // ---- The bare link ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-harbor&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
-  await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
+  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical', null, { timeout: 8000 });
   const s5 = await runState(page);
   check(s5.map === 'harbor' && s5.wave === 1 && s5.plays === 'full' && s5.policy === 'tactical' && s5.cmds.length === 0 && s5.enc === 4 && s5.count === 'full map · wave 1 of 10', `the bare link v3.html?lab=map-harbor opens the full map with its encounters and no Hold (round 11) (${JSON.stringify({ wave: s5.wave, cmds: s5.cmds, enc: s5.enc, count: s5.count })})`);
   // Chapter 1: the bare link to the Kesh Hook and Lee of Marrow opens the
@@ -493,7 +494,7 @@ try {
   for (const map of ['kesh', 'marrow', 'island', 'behemoth', 'needle', 'archipelago', 'saltgate', 'battery', 'rigs', 'dreadnought', 'delta', 'crossing', 'citadel']) {
     await page.goto(`${BASE_URL}/v3.html?lab=map-${map}&seed=7`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.playing.lab-on');
-    await page.waitForFunction(() => !!document.querySelector('.v3-convoy-auto'), null, { timeout: 8000 });
+    await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical', null, { timeout: 8000 });
     const sk = await runState(page);
     check(sk.map === map && sk.wave === 1 && sk.plays === 'full' && sk.policy === 'tactical' && sk.cmds.length === 0 && sk.enc === 4 && sk.count === 'full map · wave 1 of 10' && sk.log.encounters === 4 && sk.log.lab?.config?.production === true, `the bare link v3.html?lab=map-${map} opens the full map with its encounters and no command (${JSON.stringify({ wave: sk.wave, policy: sk.policy, cmds: sk.cmds, enc: sk.enc, count: sk.count })})`);
   }

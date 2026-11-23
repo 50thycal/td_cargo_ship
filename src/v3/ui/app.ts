@@ -7,7 +7,6 @@ import {
   CARRIER,
   DEFAULT_SPEED,
   DEV_SPEED_STEPS,
-  FLOW_STEPS,
   RULES,
   SPEED_STEPS,
   TAP_RADIUS_PX,
@@ -17,7 +16,6 @@ import {
   type ThreatKind,
   type PickupKind,
 } from '../data/config';
-import { FORMATIONS, FORMATION_ORDER, type FormationId } from '../data/formations';
 import { CHAPTERS, MAPS, MAP_ORDER, chapterOf, type MapId } from '../data/maps';
 import {
   AB,
@@ -110,13 +108,13 @@ import { downloadLog, downloadTelemetry, flushUnsent, localLogs, logChannel, sto
 import { reconcile, sidecarDigest, type TelemetrySidecar } from '../sim/telemetry';
 import type { MapLabMemory } from './mapLab';
 import { COMMANDS, CONVOY, type CommandId, type ConvoySetup } from '../data/convoy';
-import { applyConvoy, commandState, convoyCommands, formationLocked, holdable, refusalText } from '../sim/convoy';
+import { applyConvoy, commandState, convoyCommands, holdable, refusalText } from '../sim/convoy';
 import { ENCOUNTERS, arcGroups, beatText, calloutsOn, encountersFor, pairBeatText, setupVersion, versionLabel, waveFire, waveScale, type EncounterSetup } from '../data/encounters';
 import { enemyPair } from '../data/pairs';
 import { DEV_ARMORY, DEV_ORDER, DEV_PRESETS, devEnabled, firstPlayedWave, setDevEnabled, loadDevSettings, saveDevSettings, type DevArmory } from './dev';
 import { armoryArtSvg, cardArtSvg } from './cardArt';
 import { ICON_COLOR, upgradeIcon } from './icons';
-import { stepSlider, type StepSlider } from './rail';
+import { type StepSlider } from './rail';
 import { AudioEngine } from '../audio/engine';
 import { CUE_IDS, LOOP_CUES, MUSIC_CUES, type CueId, type LoopCue, type MusicCue } from '../audio/cues';
 import { SOUNDS } from '../audio/manifest';
@@ -236,8 +234,8 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
  *  a new type, so only on a fresh save's first campaign runs. */
 const FIRST_TIPS: Record<number, [SeenId, string, string]> = {
   1: ['tip:basics', 'WAVE 1', 'Tap threats to shoot them down. Hold to keep firing.'],
-  2: ['tip:ships', 'MORE SHIPS, MORE POINTS', 'Slide SHIPS (left) up: ships come faster and each scores more.'],
-  3: ['tip:formations', 'FORMATIONS', 'Tap Pairs (top left) to sail in Column, Box or Spread. Each raid card says which helps.'],
+  // Round 16: the SHIPS slider and the formation button are gone, and their
+  // tips (waves 2 and 3, 'tip:ships' and 'tip:formations') with them.
 };
 
 /** The Call-outs setting, as Settings shows it. */
@@ -251,7 +249,7 @@ const CALLOUT_BLURB: Record<CalloutLevel, string> = {
 const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   kesh: ['THE HOOK', 'Ships turn north round the cape. Lead your shots round the bend.'],
   behemoth: ['SUPERTANKER', 'One a wave. Eight hits sink it, and it counts as three ships. Get it home.'],
-  needle: ['SINGLE FILE', 'The convoy queues at the gap. Column formation needn\'t merge.'],
+  needle: ['SINGLE FILE', 'The convoy queues at the gap, single file. Guard the queue.'],
   saltgate: ['LOCK GATES', 'Ships wait in each chamber while it fills. Guard them.'],
   battery: ['SHORE BATTERY', 'Two allied guns fire on their own. A hit knocks one out for a while.'],
   sowers: ['MINES', 'Mines drift across the lane on the current. Clear them before a ship sails in.'],
@@ -313,9 +311,10 @@ export class App {
   private boardMusic: MusicCue | null | undefined = undefined;
   private leftRail = el('div', 'v2-rail v2-rail-left');
   private rightRail = el('div', 'v2-rail v2-rail-right');
-  private formationPop = el('div', 'v2-formations');
-  /** The Map & Convoy Lab's tactical commands (a lab run under policy D):
-   *  one button each, in place of the formation button and the flow slider. */
+  /** The map's convoy command (round 15: one big button at the foot of the
+   *  left rail, Hold on Sowers' Reach). Every game type: a map with no
+   *  command leaves the foot of the rail empty (round 16: the ship-flow
+   *  slider, the formation button and "CONVOY sails itself" are gone). */
   private commandBox = el('div', 'v3-commands');
   private commandBtns: { id: CommandId; el: HTMLButtonElement; state: HTMLElement; bar: HTMLElement; key: string }[] = [];
   private commandsTaught = new Set<CommandId>();
@@ -323,7 +322,6 @@ export class App {
    *  reason, or what a Hold stopped (round 9: a shake alone said nothing). */
   private commandSays = el('div', 'v3-command-says');
   private commandSaysT = 0;
-  private formationBtn = button('', 'v2-formation-btn', () => this.toggleFormations());
   private pauseBtn = button('II', 'v2-pause', () => this.togglePause());
   /** Playtest notes: the pause menu's "Add a note" and "Rate last volley"
    *  (round 15: the rail's NOTE / RATE button is gone, in every game type;
@@ -342,7 +340,6 @@ export class App {
   private timersKey = '';
   /** Watch mode: who is playing; tap to take over or hand back. */
   private controlBtn = button('', 'v2-control', () => this.setControl(this.control === 'bot' ? 'you' : 'bot'));
-  private flowSlider!: StepSlider;
   private speedSlider!: StepSlider;
   /** V3: the weapons you hold, at the bottom of the right rail — nothing to
    *  press (playtest round 2): it shows what can drop and which one is
@@ -418,14 +415,10 @@ export class App {
       return res;
     },
     pick: (id, replace) => this.rec?.pick(id, replace),
-    flow: (v) => {
-      this.rec?.flow(v);
-      this.flowSlider.set(v);
-    },
-    formation: (id) => {
-      this.rec?.formation(id);
-      this.syncFormation();
-    },
+    // No rail control for these any more (round 16); the bots' own sweeps
+    // leave them alone outside a lab policy that offers them (sim/mimic.ts).
+    flow: (v) => this.rec?.flow(v),
+    formation: (id) => this.rec?.formation(id),
     pace: (v) => this.rec?.pace(v),
     goldBomb: () => !!this.rec?.goldBomb(),
   };
@@ -979,30 +972,18 @@ export class App {
   // Rails
 
   private buildRails(): void {
-    this.flowSlider = stepSlider(
-      FLOW_STEPS.length,
-      0,
-      (s) => `×${FLOW_STEPS[s].mult}`,
-      (s) => this.rec?.flow(s),
-    );
-    const flowHint = el('div', 'v2-rail-hint', 'more ships, more points');
-    const flowLabel = el('div', 'v2-rail-label', 'SHIPS');
-    // The Map & Convoy Lab hides today's controls under a policy that
-    // leaves them to the map (see syncConvoy).
-    flowLabel.dataset.flow = '1';
-    this.flowSlider.el.dataset.flow = '1';
-    flowHint.dataset.flow = '1';
     // Round 15 (the player: "remove the command and notes buttons on the
     // left in every game type ... the new buttons on the bottom left will
     // replace command options"): no note button in the rail (the pause menu
     // has "Add a note"), and a map's convoy command is one big button at the
     // bottom of the rail (commandBox, laid out there by style.css), which
     // glows when it is the moment for it (commandAdvised).
+    // Round 16 (the player: "Drop the slider and all that old stuff"): no
+    // ship-flow slider or formation button in any game type. The ships sail
+    // the run's schedule and formation (the campaign's DEFAULT_FLOW in
+    // Pairs; a lab map's own convoy), and the big button is the one convoy
+    // control, where the map has a command.
     this.leftRail.append(
-      this.formationBtn,
-      flowLabel,
-      this.flowSlider.el,
-      flowHint,
       this.bombBtn,
       this.timers,
       this.commandBox,
@@ -1011,21 +992,6 @@ export class App {
     this.bombBtn.dataset.goldBomb = '1';
     this.bombBtn.setAttribute('aria-label', 'Golden bomb: destroy everything attacking, once a run');
     this.bombBtn.hidden = true;
-    for (const id of FORMATION_ORDER) {
-      const f = FORMATIONS[id];
-      const opt = button('', 'v2-formation-opt', () => {
-        this.rec?.formation(id);
-        this.formationPop.classList.remove('open');
-        this.syncFormation();
-      });
-      opt.dataset.formation = id;
-      const head = el('span', 'v2-formation-head', '');
-      head.append(el('strong', '', f.name), el('em', 'v2-tag-good', f.tags[0]));
-      if (f.tags[1] !== '—') head.append(el('em', 'v2-tag-bad', f.tags[1]));
-      opt.append(formationGlyph(id), head, el('span', '', f.hint));
-      this.formationPop.append(opt);
-    }
-    this.leftRail.append(this.formationPop);
 
     this.speedSlider = this.buildSpeedSlider();
     // V3: the speed slider shrinks to one button that steps through the
@@ -1118,19 +1084,6 @@ export class App {
     const slider = this.buildSpeedSlider();
     this.speedSlider.el.replaceWith(slider.el);
     this.speedSlider = slider;
-  }
-
-  private toggleFormations(): void {
-    this.formationPop.classList.toggle('open');
-    this.syncFormation();
-  }
-
-  private syncFormation(): void {
-    const id = this.game?.formation ?? 'pairs';
-    this.formationBtn.replaceChildren(formationGlyph(id), el('span', '', FORMATIONS[id].name));
-    for (const b of this.formationPop.querySelectorAll<HTMLElement>('.v2-formation-opt')) {
-      b.classList.toggle('active', b.dataset.formation === id);
-    }
   }
 
   private togglePause(): void {
@@ -1380,7 +1333,6 @@ export class App {
   private bindInput(): void {
     this.canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      this.formationPop.classList.remove('open');
       if (this.beat?.kind === 'lost' && (performance.now() - this.beat.t) / 1000 > LOST_SKIP_AFTER) {
         this.finishBeat();
         return;
@@ -1899,12 +1851,10 @@ export class App {
           // A map's own system is a new type too: said the first time the
           // player plays that map, in any mode, not on every run of it.
           const hint = ev.wave === 1 ? MAP_HINT[g.map.id] : undefined;
-          // Playthrough round: the first map teaches the basics and the two
-          // left-rail controls a new player otherwise never learns (on a
-          // phone the slider's own hint is hidden for room). Pause-menu
+          // Playthrough round: the first map teaches the basics. Pause-menu
           // round: how-to, not a new type, so only in the campaign, on the
-          // first map, once per save. (Not under a lab convoy policy: the
-          // slider and formations may be the map's there.)
+          // first map, once per save. (Round 16: the slider and formation
+          // tips went with the controls.)
           const tip = g.map.id === MAP_ORDER[0] && !this.free && !this.labRun && !g.convoy ? FIRST_TIPS[ev.wave] : undefined;
           const basics = tip?.[0] === 'tip:basics' && this.explain(tip[0]);
           // The wave's bell is the sim's own cue (wave.start). The card is
@@ -2184,9 +2134,9 @@ export class App {
       this.audio.ui(raid === g.raids[0] ? 'raid.warning' : 'raid.next');
       this.raidSounded.add(key);
     }
-    // Under a lab policy that leaves the formation to the map, the advice
-    // about formations is dropped: only what is coming.
-    const tip = formationLocked(g) ? look.tip.split(' · ')[0] : look.tip;
+    // Round 16: no formation to change in any game type, so the card says
+    // only what is coming (it used to add which formation answers it).
+    const tip = look.tip;
     this.alerts.notify(`${look.name} INBOUND`, tip, {
       key,
       tone: 'raid',
@@ -3971,8 +3921,6 @@ export class App {
     this.root.classList.add('playing');
     this.root.classList.remove('watching');
     this.hideOverlay();
-    this.flowSlider.set(g.flow);
-    this.syncFormation();
     this.syncConvoy();
     return { wave: g.wave, waveT: g.waveT, phase: g.phase };
   }
@@ -4187,8 +4135,6 @@ export class App {
     this.paused = false;
     this.pauseBtn.textContent = 'II';
     this.root.classList.add('playing');
-    this.flowSlider.set(this.game.flow);
-    this.syncFormation();
     this.syncConvoy();
     this.hideOverlay();
     // The HUD drew the run before until the next frame: the overlay is gone
@@ -4198,10 +4144,10 @@ export class App {
     this.renderHud(this.game);
   }
 
-  /** The Map & Convoy Lab: the left rail for the run's convoy policy.
-   *  Today's controls (and every campaign run): as ever. Automatic: no
-   *  convoy control at all. Formations: no flow slider. Tactical: the map's
-   *  command buttons in their place. */
+  /** The foot of the left rail: the map's convoy command, one big button
+   *  (Tactical on a map with a command: Hold on Sowers' Reach). Every other
+   *  run, in every game type, shows nothing there (round 16: no "CONVOY
+   *  sails itself" note, and no flow slider or formation button). */
   private syncConvoy(): void {
     const g = this.game;
     const policy = g?.convoy?.setup.policy ?? 'current';
@@ -4210,15 +4156,11 @@ export class App {
     this.commandBtns = [];
     this.commandsTaught.clear();
     this.commandSays.classList.remove('on');
-    if (!g || policy === 'current') return;
-    this.formationPop.classList.remove('open');
-    if (policy === 'auto' || (policy === 'tactical' && !convoyCommands(g).length)) {
-      const note = el('div', 'v3-convoy-auto', 'CONVOY');
-      note.append(el('small', '', 'sails itself'));
-      this.commandBox.append(note);
-      return;
-    }
-    for (const id of convoyCommands(g)) {
+    const cmds = g ? convoyCommands(g) : [];
+    // The rail's foot is laid out for the button only when there is one.
+    this.root.classList.toggle('convoy-command', cmds.length > 0);
+    if (!cmds.length) return;
+    for (const id of cmds) {
       const def = COMMANDS[id];
       const b = button('', 'v3-command v3-big-cmd', () => this.giveCommand(id));
       b.dataset.command = id;
@@ -4767,8 +4709,6 @@ export class App {
     this.paused = false;
     this.ripples = [];
     this.root.classList.add('playing', 'replaying');
-    this.flowSlider.set(pb.game.flow);
-    this.syncFormation();
     this.syncConvoy();
     this.hideOverlay();
     this.pauseBtn.textContent = '■';
@@ -4810,8 +4750,6 @@ export class App {
     if (p.lab) {
       this.game = p.lab.g;
       this.lastPhase = p.lab.g.phase;
-      this.flowSlider.set(p.lab.g.flow);
-      this.syncFormation();
       this.syncConvoy();
       this.showLabVerdict(p.lab.ended, p.stop);
       return;
@@ -5008,13 +4946,13 @@ function weaponHint(seconds: number): [string, string] {
 
 const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   drone: 'Drones did the most damage: Flak Cannon or Tesla Arc thin out swarms; Wide Warhead in the Armory helps.',
-  ballistic: 'Ballistics did the most damage: Spread formation helps, Point Defense fires from every ship; in the Armory, Fast Motors or Armor Plating.',
+  ballistic: 'Ballistics did the most damage: shoot them early, Point Defense fires from every ship; in the Armory, Fast Motors or Armor Plating.',
   guided: 'Guided missiles did the most damage: a Gravity Well drags them off course; Seeker Pods spread over a volley; Deck Guns in the Armory pick off the ones near the carrier.',
   supersonic: 'Supersonics did the most damage: tap on the lock line; Point Defense lets the ship it is after fire back.',
   heavy: 'Heavy missiles did the most damage: the Railgun was made for them.',
   cluster: 'Cluster bomblets did the most damage: hit the missile before it splits; Flak or Seeker Pods clear the bomblets.',
   mothership: 'Mothership drones did the most damage: take the mothership down first (Railgun).',
-  strafer: 'Strafing runs did the most damage: split the convoy, or Air Strike the jet; frigates shoot jets down too.',
+  strafer: 'Strafing runs did the most damage: Air Strike the jet; frigates shoot jets down too.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
   mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
   fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
@@ -5023,7 +4961,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   rocketTruck: 'Rocket trucks did the most damage: kill the truck while its launcher raises; the Railgun and Lance reach it.',
   attackHeli: 'Helicopters did the most damage: five hits on the helicopter (the Railgun or Lance), or shoot its missile pairs.',
-  torpedoSub: 'Torpedoes did the most damage: shoot the torpedoes on their dashed lines (the sub itself can\'t be hit), or switch formation off the line.',
+  torpedoSub: 'Torpedoes did the most damage: shoot the torpedoes on their dashed lines (the sub itself can\'t be hit).',
   armored: 'Armored drones did the most damage: shoot as they bank, or use blasts (Flak, Thermobaric) that go round the plate.',
   stealthJet: 'Stealth strafers did the most damage: Point Defense answers a jet you can\'t see coming.',
   stealthBomber: 'Stealth bombers did the most damage: six hits before it drops, or shoot its missiles.',
@@ -5036,29 +4974,6 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
 function culprit(g: Game): string {
   const top = (Object.keys(g.sunkBy) as ThreatKind[]).sort((a, b) => g.sunkBy[b] - g.sunkBy[a])[0];
   return g.sunkBy[top] > 0 ? (SUNK_BY[top] ?? '') : '';
-}
-
-/** Tiny dot diagram of a formation, three ships deep. */
-function formationGlyph(id: FormationId): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 40 30');
-  svg.classList.add('v2-glyph');
-  const f = FORMATIONS[id];
-  const rows = f.group > 1 ? 2 : 3;
-  for (let r = 0; r < rows; r++) {
-    const slots = f.group > 1 ? f.offsets : [f.offsets[r % f.offsets.length]];
-    for (const o of slots) {
-      const rect = document.createElementNS(ns, 'rect');
-      rect.setAttribute('x', String(4 + r * 12));
-      rect.setAttribute('y', String(13 + o * 12));
-      rect.setAttribute('width', '9');
-      rect.setAttribute('height', '4');
-      rect.setAttribute('rx', '1.5');
-      svg.append(rect);
-    }
-  }
-  return svg;
 }
 
 /** A draft card's name at the level it brings. */
