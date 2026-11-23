@@ -1,0 +1,5 @@
+[
+  {"name":"convoy","file":"convoy-9x16.mp4","seconds":22.3,"captions":[["Straitwatch","my convoy-defense prototype"],["Tap a missile to intercept it","drones, ballistic, guided"],["Goal: get the cargo ships across",null]]},
+  {"name":"railgun","file":"railgun-9x16.mp4","seconds":15.0,"captions":[["Weapons drop as pickups","tap one to grab it"],["Railgun loaded for 15 seconds","every tap fires a beam"],["Then it goes back to the normal gun",null]]},
+  {"name":"arsenal","file":"arsenal-9x16.mp4","seconds":13.5,"captions":[["Air Strike","calls in a jet"],["Thermobaric Shell","big blast, slow shell"],["Gravity Well","pulls the swarm together"]]}
+]
