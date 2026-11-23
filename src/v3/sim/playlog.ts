@@ -497,11 +497,22 @@ import type { EncounterSetup } from '../data/encounters';
  *      water, and as the tide falls every ship on the flats crosses to the
  *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
  *      (the card or the campaign) no longer replays to the same game; the
- *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.) */
-export const LOG_VERSION = 61;
+ *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.)
+ *  64: the Test Lab's Armory and all cards (the player: "modify my armory
+ *      ... based on where the map is in the chapters ... and then have all
+ *      cards unlocked so I can test it out"): a Test Lab run's `lab` can
+ *      say `allCards`, and its drafts then deal every live weapon whatever
+ *      the map's chapter (game.ts draftChapterPool); a map card plays the
+ *      chapter's Test Lab Armory (data/labArmory.ts) in place of the
+ *      player's own, recorded as ever in the log's `armory`, with `lab.
+ *      armory` saying which chapter's range set it. A log without
+ *      `allCards` plays as it did (the map-lab baseline replays
+ *      unchanged); one with it needs this build. (62 and 63 are the
+ *      Saltgate boss and the convoy-control work, built alongside.) */
+export const LOG_VERSION = 64;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [61];
+export const LOG_REPLAYS: readonly number[] = [64];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

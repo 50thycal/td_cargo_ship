@@ -36,7 +36,10 @@ function fromHub(id: string, link?: string) {
 
 /** The run options a plan gives a bot game (as app.ts's play() does). */
 function opts(plan: ReturnType<typeof fromHub>, more: RunOpts = {}): RunOpts {
-  return { persona: PERSONAS.you, lab: plan.lab, ...(plan.convoy ? { convoy: plan.convoy } : {}), ...(plan.encounters ? { encounters: plan.encounters } : {}), ...more };
+  // Log v64's all-cards draft aside (tests/v3/labArmory.test.ts): with the
+  // campaign's own pool the lab only watches, so the games must match.
+  const { allCards: _all, ...lab } = plan.lab;
+  return { persona: PERSONAS.you, lab, ...(plan.convoy ? { convoy: plan.convoy } : {}), ...(plan.encounters ? { encounters: plan.encounters } : {}), ...more };
 }
 
 /** A game's whole state but its lab bookkeeping (the lab only watches). */
@@ -304,7 +307,7 @@ describe('the quick slice: the old short lab run, on the setup sheet', () => {
     const card = labCard('map-gauntlet')!;
     const plan = labRunPlan(card, { ...defaultSetup(card, parseLabProgress(null)), plays: 'slice', length: 'quick', mix: 'heavy' });
     expect(plan.full).toBe(false);
-    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: cardRev('map-gauntlet'), round: LAB_ROUND, plays: 'slice', variant: 'v1' });
+    expect(plan.lab).toEqual({ card: 'map-gauntlet', length: 'quick', mix: 'heavy', rev: cardRev('map-gauntlet'), round: LAB_ROUND, plays: 'slice', variant: 'v1', allCards: true });
     expect(plan.setup.wave).toBe(LAB_START_WAVE);
     expect(plan.setup.weapons.map((w) => w.id)).toEqual(card.kit);
     // Its production convoy and encounters stay on unless changed.
@@ -321,7 +324,7 @@ describe('the quick slice: the old short lab run, on the setup sheet', () => {
 
 describe('the log carries the setup, replays exactly, and the bridge reads it', () => {
   function played(map: MapId, seed: number, plan = fromHub(`map-${map}`), steps = 60 * 60 * 4): { run: BotRun; log: PlayLog } {
-    const run = new BotRun(map, seed, opts(plan, { pilot: 'sharp' }));
+    const run = new BotRun(map, seed, opts(plan, { pilot: 'sharp', lab: plan.lab }));
     run.advance(steps);
     const log = run.finish();
     log.labResult = { verdict: 'keep', tags: [], note: 'good', waves: run.game.lab!.waves, ended: 'done', stats: run.game.lab!.stats, rev: 10, round: 10, plays: plan.lab.plays };
@@ -330,7 +333,7 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
 
   it('the log says it is a full production run, with its convoy policy and encounter revision, from wave 1 with no Free Play setup', () => {
     const { log } = played('strait', 3);
-    expect(log.lab).toEqual({ card: 'map-strait', rev: cardRev('map-strait'), round: LAB_ROUND, plays: 'full', config: { convoy: 'tactical', encounters: ENCOUNTER_REV, production: true }, variant: 'v1' });
+    expect(log.lab).toEqual({ card: 'map-strait', rev: cardRev('map-strait'), round: LAB_ROUND, plays: 'full', config: { convoy: 'tactical', encounters: ENCOUNTER_REV, production: true }, variant: 'v1', allCards: true });
     expect(log.firstWave).toBe(1);
     expect(log.freePlay).toBeUndefined();
     expect(log.convoy).toMatchObject({ policy: 'tactical', obligation: 'natural', rev: CONVOY_REV });

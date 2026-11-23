@@ -1,0 +1,417 @@
+// EVERY MAP'S ITERATION HISTORY, for the Test Lab's map notes (the player,
+// 2026-11-23: "In the notes for the test lab, have the latest change in
+// there too, why the map was changed or the thing you are testing,
+// basically the iteration history").
+//
+// Gathered from the map cards (docs/design/v3-p4-*.md, v3-ch*-*.md), the hub
+// log (tools/v3/map-rules/plan.mjs: STATUS.log and the play items' "Look
+// for") and docs/design/v3-playtest-fixes.md. A map change adds an entry at
+// the top of its map's `history`, with the log version it ships in (a test
+// checks every map has one, newest first, none past LOG_VERSION).
+//
+// `look` is what to watch for on the next play; each entry says what
+// changed (`what`, a few plain sentences; `title`, a few words) and why
+// (`why`, one line, the player's words where there are some).
+
+import type { MapId } from './maps';
+
+export interface MapIteration {
+  /** The day it merged (YYYY-MM-DD). */
+  date: string;
+  /** The play log version it shipped in. */
+  log: number;
+  title: string;
+  what: string;
+  why: string;
+}
+
+export interface MapNotes {
+  /** What to test or look for now. */
+  look: string;
+  /** Newest first. */
+  history: MapIteration[];
+}
+
+/** Busier early waves (log v47): on every map rebuilt before it. */
+const BUSY: MapIteration = {
+  date: '2026-11-21',
+  log: 47,
+  title: 'Busier early waves',
+  what: 'Waves 1–6 get a few extra filler drones from the far silos (2–5 a wave, mostly waves 1–3). They drop nothing, so pickups come as before.',
+  why: 'Your chapter 2 notes: “more drones and easy things to kill… keep it busy.”',
+};
+
+/** Round 12, your chapter 2 notes (log v41), as it touched each map. */
+const ROUND12 = (what: string): MapIteration => ({
+  date: '2026-11-20',
+  log: 41,
+  title: 'Your chapter 2 notes fixed',
+  what,
+  why: 'Your chapter 2 runs (all Keep): subs over land, clusters splitting at the launcher, overlapping helicopters.',
+});
+
+export const MAP_HISTORY: Record<MapId, MapNotes> = {
+  strait: {
+    look: 'Does the quiet first third read as a warm-up, not dead time? Is each Afterburner Rush round bigger than the last, and is wave 10 the top of a climb?',
+    history: [
+      {
+        date: '2026-11-17',
+        log: 26,
+        title: 'Rebuilt to the wave rules; the Rush rises',
+        what: 'The map itself is unchanged (open water, one enemy shore). Its waves were rebuilt as nine encounters with a quiet first third, and the Afterburner Rush boss now rises each round: 7, 9, then 10 sprint swarms, each with a Hydra behind it.',
+        why: 'Your round 1 call: keep the Strait’s design, but make its waves follow the rules; the boss was the same every round.',
+      },
+    ],
+  },
+  kesh: {
+    look: 'Does it climb now, with real pressure by wave 3 and wave 10 as the top? Your last run broke in boss round 3 (5 ships): is that a spike or a fair finale?',
+    history: [
+      BUSY,
+      {
+        date: '2026-11-19',
+        log: 30,
+        title: 'A climb, not a cliff',
+        what: 'Fire moved from waves 9–10 to waves 2–6. From wave 3 shells hit the ship in the turn (your Point Defense ate the drones), and wave 10 is lighter.',
+        why: 'Your v29 replay: nothing happened for nine waves, then everything landed on wave 10 (fun dropped from 4 to 3).',
+      },
+      {
+        date: '2026-11-19',
+        log: 29,
+        title: 'A harder Drone Storm; smooth frigates',
+        what: 'The Drone Storm boss sends shells and guided missiles with its swarms, more each round. Frigates round the hook smoothly.',
+        why: 'Your note: the boss was “way too easy” (lost 0, 0, 1); frigates jittered on the turn.',
+      },
+      {
+        date: '2026-11-18',
+        log: 28,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'One encounter a wave, aimed at the ship in the hook’s turn under the south silo, and a Drone Storm boss that rises each round.',
+        why: 'It was far too easy: the bot won 96% with your Armory.',
+      },
+    ],
+  },
+  marrow: {
+    look: 'Does the radar tower last into the late waves now? Are losses spread over waves 4–8, with no cliff at the end?',
+    history: [
+      BUSY,
+      {
+        date: '2026-11-20',
+        log: 32,
+        title: 'A sturdier radar tower',
+        what: 'The tower takes 3 missile or shell hits, not 2 (a heavy still takes it at once). Waves 7–10 send 10% more fire to make up for it.',
+        why: 'Round 8: on your v29 replay the tower fell on wave 4; you wanted it to last.',
+      },
+      {
+        date: '2026-11-19',
+        log: 30,
+        title: 'A climb, not a cliff',
+        what: 'Fire moved from waves 9–10 to waves 2–6, so the map climbs instead of saving everything for the end.',
+        why: 'Your v29 replay: nothing lost for most of the map, then 1, 1, 2, 2 and out on wave 10.',
+      },
+      {
+        date: '2026-11-19',
+        log: 29,
+        title: 'The radar slows the enemy',
+        what: 'Every enemy inside the radar’s sweep slows down, instead of your shots flying faster there.',
+        why: 'Your idea: a slow-down field makes the tower a place you defend and use, not a stat you don’t notice.',
+      },
+      {
+        date: '2026-11-18',
+        log: 28,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'One encounter a wave, the radar tower on the island as the enemy’s target, and a Hydra Bloom boss that rises each round.',
+        why: 'It was far too easy: the bot won 96% with your Armory.',
+      },
+    ],
+  },
+  gauntlet: {
+    look: 'Whichever shore you turn to, the other fires at the ships coming in: does it still feel that way? Does the Rocket Convoy build up round by round?',
+    history: [
+      {
+        date: '2026-11-17',
+        log: 26,
+        title: 'Rebuilt to the wave rules; the Rocket Convoy builds',
+        what: 'Wave 8’s jump is gone and the danger is on the way in. The Rocket Convoy boss builds up over its rounds: 3 trucks a column and one swarm, then 3 and two, then 4 and two smaller swarms.',
+        why: 'The checks found a cliff at wave 8, and the boss sent the same every round.',
+      },
+    ],
+  },
+  harbor: {
+    look: 'Is the Breakout’s round 2 now the tense one, with round 3 no longer a wall? Can you shoot a supersonic as soon as it leaves the truck?',
+    history: [
+      {
+        date: '2026-11-18',
+        log: 27,
+        title: 'A lighter boss round 3; supersonics shootable sooner',
+        what: 'The Breakout’s third round sends one sub salvo into the neck, not two. A supersonic can be shot 0.4 s after launch, not 1.1 s (it still lands when it did).',
+        why: 'Your playtest: the boss cost 2, 0, 4 and round 3 ended the run; “the invincibility of the super sonic missile is just a tad too long”.',
+      },
+      {
+        date: '2026-11-17',
+        log: 25,
+        title: 'Rebuilt to the wave rules',
+        what: 'Waves 4–7 send their full attack again, a 5 s calm comes before wave 10, and the Breakout adds sub salvos into the neck where the convoy bunches.',
+        why: 'The checks found waves 4–7 a third light: the neck’s encounter replaced more than it sent.',
+      },
+    ],
+  },
+  island: {
+    look: 'Attack helicopters off the island from wave 6, as in the boss: does the map feel like its own? Your last run lost in boss round 2.',
+    history: [
+      BUSY,
+      ROUND12('Torpedo subs surface only on clear water with a torpedo line to a lane. Your Gunship Pair’s helicopters fly 270 px apart.'),
+      {
+        date: '2026-11-20',
+        log: 36,
+        title: 'Your playtest notes',
+        what: 'Attack helicopters fire whenever they are on screen (5 HP). The torpedo sub stays under water and can’t be hit; it fires 2 slower, clearer torpedoes.',
+        why: 'Your playtest: the helicopter “should just start hitting targets”; the sub “should not be able to be attacked, only their torpedoes”.',
+      },
+      {
+        date: '2026-11-20',
+        log: 34,
+        title: 'Its own threat: attack helicopters',
+        what: 'From wave 6 the wave’s new enemies are attack helicopters off the island, as in the Gunship Wall boss.',
+        why: 'The Island and the Behemoth Run shared a best kit: each map needed its own question.',
+      },
+      {
+        date: '2026-11-20',
+        log: 32,
+        title: 'Debut waves for the Narrows enemies',
+        what: 'Waves 3–5 are the Torpedo Sub’s, Armored Drone’s and Scavenger Drone’s debut waves, each with drones only around it, under a “NEW · The Narrows” banner.',
+        why: 'Your round 1 rule: every new enemy gets a debut before it mixes in.',
+      },
+      {
+        date: '2026-11-19',
+        log: 31,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'The enemy island beside both lanes is the problem: its two silos fire with almost no warning, and a third of the ships take the fast north lane under the far shore. The Gunship Wall boss rises each round.',
+        why: 'Chapter 2 starts: each map gets its own problem and a climbing boss.',
+      },
+    ],
+  },
+  behemoth: {
+    look: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike the Shield can’t stop. Do the early waves still hit you harder than they should?',
+    history: [
+      BUSY,
+      ROUND12('Cluster missiles can’t split for their first 1.3 s, so one fired next to the ships can be shot. The Shield bubble fits the supertanker.'),
+      {
+        date: '2026-11-20',
+        log: 36,
+        title: 'No torpedo sub before wave 6',
+        what: 'No Torpedo Sub before wave 6, and torpedoes are slower (40) and clearer.',
+        why: 'Your run: 3 of your 5 early losses were one hit on the tanker, which counts 3.',
+      },
+      {
+        date: '2026-11-20',
+        log: 34,
+        title: 'A strike on the tanker',
+        what: 'From wave 4 jets and heavies go for the supertanker. The boss is a jet-led strike on the tanker in place of most of the Wolf Pack’s subs.',
+        why: 'Your answer: a boss the Shield doesn’t stop, since the Island and the Behemoth shared a best kit.',
+      },
+      {
+        date: '2026-11-19',
+        log: 31,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'A slow supertanker sails under the enemy shore and most aimed fire goes for it. Sunk, it counts 3 ships; home, every ship is repaired and a weapon drops.',
+        why: 'Chapter 2 starts: each map gets its own problem and a climbing boss.',
+      },
+    ],
+  },
+  needle: {
+    look: 'The convoy queues single file at the mouth; walls of armored drones from wave 4. Is the Shield Wall boss fair? Your last run reached the boss.',
+    history: [
+      BUSY,
+      ROUND12('The east torpedo sub spot moved so a sub surfaces on clear water with a line to the lane.'),
+      {
+        date: '2026-11-20',
+        log: 35,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'One encounter a wave at the convoy queued at the mouth, small walls of armored drones from wave 4, and the Shield Wall boss rising each round.',
+        why: 'Chapter 2: the first map inside the 50–70% band for the bot with your Armory, with its own best kit.',
+      },
+    ],
+  },
+  archipelago: {
+    look: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Your last run was lost on wave 7 to a “bad setup”: does a better kit fix it?',
+    history: [
+      BUSY,
+      {
+        date: '2026-11-20',
+        log: 37,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'A chain of enemy islets lines the lane; fire comes from the islets, the gaps, the far shore and behind, and the west end is the danger stretch. Drone motherships with Scavenger escorts from wave 4. The Supply Raid boss comes from every side.',
+        why: 'Chapter 2: every map gets its own problem and its own best kit.',
+      },
+    ],
+  },
+  saltgate: {
+    look: 'Skip to boss: missile trucks drive in nose to tail, raise their missiles (red ring, dashed line to the ship) and lob them at the ships held at the locks. Is it intense and different enough from the rocket trucks?',
+    history: [
+      BUSY,
+      {
+        date: '2026-11-21',
+        log: 46,
+        title: 'The boss: a missile truck parade',
+        what: 'The Gatecrashers are a parade of Missile Trucks: each raises one big ballistic missile and lobs it at a ship held at a lock gate. Round 1: a column of 8; round 2: 9 on both banks; round 3: 10 at both locks, up to 7 missiles in the air.',
+        why: 'Your review: “I thought this would be the ballistic missile trucks… a parade of them shooting off the ballistic missiles.”',
+      },
+      {
+        date: '2026-11-20',
+        log: 42,
+        title: 'The Gatecrashers: trucks at the locks',
+        what: 'The boss became columns of Rocket Trucks along both banks firing at the ships held in the locks. No torpedo subs on Saltgate; Rocket Trucks at the locks are its signature from wave 4, and the early waves have more going on.',
+        why: 'Your chapter 2 run lost in boss round 2; you asked for a mass truck assault on the ships bunched at the locks.',
+      },
+      {
+        date: '2026-11-20',
+        log: 38,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Two locks hold each ship still under an enemy silo; nine of ten waves aim “at the lock”. A strike on the locks from wave 4 and a Run the Canal boss.',
+        why: 'Chapter 2’s last map: fire from close range at ships that can’t move.',
+      },
+      {
+        date: '2026-11-16',
+        log: 24,
+        title: 'The locks no longer jam',
+        what: 'A lock admits only what its chamber holds and shuts on time; frigates berth beside the canal instead of opening a gate.',
+        why: 'The locks jammed at higher flow and frigates held the gates open.',
+      },
+    ],
+  },
+  battery: {
+    look: 'Shells and heavies go for your shore guns; dark Stealth Strafer jets from wave 4. Is wave 3 smooth now, and does the Blackout boss rise fairly?',
+    history: [
+      BUSY,
+      {
+        date: '2026-11-21',
+        log: 45,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Two allied shore guns cover the east of the lane; enemy shells and heavies go for them first, and a gun knocked out leaves the east open for 12 s. Wave 3’s shell cliff is gone. The Blackout boss rises (dark jets 7 / 8 / 9). Chapter 3’s five new enemies debut on waves 2–6.',
+        why: 'Your three Battery runs: lost mostly to shells, 4 ships in wave 3 alone.',
+      },
+    ],
+  },
+  sowers: {
+    look: 'Mines stay hidden until about 2.5 s before a ship reaches them; the big Hold button glows NOW! when holding saves a ship. Is 2.5 s enough warning on your phone?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 55,
+        title: 'Hidden mines and the big Hold button',
+        what: 'Every mine drifts hidden and surfaces with a splash about 2.5 s before a ship would reach it. A big Hold button at the foot of the left rail pulses gold and reads NOW! when holding would save a ship. Waves 2, 4 and 5 drop fewer mines.',
+        why: 'Your v49 run (won, fun 4, “great boss”): mines should surface near a ship, with a glowing Hold button.',
+      },
+      {
+        date: '2026-11-21',
+        log: 48,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Mines drift down across the lane from three chutes; one sinks a ship, so each is shoot-it or Hold-and-wait. Stealth Bombers sow mines ahead of the ships from wave 4. The Carpet Run boss: vees of bombers, 2, then 3, then 3 faster.',
+        why: 'Chapter 3: a map whose question is when to stop the convoy.',
+      },
+    ],
+  },
+  rigs: {
+    look: 'Each rig shows its shots left (32 standing); watch the new tug tow. Do the rigs feel sturdy but fair, and are waves 1–3 busy enough?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 55,
+        title: 'Rigs count shots; a better tow',
+        what: 'Rigs count shots, not damage (32 standing, 10 on tow, 20 docked; a power-up shot counts 1, the Nuke 3), with a counter on each. A proper tug tows relief rigs in. More easy drones in waves 1–3.',
+        why: 'Your v49 run (won, fun 5): power-ups melted the rigs; the tow-in was “hilarious” but needed better animation; more action early.',
+      },
+      {
+        date: '2026-11-22',
+        log: 49,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Four enemy rigs stand right over the lane and fire point-blank; one brought down stays down, its fire moving to the far shore. Relief rigs towed in from wave 4. The Rig Barrage boss: downed rigs rise again and fire together.',
+        why: 'Chapter 3: a map where you choose what to bring down.',
+      },
+    ],
+  },
+  lantern: {
+    look: 'Threats are glows until the beam, your lamp or a star shell lights them; the dark bank behind you fires from close. Can you read the dark on your phone? Do the shells from behind feel fair?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 52,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'It’s night: a threat is only a glow until the lighthouse beam, your lamp or a star shell lights it. The enemy bank behind the ships as they deliver is never swept and has the shortest flights. Siege batteries rise by the dark bank from wave 4. Boss, Bombardment: siege guns along the far shore, plus guns in the dark.',
+        why: 'Chapter 3: watch the beam, or watch your back?',
+      },
+    ],
+  },
+  dreadnought: {
+    look: 'Is the boss different enough from the battleship in the waves? Does sinking it (50 hits) feel like a real choice against shooting each broadside down?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 51,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'A battleship steams down the deep channel on waves 3, 6, 9 and 10 firing broadsides with a short flight; 50 hits silence it. Spotter planes lay its guns from wave 4. Boss, the Dreadnought: it stops broadside-on while spotters walk barrages; sink it and the barrage stops.',
+        why: 'Chapter 3’s finale: sink it or ride it out?',
+      },
+    ],
+  },
+  coves: {
+    look: 'Do the fire ships and their burning ring read on your phone, or is the ring clutter? Does “stop it at the cove mouth” feel like the question? Is Air Strike + Flak the only answer?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 56,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Four coves hide fast boats two seconds from the lane. From wave 4 some are fire ships (3 hits) that leave a fireball where sunk. Boss, Fire Fleet: fire ships from every cove at once (4, 6, then 8). Chapter 4’s new enemies debut here.',
+        why: 'Chapter 4 begins: stop it at the cove mouth, or on the lane?',
+      },
+    ],
+  },
+  delta: {
+    look: 'Does the switch feel like a real choice (waves 2, 4, 7, 9)? Can you read the burning-branch warning on your phone?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 57,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'The river forks three ways and the enemy aims at the branch your switch is set to. From wave 4 Incendiary Missiles burn at that branch’s mouth. Boss, Burning Delta: burning oil closes branches, warned 2.5 s ahead with a ring and FIRE.',
+        why: 'Chapter 4: which branch do you send them down, when south is no longer the free answer?',
+      },
+    ],
+  },
+  crossing: {
+    look: 'Do you have time to tap the spotter beacons down (4 taps each)? Is wave 10, the crossing, a proper climax? If the latest Armory feels like a wall, say so.',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 58,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Two convoys pass each other, outbound north and inbound south. From wave 4 Lure Beacons rise between the lanes where the next two ships pass; each takes 4 hits and calls three shells on the nearest ship. Boss, Beacon Line: lines of spotters firing volleys off both shores.',
+        why: 'Chapter 4: which lane do you cover, and when they pass, which ship?',
+      },
+    ],
+  },
+  tide: {
+    look: 'Watch a ship leave the flats on waves 1 and 3: is the crossing too fast or slow? Is the sand too strong? Does “THE TIDE TURNS” warn you in time?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 61,
+        title: 'Rebuilt; the tide moves and ships leave the flats',
+        what: 'The tide falls over 4 s and rises over 3 s, sand growing in behind a line of surf; every ship on the flats crosses to the deep channel as it starts to fall, and the gauge warns “THE TIDE TURNS” 5 s ahead. At low water the shore strikes the crowded channel. Boss, Low Water.',
+        why: 'Your note: the tide didn’t animate well and ships didn’t leave the low-tide area.',
+      },
+    ],
+  },
+  citadel: {
+    look: 'Is opening the Citadel a real choice, or always right (the bot opens it almost every wave)? Can you read the GRAND SALVO warning? Is it a finale?',
+    history: [
+      {
+        date: '2026-11-22',
+        log: 60,
+        title: 'Rebuilt to the map and wave rules',
+        what: 'Three generators (3 shots each) drop the Citadel’s shield, then 14 more shots silence it for the wave; the shield rises again every wave. From wave 4 what it fires can’t be shot inside its dome while the shield stands. Boss, The Last Stand: grand salvos at the lead ship in the narrows.',
+        why: 'The game’s finale: spend the shots on the Citadel, or shoot what’s coming?',
+      },
+    ],
+  },
+};
