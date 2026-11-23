@@ -74,4 +74,14 @@ describe('GET /api/playlog', () => {
     const all = await (await read(`${PROTECTED}?all=1&limit=1`)).json();
     expect(all).toEqual([log('second')]);
   });
+
+  it('played=hand leaves out what a bot played (a V3 Watch run, log v65)', async () => {
+    await post(log('hand'));
+    await post({ ...log('sim'), control: { mode: 'watch', bot: 'you', label: 'sim' } });
+    await post({ ...log('mixed'), control: { mode: 'watch', bot: 'you', label: 'mixed' } });
+    await post({ ...log('devwatch'), dev: { preset: 'half', watch: true } });
+    const hand = await (await read(`${PROTECTED}?all=1&played=hand`)).json();
+    expect(hand.map((l: { id: string }) => l.id)).toEqual(['hand']);
+    expect((await (await read(`${PROTECTED}?all=1`)).json()).length).toBe(4);
+  });
 });

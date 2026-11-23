@@ -23,7 +23,7 @@
 //   npx vite-node tools/v3/bot-fit/boosts.ts -- --logs=tools/v3/bot-fit/logs --ids=<id,...> [--dice=6] [--persona=you] [--json=out.json]
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { SIM_DT, applyCommand, replaysHere, setupGame, type PlayLog } from '../../../src/v3/sim/playlog';
+import { SIM_DT, applyCommand, handPlayed, replaysHere, setupGame, type PlayLog } from '../../../src/v3/sim/playlog';
 import { released, shipsSunk, step, timeToImpact, worthShooting, type Game } from '../../../src/v3/sim/game';
 import { isBoost } from '../../../src/v3/data/roster';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
@@ -263,6 +263,10 @@ if (isMain) {
     if (ids && !ids.some((id) => log.id.includes(id))) continue;
     if (!replaysHere(log.v)) {
       console.log(`${log.id}: v${log.v} does not replay on this build, skipped`);
+      continue;
+    }
+    if (!handPlayed(log)) {
+      console.log(`${log.id}: a Watch run the bot played (all or part), skipped`);
       continue;
     }
     const me = pickupsOf(log, 'you');

@@ -33,7 +33,7 @@ import type { ArmoryLevels } from '../../../src/v3/data/armory';
 import { labCard, mapCardId } from '../../../src/v3/data/lab';
 import type { MapId } from '../../../src/v3/data/maps';
 import { BotRun, PERSONAS } from '../../../src/v3/sim/mimic';
-import { LOG_REPLAYS, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
+import { LOG_REPLAYS, handPlayed, replaysHere, type PlayLog } from '../../../src/v3/sim/playlog';
 import type { Game } from '../../../src/v3/sim/game';
 import type { CardId } from '../../../src/v3/data/abilities';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../../../src/v3/ui/lab';
@@ -53,6 +53,9 @@ export const FIT_MAPS: MapId[] = ['strait', 'gauntlet', 'harbor'];
 export function playerRun(l: PlayLog): 'card' | 'campaign' | null {
   // A Test Lab retry or skip (round 12) is not a whole run from wave 1.
   if (!l.summary || l.device?.ua === 'mimic' || l.dev?.watch || l.retry) return null;
+  // A Test Lab Watch run (log v65) the bot played, all or part of: its
+  // waves, losses and outcome are not the player's alone.
+  if (!handPlayed(l)) return null;
   if (l.lab?.plays === 'full' && l.v >= 21 && l.summary.wave >= 5 && /^map-/.test(l.lab.card)) return 'card';
   if (!l.lab && !l.freePlay && l.v >= 19 && l.summary.wave >= 5) return 'campaign';
   return null;

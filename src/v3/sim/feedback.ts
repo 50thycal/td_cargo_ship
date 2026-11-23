@@ -119,6 +119,10 @@ export interface PlayNote {
   moment?: number;
   /** A small JPEG of the battlefield (data URL). */
   thumb?: string;
+  /** A Test Lab Watch run (log v65): who was at the controls as it was
+   *  written, and the wave (the tick is `step`). */
+  by?: 'bot' | 'player';
+  wave?: number;
 }
 
 export interface Volley {

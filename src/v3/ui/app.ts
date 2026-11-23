@@ -53,7 +53,7 @@ import {
 } from '../sim/game';
 import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutKind, type CalloutLevel } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
-import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
+import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, playControl, playKind, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { Restorer, printDiff, runPrint, samePrint } from '../sim/resume';
 import { canContinue, canSaveRuns, clearRun, loadRun, makeRunSave, saveRun, timeAgo, type RunSave } from '../platform/runSave';
 import { GESTURE_HINT, ROSTER, gestureOf, isBoost, isPrototype, newInChapter } from '../data/roster';
@@ -71,6 +71,7 @@ import {
   keepLabLog,
   labRunPlan,
   labDoneButton,
+  watchLine,
   labPauseActions,
   labPauseHead,
   labHub,
@@ -365,7 +366,7 @@ export class App {
    *  test running now (its card and setup; its commands are on the pause
    *  menu), and the setup to start the next one with. */
   private labProgress = loadLabProgress();
-  private labRun: { card: LabCard; setup: LabRunSetup } | null = null;
+  private labRun: { card: LabCard; setup: LabRunSetup; watch?: boolean } | null = null;
   /** The verdict sheet's picks so far, for the test it is about. */
   private labDraft: { run: NonNullable<App['labRun']>; draft: VerdictDraft } | null = null;
   private labLast: LabRunSetup | undefined;
@@ -377,6 +378,12 @@ export class App {
   private speedSteps = this.dev ? DEV_SPEED_STEPS : SPEED_STEPS;
   /** Watch mode: the bot in this run, and who is at the controls. */
   private bot: Mimic | null = null;
+  /** A Test Lab Watch run (log v65): the "you" bot plays a map card on
+   *  screen; Take over and Let the bot play swap the controls, and while
+   *  the bot plays the player's taps on the field do nothing. */
+  private labWatch = false;
+  /** The speed the bot is watched at (back to it on Let the bot play). */
+  private botSpeed = 1;
   /** Dev ghost check in progress on the result screen. */
   private ghostRun: BotRun | null = null;
   private control: Controller = 'you';
@@ -1033,8 +1040,11 @@ export class App {
       this.speed = this.speedSteps[s];
       this.rec?.speed(this.speed);
       if (this.bot && this.control === 'bot') {
-        this.devSettings.watchSpeed = this.speed;
-        saveDevSettings(this.devSettings);
+        this.botSpeed = this.speed;
+        if (!this.labWatch) {
+          this.devSettings.watchSpeed = this.speed;
+          saveDevSettings(this.devSettings);
+        }
       }
     });
   }
@@ -1151,6 +1161,7 @@ export class App {
           labWaves(lab),
         ),
         ...this.labJumps(g!),
+        ...this.watchActions(),
       );
     } else if (this.notesOn && this.rec && g) {
       extra.push(button('📝 Add a note', 'v2-btn v3-pause-note', () => this.openNote('pause')));
@@ -1362,8 +1373,12 @@ export class App {
       const w = this.toWorld(e.clientX, e.clientY);
       if (!w || !this.game || this.paused) return;
       // Watch mode: a touch on the battlefield takes the controls (and
-      // counts as your first tap).
-      if (this.bot && this.control === 'bot' && this.game.phase === 'wave') this.setControl('you');
+      // counts as your first tap). A Test Lab Watch run takes them only
+      // from its Take over button: a touch on the field does nothing.
+      if (this.bot && this.control === 'bot' && this.game.phase === 'wave') {
+        if (this.labWatch) return;
+        this.setControl('you');
+      }
       // Focus slows time only from its own button (Test Lab round 8): a
       // touch on the water is always a shot.
       // A gesture weapon (the weapons plan): the finger is a press, not a
@@ -1438,7 +1453,10 @@ export class App {
       e.stopPropagation();
       const g = this.game;
       if (!g || !this.rec || this.paused || this.playback || g.phase !== 'wave' || g.boost?.id !== 'focus') return;
-      if (this.bot && this.control === 'bot') this.setControl('you');
+      if (this.bot && this.control === 'bot') {
+        if (this.labWatch) return;
+        this.setControl('you');
+      }
       if (this.focusPointer !== null) return;
       this.focusPointer = e.pointerId;
       try {
@@ -2286,6 +2304,7 @@ export class App {
       (scrap !== null ? `<span class="v3-hud-scrap" data-scrap="${scrap}"><b>SCRAP</b>${scrap.toLocaleString()}</span>` : '') +
       `<span class="v2-hud-lost" data-sunk="${sunk}" data-limit="${lossLimit(g)}"><b>SUNK</b><em>${pips}</em></span>` +
       (this.free || this.labRun ? `<span class="v2-hud-dev">${this.labRun ? 'TEST LAB' : 'FREE PLAY'}</span>` : '') +
+      (this.labWatch ? `<span class="v2-hud-dev v3-hud-watch" data-watch-hud="${this.control}">WATCH · ${this.control === 'bot' ? 'BOT' : 'YOU'}</span>` : '') +
       (this.playback ? '<span class="v2-hud-dev v3-hud-replay">▶ REPLAY</span>' : '') +
       (this.dev ? `<span class="v2-hud-dev">DEV ${DEV_PRESETS[this.devSettings.preset].label}${this.bot ? ` · WATCH${this.bot.persona.id === YOU.id ? '' : ` · ${(this.bot.persona.label ?? this.bot.persona.id).toUpperCase()}`}` : ''}</span>` : '');
     if (this.hud.innerHTML !== html) this.hud.innerHTML = html;
@@ -2912,6 +2931,7 @@ export class App {
       ...(saved?.kind === 'lab' ? [this.continueEntry(saved)] : []),
       labHub(p, {
         start: (id) => this.startLab(id),
+        watch: (id) => this.startLab(id, undefined, true),
         playFive: () => {
           p.queue = nextCards(p, 5).map((c) => c.id);
           saveLabProgress(p);
@@ -2977,10 +2997,12 @@ export class App {
   /** Start a test: the card's water, wave 5 (or the setup's), its kit. A
    *  map card (Test Lab round 10) plays the full map from wave 1, as the
    *  campaign does, under its production setup unless changed. */
-  private startLab(id: string, setup?: LabRunSetup): void {
+  private startLab(id: string, setup?: LabRunSetup, watch = false): void {
     const card = labCard(id);
     if (!card) return;
-    if (this.askBeforeNew(() => this.startLab(id, setup))) return;
+    // Watch (log v65): a map card only.
+    watch = watch && card.kind === 'map';
+    if (this.askBeforeNew(() => this.startLab(id, setup, watch))) return;
     const first = setup ?? defaultSetup(card, this.labProgress, this.labLast ? { ...this.labLast, length: this.labProgress.length, mix: this.labProgress.mix } : undefined);
     // A link's ?convoy=, ?enc= or ?plays= (a comparison), for the card it
     // named and only as it opens; the plain link is the card's own setup.
@@ -3005,11 +3027,11 @@ export class App {
           frequentDrops: true,
           enemies: 'campaign',
         };
-    this.play(card.map, free, lab, plan.convoy, plan.encounters, undefined, armory);
+    this.play(card.map, free, lab, plan.convoy, plan.encounters, undefined, armory, watch);
     // Its commands, name and what to look for are on the pause menu (pause-
     // menu round: nothing of the test is over the field, and no card says
     // what is being tested: the hub's row said so as it was tapped).
-    this.labRun = { card, setup: s };
+    this.labRun = { card, setup: s, ...(watch ? { watch } : {}) };
     this.root.classList.add('lab-on');
   }
 
@@ -3040,7 +3062,7 @@ export class App {
           this.labProgress.length = s.length;
           this.labProgress.mix = s.mix;
           saveLabProgress(this.labProgress);
-          this.startLab(run.card.id, s);
+          this.startLab(run.card.id, s, !!run.watch);
         },
         () => this.showPauseMenu(),
       ),
@@ -3099,7 +3121,8 @@ export class App {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
           const rev = cardRev(run.card.id);
-          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}), ...(variant ? { variant } : {}) };
+          const played = this.rec?.log.control ? playKind(this.rec.snapshot()) : null;
+          const result = { ...r, waves, ended, stats, rev, round: LAB_ROUND, ...(plays ? { plays } : {}), ...(variant ? { variant } : {}), ...(played ? { played } : {}) };
           addLabEntry(p, run.card.id, { ...result, at: new Date().toISOString(), build: __BUILD__ });
           if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
           p.queue = p.queue.filter((id) => id !== run.card.id);
@@ -3117,12 +3140,23 @@ export class App {
           this.rec = null;
           if (log) keepLabLog(run.card.id, log);
           this.labDraft = null;
-          if (then === 'again') this.startLab(run.card.id, run.setup);
+          if (then === 'again') this.startLab(run.card.id, run.setup, !!run.watch);
           else if (then === 'next' && next) this.startLab(next.id);
           else this.showLab();
         },
       }, draft, plays, played, strip, review),
     ]);
+    // A Watch run (log v65): who played it, under the title, and its log
+    // to download as it stands.
+    if (log?.control) {
+      const line = watchLine(log.control);
+      if (!STORE) {
+        const dl = button('Download log', 'v2-link v3-watch-dl', () => downloadLog(this.rec?.snapshot() ?? log));
+        dl.dataset.watchDownload = '1';
+        line.append(' · ', dl);
+      }
+      (this.overlay.querySelector('.v3-review-title') ?? this.overlay.querySelector('.v2-panel')?.firstElementChild)?.after(line);
+    }
     // Round 12: Retry the wave, or Skip to boss, under the title (nothing
     // of this sheet is saved by them: the run's log is kept as it ended).
     const jumps = this.labJumps(g);
@@ -3875,7 +3909,7 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null, jump?: { start: number; retry: NonNullable<PlayLog['retry']> }, armory?: ArmoryLevels): void {
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null, jump?: { start: number; retry: NonNullable<PlayLog['retry']> }, armory?: ArmoryLevels, labWatch = false): void {
     if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters, jump, armory))) return;
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
@@ -3889,7 +3923,11 @@ export class App {
     const start = jump ? jump.start : free ? free.wave : fullMap ? 1 : (!STORE && Number(params.get('wave'))) || (this.dev ? this.devSettings.wave : 1);
     const skip = tempo ? firstPlayedWave(start, tempo) : start;
     const seed = !STORE && params.has('seed') ? Number(params.get('seed')) : this.seedCounter++;
-    const watch = this.dev && !free && !fullMap && this.devSettings.watch;
+    // A Test Lab Watch run (log v65) plays the card's own setup, with the
+    // "you" bot at the controls; the dev watch mode stays the dev's.
+    labWatch = labWatch && !!lab;
+    const watch = labWatch || (this.dev && !free && !fullMap && this.devSettings.watch);
+    const botId = labWatch ? YOU.id : this.devSettings.bot;
     if (this.rec) this.endRun('quit');
     this.free = free ? structuredClone(free) : null;
     this.radarShown = false;
@@ -3911,22 +3949,23 @@ export class App {
       ...(lab ? { lab } : {}),
       ...(encounters ? { encounters } : {}),
       ...(convoy ? { convoy } : {}),
-      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
+      ...(tempo ? { tempo, dev: { preset: this.devSettings.preset, ...(watch && !labWatch ? { watch: true, bot: this.devSettings.bot } : {}) } } : {}),
+      ...(labWatch ? { control: playControl(botId, []) } : {}),
       ...(jump ? { retry: jump.retry } : {}),
       device: this.deviceInfo(),
     });
     this.lastTel = null;
     // A skip is not a whole run: no Map & Convoy Lab telemetry for it.
     if (!jump && this.telWanted(!!lab)) {
-      this.rec.telemetry(lab ? 'lab' : watch ? 'watch' : free ? 'freePlay' : 'campaign', watch ? this.devSettings.bot : 'human', {
+      this.rec.telemetry(lab ? 'lab' : watch ? 'watch' : free ? 'freePlay' : 'campaign', watch ? botId : 'human', {
         touch: navigator.maxTouchPoints > 0,
         w: window.innerWidth,
         h: window.innerHeight,
         landscape: window.innerWidth >= window.innerHeight,
       });
     }
-    this.startWatch(watch, seed, this.devSettings.bot);
-    if (watch) this.setSpeed(this.devSettings.watchSpeed);
+    this.startWatch(watch, seed, botId, labWatch);
+    if (watch) this.setSpeed(this.botSpeed);
     else if (preset) this.setSpeed(preset.speed);
     this.begin();
   }
@@ -3952,11 +3991,18 @@ export class App {
   }
 
   /** Watch mode on or off for the run starting now. */
-  private startWatch(watch: boolean, seed: number, persona = YOU.id): void {
+  private startWatch(watch: boolean, seed: number, persona = YOU.id, lab = false): void {
     this.bot = watch ? new Mimic(PERSONAS[persona] ?? YOU, seed) : null;
     this.control = watch ? 'bot' : 'you';
+    this.labWatch = watch && lab;
+    // A Test Lab Watch run starts at 1x; the dev's watch speed is kept.
+    this.botSpeed = this.labWatch ? 1 : this.devSettings.watchSpeed;
+    // A run carried on from another (a wave retry) whose player held the
+    // controls last: the bot takes them back from here.
+    if (watch && this.rec && this.rec.controller !== 'bot') this.rec.control('bot');
     this.useSpeedSteps(watch ? WATCH_SPEED_STEPS : this.dev ? DEV_SPEED_STEPS : SPEED_STEPS);
     this.root.classList.toggle('watching', watch);
+    this.root.classList.toggle('watch-lab', this.labWatch);
     this.syncControl();
   }
 
@@ -3969,11 +4015,12 @@ export class App {
     if (this.rec) this.endRun('quit');
     this.rec = null;
     this.bot = null;
+    this.labWatch = false;
     this.game = g;
     this.lastPhase = g.phase;
     this.paused = true;
     this.root.classList.add('playing');
-    this.root.classList.remove('watching');
+    this.root.classList.remove('watching', 'watch-lab', 'watch-bot');
     this.hideOverlay();
     this.syncConvoy();
     return { wave: g.wave, waveT: g.waveT, phase: g.phase };
@@ -3986,22 +4033,48 @@ export class App {
     this.rec.control(who);
     this.hold = null;
     this.dropGesture();
+    const lab = this.labWatch;
     if (who === 'you') {
       this.setSpeed(1);
-      this.showBanner('YOU HAVE CONTROL', 'Tap BOT on the right to hand back.', { now: true, key: 'control', kind: 'ack' });
+      this.showBanner('YOU HAVE CONTROL', lab ? 'Playing from here. Let the bot play hands it back.' : 'Tap BOT on the right to hand back.', { now: true, key: 'control', kind: 'ack' });
     } else {
-      this.setSpeed(this.devSettings.watchSpeed);
-      this.showBanner('BOT HAS CONTROL', 'Touch the battlefield to take over.', { now: true, key: 'control', kind: 'ack' });
+      this.setSpeed(this.botSpeed);
+      this.showBanner('BOT HAS CONTROL', lab ? 'Tap Take over to play from here.' : 'Touch the battlefield to take over.', { now: true, key: 'control', kind: 'ack' });
       if (this.game.phase === 'draft') this.botDraft(this.game);
     }
     this.syncControl();
+    // The draft on screen changes hands too: drawn again for whoever has it.
+    if (lab && this.game.phase === 'draft' && this.overlay.dataset.screen === 'draft') {
+      this.showDraft(this.game);
+      this.armDraft();
+    }
   }
 
   private syncControl(): void {
     const bot = this.control === 'bot';
-    this.controlBtn.replaceChildren(el('b', '', bot ? 'BOT' : 'YOU'), el('span', '', bot ? 'take over' : 'hand back'));
+    if (this.labWatch) {
+      this.controlBtn.replaceChildren(el('b', '', bot ? 'Take over' : 'Let bot play'), el('span', '', bot ? 'bot playing' : 'you playing'));
+      this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Let the bot play.');
+    } else {
+      this.controlBtn.replaceChildren(el('b', '', bot ? 'BOT' : 'YOU'), el('span', '', bot ? 'take over' : 'hand back'));
+      this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
+    }
     this.controlBtn.classList.toggle('bot', bot);
-    this.controlBtn.setAttribute('aria-label', bot ? 'The bot is playing. Take over.' : 'You are playing. Hand back to the bot.');
+    this.controlBtn.dataset.control = this.control;
+    this.root.classList.toggle('watch-bot', !!this.bot && bot);
+  }
+
+  /** A Test Lab Watch run's pause menu: hand the controls over from there
+   *  too (the game stays paused; Resume plays on with the new hands). */
+  private watchActions(): HTMLElement[] {
+    if (!this.labWatch || !this.bot) return [];
+    const bot = this.control === 'bot';
+    const b = button(bot ? '🎮 Take over' : '🤖 Let the bot play', 'v2-btn v3-lab-act v3-watch-swap', () => {
+      this.setControl(bot ? 'you' : 'bot');
+      this.showPauseMenu();
+    });
+    b.dataset.watchSwap = bot ? 'you' : 'bot';
+    return [b];
   }
 
   /** Watching the bot fast, cards deal in faster too. */
@@ -4121,12 +4194,14 @@ export class App {
         ...(log.lab ? { lab: log.lab } : {}),
         ...(log.encounters ? { encounters: log.encounters } : {}),
         ...(log.convoy ? { convoy: log.convoy } : {}),
+        ...(log.control ? { control: playControl(log.control.bot, []) } : {}),
         retry: { of: log.id, wave: mark.wave, step: mark.steps },
         device: this.deviceInfo(),
       },
       { log, mark },
     );
-    this.startWatch(false, g.seed);
+    this.startWatch(!!run.watch, g.seed, YOU.id, true);
+    if (run.watch) this.setSpeed(this.botSpeed);
     this.root.classList.add('lab-on');
     this.begin();
   }
@@ -4143,7 +4218,7 @@ export class App {
     const log = this.sealForJump();
     if (!log) return;
     const plan = labRunPlan(run.card, run.setup, null);
-    this.play(run.card.map, null, { ...plan.lab, loadout, ...(log.lab?.armory ? { armory: log.lab.armory } : {}) }, plan.convoy, plan.encounters, { start: EVENT_WAVE, retry: { of: log.id, wave: EVENT_WAVE, step: 0, skip: true } }, armory);
+    this.play(run.card.map, null, { ...plan.lab, loadout, ...(log.lab?.armory ? { armory: log.lab.armory } : {}) }, plan.convoy, plan.encounters, { start: EVENT_WAVE, retry: { of: log.id, wave: EVENT_WAVE, step: 0, skip: true } }, armory, !!run.watch);
     this.labRun = run;
     this.root.classList.add('lab-on');
   }
@@ -4359,6 +4434,8 @@ export class App {
         // Ignore taps that land as the cards appear: the player may still be
         // firing at the wave's last threat.
         if (swapping || freeing || this.picking || performance.now() - this.draftShownAt < DRAFT_ARM_MS) return;
+        // A Test Lab Watch run: the bot's pick while it has the controls.
+        if (this.labWatch && this.control === 'bot') return;
         if (takeable) {
           // The pick lands with a beat: the card flashes gold, then the wave starts.
           this.picking = true;
@@ -4456,6 +4533,13 @@ export class App {
       const done = labDoneButton(() => this.showLabVerdict('done'), g.lab.waves, labWaves(g.lab));
       done.classList.add('v3-draft-done');
       head.append(done);
+    }
+    // A Test Lab Watch run: take the pick (or hand it back) from here.
+    if (this.labWatch && this.bot && !this.playback) {
+      const bot = this.control === 'bot';
+      const swap = button(bot ? 'Take over' : 'Let bot play', `v2-btn v3-draft-watch${bot ? ' bot' : ''}`, () => this.setControl(bot ? 'you' : 'bot'));
+      swap.dataset.watchSwap = bot ? 'you' : 'bot';
+      head.append(swap);
     }
     // Quartermaster (Armory): deal the hand again, a few times a run. Only
     // on a run that has it; greyed once they are spent.

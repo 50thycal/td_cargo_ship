@@ -160,16 +160,21 @@ export function scoreAverages(runs, sc, rev) {
 }
 
 /** Some runs' numbers on average: how many, won, the share delivered and
- *  the ships lost (a run without numbers is left out of those). */
+ *  the ships lost (a run without numbers is left out of those). Only runs
+ *  played by hand count: a Test Lab Watch run (log v65, `played` 'sim' or
+ *  'mixed') is the bot's play, counted apart as `bot`. */
 export function runNumbers(runs) {
-  const withAuto = runs.filter((r) => r.auto);
+  const hand = runs.filter((r) => !r.played || r.played === 'full playtest');
+  const withAuto = hand.filter((r) => r.auto);
   const pct = withAuto.filter((r) => typeof r.auto.deliveredPct === 'number');
-  return {
-    runs: runs.length,
-    won: runs.filter((r) => r.end === 'won').length,
+  const out = {
+    runs: hand.length,
+    won: hand.filter((r) => r.end === 'won').length,
     deliveredPct: pct.length ? pct.reduce((a, r) => a + r.auto.deliveredPct, 0) / pct.length : null,
     lost: withAuto.length ? withAuto.reduce((a, r) => a + r.auto.lost, 0) / withAuto.length : null,
   };
+  if (hand.length < runs.length) out.bot = runs.length - hand.length;
+  return out;
 }
 
 /** A map card's runs, ready for the page: only those on the newest card

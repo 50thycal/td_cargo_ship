@@ -9,6 +9,21 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
+## Watch mode in the Test Lab: watch the bot, take over any time (log v65)
+
+> "with the test we set up, like for one of the maps for example, I should be able to run a simulator on that too so I can do my testing faster. So basically it would allow me to watch it be played and I can jump in at any time and make comments and play too. The game log should note that too, so it knows when it was a full playtest or had sim."
+
+- **Start it:** every map card has **Watch** beside Play: a gold Watch button under Play on each Ready to test card, and an eye key (👁) beside each map's tile in the chapter grid. Watch plays the same card, setup, Test Lab Armory and seeds as Play, so the same run is judged; only the hands differ.
+- **Who plays:** the **"you" bot** (`YOU` in `src/v3/sim/mimic.ts`), the persona fitted to your own logs with `tools/v3/bot-fit` (docs/design/v3-bot-refit.md): your tap rhythm, aim, pickups and boosts, noise included. It was already in `src/`, so nothing moved. It plays through the same calls a finger does, so its inputs are ordinary log commands. How close it is: its hands, aim and pickups are within a few points of yours; on a map it reads waves 1-5 about 1.3x your losses, waves 6-10 about a third of a ship high, and the boss rounds about 2x as hard (the recorded biases in the refit doc). It plays at 1x and, like you, now and then rushes a wave a little faster.
+- **Watch it:** it starts at 1x; the speed button steps 1x, 2x, 3x, 4x, 6x, 10x; pause works as ever. The HUD says WATCH · BOT. While the bot plays, a tap on the field does nothing (no shot, no take-over), and its draft picks show before it takes them.
+- **Take over:** the gold **Take over** button on the right rail (also on the pause menu, and on the draft while the bot picks) gives you the controls from that tick, back at 1x. Threat taps, holds, weapons, Focus, the golden bomb and the draft are all yours. **Let bot play** (same button) hands back, at the speed you were watching at. As often as you like.
+- **Notes:** pause and write one as ever (the pause menu's Note, with the in-game keyboard). In a Watch run each note says who was playing (`by: 'bot' | 'player'`), the `wave`, and its tick (`step`).
+- **The log** (v65): `control: { mode: 'watch', bot: 'you', segments: [{ fromTick, toTick, by }], botTicks, playerTicks, playerShare, switches, label }`, the label `'sim'` (the bot played it all), `'mixed'` or `'full playtest'`. The switches are the `'c'` commands, UI only, so the log replays exactly. The verdict saved with it carries `labResult.played`. `playKind(log)` reads any log's label (a dev watch log or a sweep's log is `'sim'`, an ordinary run `'full playtest'`).
+- **The scorecard** says it under the title: "Mixed run · you played 42%, the bot 58% · 2 hand-overs", or "Watch run · the bot played all of it (sim)", with a Download log link.
+- **The readers leave the bot out:** the bot fit (`tools/v3/bot-fit/fit.ts` `playerRun`) takes only hand-played runs whole; `measure()` for "you" reads only the ticks you played (tap rhythm, play time, reactions); `measureFun` keeps only your saves; `boosts.ts` skips Watch runs; the Test Lab page's run numbers (`scores.mjs` `runNumbers`) average hand-played runs only and count the rest as `bot`; `results.mts` marks a Watch verdict; `/api/playlog?all=1&played=hand` returns only hand-played logs.
+- **Not kept to continue:** a Watch run is not saved to Continue later (the bot's own state is not in the log), as the dev watch mode before it. Retry wave and Skip to boss stay in Watch, with the bot at the controls.
+- Nothing in the sim changed: a v64 log plays the same game. The version marks logs that can carry the new fields; the map-lab baseline was written again at v65.
+
 ## Round 16: the left rail's leftovers are gone (UI only, log stays v61)
 
 Your answer to round 15's two rail questions: *"Drop the slider and all that old stuff the new version is going on like the new hauls button the canal map"*. The big convoy button is now the only convoy control, in every game type.
