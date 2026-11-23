@@ -24,22 +24,37 @@ Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
 
 | clip | what happens |
 |---|---|
-| `convoy` | title, pick The Strait, defend the convoy by tapping inbound missiles |
-| `railgun` | a weapon drops, tap it, every tap is a beam through the swarm |
-| `arsenal` | Air Strike, Thermobaric Shell and Gravity Well back to back |
+| `convoy` | a real wave (Free Play, wave 7, 2x): tap incoming missiles and drones with the normal gun |
+| `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
+| `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
+
+Each clip also gets `<clip>.captions.json`: the caption timeline (seconds) and what the take did.
+
+## It is real play
+
+Nothing is spawned or placed by the script. It sets Free Play's own options (wave, weapons
+held, frequent drops), then taps only what the game puts on the water: threats with the normal
+gun, weapon pickups when they drop, and the loaded weapon aimed where it will hit
+(the railgun along the line with the most threats; shells and the Well at the densest cluster).
+It never fires into empty water.
+
+Waves are random, so each clip is recorded several times (`VIDEO_TAKES`, default 3-4) and the
+take with the most real hits and the least dead time is kept, the way you would pick from raw footage.
+The caption start is set after the fact, so the clip opens on a few seconds of ordinary play.
 
 ## How it works
 
 `make-clips.mjs` plays the real game in headless Chromium with real mouse clicks (the
 `window.__v3` hooks that `e2e/v3.mjs` uses), records the page with Playwright, then ffmpeg
-trims the menu dead air, burns in captions and encodes both sizes.
-Frames are captured in real time, so a slow machine can look a little choppier.
+trims, burns in captions and encodes both sizes. Capture is real time, so a slow machine can
+look a little choppier.
 
 ## Add a clip
 
-Add an entry to `CLIPS` in `make-clips.mjs`: an async `play(page, t)` that drives the game.
-`t.mark()` sets where the clip starts (everything before is cut) and
-`t.cue('Headline', 'sub line', seconds)` shows a caption from that moment.
-Helpers: `defend`, `grab`, `dropWeapon`, `fireAtThreat`, `swarm`.
+Add an entry to `CLIPS` in `make-clips.mjs`: an async `play(page, t)` that drives the game,
+sets `t.score` (higher is better, used to pick a take) and `takes`.
+`t.start = t.now()` sets where the clip starts (everything before is cut),
+`t.cue('Headline', 'sub line', seconds)` shows a caption from that moment, `t.stop()` ends it.
+Helpers: `startFreePlay`, `defend`, `weaponPickup`, `fireAt`, `fieldThreats`, `kills`.
 
 Output (`video/out/`) is git-ignored; clips are rebuilt on demand.

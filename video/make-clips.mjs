@@ -38,166 +38,327 @@ function findChromium() {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- game moves
+// Everything here plays the way a person does: taps on threats and pickups
+// the game itself spawned. Nothing is placed or spawned by the script. The
+// only setup is Free Play's own screen (wave, weapons held, frequent drops).
 
 const g = (page, fn, arg) => page.evaluate(fn, arg);
-const w2c = (page, x, y) => page.evaluate(([x, y]) => window.__v3.toClient(x, y), [x, y]);
 
-/** Tap threats that have no interceptor on them yet (real clicks), nearest the carrier first. */
-async function defend(page, max = 2) {
-  const pts = await g(page, (max) => {
+const NAMES = {
+  railgun: ['Railgun', 'every tap fires a beam'],
+  airstrike: ['Air Strike', 'calls in a jet'],
+  thermo: ['Thermobaric Shell', 'big blast, slow shell'],
+  well: ['Gravity Well', 'pulls the swarm together'],
+};
+
+/** Live threats on screen with no interceptor on them yet, nearest the carrier first (client coords). */
+const openThreats = (page) =>
+  g(page, () => {
     const gm = window.__v3.game();
     if (!gm || gm.phase !== 'wave') return [];
     return gm.threats
-      .filter((t) => !gm.interceptors.some((i) => i.target === t.id))
+      .filter((t) => !t.dead && !gm.interceptors.some((i) => i.target === t.id))
       .sort((a, b) => b.y - a.y)
-      .slice(0, max)
-      .map((t) => window.__v3.toClient(t.x, t.y));
-  }, max);
-  for (const p of pts) await page.mouse.click(p.x, p.y);
+      .map((t) => window.__v3.toClient(t.x, t.y))
+      .filter((p) => p.x > 5 && p.x < innerWidth - 90 && p.y > 5 && p.y < innerHeight - 5);
+  });
+
+/** Tap up to `max` threats with the normal gun. */
+async function defend(page, max = 2) {
+  for (const p of (await openThreats(page)).slice(0, max)) await page.mouse.click(p.x, p.y);
 }
 
-/** Tap any pickup lying on the water. */
-async function grab(page) {
+/** A weapon pickup lying on the water, if any (client coords). */
+const weaponPickup = (page) =>
+  g(page, () => {
+    const gm = window.__v3.game();
+    const p = gm?.phase === 'wave' ? gm.pickups.find((q) => q.kind === 'weapon' && !q.chute) : null;
+    return p ? { ...window.__v3.toClient(p.x, p.y), weapon: p.weapon } : null;
+  });
+
+/** How many live threats are out over the water (not just launched at the top edge). */
+const fieldThreats = (page) =>
+  g(page, () => {
+    const gm = window.__v3.game();
+    return gm?.phase === 'wave' ? gm.threats.filter((t) => !t.dead && window.__v3.toClient(t.x, t.y).y > 150).length : 0;
+  });
+
+/** Tap any non-weapon pickup (ammo, repair) like a player would. */
+async function grabSupplies(page) {
   const pts = await g(page, () => {
     const gm = window.__v3.game();
-    return gm && gm.phase === 'wave' ? gm.pickups.map((p) => window.__v3.toClient(p.x, p.y)) : [];
+    return gm?.phase === 'wave' ? gm.pickups.filter((q) => q.kind !== 'weapon' && !q.chute).map((q) => window.__v3.toClient(q.x, q.y)) : [];
   });
   for (const p of pts) await page.mouse.click(p.x, p.y);
-  return pts.length;
 }
 
-/** Hold these weapons and drop one as a pickup at (x,y), as a kill would. */
-async function dropWeapon(page, id, x, y) {
-  await g(page, ([id, x, y]) => {
+/** The loaded weapon, the rounds left and the score, read from the game. */
+const state = (page) =>
+  g(page, () => {
     const gm = window.__v3.game();
-    gm.levels = { ...gm.levels, [id]: Math.max(gm.levels?.[id] ?? 0, 2) };
-    if (!gm.slots.includes(id) && gm.slots.length < 3) gm.slots.push(id);
-    gm.weapon = null;
-    gm.pickups.push({ id: 90000 + Math.floor(Math.random() * 9999), kind: 'weapon', weapon: id, x, y, age: 0 });
-  }, [id, x, y]);
-}
+    return gm ? { weapon: gm.weapon?.id ?? null, ammo: gm.ammo, score: gm.score, phase: gm.phase, threats: gm.threats.filter((t) => !t.dead).length, ints: gm.interceptors.length } : null;
+  });
 
-/** Fire the loaded weapon at the most dangerous threat (or open water). */
-async function fireAtThreat(page, aimAtThreat = true) {
-  const p = await g(page, (aim) => {
-    const gm = window.__v3.game();
-    if (!gm || gm.phase !== 'wave') return null;
-    const t = aim ? [...gm.threats].sort((a, b) => b.y - a.y)[0] : null;
-    return t ? window.__v3.toClient(t.x, t.y) : window.__v3.toClient(700, 260);
-  }, aimAtThreat);
-  if (p) await page.mouse.click(p.x, p.y);
+/** Counts real threats taken down (gone from play) so a clip can prove its shots hit. */
+async function installCounter(page) {
+  await page.addInitScript(() => {
+    const seen = new Set();
+    let prev = new Set();
+    window.__vc = { kills: 0, seen: 0 };
+    const tick = () => {
+      const gm = window.__v3?.game?.();
+      if (gm) {
+        const now = new Set();
+        for (const t of gm.threats) {
+          if (!seen.has(t.id)) { seen.add(t.id); window.__vc.seen++; }
+          if (!t.dead) now.add(t.id);
+        }
+        // Gone from play (shot down, or flown into the convoy: the carrier's hull tells the two apart in the notes).
+        for (const id of prev) if (!now.has(id)) window.__vc.kills++;
+        prev = now;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }
+const kills = (page) => page.evaluate(() => ({ ...window.__vc }));
 
-/** Bring in a pack of enemies now (the game's own test hook), spread over the launch bases. */
-async function swarm(page, kind, n = 6) {
-  await g(page, ([kind, n]) => {
-    const bases = window.__v3.game().map.bases.length;
-    for (let i = 0; i < n; i++) window.__v3.foe(kind, i % bases);
-  }, [kind, n]);
-}
-
-async function startRun(page, map = 'strait') {
+async function openMenu(page) {
+  await installCounter(page);
   await page.goto(`http://localhost:${PORT}/v3.html`, { waitUntil: 'networkidle' });
   await page.evaluate(() => localStorage.removeItem('straitwatch.v3.run'));
   await page.waitForSelector('[data-screen="menu"]');
 }
 
-/** Run `fn` every `every` ms until `ms` have passed. */
-async function loop(ms, every, fn) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    await fn();
-    await sleep(every);
+/** Free Play's own setup (the player's Free Play screen), then Start. */
+async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequentDrops = true, speedClicks = 2 }) {
+  if (page.url() === 'about:blank') await openMenu(page);
+  await page.evaluate(
+    (fp) => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify(fp)),
+    { map, wave, weapons: [0, 1, 2].map((i) => (weapons[i] ? { id: weapons[i], level: 1 } : null)), armory: { gun: null, hull: null, supply: null }, frequentDrops, enemies: 'campaign' },
+  );
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-screen="menu"]');
+  await sleep(600);
+  await page.click('[data-free-play]');
+  await page.waitForSelector('[data-free-start]');
+  await sleep(500);
+  await page.click('[data-free-start]');
+  await page.waitForSelector('.playing');
+  for (let i = 0; i < speedClicks; i++) await page.click('.v3-speed');
+}
+
+const sinceS = (t0) => (Date.now() - t0) / 1000;
+
+/** Play the normal gun until `until()` says stop, with a hard timeout. */
+async function playUntil(page, until, { limit = 45, tapEvery = 140 } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    if (sinceS(t0) > limit) throw new Error(`timed out after ${limit}s waiting for the moment`);
+    await defend(page, 2);
+    await grabSupplies(page);
+    if (await until(sinceS(t0))) return;
+    await sleep(tapEvery);
   }
 }
 
+/** Threats that are worth a shot: air and missile threats in the open, not subs, mines or shore kit. */
+const SKIP = ['torpedoSub', 'mine', 'rig', 'generator', 'citadel', 'dreadnought', 'rocketTruck', 'missileTruck'];
+
+/**
+ * Aim the loaded weapon the way a player would: the beam through the most
+ * threats (railgun), or the densest cluster (shells, well, air strike). Returns
+ * the number of threats the shot should hit, or 0 when it did not fire
+ * (nothing worth a round, so no shot goes into empty water).
+ */
+async function fireAt(page, weapon, minHits = 1) {
+  const aim = await g(page, ([weapon, SKIP]) => {
+    const gm = window.__v3.game();
+    if (!gm || gm.phase !== 'wave') return null;
+    const th = gm.threats.filter((t) => !t.dead && !SKIP.includes(t.kind) && window.__v3.toClient(t.x, t.y).y > 120 && window.__v3.toClient(t.x, t.y).x < innerWidth - 90);
+    if (!th.length) return null;
+    const c = gm.map.carrier;
+    let best = null;
+    if (weapon === 'railgun') {
+      for (let a = -Math.PI * 0.98; a <= -Math.PI * 0.02; a += Math.PI / 180) {
+        const ux = Math.cos(a), uy = Math.sin(a);
+        let n = 0;
+        for (const t of th) {
+          const along = (t.x - c.x) * ux + (t.y - c.y) * uy;
+          if (along < 0) continue;
+          if (Math.abs((t.x - c.x) * uy - (t.y - c.y) * ux) <= 30) n++;
+        }
+        if (!best || n > best.n) best = { n, x: c.x + ux * 300, y: c.y + uy * 300 };
+      }
+    } else {
+      const R = weapon === 'well' ? 130 : weapon === 'thermo' ? 70 : 110;
+      for (const t of th) {
+        const near = th.filter((u) => Math.hypot(u.x - t.x, u.y - t.y) <= R);
+        const n = near.length;
+        if (!best || n > best.n) best = { n, x: near.reduce((a, u) => a + u.x, 0) / n, y: near.reduce((a, u) => a + u.y, 0) / n };
+      }
+    }
+    return best && { n: best.n, ...window.__v3.toClient(best.x, best.y) };
+  }, [weapon, SKIP]);
+  if (!aim || aim.n < minHits) return 0;
+  await page.mouse.click(aim.x, aim.y);
+  return aim.n;
+}
+
 // ------------------------------------------------------------------- clips
-// `cues` are [startSecond, endSecond, text] on the FINAL clip's clock, filled
-// in by the scenario through cue(); the scenario also marks `t.start`, the
-// second of the recording where the clip should begin (menu dead-air is cut).
+// `t` is the director: t.mark() = where the clip starts (all before is cut),
+// t.cue(head, sub, secs) = a caption from now, t.stop() = where it ends.
+// Captions fire when the game event happens, so they always match the frame.
 
 const CLIPS = {
-  // Menu -> pick a map -> a wave: the 20-second "what is this game" clip.
+  // Menu -> Free Play wave 3 -> real intercepts with the normal gun.
   convoy: {
     title: 'Defend the convoy',
+    takes: 4,
     async play(page, t) {
-      await startRun(page);
-      t.mark();
-      await sleep(800);
+      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false, speedClicks: 3 });
+      t.start = t.now();
       t.cue('Straitwatch', 'my convoy-defense prototype', 2.6);
-      await sleep(1200);
-      await page.click('[data-map="strait"]');
-      await page.waitForSelector('[data-screen="loadout"]');
-      await sleep(900);
-      await page.click('[data-start]');
-      await page.waitForSelector('.playing');
-      t.cue('Tap a missile to intercept it', 'drones, ballistic, guided', 5);
-      await loop(9000, 140, () => defend(page, 2));
-      t.cue('Goal: get the cargo ships across', null, 4.5);
-      await loop(9000, 140, async () => {
-        await defend(page, 2);
-        await grab(page);
+      const k0 = (await kills(page)).kills;
+      let cued = 0;
+      await playUntil(page, async (sec) => {
+        if (sec > 2.8 && cued < 1) {
+          cued = 1;
+          t.cue('Tap a missile to intercept it', 'drones, ballistic, guided', 4.5);
+        }
+        if (sec > 8 && cued < 2) {
+          cued = 2;
+          t.cue('Goal: get the cargo ships across', null, 5);
+        }
+        return sec > 17 || (await state(page))?.phase !== 'wave';
       });
+      const k = (await kills(page)).kills - k0;
+      t.score = k;
+      t.note(`${k} threats shot down`);
+      t.stop();
     },
   },
 
-  // A kill-drop weapon: tap the pickup, then the railgun beam rips through everything.
+  // A real wave: normal gun, then a railgun pickup the game drops, then beams, then back to normal.
   railgun: {
     title: 'Railgun',
+    takes: 4,
     async play(page, t) {
-      await startRun(page);
-      await page.click('[data-map="strait"]');
-      await page.waitForSelector('[data-screen="loadout"]');
-      await page.click('[data-start]');
-      await page.waitForSelector('.playing');
-      await loop(6000, 140, () => defend(page, 2));
-      t.mark();
-      await page.mouse.move(640, 360);
-      t.cue('Weapons drop as pickups', 'tap one to grab it', 3.2);
-      await dropWeapon(page, 'railgun', 760, 330);
-      await sleep(900);
-      const p = await w2c(page, 760, 330);
-      await page.mouse.click(p.x, p.y);
-      t.cue('Railgun loaded for 15 seconds', 'every tap fires a beam', 3.2);
-      await swarm(page, 'drone', 9);
-      await sleep(1800);
-      await swarm(page, 'guided', 3);
-      // Rack: every round now fires the railgun for 15 s.
-      await loop(9500, 520, () => fireAtThreat(page));
+      await startFreePlay(page, { wave: 7, weapons: ['railgun'], speedClicks: 3 });
+      const tPlay = t.now();
+      // Normal gun until the game drops a railgun pickup with a burst on the water. The clip
+      // then starts ~5 s earlier (the footage is already recorded), so the lead-in is real play.
+      let pk = null;
+      let tCue = 0;
+      for (let attempt = 0; attempt < 8 && !pk; attempt++) {
+        await playUntil(page, async () => t.now() - tPlay > 5 && !!(await weaponPickup(page)), { limit: 40 });
+        tCue = t.now();
+        t.cue('Weapons drop as pickups', 'tap one to grab it', 1.4);
+        const c0 = Date.now();
+        await playUntil(page, async () => sinceS(c0) > 1.2, { limit: 6 });
+        pk = await weaponPickup(page);
+        // Only worth loading with a burst already out on the water; otherwise let it go and wait for the next drop.
+        if (!pk || (await fieldThreats(page)) < 2) {
+          t.cues.pop(); // this attempt's caption: not used
+          pk = null;
+        }
+      }
+      if (!pk) throw new Error('no weapon pickup could be tapped in time');
+      t.start = Math.max(tPlay, tCue - 4.8);
+      t.cues.unshift({ at: t.start + 0.2, head: 'Tap a missile to intercept it', sub: 'normal main gun', dur: 3.4 });
+      await page.mouse.click(pk.x, pk.y);
+      await sleep(150);
+      const loaded = await state(page);
+      if (loaded?.weapon !== 'railgun') throw new Error(`railgun not loaded (${loaded?.weapon})`);
+      t.cue('Railgun loaded for 15 seconds', 'every tap fires a beam', 3.5);
+      // Beams at real threats until the 15 s run out and the gun reverts.
+      let shots = 0;
+      let hits = 0;
+      const k0 = (await kills(page)).kills;
+      const l0 = Date.now();
+      let lastBeam = Date.now();
+      let worstGap = 0;
+      while (sinceS(l0) < 17) {
+        const s = await state(page);
+        if (!s || s.weapon !== 'railgun') break;
+        worstGap = Math.max(worstGap, sinceS(lastBeam));
+        const n = s.ammo > 0 ? await fireAt(page, 'railgun', sinceS(lastBeam) > 1.5 ? 1 : 2) : 0;
+        if (n) {
+          shots++;
+          hits += n;
+          lastBeam = Date.now();
+        }
+        await sleep(300);
+      }
+      worstGap = Math.max(worstGap, sinceS(lastBeam));
+      t.score = hits * 2 - worstGap * 3;
       t.cue('Then it goes back to the normal gun', null, 3);
-      await loop(2500, 140, () => defend(page, 2));
+      await playUntil(page, async (s) => s > 3);
+      t.note(`railgun: longest gap ${worstGap.toFixed(1)}s, ${shots} beams, ${hits} threats lined up in the beams, ${(await kills(page)).kills - k0} threats gone while loaded`);
+      t.stop();
     },
   },
 
-  // Three weapons back to back: the satisfying-kills montage.
+  // Three different weapons the game dropped, each used on real threats.
   arsenal: {
     title: 'Arsenal',
+    takes: 4,
     async play(page, t) {
-      await startRun(page);
-      await page.click('[data-map="strait"]');
-      await page.waitForSelector('[data-screen="loadout"]');
-      await page.click('[data-start]');
-      await page.waitForSelector('.playing');
-      await loop(5000, 140, () => defend(page, 2));
-      t.mark();
-      const kit = [
-        ['airstrike', 'Air Strike', 'calls in a jet'],
-        ['thermo', 'Thermobaric Shell', 'big blast, slow shell'],
-        ['well', 'Gravity Well', 'pulls the swarm together'],
-      ];
-      for (const [id, name, sub] of kit) {
-        await dropWeapon(page, id, 700, 300);
-        await sleep(500);
-        const p = await w2c(page, 700, 300);
-        await page.mouse.click(p.x, p.y);
-        t.cue(name, sub, 3.6);
-        await swarm(page, 'drone', 7);
-        await loop(1400, 140, () => defend(page, 1));
-        await fireAtThreat(page);
-        await loop(2000, 140, () => defend(page, 1));
-        await fireAtThreat(page);
-        await sleep(300);
+      await startFreePlay(page, { wave: 7, weapons: ['airstrike', 'thermo', 'well'], speedClicks: 3 });
+      const tPlay = t.now();
+      const k0 = (await kills(page)).kills;
+      const seen = [];
+      let tFirst = null;
+      let lastLoad = Date.now() - 2000;
+      let shots = 0;
+      let hits = 0;
+      let lastShot = 0;
+      const m0 = Date.now();
+      // Normal gun, and whichever of the three weapons the game drops next. Load each on a real
+      // threat count, then fire only where it will hit. Different weapons only.
+      while (seen.length < 3 && sinceS(m0) < 70 && (tFirst === null || t.now() - tFirst < 16)) {
+        const s = await state(page);
+        if (s?.phase !== 'wave') break;
+        const field = await fieldThreats(page);
+        if (s?.weapon) {
+          const n = s.ammo > 0 && Date.now() - lastShot > 1000 ? await fireAt(page, s.weapon, s.weapon === 'airstrike' ? 1 : 2) : 0;
+          if (n) {
+            lastShot = Date.now();
+            shots++;
+            hits += n;
+          }
+        } else {
+          await defend(page, 2);
+        }
+        await grabSupplies(page);
+        const pk = Date.now() - lastLoad > 3600 && field >= 2 && t.now() - tPlay > 5 ? await weaponPickup(page) : null;
+        if (pk && !seen.includes(pk.weapon)) {
+          await page.mouse.click(pk.x, pk.y);
+          await sleep(120);
+          const w = (await state(page))?.weapon;
+          if (w) {
+            seen.push(w);
+            if (tFirst === null) tFirst = t.now();
+            lastLoad = Date.now();
+            lastShot = 0;
+            const [head, sub] = NAMES[w] ?? [w, null];
+            t.cue(head, sub, 3.2);
+          }
+        }
+        await sleep(140);
       }
+      if (tFirst === null) throw new Error('no weapon was loaded');
+      t.start = Math.max(tPlay, tFirst - 4);
+      t.cues.unshift({ at: t.start + 0.2, head: 'Tap a missile to intercept it', sub: 'normal main gun', dur: 3.3 });
+      const kk = (await kills(page)).kills - k0;
+      t.score = hits + 8 * seen.length;
+      t.note(`loaded ${seen.join(', ')}; ${shots} shots aimed at ${hits} threats; ${kk} threats gone`);
+      // End on the action, before the wave-cleared banner takes the screen.
+      if ((await state(page))?.phase === 'wave') await sleep(1000);
+      else t.cues = t.cues.filter((c) => c.at < t.now() - 0.6);
+      t.stop();
+      t.stopAt -= (await state(page))?.phase === 'wave' ? 0 : 0.9;
     },
   },
 };
@@ -223,25 +384,45 @@ async function serve() {
   throw new Error('preview server did not start');
 }
 
-async function record(browser, name, clip) {
-  const dir = join(WORK, name);
+async function recordTake(browser, name, clip, take) {
+  const dir = join(WORK, `${name}-${take}`);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir, size: { width: W, height: H } } });
   const page = await ctx.newPage();
   const t0 = Date.now();
   const now = () => (Date.now() - t0) / 1000;
-  const t = { start: 0, cues: [], mark: () => (t.start = now()), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
+  const t = { now, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await clip.play(page, t);
-  const end = now();
+  let failed = null;
+  try {
+    await clip.play(page, t);
+  } catch (e) {
+    failed = e;
+  }
+  const end = t.stopAt ?? now();
   const video = page.video();
   await ctx.close();
   const raw = join(dir, `${name}.webm`);
   renameSync(await video.path(), raw);
-  if (errors.length) console.warn(`  page errors: ${errors.join(' | ')}`);
-  return { raw, t, end };
+  return { raw, t, end, failed, errors, take };
+}
+
+/** Record `clip.takes` real runs (the game's waves are random) and keep the best-scoring one. */
+async function record(browser, name, clip) {
+  const takes = Number(process.env.VIDEO_TAKES ?? clip.takes ?? 1);
+  let best = null;
+  for (let i = 1; i <= takes; i++) {
+    const r = await recordTake(browser, name, clip, i);
+    const tag = r.failed ? `failed: ${r.failed.message}` : `score ${r.t.score}`;
+    console.log(`  take ${i}/${takes}: ${tag}${r.t.notes.length ? ` (${r.t.notes.join('; ')})` : ''}`);
+    if (r.errors.length) console.warn(`  page errors: ${r.errors.join(' | ')}`);
+    if (!r.failed && (!best || r.t.score > best.t.score)) best = r;
+  }
+  if (!best) throw new Error(`${name}: every take failed`);
+  console.log(`  keeping take ${best.take}`);
+  return best;
 }
 
 // ---------------------------------------------------------------- encoding
@@ -271,7 +452,8 @@ function ffmpeg(args) {
 
 function encode(name, { raw, t, end }) {
   const start = Math.max(0, t.start - 0.1);
-  const dur = Math.min(end - start, 120);
+  t.cues = t.cues.filter((c) => c.at >= start); // nothing from before the clip starts
+  const dur = Math.min(end - start + 0.6, 24.5);
   const tail = Math.max(0, dur - 0.6);
   // Silent AAC track: X's uploader and some players reject video with no audio stream.
   const silent = ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100'];
@@ -292,6 +474,12 @@ function encode(name, { raw, t, end }) {
     `[bg][fg]overlay=0:(H-h)/2[v0]`,
     `[v0]${[...vert, fadeOut].join(',')}[v]`,
   ].join(';');
+  const timeline = t.cues.map((c, i) => {
+    const a = Math.max(0, c.at - start);
+    const next = t.cues[i + 1] ? Math.max(0, t.cues[i + 1].at - start) - 0.15 : Infinity;
+    return { from: +a.toFixed(1), to: +Math.min(a + c.dur, next, dur).toFixed(1), headline: c.head, sub: c.sub ?? null };
+  });
+  writeFileSync(join(OUT, `${name}.captions.json`), JSON.stringify({ seconds: +dur.toFixed(1), notes: t.notes, captions: timeline }, null, 2));
   ffmpeg([...base, ...silent, '-filter_complex', graph, '-map', '[v]', '-map', '1:a', ...enc, join(OUT, `${name}-9x16.mp4`)]);
   return dur;
 }
