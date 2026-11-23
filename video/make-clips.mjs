@@ -104,10 +104,17 @@ async function installCounter(page) {
   await page.addInitScript(() => {
     const seen = new Set();
     let prev = new Set();
-    window.__vc = { kills: 0, seen: 0 };
+    window.__vc = { kills: 0, seen: 0, log: [] };
     const tick = () => {
       const gm = window.__v3?.game?.();
       if (gm) {
+        // Scene filter (a clip opts in): only ammo and repair pickups stay on the water.
+        if (window.__onlySupplies) for (let i = gm.pickups.length - 1; i >= 0; i--) if (gm.pickups[i].kind !== 'ammo' && gm.pickups[i].kind !== 'repair') gm.pickups.splice(i, 1);
+        const stamp = Date.now();
+        if (!window.__vc.last || stamp - window.__vc.last > 250) {
+          window.__vc.last = stamp;
+          window.__vc.log.push([stamp, [...new Set(gm.threats.filter((x) => !x.dead).map((x) => x.kind))]]);
+        }
         const now = new Set();
         for (const t of gm.threats) {
           if (!seen.has(t.id)) { seen.add(t.id); window.__vc.seen++; }
@@ -122,7 +129,9 @@ async function installCounter(page) {
     requestAnimationFrame(tick);
   });
 }
-const kills = (page) => page.evaluate(() => ({ ...window.__vc }));
+const kills = (page) => page.evaluate(() => ({ kills: window.__vc.kills, seen: window.__vc.seen }));
+/** Which enemy kinds were on the water between two wall-clock moments. */
+const kindsBetween = (page, a, b) => page.evaluate(([a, b]) => [...new Set(window.__vc.log.filter(([ts]) => ts >= a && ts <= b).flatMap(([, k]) => k))], [a, b]);
 
 async function openMenu(page) {
   await installCounter(page);
@@ -206,6 +215,60 @@ async function fireAt(page, weapon, minHits = 1) {
   return aim.n;
 }
 
+// ------------------------------------------------------------------- studio mode
+// A studio scene is a script: what appears, when, and what the caption says, so the
+// footage matches the script instead of hunting through waves for it. It still runs
+// the game's own simulation (its enemies, its interceptors, its draft screens) and the
+// director still plays with real taps. What it adds is control over WHAT is launched
+// and WHEN: it empties the wave's own spawn list and launches what the scene asks for.
+// Clips made this way are flagged `studio: true` in <clip>.captions.json.
+
+/** Take over the wave: drop its own launches, hold it open until the scene ends it. */
+const studioBegin = (page) =>
+  g(page, () => {
+    const gm = window.__v3.game();
+    gm.queue.length = 0;
+    gm.raids.length = 0;
+    gm.raiderQueue.length = 0;
+    gm.queue.push({ at: 1e9, kind: 'drone', base: 0 }); // placeholder: keeps the wave open
+  });
+/** Let the wave finish once everything on the water is gone. */
+const studioEnd = (page) => g(page, () => (window.__v3.game().queue.length = 0));
+/** Launch `n` enemies of a kind from the map's bases, through the wave's own launch queue. */
+const studioSpawn = (page, kind, n = 1) =>
+  g(page, ([kind, n]) => {
+    const gm = window.__v3.game();
+    const bases = gm.map.bases.length;
+    for (let i = 0; i < n; i++) gm.queue.push({ at: gm.waveT + 0.05 + i * 0.2, kind, base: i % bases });
+    gm.queue.sort((a, b) => a.at - b.at); // the queue is read from the front; the placeholder stays last
+  }, [kind, n]);
+/** Put an ammo or repair drop on the water (world coordinates). */
+const studioDrop = (page, kind, x, y) =>
+  g(page, ([kind, x, y]) => window.__v3.game().pickups.push({ id: 80000 + Math.floor(Math.random() * 9999), kind, x, y, age: 0 }), [kind, x, y]);
+
+/**
+ * Run a timeline while the director plays. Events: { at, spawn: [kind, n] } | { at, drop: [kind, x, y] }
+ * | { at, cue: [head, sub, secs] } | { at, end: true }. `at` is seconds from this call.
+ * Returns when the wave has ended (phase no longer 'wave') or `limit` seconds pass.
+ */
+async function runTimeline(page, t, events, { limit = 60 } = {}) {
+  const todo = [...events].sort((a, b) => a.at - b.at);
+  const t0 = Date.now();
+  while (sinceS(t0) < limit) {
+    while (todo.length && todo[0].at <= sinceS(t0)) {
+      const e = todo.shift();
+      if (e.spawn) await studioSpawn(page, ...e.spawn);
+      if (e.drop) await studioDrop(page, ...e.drop);
+      if (e.cue) t.cue(...e.cue);
+      if (e.end) await studioEnd(page);
+    }
+    await defend(page, 2);
+    await grabSupplies(page);
+    if ((await state(page))?.phase !== 'wave') return;
+    await sleep(140);
+  }
+}
+
 // ------------------------------------------------------------------- clips
 // `t` is the director: t.mark() = where the clip starts (all before is cut),
 // t.cue(head, sub, secs) = a caption from now, t.stop() = where it ends.
@@ -213,31 +276,135 @@ async function fireAt(page, weapon, minHits = 1) {
 
 const CLIPS = {
   // Menu -> Free Play wave 3 -> real intercepts with the normal gun.
+  // The launch clip, scripted to the post: the three enemy types on screen, only ammo and
+  // repair drops, the upgrade pick, then the attack stepping up. Studio mode (see above).
   convoy: {
-    title: 'Defend the convoy',
-    takes: 4,
+    title: 'Defend the convoy (studio)',
+    studio: true,
+    takes: 2,
     capture: 'cdp',
     async play(page, t) {
+      t.maxSeconds = 75;
       await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
-      t.start = t.now();
-      t.cue('Straitwatch', 'my convoy-defense prototype', 2.6);
+      await page.evaluate(() => (window.__onlySupplies = true));
+      await studioBegin(page);
       const k0 = (await kills(page)).kills;
-      let cued = 0;
-      await playUntil(page, async (sec) => {
-        if (sec > 2.8 && cued < 1) {
-          cued = 1;
-          t.cue('Tap a missile to intercept it', 'drones, ballistic, guided', 4.5);
-        }
-        if (sec > 8 && cued < 2) {
-          cued = 2;
-          t.cue('Goal: get the cargo ships across', null, 5);
-        }
-        return sec > 18 || (await state(page))?.phase !== 'wave';
-      });
+      t.start = t.now();
+      const T = (x) => t.start + x;
+      // Wave 7: drones, then ballistic, then supersonic, building.
+      t.cues.push(
+        { at: T(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
+        { at: T(5.2), head: 'Protect as many ships as you can', sub: 'as the enemy relentlessly attacks your convoy', dur: 5.4 },
+        { at: T(11.2), head: 'Tap enemy missiles to intercept them', sub: 'drones, ballistic and supersonic missiles', dur: 6 },
+      );
+      await runTimeline(page, t, [
+        { at: 0.5, spawn: ['drone', 5] },
+        { at: 4.5, spawn: ['ballistic', 2] },
+        { at: 6.5, drop: ['ammo', 760, 330] },
+        { at: 8.0, spawn: ['supersonic', 2] },
+        { at: 10.5, spawn: ['drone', 6] },
+        { at: 13.0, spawn: ['ballistic', 3] },
+        { at: 14.5, drop: ['repair', 900, 320] },
+        { at: 16.0, spawn: ['supersonic', 2] },
+        { at: 19.0, end: true },
+      ], { limit: 60 });
+      const phase = (await state(page))?.phase;
+      if (phase !== 'draft') throw new Error(`wave 7 ended in "${phase}", not a clear`);
+      // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
+      await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
+      await sleep(400);
+      await page.click('[data-rate-skip]');
+      await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
+      const tDraft = t.now();
+      await sleep(2800);
+      await page.click('.v2-draft .v2-card');
+      await page.waitForFunction(() => window.__v3.game()?.wave === 8 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
+      await studioBegin(page);
+      const tWave8 = t.now();
+      t.cues.push(
+        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave8 - tDraft + 6.5 },
+        { at: tWave8 + 7, head: 'Still in development', sub: 'Free Play testing coming soon', dur: 5 },
+      );
+      // Wave 8: the same three types, harder and faster.
+      await runTimeline(page, t, [
+        { at: 0.3, spawn: ['drone', 8] },
+        { at: 2.0, spawn: ['ballistic', 3] },
+        { at: 3.5, spawn: ['supersonic', 3] },
+        { at: 5.0, drop: ['ammo', 700, 340] },
+        { at: 6.0, spawn: ['drone', 9] },
+        { at: 7.5, spawn: ['ballistic', 4] },
+        { at: 9.0, spawn: ['supersonic', 3] },
+        { at: 10.0, drop: ['repair', 880, 330] },
+        { at: 12.0, end: true },
+      ], { limit: 16 });
+      t.stopAt = t.now();
       const k = (await kills(page)).kills - k0;
       t.score = k;
-      t.note(`${k} threats shot down`);
-      t.stop();
+      t.note(`studio scene: ${k} enemies shot down; enemies launched by the script (drones, ballistic, supersonic), ammo/repair drops placed`);
+    },
+  },
+
+  // The launch clip: a real wave 7 (drones, ballistic and supersonic missiles together), only
+  // ammo and repair drops on the water, then the upgrade pick between waves and wave 8 starting.
+  'convoy-real': {
+    title: 'Defend the convoy (real wave)',
+    takes: 3,
+    capture: 'cdp',
+    async play(page, t) {
+      t.maxSeconds = 75;
+      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
+      await page.evaluate(() => (window.__onlySupplies = true));
+      const wall0 = Date.now() - t.now() * 1000;
+      const tPlay = t.now();
+      const k0 = (await kills(page)).kills;
+      // Wave 7, played with the normal gun until it is cleared.
+      let phase = 'wave';
+      const w0 = Date.now();
+      while (sinceS(w0) < 120) {
+        await defend(page, 2);
+        await grabSupplies(page);
+        phase = (await state(page))?.phase;
+        if (phase !== 'wave') break;
+        await sleep(140);
+      }
+      if (phase !== 'draft') throw new Error(`wave 7 ended in "${phase}", not a clear`);
+      const tClear = t.now();
+      const k1 = (await kills(page)).kills;
+      // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
+      await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
+      await sleep(500);
+      await page.click('[data-rate-skip]');
+      await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
+      const tDraft = t.now();
+      await sleep(2600);
+      await page.click('.v2-draft .v2-card');
+      await page.waitForFunction(() => window.__v3.game()?.wave === 8 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
+      const tWave8 = t.now();
+      const w8 = Date.now();
+      while (sinceS(w8) < 15) {
+        await defend(page, 2);
+        await grabSupplies(page);
+        if ((await state(page))?.phase !== 'wave') break;
+        await sleep(140);
+      }
+      const tEnd = t.now();
+      // Retroactive start: the last stretch of wave 7, so the clip opens mid-attack.
+      t.start = Math.max(tPlay, tClear - 24);
+      const at = (x) => t.start + x;
+      t.cues.push(
+        { at: at(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
+        { at: at(5.2), head: 'Protect as many ships as you can', sub: 'as the enemy relentlessly attacks your convoy', dur: 5.4 },
+        { at: at(11.2), head: 'Tap enemy missiles to intercept them', sub: 'drones, ballistic and supersonic missiles', dur: 5.4 },
+        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave8 - tDraft + 5 },
+        { at: tWave8 + 5.6, head: 'Still in development', sub: 'Free Play testing coming soon', dur: Math.max(3, tEnd - tWave8 - 5.6) },
+      );
+      const seen = await kindsBetween(page, wall0 + t.start * 1000, wall0 + tClear * 1000);
+      const want = ['drone', 'ballistic', 'supersonic'];
+      const all3 = want.every((k) => seen.includes(k));
+      const k = k1 - k0;
+      t.score = (all3 ? 100 : 0) + k;
+      t.note(`wave 7 cleared in ${(tClear - tPlay).toFixed(0)}s; clip window shows ${seen.join(', ')} (${all3 ? 'all 3 wanted types' : 'MISSING a wanted type'}); ${k} threats shot down in wave 7`);
+      t.stopAt = tEnd;
     },
   },
 
@@ -401,7 +568,7 @@ async function recordTake(browser, name, clip, take) {
   const page = await ctx.newPage();
   const t0 = Date.now();
   const now = () => (Date.now() - t0) / 1000;
-  const t = { now, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
+  const t = { now, studio: !!clip.studio, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
@@ -481,7 +648,9 @@ function captionFilters(cues, start, { headSize, subSize, yHead, ySub, boxPad })
     const fade = `alpha='min(1,(t-${a.toFixed(2)})/0.25)'`;
     const common = `fontfile='${FONT}':fontcolor=white:${en}:${fade}:x=(w-text_w)/2:shadowcolor=black@0.8:shadowx=0:shadowy=3`;
     out.push(`drawtext=text='${esc(c.head)}':fontsize=${headSize}:y=${yHead}:box=1:boxcolor=0x0a1620@0.72:boxborderw=${boxPad}:${common}`);
-    if (c.sub) out.push(`drawtext=text='${esc(c.sub)}':fontsize=${subSize}:y=${ySub}:fontcolor=0x8fe3ff:${en}:${fade}:x=(w-text_w)/2:fontfile='${FONT}':shadowcolor=black@0.8:shadowx=0:shadowy=2`);
+    for (const [li, line] of (c.sub ? c.sub.split('|') : []).entries()) {
+      out.push(`drawtext=text='${esc(line)}':fontsize=${subSize}:y=${ySub}+${Math.round(li * subSize * 1.35)}:fontcolor=0x8fe3ff:${en}:${fade}:x=(w-text_w)/2:fontfile='${FONT}':shadowcolor=black@0.8:shadowx=0:shadowy=2`);
+    }
   }
   return out;
 }
@@ -494,7 +663,7 @@ function ffmpeg(args) {
 function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
   const start = Math.max(0, t.start - 0.1);
   t.cues = t.cues.filter((c) => c.at >= start); // nothing from before the clip starts
-  const dur = Math.min(end - start + 0.6, 25);
+  const dur = Math.min(end - start + 0.6, t.maxSeconds ?? 25);
   const tail = Math.max(0, dur - 0.6);
   // Silent AAC track: X's uploader and some players reject video with no audio stream.
   const silent = ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100'];
@@ -520,7 +689,7 @@ function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
     const next = t.cues[i + 1] ? Math.max(0, t.cues[i + 1].at - start) - 0.15 : Infinity;
     return { from: +a.toFixed(1), to: +Math.min(a + c.dur, next, dur).toFixed(1), headline: c.head, sub: c.sub ?? null };
   });
-  writeFileSync(join(OUT, `${name}.captions.json`), JSON.stringify({ seconds: +dur.toFixed(1), notes: t.notes, captions: timeline }, null, 2));
+  writeFileSync(join(OUT, `${name}.captions.json`), JSON.stringify({ seconds: +dur.toFixed(1), studio: !!t.studio, notes: t.notes, captions: timeline }, null, 2));
   ffmpeg([...base, ...silent, '-filter_complex', graph, '-map', '[v]', '-map', '1:a', ...enc, join(OUT, `${name}-9x16.mp4`)]);
   return dur;
 }

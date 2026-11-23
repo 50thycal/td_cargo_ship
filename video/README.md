@@ -24,7 +24,8 @@ Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
 
 | clip | what happens |
 |---|---|
-| `convoy` | a real wave (Free Play, wave 7, normal 1x speed): tap incoming missiles and drones with the normal gun |
+| `convoy` | studio scene for the launch post: drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then a heavier wave 8 |
+| `convoy-real` | the same idea on a natural wave 7 and 8 (no placed enemies) |
 | `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
 | `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
 
@@ -41,6 +42,17 @@ It never fires into empty water.
 Waves are random, so each clip is recorded several times (`VIDEO_TAKES`, default 3-4) and the
 take with the most real hits and the least dead time is kept, the way you would pick from raw footage.
 The caption start is set after the fact, so the clip opens on a few seconds of ordinary play.
+
+## Studio mode (scripted scenes)
+
+A clip with `studio: true` is shot to a script instead of waiting for the right wave. The scene empties the wave's own
+launch list, then launches what the script asks for, when it asks (`runTimeline`: `spawn`, `drop`, `cue`, `end` events),
+and holds the wave open until the scene ends it. Everything else is the game: its enemies, its interceptors, its
+upgrade draft screens, and the director's real taps. Only ammo and repair drops are placed (`window.__onlySupplies`
+also hides nukes and other power-ups).
+
+Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave clips (`convoy-real`, `railgun`,
+`arsenal`) when a post should say "this is a natural wave".
 
 ## Smooth capture
 
