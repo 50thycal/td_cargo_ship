@@ -13,7 +13,11 @@
     "isolatedModules": true,
     "useDefineForClassFields": true,
     "resolveJsonModule": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "palate-keys": ["./vendor/palate-keys/src/index.d.ts"],
+      "palate-keys/*": ["./vendor/palate-keys/*"]
+    }
   },
   "include": ["src", "tests", "vite.config.ts"]
 }
