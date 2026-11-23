@@ -4940,10 +4940,16 @@ export class App {
     const vv = window.visualViewport;
     const w = vv?.width ?? window.innerWidth;
     // The in-app keyboard (keys.ts) isn't the phone's: the page is not
-    // resized for it, so what it leaves visible is the rest of the screen.
+    // resized for it. It sits on the layout viewport's bottom edge, so what
+    // is left to type in is the visible part of the screen above its top
+    // edge (the Tools round: measured against the keyboard's top, not by
+    // taking its height off the visible height, so a panned or shrunk view
+    // never puts the box or its buttons under it).
     const kb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb-h')) || 0;
-    const h = (vv?.height ?? window.innerHeight) - kb;
-    this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
+    const top = vv?.offsetTop ?? 0;
+    const bottom = Math.min(top + (vv?.height ?? window.innerHeight), kb > 0 ? window.innerHeight - kb : Infinity);
+    const h = Math.max(0, bottom - top);
+    this.root.style.setProperty('--vv-top', `${Math.round(top)}px`);
     this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
     this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);
     this.root.style.setProperty('--vv-h', `${Math.round(h)}px`);

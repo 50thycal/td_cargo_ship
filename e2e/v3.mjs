@@ -1360,7 +1360,10 @@ try {
       const kp = await kc.newPage();
       const errs = [];
       kp.on('pageerror', (e) => errs.push(e.message));
-      await kp.goto(`${BASE_URL}/v3.html?lab=cloud&seed=8`, { waitUntil: 'networkidle' });
+      // The phone's own keyboard only comes up when the in-game one is off
+      // (the store build, a mouse, ?keys=off); with it on, the box takes
+      // the in-game keyboard (checked below). Both at once never happens.
+      await kp.goto(`${BASE_URL}/v3.html?lab=cloud&seed=8&keys=off`, { waitUntil: 'networkidle' });
       await kp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
       await kp.reload({ waitUntil: 'networkidle' });
       await kp.waitForSelector('.lab-on');
@@ -1404,6 +1407,54 @@ try {
       await kp.waitForSelector('[data-screen="lab"]');
       const saved = await kp.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.lab')).results.cloud?.at(-1));
       check(saved?.verdict === 'keep' && saved?.note === 'the fire reads well now' && errs.length === 0, `${c.name}: the verdict ${c.pick ? 'picked before typing is kept through it' : 'picked when asked'} and saved with the note (${JSON.stringify({ verdict: saved?.verdict, note: saved?.note })}${errs.length ? `; ${errs[0]}` : ''})`);
+      await kc.close();
+    }
+    // The in-game keyboard (#232, ui/keys.ts) on a touch phone, upright and
+    // sideways: the verdict note and the pause menu's note keep the box and
+    // every button above the keyboard's top edge, and Save takes a tap.
+    for (const [name, w, h] of [['landscape', 874, 402], ['portrait', 402, 874]]) {
+      const kc = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+      const kp = await kc.newPage();
+      const errs = [];
+      kp.on('pageerror', (e) => errs.push(e.message));
+      await kp.goto(`${BASE_URL}/v3.html?lab=cloud&seed=8`, { waitUntil: 'networkidle' });
+      await kp.evaluate(() => localStorage.removeItem('straitwatch.v3.lab'));
+      await kp.reload({ waitUntil: 'networkidle' });
+      await kp.waitForSelector('.lab-on');
+      await kp.waitForTimeout(600);
+      const above = (sels) => kp.evaluate((sels) => {
+        const pk = document.querySelector('.pk.pk-visible')?.getBoundingClientRect();
+        const out = { pk: pk ? Math.round(pk.top) : null };
+        for (const s of sels) {
+          const r = document.querySelector(s)?.getBoundingClientRect();
+          out[s] = r && r.height > 0 ? [Math.round(r.top), Math.round(r.bottom)] : null;
+        }
+        out.ok = !!pk && sels.every((s) => out[s] && out[s][0] >= 0 && out[s][1] <= pk.top + 1);
+        return out;
+      }, sels);
+      // The pause menu's note.
+      await labMenu(kp);
+      await kp.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-note]').click());
+      await kp.waitForSelector('[data-screen="note"]');
+      await kp.locator('[data-screen="note"] textarea').tap();
+      await kp.waitForTimeout(300);
+      const note = await above(['[data-screen="note"] textarea', '[data-screen="note"] .v3-note-save', '[data-screen="note"] .v2-btn:not(.v3-note-save)']);
+      check(note.ok, `in-game keyboard, ${name}: the pause menu's note box and its Save and Cancel sit above the keyboard (${JSON.stringify(note)})`);
+      await kp.locator('[data-screen="note"] .v2-btn:not(.v3-note-save)').tap();
+      await kp.waitForSelector('.v2-pause-panel [data-lab-done]');
+      // The verdict note.
+      await kp.evaluate(() => document.querySelector('[data-lab-done]').click());
+      await kp.waitForSelector('[data-screen="lab-verdict"]');
+      await kp.locator('#lab-note').tap();
+      await kp.keyboard.type('reads well');
+      await kp.waitForTimeout(300);
+      const v = await above(['#lab-note', '[data-lab-verdict="keep"]', '[data-lab-verdict="cut"]', '[data-lab-list]', '[data-lab-save-next]']);
+      check(v.ok, `in-game keyboard, ${name}: the verdict note, Keep / Tune / Cut and the Save buttons sit above the keyboard (${JSON.stringify(v)})`);
+      await kp.locator('[data-lab-verdict="keep"]').tap();
+      await kp.locator('[data-lab-list]').tap();
+      await kp.waitForSelector('[data-screen="lab"]');
+      const saved = await kp.evaluate(() => JSON.parse(localStorage.getItem('straitwatch.v3.lab')).results.cloud?.at(-1));
+      check(saved?.verdict === 'keep' && saved?.note === 'reads well' && errs.length === 0, `in-game keyboard, ${name}: Save · back to the list takes the tap and saves the note (${JSON.stringify({ verdict: saved?.verdict, note: saved?.note })}${errs.length ? `; ${errs[0]}` : ''})`);
       await kc.close();
     }
   }
