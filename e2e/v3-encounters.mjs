@@ -208,8 +208,8 @@ try {
   const a0 = await along();
   await page.evaluate(() => window.__v3.advance(0.25));
   const a1 = await along();
-  const both = Object.keys(a0).filter((id) => a1[id]);
-  check(both.length > 0 && both.every((id) => a1[id].a > a0[id].a) && both.every((id) => a1[id].y < 300), `and every truck drives on along the road behind the silos (${JSON.stringify(both.map((id) => [a0[id].a | 0, a1[id].a | 0, a1[id].y | 0]))})`);
+  const kept = Object.keys(a0).filter((id) => a1[id]);
+  check(kept.length > 0 && kept.every((id) => a1[id].a > a0[id].a) && kept.every((id) => a1[id].y < 300), `and every truck drives on along the road behind the silos (${JSON.stringify(kept.map((id) => [a0[id].a | 0, a1[id].a | 0, a1[id].y | 0]))})`);
   check(errs.length === 0, `no page errors in the missile parade (${errs[0] ?? 'none'})`);
   await page.screenshot({ path: `${OUT_DIR}/saltgate-missile-parade.png` });
 
