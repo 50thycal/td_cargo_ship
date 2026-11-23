@@ -1221,15 +1221,13 @@ try {
     await tp.reload({ waitUntil: 'networkidle' });
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
-    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, next: document.querySelector('[data-lab-next] small')?.textContent, events: document.querySelectorAll('[data-section="event"] [data-card]').length, combos: document.querySelectorAll('[data-section="combo"] [data-card]').length, cut: !!document.querySelector('[data-card="combo-lure-screen"]'), first: document.querySelector('.v3-lab-sec')?.dataset.section }));
-    // Round 8: the combos are thirteen enemy pairs (the four with a player
-    // weapon in them are cut). Round 11: the decoy card and its two pairs
-    // are retired (95 cards, eleven pairs). Round 12: two encounter
-    // versions of each reference map have cards of their own (101).
-    check(hub.rows === 101 && hub.events === 21 && hub.combos === 11 && !hub.cut && hub.first === 'event' && hub.next === 'Afterburner Rush', `the Test Lab hub lists every card, the Events section first and Next up its first card (${JSON.stringify(hub)})`);
-    // The UI overhaul: the enemy cards are in the hub's Tools drawer.
-    await tp.click('[data-lab-tools-open]');
-    await tp.click('[data-card="diveBomber"]');
+    const hub = await tp.evaluate(() => ({ rows: document.querySelectorAll('[data-card]').length, maps: document.querySelectorAll('[data-section="map"] [data-card]').length, old: document.querySelectorAll('[data-section="event"], [data-section="enemy"], [data-section="weapon"], [data-section="combo"], .v3-lab-sec, [data-lab-next], [data-lab-five]').length, ready: document.querySelectorAll('[data-ready]').length }));
+    // The Tools round (docs/design/v3-playtest-fixes.md): the hub shows only
+    // the new tests, Ready to test and the 26 map cards by chapter. The old
+    // event, enemy, weapon and combo cards are gone from it; their ?lab=
+    // links still open them.
+    check(hub.rows === 26 && hub.maps === 26 && hub.old === 0 && hub.ready > 0, `the Test Lab hub shows Ready to test and the map cards only, no old testing (${JSON.stringify(hub)})`);
+    await tp.goto(`${BASE_URL}/v3.html?lab=diveBomber&seed=8`, { waitUntil: 'networkidle' });
     await tp.waitForSelector('.playing.lab-on');
     const run = await tp.evaluate(() => { const g = window.__v3.game(); return { card: g.lab?.setup.card, wave: g.wave, endless: g.endless, bar: !!document.querySelector('.v3-lab-bar, [data-lab-done]'), map: g.map.id }; });
     check(run.card === 'diveBomber' && run.wave === 5 && run.endless && !run.bar, `a test starts at wave 5 on the lab's water, with nothing of it over the field (${JSON.stringify(run)})`);
@@ -1270,9 +1268,9 @@ try {
       const logs = JSON.parse(localStorage.getItem('straitwatch.v3.playlogs') || '[]');
       const log = logs.find((l) => l.lab?.card === 'diveBomber');
       const e = p.results.diveBomber?.at(-1);
-      return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, chip: document.querySelector('[data-card="diveBomber"] .v3-lab-chip')?.textContent, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, next: document.querySelector('[data-lab-next] small')?.textContent };
+      return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, old: !!document.querySelector('[data-card="diveBomber"]') };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.chip === 'KEEP' && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 64 && saved.next === 'Afterburner Rush', `the verdict is kept on the device, with its round and the card's version, and rides in the test's log (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 64 && !saved.old, `the verdict is kept on the device, with its round and the card's version, and rides in the test's log; back on the hub, which lists no old card (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });
@@ -1296,9 +1294,9 @@ try {
     await tp.waitForSelector('.playing.lab-on');
     const linked = await tp.evaluate(() => ({ card: window.__v3.game().lab?.setup.card, slots: window.__v3.game().slots }));
     check(linked.card === 'w-cadence' && linked.slots[0] === 'cadence' && errs.length === 0, `?lab=<card> opens that test, holding its weapon (${JSON.stringify(linked)}${errs.length ? `; ${errs[0]}` : ''})`);
-    // Rounds and versions: a verdict saved before rounds (one object per
-    // card) is round 1. The Rocket Truck changed in round 2, so its card asks
-    // to be tested again and shows the round 1 note dimmed.
+    // Rounds and versions: a card changed since its verdict (the Rocket
+    // Truck, round 1) is still kept on the device (tests/v3/lab.test.ts has
+    // its status); the hub no longer lists it, and still names the round.
     await tp.goto(`${BASE_URL}/v3.html?seed=8`, { waitUntil: 'networkidle' });
     await tp.evaluate(() => {
       const stats = { came: 4, killed: 3, early: 2, harm: 1, sunk: 0, weaponKills: 0, weaponUses: 0, firstShot: [] };
@@ -1307,12 +1305,8 @@ try {
     await tp.reload({ waitUntil: 'networkidle' });
     await tp.click('[data-lab]');
     await tp.waitForSelector('[data-screen="lab"]');
-    const changed = await tp.evaluate(() => {
-      const row = document.querySelector('[data-card="rocketTruck"]');
-      const old = row?.querySelector('.v3-lab-old');
-      return { status: row?.dataset.status, chip: row?.querySelector('.v3-lab-chip')?.textContent, old: old?.textContent, dim: old ? Number(getComputedStyle(old).opacity) : 1, round: `${document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent} | ${document.querySelector('.v3-lab-round')?.textContent}`, next: document.querySelector('[data-lab-next] small')?.textContent };
-    });
-    check(changed.status === 'changed' && /changed · test again/i.test(changed.chip ?? '') && changed.old === 'Round 1 · Keep · “best one so far”' && changed.dim < 1 && /Test round 13/.test(changed.round ?? '') && /1 to retest/.test(changed.round ?? '') && changed.next === 'Rocket Truck', `a card changed since its round 1 verdict asks to be tested again, with the old note dimmed (${JSON.stringify(changed)})`);
+    const changed = await tp.evaluate(() => ({ row: !!document.querySelector('[data-card="rocketTruck"]'), round: document.querySelector('[data-screen="lab"] .v3-eyebrow')?.textContent, kept: !!JSON.parse(localStorage.getItem('straitwatch.v3.lab')).results.rocketTruck }));
+    check(!changed.row && changed.kept && /Test round 13/.test(changed.round ?? ''), `an old card's verdict stays on the device, off the hub, under the round's name (${JSON.stringify(changed)})`);
     await tp.close();
   }
 

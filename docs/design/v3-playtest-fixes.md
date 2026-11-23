@@ -9,6 +9,20 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
+## Test Lab Tools: one Armory setting, a real Tools sheet, no old testing (UI only, no log change)
+
+> "you didn't need to add a button for all of them. You can make it a setting in the tools. Also overhaul the tools option there too: it just takes you to the bottom of the page there, and you can remove all that old testing down there. We should only have new tests show up in the new spot on top."
+
+- **The hub** is now only the new tests: **Ready to test** on top (each card: its line, **Notes** and **Play**) and **All maps** by chapter (the 26 map cards, an "i" for each map's notes). The "⚓ Armory" line under each chapter and on each Ready card is gone.
+- **Tools** (the key top right) opens a sheet over the hub in place; the hub does not scroll. ✕, a tap outside or Escape closes it. Its entries:
+  - **Setup:** **Armory** (the Test Lab Armory editor as it was: chapter tabs, the ranges, Auto; Back returns to Tools) and **Call-outs** (All / Essential / Off: the game's own setting, the same as in Settings).
+  - **Logs:** **Session report** (today's verdicts, notes, rewatch), **Send logs now**, **Download last log** (the newest test as a file).
+  - **More:** **Map Analytics** and the **Feedback page**.
+- **A map's notes** show the Armory the run will use in one read-only line ("Armory · Ch 2 Lv 2–4 · Quick Reload 2 · ..."); it is changed in Tools.
+- **Removed from the hub (the old testing):** the event, enemy, weapon and combo card lists (75 cards), the round tally ("N to retest · N untested", "N of 101 tested"), **Next up**, **Play 5**, the Quick/Full length switch (the setup sheet in a run still has Length) and the hint about wave 5 starts. Their cards still exist and their links still open them (`v3.html?lab=diveBomber`, `?lab=ev-drone-storm`, `?lab=w-cadence`; the e2e scripts and tools use them). Their verdicts stay on the device and in the logs. **Save · next** after a test now stays among cards of the same kind, so a map test never leads to an old card.
+- No sim or log change: the log stays where it was.
+- Checks: `e2e/v3-lab-tools.mjs` (new), and `v3.mjs` and `v3-map-cards.mjs` updated for the hub without the old cards and Next up.
+
 ## Round 16: the left rail's leftovers are gone (UI only, log stays v61)
 
 Your answer to round 15's two rail questions: *"Drop the slider and all that old stuff the new version is going on like the new hauls button the canal map"*. The big convoy button is now the only convoy control, in every game type.

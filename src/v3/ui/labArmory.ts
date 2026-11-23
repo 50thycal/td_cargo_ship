@@ -10,7 +10,7 @@
 // from data/mapHistory.ts.
 
 import { ARMORY, BAYS, bayItems } from '../data/armory';
-import { chapterRange, autoLevel, labArmoryIsAuto, labBays, parseLabArmory, rangeText, resetLabChapter, setLabEquip, setLabLevel, type LabArmorySettings } from '../data/labArmory';
+import { chapterRange, autoLevel, labArmoryIsAuto, labArmoryText, labBays, parseLabArmory, rangeText, resetLabChapter, setLabEquip, setLabLevel, type LabArmorySettings } from '../data/labArmory';
 import { MAP_HISTORY } from '../data/mapHistory';
 import { CHAPTERS, MAPS, chapterOf, type MapId } from '../data/maps';
 import { kv } from '../platform/store';
@@ -143,35 +143,23 @@ export function labArmoryEditor(chapter: number, onChange?: (chapter: number) =>
 
 export interface MapNotesHandlers {
   play: () => void;
-  armory: () => void;
 }
 
 /** A map's card in the Test Lab (data/mapHistory.ts): the latest change and
- *  why, what to look for, the Armory it will play with, and every
- *  iteration, newest first, with its log version. */
+ *  why, what to look for, the Armory it will play with (one line, read
+ *  only: it is set in Tools), and every iteration, newest first, with its
+ *  log version. */
 export function mapNotesSheet(map: MapId, h: MapNotesHandlers): HTMLElement {
   const ch = chapterOf(map);
   const s = loadLabArmory();
   const notes = MAP_HISTORY[map];
   const box = el('div', 'v3-map-notes');
   box.dataset.mapNotesSheet = map;
-  // The Armory this map will play.
-  const arm = el('section', 'v3-notes-arm v3-cic-panel');
-  arm.dataset.notesArmory = '1';
-  const armHead = el('header', 'v3-cic-head');
-  const edit = button('Edit', 'v3-text-btn v3-notes-edit', h.armory);
-  edit.dataset.notesArmoryEdit = '1';
-  armHead.append(el('i', 'v3-led ok'), el('b', '', 'Armory for this run'), el('span', 'v3-cic-meta', `Ch ${ch} · ${rangeText(ch)}${labArmoryIsAuto(s, ch) ? ' · auto' : ''}`), edit);
-  const chips = el('div', 'v3-notes-arm-chips');
-  for (const b of labBays(s, ch)) {
-    const c = el('span', 'v3-notes-arm-chip');
-    c.style.setProperty('--card-color', BAYS[b.bay].color);
-    c.dataset.armory = b.id;
-    c.dataset.level = String(b.level);
-    c.append(el('small', '', BAYS[b.bay].name), el('b', '', `${ARMORY[b.id].name} ${b.level}`), el('span', '', ARMORY[b.id].show(b.level)));
-    chips.append(c);
-  }
-  arm.append(armHead, chips);
+  // The Armory this map will play, in one line.
+  const arm = el('p', 'v3-notes-arm');
+  arm.dataset.notesArmory = labArmoryIsAuto(s, ch) ? 'auto' : 'set';
+  arm.title = 'Set in Tools → Armory';
+  arm.append(el('b', '', `Armory · Ch ${ch} ${rangeText(ch)}${labArmoryIsAuto(s, ch) ? ' auto' : ''}`), el('span', '', labArmoryText(s, ch)));
   const latest = notes.history[0];
   const now = el('section', 'v3-notes-now v3-cic-panel');
   now.dataset.notesLatest = String(latest.log);

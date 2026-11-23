@@ -4166,104 +4166,6 @@ body {
 
 /* ---- The Test Lab (docs/design/v3-test-lab.md) ---------------------------- */
 
-.v3-lab-hub {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 250px);
-  gap: 14px;
-  width: 100%;
-  align-items: start;
-}
-
-.v3-lab-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-.v3-lab-sec {
-  text-align: left;
-  border: 1px solid var(--panel-edge);
-  border-radius: 12px;
-  background: rgb(15 26 34 / 0.85);
-  padding: 4px 8px 8px;
-}
-
-.v3-lab-sec > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-  padding: 6px 2px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.v3-lab-sec > summary::-webkit-details-marker {
-  display: none;
-}
-
-.v3-lab-sec > summary b {
-  font-size: 14px;
-}
-
-.v3-lab-sec > summary span {
-  font-size: 12px;
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
-}
-
-.v3-lab-sec > summary i {
-  font-style: normal;
-  font-size: 11.5px;
-  color: var(--muted);
-  flex-basis: 100%;
-}
-
-.v3-lab-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 8px;
-  margin-top: 4px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: rgb(255 255 255 / 0.04);
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-}
-
-.v3-lab-row:hover,
-.v3-lab-row:focus-visible {
-  border-color: var(--gold);
-}
-
-.v3-lab-row-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-}
-
-.v3-lab-row-text b {
-  font-size: 13.5px;
-}
-
-.v3-lab-row-text small {
-  font-size: 11.5px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.v3-lab-row.done .v3-lab-row-text b {
-  color: var(--muted);
-}
-
 .v3-lab-chip {
   flex: none;
   font-size: 10px;
@@ -4297,112 +4199,6 @@ body {
   color: var(--ink);
 }
 
-/* Rounds and versions: a card changed since its last test asks to be
-   tested again, in amber; its old verdict is dimmed (it was about a
-   different version). */
-.v3-lab-chip.changed {
-  background: color-mix(in srgb, var(--lab-amber) 18%, transparent);
-  border-color: var(--lab-amber);
-  color: var(--lab-amber);
-  white-space: nowrap;
-}
-
-.v3-lab-row.changed {
-  border-color: color-mix(in srgb, var(--lab-amber) 45%, transparent);
-}
-
-.v3-lab-row-text small.v3-lab-what {
-  color: var(--lab-amber);
-}
-
-.v3-lab-row-text small.v3-lab-old {
-  color: var(--muted);
-  opacity: 0.6;
-}
-
-.v3-lab-round {
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  gap: 4px 10px;
-  flex-wrap: wrap;
-  padding: 5px 9px;
-  border-radius: 9px;
-  border: 1px solid color-mix(in srgb, var(--lab-amber) 55%, transparent);
-  font-size: 12.5px;
-  font-variant-numeric: tabular-nums;
-}
-
-.v3-lab-round b {
-  color: var(--lab-amber);
-}
-
-.v3-lab-round span {
-  color: var(--muted);
-}
-
-.v3-lab-round.none {
-  border-color: var(--panel-edge);
-}
-
-.v3-lab-round.none b {
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.v3-lab-next small.v3-lab-next-why {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.75;
-}
-
-.v3-lab-side {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: sticky;
-  top: 0;
-}
-
-.v3-lab-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.v3-lab-track {
-  height: 6px;
-  border-radius: 3px;
-  background: rgb(255 255 255 / 0.12);
-  overflow: hidden;
-}
-
-.v3-lab-track i {
-  display: block;
-  height: 100%;
-  background: var(--gold);
-}
-
-.v3-lab-next {
-  display: flex !important;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 10px 12px !important;
-}
-
-.v3-lab-next span {
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.v3-lab-next small,
 .v3-lab-sheet-acts .primary small {
   font-size: 12px;
   font-weight: 600;
@@ -5083,10 +4879,6 @@ a.v3-lab-page {
 }
 
 @media (max-width: 720px), (max-height: 430px) {
-  .v3-lab-hub {
-    grid-template-columns: minmax(0, 1fr) minmax(170px, 200px);
-    gap: 10px;
-  }
   .v3-lab-cols {
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
   }
@@ -6091,14 +5883,8 @@ a.v3-lab-page {
   outline-offset: 2px;
 }
 
-/* Test Lab round 10: a map card is the full production map. Its hub card
-   says what it plays; its setup sheet marks the production setup and has
-   a one-tap way back to it. */
-.v3-lab-row-text small.v3-lab-plays {
-  color: var(--gold);
-  opacity: 0.85;
-}
-
+/* Test Lab round 10: a map card is the full production map. Its setup
+   sheet marks the production setup and has a one-tap way back to it. */
 .v3-lab-prod {
   display: flex;
   align-items: center;
@@ -7409,56 +7195,6 @@ a.v3-lab-page {
   box-shadow: inset 3px 0 0 var(--amber);
 }
 
-.v3-lab-tools > summary {
-  list-style: none;
-  cursor: pointer;
-  padding-bottom: 0;
-}
-
-.v3-lab-tools > summary::-webkit-details-marker {
-  display: none;
-}
-
-.v3-lab-tools[open] > summary {
-  padding-bottom: 8px;
-}
-
-.v3-lab-tools-caret {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin: 0 4px 3px auto;
-  border-right: 1.5px solid var(--accent);
-  border-bottom: 1.5px solid var(--accent);
-  transform: rotate(45deg);
-  transition: transform 0.15s;
-}
-
-.v3-lab-tools[open] .v3-lab-tools-caret {
-  margin-bottom: -3px;
-  transform: rotate(-135deg);
-}
-
-.v3-lab-tools-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
-  gap: 12px;
-  align-items: start;
-}
-
-.v3-lab-tools .v3-lab-sec {
-  border-radius: 3px;
-  border-color: var(--steel-hi);
-  background: rgb(4 11 17 / 0.7);
-}
-
-.v3-lab-tools .v3-lab-sec > summary b {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 @media (max-width: 760px) {
   .v3-cic-dim,
   .v3-lab-maps .v3-cic-head .v3-lab-maps-blurb {
@@ -7469,9 +7205,6 @@ a.v3-lab-page {
   }
   .v3-lab-ch span {
     display: none;
-  }
-  .v3-lab-tools-body {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -8067,54 +7800,6 @@ a.v3-lab-page {
 
 /* ---- The Test Lab's Armory and map notes (ui/labArmory.ts) ---- */
 
-/* A chapter's Armory, under its row of maps on the hub. */
-.v3-lab-arm {
-  grid-column: 2;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-  padding: 3px 8px;
-  border: 1px dashed var(--steel-hi);
-  border-radius: 3px;
-  background: rgb(4 11 17 / 0.55);
-  color: var(--muted);
-  font: inherit;
-  font-size: 11px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.v3-lab-arm b {
-  flex: none;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: var(--gold);
-}
-
-.v3-lab-arm span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink);
-}
-
-.v3-lab-arm i {
-  flex: none;
-  margin-left: auto;
-  font-style: normal;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--accent);
-}
-
-.v3-lab-arm:hover,
-.v3-lab-arm:focus-visible {
-  border-color: var(--gold);
-}
-
 /* A map's notes key, beside its tile. */
 .v3-lab-tile.v3-lab-info {
   width: 22px;
@@ -8123,58 +7808,210 @@ a.v3-lab-page {
   color: var(--accent);
 }
 
-/* Ready to test: the chapter's Armory and the notes, above Play. */
+/* Ready to test: the notes beside Play (the Tools round: the Armory is a
+   setting in Tools, not a line on each card). */
 .v3-ready-foot {
   display: flex;
+  align-items: stretch;
   gap: 4px;
   min-width: 0;
+  margin-top: 4px;
 }
 
-.v3-ready-arm,
+.v3-ready-foot .v2-btn.v3-ready-play {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  margin-top: 0;
+}
+
 .v3-ready-notes {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 3px 6px;
+  min-width: 44px;
+  justify-content: center;
+  padding: 3px 8px;
   border: 1px solid var(--steel-hi);
   border-radius: 3px;
   background: rgb(4 11 17 / 0.6);
-  color: var(--ink);
+  color: var(--accent);
   font: inherit;
-  font-size: 10.5px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.v3-ready-arm {
-  flex: 1;
-}
-
-.v3-ready-arm b {
-  flex: none;
-  font-family: var(--mono);
-  font-size: 9.5px;
-  color: var(--gold);
-}
-
-.v3-ready-arm span {
-  min-width: 0;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-height: 1.25;
-  color: var(--muted);
-}
-
-.v3-ready-notes {
-  flex: none;
   font-family: var(--mono);
   font-size: 9.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
+  cursor: pointer;
+}
+
+.v3-ready-notes:hover,
+.v3-ready-notes:focus-visible {
+  border-color: var(--accent);
+}
+
+/* ---- Tools: the Test Lab's settings, a sheet over the hub ---- */
+
+.v3-lab-tools {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(10px, var(--sa-t)) max(12px, var(--safe-r, 0px)) max(10px, var(--sa-b)) max(12px, var(--safe-l, 0px));
+}
+
+.v3-lab-tools[hidden] {
+  display: none;
+}
+
+.v3-lab-tools-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(2 6 9 / 0.72);
+}
+
+.v3-lab-tools-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 760px);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--brackets), rgb(6 14 20 / 0.98);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.6);
+  animation: v3-tools-in 0.16s ease-out;
+}
+
+@keyframes v3-tools-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.v3-lab-tools-close {
+  min-width: 44px;
+  min-height: 36px;
+  justify-content: center;
+  margin: -6px -6px -6px auto;
+  font-size: 15px;
+}
+
+.v3-lab-tools-body {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.v3-tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.v3-tool-head {
+  margin: 0 2px 1px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 5px 8px;
+  border: 1px solid var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.8);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button.v3-tool:hover,
+button.v3-tool:focus-visible,
+a.v3-tool:hover,
+a.v3-tool:focus-visible {
+  border-color: var(--accent);
+  background: rgb(111 230 255 / 0.08);
+}
+
+.v3-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.v3-tool-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.v3-tool-text b {
+  font-size: 13px;
+}
+
+.v3-tool-text small {
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.v3-tool-go {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-top: 1.5px solid var(--accent);
+  border-right: 1.5px solid var(--accent);
+  transform: rotate(45deg);
+}
+
+.v3-tool-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  cursor: default;
+}
+
+.v3-tool-seg .v3-lab-seg {
+  min-height: 34px;
+  justify-content: center;
+}
+
+.v3-tool-out {
+  margin: 0 2px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.v3-tool-out:empty {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .v3-lab-tools-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-lab-tools-panel {
+    animation: none;
+  }
 }
 
 /* The editor. */
@@ -8356,39 +8193,35 @@ a.v3-lab-page {
   color: var(--gold);
 }
 
-.v3-notes-edit {
-  margin-left: auto;
-}
-
-.v3-notes-arm-chips {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 5px;
-}
-
-.v3-notes-arm-chip {
+/* The Armory the run plays, one line and read only (it is set in Tools). */
+.v3-notes-arm {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
-  padding: 4px 6px;
-  border-left: 3px solid var(--card-color);
-  border-radius: 2px;
-  background: rgb(4 11 17 / 0.7);
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px dashed var(--steel-hi);
+  border-radius: 3px;
+  background: rgb(4 11 17 / 0.55);
   font-size: 11px;
+  text-align: left;
 }
 
-.v3-notes-arm-chip small {
+.v3-notes-arm b {
+  flex: none;
   font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--card-color);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
 }
 
-.v3-notes-arm-chip span {
-  color: var(--muted);
-  font-size: 10.5px;
+.v3-notes-arm span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
 }
 
 .v3-notes-list {
@@ -8450,9 +8283,6 @@ a.v3-lab-page {
 }
 
 @media (max-width: 760px) {
-  .v3-lab-arm {
-    grid-column: 1 / -1;
-  }
   .v3-lab-bays,
   .v3-map-notes {
     grid-template-columns: minmax(0, 1fr);
@@ -8463,9 +8293,6 @@ a.v3-lab-page {
 }
 
 @media (max-height: 430px) {
-  .v3-lab-arm {
-    padding: 2px 8px;
-  }
   .v3-lab-bay {
     padding: 6px;
     gap: 4px;
