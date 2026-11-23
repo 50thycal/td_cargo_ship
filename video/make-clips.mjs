@@ -124,16 +124,16 @@ const CLIPS = {
       await startRun(page);
       t.mark();
       await sleep(800);
-      t.cue('STRAITWATCH', 'Cargo convoy defence', 2.4);
+      t.cue('Straitwatch', 'my convoy-defense prototype', 2.6);
       await sleep(1200);
       await page.click('[data-map="strait"]');
       await page.waitForSelector('[data-screen="loadout"]');
       await sleep(900);
       await page.click('[data-start]');
       await page.waitForSelector('.playing');
-      t.cue('Missiles inbound', 'Tap a threat to launch an interceptor', 5);
+      t.cue('Tap a missile to intercept it', 'drones, ballistic, guided', 5);
       await loop(9000, 140, () => defend(page, 2));
-      t.cue('Keep the convoy alive', null, 4.5);
+      t.cue('Goal: get the cargo ships across', null, 4.5);
       await loop(9000, 140, async () => {
         await defend(page, 2);
         await grab(page);
@@ -153,18 +153,18 @@ const CLIPS = {
       await loop(6000, 140, () => defend(page, 2));
       t.mark();
       await page.mouse.move(640, 360);
-      t.cue('Enemy weapons drop as pickups', 'Tap to grab', 3.2);
+      t.cue('Weapons drop as pickups', 'tap one to grab it', 3.2);
       await dropWeapon(page, 'railgun', 760, 330);
       await sleep(900);
       const p = await w2c(page, 760, 330);
       await page.mouse.click(p.x, p.y);
-      t.cue('RAILGUN loaded', 'Every tap is a beam', 3.2);
+      t.cue('Railgun loaded for 15 seconds', 'every tap fires a beam', 3.2);
       await swarm(page, 'drone', 9);
       await sleep(1800);
       await swarm(page, 'guided', 3);
       // Rack: every round now fires the railgun for 15 s.
       await loop(9500, 520, () => fireAtThreat(page));
-      t.cue('One beam. Whole formation.', null, 3);
+      t.cue('Then it goes back to the normal gun', null, 3);
       await loop(2500, 140, () => defend(page, 2));
     },
   },
@@ -181,9 +181,9 @@ const CLIPS = {
       await loop(5000, 140, () => defend(page, 2));
       t.mark();
       const kit = [
-        ['airstrike', 'AIR STRIKE', 'Call in a jet'],
-        ['thermo', 'THERMOBARIC', 'Level whatever is under it'],
-        ['well', 'GRAVITY WELL', 'Pull the swarm together'],
+        ['airstrike', 'Air Strike', 'calls in a jet'],
+        ['thermo', 'Thermobaric Shell', 'big blast, slow shell'],
+        ['well', 'Gravity Well', 'pulls the swarm together'],
       ];
       for (const [id, name, sub] of kit) {
         await dropWeapon(page, id, 700, 300);
