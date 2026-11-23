@@ -18,6 +18,7 @@ The player follows the map rebuild on one page and doesn't read chat: https://cl
 - Whenever the plan changes or a step finishes, update `STATUS` in `plan.mjs`, regenerate the page and republish it to the same URL (capabilities `db` and `tts`). Keep the doc in step: `node tools/v3/map-rules/page.mjs --doc`.
 - Put a decision the player must make in `NEEDS`, with a new id (`r2-…`, `r3-…`). Never ask again what is already answered: read the page's `reviews` and `answers` collections first, move answered items out of `NEEDS`, and save the marks into `tools/v3/map-rules/review-<date>.json`.
 - Keep chat replies short and point to the page.
+- Every map change adds an entry at the top of that map's history in `src/v3/data/mapHistory.ts` (date, log version, what, why, and an updated `look`): the Test Lab's map notes show it.
 
 ## Pull requests
 

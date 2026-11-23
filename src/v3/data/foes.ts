@@ -54,7 +54,7 @@ export const FOES: Record<FoeId, FoeDef> = {
   bodyguard: { id: 'bodyguard', name: 'Bodyguard Ring', chapter: 4, cat: 'support', kind: 'guard', from: 'base', blurb: 'Guard drones take your shots for a heavy missile.' },
   lure: { id: 'lure', name: 'Lure Beacon', chapter: 4, cat: 'support', kind: 'lure', from: 'water', blurb: 'Rises from the water; every helper inside its ring fires at it. Only your own weapons can sink it, not your helpers.' },
   cloud: { id: 'cloud', name: 'Incendiary Missile', chapter: 4, cat: 'strike', kind: 'cloud', from: 'base', blurb: 'A slow firebomb. Where it bursts, a fireball burns on the water. Kill it far out.' },
-  missileTruck: { id: 'missileTruck', name: 'Missile Truck', chapter: 2, cat: 'platform', kind: 'missileTruck', from: 'road', blurb: 'A launcher truck with one long ballistic missile: it stops, raises it and lobs it at a ship. Kill the truck, or shoot the missile in the air.' },
+  missileTruck: { id: 'missileTruck', name: 'Missile Truck', chapter: 2, cat: 'platform', kind: 'missileTruck', from: 'road', blurb: 'A launcher truck in a parade along the road: it never stops, raising long ballistic missiles as it drives and lobbing them at the ships in the locks. Kill the truck, or shoot the missile in the air.' },
 };
 
 /** Log v46: enemies that only a boss sends (the player's review of
@@ -177,16 +177,16 @@ export const FOE = {
   // faster (EV's `drive`), but none drives off faster (it was drive ×
   // back, about 7 ×).
   rocketTruck: { raise: 2.4, gap: 1.5, salvos: 5, perSalvo: 5, ripple: 0.1, spread: 18, rocketSpeed: 560, hitRadius: 30, lower: 0.6, leave: 1 },
-  // Log v46 (Saltgate Canal's boss): the Missile Truck, a TEL. It drives
-  // to its spot, raises its one long missile on the erector over `raise` s
-  // (a ring fills round it and a dashed red line marks the ship), holds it
-  // upright `hold` s, and fires it: an ordinary ballistic missile (it can
-  // be shot down, its red landing circle shows), lobbed high (at least
-  // `apex` px over its line) and in the air at least `flight` s. It carries
-  // `missiles` (one unless a boss says), `reload` s apart (the erector
-  // comes down and goes up again), then lowers it (`lower` s) and drives
-  // off at `leave` × its speed.
-  missileTruck: { raise: 2.6, hold: 0.5, missiles: 1, reload: 3.2, flight: 3.0, apex: 150, lower: 0.8, leave: 1 },
+  // Log v46 (Saltgate Canal's boss): the Missile Truck, a TEL. Log v62
+  // (the parade): it never stops. It drives the road west to east, and for
+  // each launch raises its long missile on the erector over `raise` s as it
+  // goes (a ring fills round it and a dashed red line marks the ship; a
+  // boss's own lift in place of it), fires it at the top (an ordinary
+  // ballistic missile: it can be shot down, its red landing circle shows),
+  // lobbed high (at least `apex` px over its line) and in the air at least
+  // `flight` s; the empty rail comes down over `lower` s. It carries
+  // `missiles` unless its parade says.
+  missileTruck: { raise: 2, missiles: 1, flight: 3.0, apex: 150, lower: 0.8 },
   // The 2026-11-20 playtest ("it should just be able to start attacking it
   // doesn't need to go to a specific spot"; log v34): it fires whenever it
   // is `edge` px inside the screen, on the way in too; its first volley

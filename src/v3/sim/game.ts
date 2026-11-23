@@ -74,7 +74,7 @@ import {
 } from '../data/abilities';
 import { armoryStats, type ArmoryLevels, type ArmoryStats } from '../data/armory';
 import { draftPool, gestureOf, isBoost, knownWeapon, newInChapter, ROSTER } from '../data/roster';
-import { chapterOf } from '../data/maps';
+import { CHAPTERS, chapterOf } from '../data/maps';
 import { waveSpec } from '../data/waves';
 import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
@@ -2631,8 +2631,14 @@ export function rerollWorth(g: Game, preferred: readonly AbilityId[]): boolean {
   if (g.offer.some(wanted)) return false;
   // Only while a new hand could bring one: a held weapon still to level,
   // or a favourite still in the draft with a slot free.
-  const pool = draftPool(chapterOf(g.map.id));
+  const pool = draftChapterPool(g);
   return ABILITY_ORDER.some((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && wanted(id));
+}
+
+/** The weapons the draft can deal: the map's chapter's, or every live one
+ *  in a Test Lab run with all cards unlocked (log v64, LabSetup.allCards). */
+function draftChapterPool(g: Game): AbilityId[] {
+  return draftPool(g.lab?.setup.allCards ? CHAPTERS.length : chapterOf(g.map.id));
 }
 
 /** The draft's hand: `size` cards (3; Quartermaster 5: 4), avoiding the
@@ -2644,7 +2650,7 @@ function dealDraft(g: Game, avoid: readonly CardId[]): void {
   // a choice. Each draw favours a weapon you already hold (OWNED_DRAW).
   // The roster (data/roster.ts) says which weapons are live and from which
   // chapter; a held one (Free Play can hand over a prototype) can level up.
-  const pool = draftPool(chapterOf(g.map.id));
+  const pool = draftChapterPool(g);
   const size = g.stats.draftCards;
   const all = ABILITY_ORDER.filter((id) => (pool.includes(id) || (g.levels[id] ?? 0) > 0) && (g.levels[id] ?? 0) < ABILITY_MAX);
   const fresh = all.filter((id) => !avoid.includes(id));

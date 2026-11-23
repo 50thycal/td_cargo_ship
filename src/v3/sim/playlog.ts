@@ -497,11 +497,35 @@ import type { EncounterSetup } from '../data/encounters';
  *      water, and as the tide falls every ship on the flats crosses to the
  *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
  *      (the card or the campaign) no longer replays to the same game; the
- *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.) */
-export const LOG_VERSION = 61;
+ *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.)
+ *  62: Saltgate Canal's boss redone as a Missile Truck parade (docs/design/
+ *      v3-ch2-saltgate.md; lab, under the encounter layer; the player: "a
+ *      row of trucks going in a parade from the left to the right across
+ *      the road ... a truck every 1 to 3 seconds randomly ... fire out a
+ *      missile without stopping ... in an elaborate pattern"): the
+ *      Gatecrashers' trucks drive the road behind the silos west to east
+ *      and never stop (MAP_BOSS.saltgate `parade`, sim/parade.ts), a truck
+ *      every 1-3 s (seeded), each raising and lobbing its ballistic
+ *      missiles on the move as the round's patterns call them (ripples,
+ *      synchronized pairs, volleys at once, the rolling barrage), 3 hits a
+ *      truck (4 before). A Saltgate card log before v62 no longer replays
+ *      to the same game; the campaign and the other maps play as they
+ *      did.
+ *  64: the Test Lab's Armory and all cards (the player: "modify my armory
+ *      ... based on where the map is in the chapters ... and then have all
+ *      cards unlocked so I can test it out"): a Test Lab run's `lab` can
+ *      say `allCards`, and its drafts then deal every live weapon whatever
+ *      the map's chapter (game.ts draftChapterPool); a map card plays the
+ *      chapter's Test Lab Armory (data/labArmory.ts) in place of the
+ *      player's own, recorded as ever in the log's `armory`, with `lab.
+ *      armory` saying which chapter's range set it. A log without
+ *      `allCards` plays as it did (the map-lab baseline replays
+ *      unchanged); one with it needs this build. (62 is the
+ *      Saltgate parade, built alongside; 63 was never shipped.) */
+export const LOG_VERSION = 64;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [61];
+export const LOG_REPLAYS: readonly number[] = [64];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

@@ -58,6 +58,14 @@ export interface LabSetup {
    *  of what the skip ahead drafted (game.ts applyLab). The log's
    *  `firstWave` is the first boss round. */
   loadout?: { id: AbilityId; level: number }[];
+  /** Every live weapon in the drafts, whatever the map's chapter (log v64;
+   *  the player: "have all cards unlocked so I can test it out"). Absent:
+   *  the chapter's own draft pool, as the campaign deals it. */
+  allCards?: boolean;
+  /** The Test Lab's Armory (log v64, data/labArmory.ts): the chapter whose
+   *  range it was set from, and whether it was all Auto. A record for the
+   *  reports; the levels played are the log's own `armory`. */
+  armory?: { chapter: number; auto: boolean };
 }
 
 /** The evidence counted for the card under test. */

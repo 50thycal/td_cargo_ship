@@ -61,7 +61,7 @@ import { FOES, FOES_BUILT, RED_FOES, foeDebutTag, newOnTag, foesInChapter, type 
 import { foeSetting, launchFoe, mapDebut, redShots, tappedRedShot } from '../sim/foes';
 import { applyEncounters, applyLab } from '../sim/game';
 import { labDone, labWaves, type LabSetup, type LabStats } from '../sim/lab';
-import { LAB_ROUND, cardRev, labCard, type LabCard } from '../data/lab';
+import { LAB_ROUND, cardRev, labCard, mapCardId, type LabCard } from '../data/lab';
 import { endingOutcome, eventFor, lastWave } from '../sim/events';
 import { EVENTS, EVENT_MAPS, EVENT_WAVE, OUTCOME_NAME, RULE_TEXT, bossIntroCards, bossRound, bossShort, eventName, lastEventWave, waveCount, waveCountParts, waveName, type EventId, type EventOutcome, type IntroCard } from '../data/events';
 import {
@@ -87,6 +87,8 @@ import {
   saveLabProgress,
   type LabRunSetup,
 } from './lab';
+import { labArmoryEditor, loadLabArmory, mapNotesSheet } from './labArmory';
+import { labArmoryIsAuto, labArmoryLevels } from '../data/labArmory';
 import { RUN_RATING_AXES, noteContext, type PlayNote } from '../sim/feedback';
 import {
   MAX_THUMBS,
@@ -212,7 +214,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  missileTruck: 'It stops and raises one long ballistic missile at a ship. Kill the truck while the red ring fills (four hits), or shoot the missile in the air.',
+  missileTruck: 'A parade of them drives the road, raising ballistic missiles on the move. Kill a truck while its red ring fills (four hits), or shoot the missile in the air.',
   attackHeli: 'Fires missile pairs on sight, hovers, moves. Five hits, or shoot its missiles.',
   torpedoSub: 'Under water, out of reach. It fires two torpedoes, each at a ship, now and then a fast amber one, then dives. Shoot the torpedoes, or get off the dashed lines.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
@@ -536,6 +538,16 @@ export class App {
         this.togglePause();
       }
     });
+    // The note boxes' own keyboard (not in the store build, which has no
+    // text boxes).
+    if (!STORE) {
+      void import('./keys').then((k) =>
+        k.startKeys(this.root, {
+          stamp: () => (this.game ? stopWhen(this.game) : null),
+          onChange: () => this.fitTyping(),
+        }),
+      );
+    }
     this.settle();
   }
 
@@ -2913,7 +2925,26 @@ export class App {
         },
         report: () => this.showLabReport(),
         analytics: () => this.showMapLab(),
+        armory: (ch) => this.showLabArmory(ch),
+        notes: (map) => this.showMapNotes(map),
       }, [...labLogs(), ...localLogs()]),
+    ]);
+  }
+
+  /** The Test Lab's Armory, a chapter at a time (data/labArmory.ts). */
+  private showLabArmory(chapter: number, back: () => void = () => this.showLab()): void {
+    this.leaveRun();
+    this.showOverlay('v3-labarmory', [this.screenHead('Test Lab Armory', back, undefined, 'Strength by chapter'), labArmoryEditor(chapter)]);
+  }
+
+  /** A map's card in the Test Lab: what changed and why, what to look for,
+   *  its history, and the Armory it will play with; Play starts its card. */
+  private showMapNotes(map: MapId): void {
+    this.leaveRun();
+    const again = () => this.showMapNotes(map);
+    this.showOverlay('v3-mapnotes', [
+      this.screenHead(MAPS[map].name, () => this.showLab(), undefined, `Test Lab · chapter ${chapterOf(map)}`),
+      mapNotesSheet(map, { play: () => this.startLab(mapCardId(map)), armory: () => this.showLabArmory(chapterOf(map), again) }),
     ]);
   }
 
@@ -2959,6 +2990,11 @@ export class App {
     const s = plan.setup;
     this.labLast = s;
     this.endLabRun();
+    // A map card plays the chapter's Test Lab Armory, not the player's own
+    // (data/labArmory.ts); the log records the levels in its `armory`.
+    const ch = chapterOf(card.map);
+    const armory = card.kind === 'map' ? labArmoryLevels(loadLabArmory(), ch) : undefined;
+    const lab: LabSetup = armory ? { ...plan.lab, armory: { chapter: ch, auto: labArmoryIsAuto(loadLabArmory(), ch) } } : plan.lab;
     const free: FreeSetup | null = plan.full
       ? null
       : {
@@ -2969,7 +3005,7 @@ export class App {
           frequentDrops: true,
           enemies: 'campaign',
         };
-    this.play(card.map, free, plan.lab, plan.convoy, plan.encounters);
+    this.play(card.map, free, lab, plan.convoy, plan.encounters, undefined, armory);
     // Its commands, name and what to look for are on the pause menu (pause-
     // menu round: nothing of the test is over the field, and no card says
     // what is being tested: the hub's row said so as it was tapped).
@@ -3839,8 +3875,8 @@ export class App {
   }
 
   /** Start a run on `id`; with `free`, a Free Play run set up that way. */
-  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null, jump?: { start: number; retry: NonNullable<PlayLog['retry']> }): void {
-    if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters, jump))) return;
+  private play(id: MapId, free: FreeSetup | null = null, lab: LabSetup | null = null, convoy: ConvoySetup | null = null, encounters: EncounterSetup | null = null, jump?: { start: number; retry: NonNullable<PlayLog['retry']> }, armory?: ArmoryLevels): void {
+    if (this.askBeforeNew(() => this.play(id, free, lab, convoy, encounters, jump, armory))) return;
     // Playtest knobs: ?wave=N starts at wave N, ?seed=N replays one seed.
     // Dev mode adds a run-length preset and a start wave.
     // A map card's full run in the Test Lab (round 10) is the campaign's own
@@ -3859,7 +3895,7 @@ export class App {
     this.radarShown = false;
     this.redShown = false;
     const freePlay = free ? freePlaySetup(free) : undefined;
-    this.game = createGame(id, seed, skip, tempo, free ? freeArmory(free) : this.runArmory());
+    this.game = createGame(id, seed, skip, tempo, armory ?? (free ? freeArmory(free) : this.runArmory()));
     if (freePlay) applyFreePlay(this.game, freePlay);
     if (lab) applyLab(this.game, lab);
     // The Map & Convoy Lab: the map's authored encounters, then the convoy
@@ -4102,10 +4138,12 @@ export class App {
     const g = this.game;
     if (!run || !g) return;
     const loadout = g.slots.filter((id) => (g.levels[id] ?? 0) > 0).map((id) => ({ id, level: g.levels[id]! }));
+    // The same Armory as the run it skips from (the Test Lab's, on a map card).
+    const armory = { ...g.armory };
     const log = this.sealForJump();
     if (!log) return;
     const plan = labRunPlan(run.card, run.setup, null);
-    this.play(run.card.map, null, { ...plan.lab, loadout }, plan.convoy, plan.encounters, { start: EVENT_WAVE, retry: { of: log.id, wave: EVENT_WAVE, step: 0, skip: true } });
+    this.play(run.card.map, null, { ...plan.lab, loadout, ...(log.lab?.armory ? { armory: log.lab.armory } : {}) }, plan.convoy, plan.encounters, { start: EVENT_WAVE, retry: { of: log.id, wave: EVENT_WAVE, step: 0, skip: true } }, armory);
     this.labRun = run;
     this.root.classList.add('lab-on');
   }
@@ -4876,7 +4914,10 @@ export class App {
   private fitTyping(): void {
     const vv = window.visualViewport;
     const w = vv?.width ?? window.innerWidth;
-    const h = vv?.height ?? window.innerHeight;
+    // The in-app keyboard (keys.ts) isn't the phone's: the page is not
+    // resized for it, so what it leaves visible is the rest of the screen.
+    const kb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb-h')) || 0;
+    const h = (vv?.height ?? window.innerHeight) - kb;
     this.root.style.setProperty('--vv-top', `${Math.round(vv?.offsetTop ?? 0)}px`);
     this.root.style.setProperty('--vv-left', `${Math.round(vv?.offsetLeft ?? 0)}px`);
     this.root.style.setProperty('--vv-w', `${Math.round(w)}px`);

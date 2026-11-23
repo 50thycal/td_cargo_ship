@@ -45,9 +45,16 @@ export default defineConfig(({ mode }) => {
     },
     plugins: store ? [storePage()] : [],
     resolve: {
-      // The store bundle keeps playtest logs nowhere and sends them nowhere:
-      // the upload module is swapped for one that does nothing.
-      alias: store ? [{ find: /^(\.\.?\/)+(.*\/)?platform\/playlogStore$/, replacement: new URL('./src/v3/platform/playlogStore.store.ts', import.meta.url).pathname }] : [],
+      alias: [
+        // The store bundle keeps playtest logs nowhere and sends them nowhere:
+        // the upload module is swapped for one that does nothing.
+        ...(store ? [{ find: /^(\.\.?\/)+(.*\/)?platform\/playlogStore$/, replacement: new URL('./src/v3/platform/playlogStore.store.ts', import.meta.url).pathname }] : []),
+        // No in-game keyboard in the store build: nothing of palate-keys ships.
+        ...(store ? [{ find: /^\.\/keys$/, replacement: new URL('./src/v3/ui/keys.store.ts', import.meta.url).pathname }] : []),
+        // The shared touch keyboard (vendor/palate-keys, from tools/sync-keys.mjs).
+        { find: /^palate-keys$/, replacement: new URL('./vendor/palate-keys/src/index.js', import.meta.url).pathname },
+        { find: /^palate-keys\//, replacement: new URL('./vendor/palate-keys/', import.meta.url).pathname },
+      ],
     },
     build: {
       target: 'es2022',
