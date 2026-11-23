@@ -9,6 +9,15 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
+## Round 16: the left rail's leftovers are gone (UI only, log stays v61)
+
+Your answer to round 15's two rail questions: *"Drop the slider and all that old stuff the new version is going on like the new hauls button the canal map"*. The big convoy button is now the only convoy control, in every game type.
+
+- **Campaign and Free Play:** no ship-flow slider (SHIPS, "more ships, more points") and no formation button or picker. A run sails the campaign's own schedule (flow step 1, ×1.4 points a ship) in Pairs, as it always did when the controls were left alone. The first-map tips for the slider and formations (waves 2 and 3) are gone, and so is the formation advice on raid cards ("SWARM INBOUND · drones") and in the "what sank you" lines.
+- **Test Lab:** no "CONVOY sails itself" note. A map with a command (Sowers' Reach: Hold) shows the big button at the foot of the rail; every other map shows nothing there, and the power-up timers sit at the foot instead. The setup sheet's Convoy row (Today's / Automatic / Formations / Commands) is gone too: its choices differed only by the slider and formation button. A comparison link's `?convoy=` still picks a policy for the bots and tools.
+- **The sim is unchanged.** The flow and formation inputs (`'f'`, `'m'`) still replay, so old logs, saved campaign and Free Play progress and "Continue a run" load and play exactly as before (a run saved at a higher flow carries on at it). No new log version.
+- **The bots are unchanged.** They give the flow and formation inputs through the sim, not the rail, so they keep working. In the Test Lab (every rebuilt map's numbers, the map-lab baseline) the Tactical policy refuses those inputs, so the bots already play the map's own convoy as you do. In a campaign or Free Play sweep the "you" bot and the personas still turn the flow up (steps 3-4) and switch to Spread or Box once, which you can no longer do. Stopping that changes the campaign bot runs that eight tests and the map-lab baseline pin (tried: 8 failures), so it is left for a bot-fidelity pass of its own (`playtest-fidelity`), with a log bump if it is taken.
+
 ## Round 15: your notes on Sowers' Reach and the Rig Field (log v55)
 
 Your two chapter 3 logs of 2026-11-22 (v49): Sowers' Reach (won, fun 4, boss 5) and the Rig Field (won, fun 5, boss 3, waves 1-3 rated 1, 2 and 1). Both are in `tools/v3/bot-fit/logs/` (`v3-20261122034709-18316.json`, `v3-20261122040236-18317.json`). Lab only, under the encounter layer, as every rebuild: the campaign plays as before.

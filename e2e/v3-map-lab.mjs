@@ -2,8 +2,9 @@
 // slices 0 and 1). Expects `vite preview` (or dev) at BASE_URL.
 //
 // On a landscape phone (874x402, touch), with real touches:
-// - a Test Lab run on Harbor Mouth records telemetry as it is played; taps,
-//   pickups, a formation change and a flow change all land in it;
+// - a Test Lab run on Harbor Mouth records telemetry as it is played; taps
+//   and pickups land in it (round 16: the rail has no flow slider or
+//   formation button to change, so no flow or formation command does);
 // - the sidecar the live run made is the one its play log replays to, here
 //   and (written out) under Node: tools/v3/map-lab/run.ts reads the files;
 // - an ordinary campaign run records none, and `?tel=1` turns it on;
@@ -74,10 +75,9 @@ async function touchDefend(page) {
 
 try {
   // ---- A Test Lab run on Harbor Mouth, played by touch ----
-  // (Since round 10 a map card opens on its production setup, where the
-  // convoy sails itself: ?convoy=current asks for the flow and formation
-  // controls this run exercises, and ?plays=slice the short lab slice from
-  // wave 5 it was written for.)
+  // (?convoy=current asks for today's convoy, the campaign's own, and
+  // ?plays=slice the short lab slice from wave 5 it was written for. Round
+  // 16: today's convoy has no rail controls any more either.)
   const page = await browser.newPage(PHONE);
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
@@ -94,23 +94,10 @@ try {
 
   let touches = 0;
   const t0 = Date.now();
-  let formed = false;
-  let flowed = false;
   let shot = false;
   while (Date.now() - t0 < 34_000) {
     touches += await touchDefend(page);
     const el = Date.now() - t0;
-    if (!formed && el > 9_000) {
-      formed = true;
-      await page.tap('.v2-formation-btn');
-      await page.tap('[data-formation="spread"]');
-    }
-    if (!flowed && el > 15_000) {
-      flowed = true;
-      // The top of the SHIPS slider: the fastest flow.
-      const box = await page.locator('.v2-slider .v2-track').first().boundingBox();
-      await page.touchscreen.tap(box.x + box.width / 2, box.y + 2);
-    }
     if (!shot && el > 20_000) {
       shot = true;
       // Recording puts nothing on the screen: the field as the player sees it.
@@ -128,12 +115,12 @@ try {
       steps: g.steps, wave: g.wave, phase: g.phase, taps: count('tap'), hits: count('hit'), spawns: count('thr+'), pickups: count('pk+'), taken: sc.totals.pickups.collected,
       cmds: sc.events.filter((e) => e.k === 'cmd').map((e) => `${e.what}:${e.was}>${e.req}:${e.ok}`), audits: sc.totals.audits, samples: sc.samples.length, gameTaps: g.taps, telTaps: sc.totals.taps,
       flow: g.flow, formation: g.formation, bytes: JSON.stringify(sc).length,
+      rail: { formation: !!document.querySelector('.v2-formation-btn'), flow: !!document.querySelector('[data-flow], .v2-slider'), foot: document.querySelector('.v3-commands').children.length },
     };
   });
   check(mid.taps > 20 && mid.spawns > 10 && mid.samples > 50 && mid.audits === 0, `${touches} touches in ${(mid.steps / 60).toFixed(0)} s of play: taps, launches and position samples are in the stream, with no gaps (${JSON.stringify({ taps: mid.taps, spawns: mid.spawns, hits: mid.hits, pickups: mid.pickups, taken: mid.taken, samples: mid.samples, audits: mid.audits, bytes: mid.bytes })})`);
   check(JSON.stringify(mid.gameTaps) === JSON.stringify(mid.telTaps), `every touch the game counted is a tap event (${JSON.stringify(mid.telTaps)})`);
-  check(mid.formation === 'spread' && mid.cmds.includes('formation:pairs>spread:1'), `the formation change made on the rail is a command event (${JSON.stringify(mid.cmds)})`);
-  check(mid.cmds.some((c) => c.startsWith('flow:') && c.endsWith(':1')) && mid.flow === 4, `the flow change made on the slider is a command event (flow ${mid.flow}; ${JSON.stringify(mid.cmds)})`);
+  check(!mid.rail.formation && !mid.rail.flow && mid.rail.foot === 0 && mid.formation === 'pairs' && mid.flow === 1 && mid.cmds.length === 0, `round 16: no flow slider, formation button or note in the rail; the convoy sails the campaign's schedule in Pairs, and no convoy command is in the stream (${JSON.stringify({ rail: mid.rail, flow: mid.flow, formation: mid.formation, cmds: mid.cmds })})`);
 
   // Done: the verdict, and the log kept on the device.
   await labMenu(page);
