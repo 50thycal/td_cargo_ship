@@ -7476,36 +7476,64 @@ export interface BossTune {
    *  encounter layer, when its rounds are a new boss on the map's event
    *  (the event's id stays; the campaign plays the event as it was). */
   name?: string;
-  /** Log v42: the boss's trucks (BossRound `trucks`): hits each, their
-   *  speed driving in (× a truck's own), how far apart they park along the
-   *  bank, and how long a wreck stalls the trucks behind it on its road. */
-  truck?: { hp: number; drive: number; spacing: number; stall: number };
+  /** Log v62: the parade's Missile Trucks (BossRound `parade`): hits each,
+   *  their speed along the road (× a truck's own), and the seconds each
+   *  raises its missile before it fires (the ring and the mark line). */
+  truck?: { hp: number; drive: number; lift: number };
 }
 
-/** Log v42 (Saltgate Canal's Gatecrashers): a column of Rocket Trucks
- *  down to the bank by a lock (`lock`: 0 the west, 1 the east), on the
- *  enemy's bank (`north`, down the pop-up road by the lock's exit) or your
- *  own (`south`, up from the bottom of the screen), parking along the bank
- *  over the chamber. The first sets out `at` s into the round, the rest
- *  `gap` s apart; each fires `salvos` salvos at the ship held at the lock
- *  nearest it, and the last `clusters` of the column fire a cluster
- *  missile in place of their first salvo (it can be shot down; a salvo
- *  cannot). */
-export interface TruckRun {
-  at: number;
-  lock: number;
-  bank: 'north' | 'south';
-  count: number;
-  /** Seconds between trucks setting out; absent (log v46), nose to tail,
-   *  so the column parks together and fires as one volley. */
-  gap?: number;
-  salvos?: number;
-  clusters?: number;
-  /** Log v46 (the player's review: "make it the missile trucks"): the
-   *  column is Missile Trucks, each with this many ballistic missiles
-   *  (lobbed at the ship held at the lock nearest it; they can be shot
-   *  down). `salvos` and `clusters` are a Rocket Truck column's. */
-  missiles?: number;
+/** Log v62 (Saltgate Canal's Gatecrashers, the player after playing the
+ *  v46 columns: "a row of trucks going in a parade from the left to the
+ *  right across the road ... a truck every 1 to 3 seconds randomly ... fire
+ *  out a missile without stopping ... fire off in an elaborate pattern"): a
+ *  round's parade of Missile Trucks along the map's road, west to east,
+ *  never stopping (sim/parade.ts). A truck sets out every `gap` s (seeded,
+ *  uniform, within 1-3 s) until `span` s into the round, with `missiles`
+ *  ballistic missiles (`hp` hits: absent, the boss's own `truck.hp`). Its
+ *  launches come as the round's patterns: `cycle` in turn, one every
+ *  `every` s from `start` s to `end` s, the last of them `finale` when it
+ *  has one (paradeBeats); and `strays`, lone launches at seeded moments. */
+export interface ParadeRound {
+  gap: [number, number];
+  span: number;
+  missiles: number;
+  hp?: number;
+  cycle: ParadeBeat[];
+  start: number;
+  every: number;
+  end: number;
+  finale?: ParadeBeat;
+  strays?: number;
+}
+
+/** A pattern of launches across the parade, out of the trucks on screen as
+ *  it starts (its first launch `lift` s on, ±0.3 s seeded), front (east) to
+ *  back:
+ *  - `ripple`: a run of `n` trucks side by side, one after another down the
+ *    column, `step` s apart (where the run starts: seeded);
+ *  - `sync`: `n` trucks spread down the column, all at once;
+ *  - `pairs`: `n` trucks in side-by-side pairs, a pair at once, the next
+ *    pair `step` s on;
+ *  - `sweep`: every truck on the road, `step` s apart (the rolling barrage).
+ *  `from: 'back'` runs it back to front; `aim: 'alternate'` sends its
+ *  launches (a pair's: its pairs) at the west lock and the east lock in
+ *  turn (else each at the held ship fewest trucks have marked). */
+export interface ParadeBeat {
+  pattern: 'ripple' | 'sync' | 'pairs' | 'sweep';
+  n?: number;
+  step?: number;
+  from?: 'front' | 'back';
+  aim?: 'alternate';
+}
+
+/** A parade round's beats, each with its second (`at`, from the parade's
+ *  start): the cycle in turn from `start` to `end`, `every` s apart, the
+ *  last the finale when there is one. */
+export function paradeBeats(R: ParadeRound): (ParadeBeat & { at: number })[] {
+  const out: (ParadeBeat & { at: number })[] = [];
+  for (let k = 0; R.start + k * R.every <= R.end + 1e-9; k++) out.push({ ...R.cycle[k % R.cycle.length], at: Math.round((R.start + k * R.every) * 1000) / 1000 });
+  if (R.finale && out.length) out[out.length - 1] = { ...R.finale, at: out[out.length - 1].at };
+  return out;
 }
 
 export interface BossRound {
@@ -7549,9 +7577,9 @@ export interface BossRound {
    *  weapon back twice a round, a Shield or an Air Strike held at its best
    *  covered the whole round. */
   cargoWeapons?: number[];
-  /** Saltgate Canal's Gatecrashers (log v42): its truck columns, in place
-   *  of Run the Canal's subs, gunships and block. */
-  trucks?: TruckRun[];
+  /** Saltgate Canal's Gatecrashers (log v62): its parade of Missile
+   *  Trucks, in place of Run the Canal's subs, gunships and block. */
+  parade?: ParadeRound;
   /** Battery Point's Blackout (log v45): `jets` stealth strafers (the
    *  event's own: 8), the first `jetAt` s into the round, `jetGap` s apart
    *  (the event's: 2.4), from alternate sides. */
@@ -7750,57 +7778,91 @@ export const ARCHIPELAGO_BOSS_ROUNDS: BossRound[] = [
 ];
 
 /** Saltgate Canal's Gatecrashers (docs/design/v3-ch2-saltgate.md). Log
- *  v46, the player's review of the v42 boss ("i thought this would be the
- *  ballistic missile trucks? we already have a rocket truck convoy. make it
- *  the missile trucks so it is different. Should be a parade of them
- *  shooting off the ballistic missiles"): a parade of Missile Trucks (data/
- *  foes.ts, boss only) drives down to the banks by the locks, nose to tail,
- *  parks along the chamber, raises its missiles together and lobs them at
- *  the ships held there, a volley a column. Round 1 a short column on the
- *  enemy's bank by the west lock; round 2 a longer parade on both banks of
- *  it; round 3 the big parade at both locks from both banks, the columns'
- *  volleys close together so several missiles are in the air at once. A
- *  truck can be shot on the way in and while it raises (a wreck stalls
- *  the ones behind it, breaking up the volley); a missile can be shot in
- *  the air. Log v42-v45: columns of Rocket Trucks (8; 4 + 4 from both banks;
- *  a charge of 13 with two clusters). Log v38-v41: Run the Canal, rising
- *  (Torpedo Subs, a gunship, an armored block). */
+ *  v62, the player after playing the v46 columns ("this boss is really
+ *  bad ... a row of trucks going in a parade from the left to the right
+ *  across the road ... a truck every 1 to 3 seconds randomly and it would
+ *  just randomly fire out a missile without stopping ... fire off in an
+ *  elaborate pattern"): a parade of Missile Trucks (data/foes.ts, boss
+ *  only) along the road behind the silos, west to east, never stopping,
+ *  each lobbing ballistic missiles on the move at the ships held at the
+ *  locks. Each round has its own patterns (ParadeBeat): round 1 ripples
+ *  rolling down the column; round 2 synchronized pairs and ripples at the
+ *  two locks in turn; round 3 a denser parade, volleys all at once and the
+ *  grand rolling barrage, every truck on the road front to back. Kill a
+ *  truck before its ring fills, or shoot its missile in the air. Log
+ *  v46-v61: columns of Missile Trucks parked along the banks by the locks
+ *  (8; 5 + 4 from both banks; 3 + 2 + 3 + 2 at both locks), each column one
+ *  volley. Log v42-v45: columns of Rocket Trucks. Log v38-v41: Run the
+ *  Canal, rising (Torpedo Subs, a gunship, an armored block). */
 export const SALTGATE_BOSS_ROUNDS: BossRound[] = [
   {
-    trucks: [{ at: 0, lock: 0, bank: 'north', count: 8, missiles: 1 }],
-    swarms: 1,
-    size: 5,
+    // Ripples: a run of up to six trucks firing one after another down
+    // the column, front to back, then back to front, every 3 s.
+    parade: {
+      gap: [1.05, 2.1],
+      span: 12,
+      missiles: 3,
+      cycle: [
+        { pattern: 'ripple', n: 6, step: 0.3 },
+        { pattern: 'ripple', n: 6, step: 0.3, from: 'back' },
+      ],
+      start: 3,
+      every: 3,
+      end: 21,
+      strays: 3,
+    },
     fire: [],
   },
   {
-    trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 5, missiles: 1 },
-      { at: 1.5, lock: 0, bank: 'south', count: 4, missiles: 1 },
-    ],
-    swarms: 1,
-    size: 5,
+    // Synchronized pairs, then a ripple, at the two locks in turn.
+    parade: {
+      gap: [1, 1.9],
+      span: 12,
+      missiles: 3,
+      cycle: [
+        { pattern: 'pairs', n: 8, step: 0.6, aim: 'alternate' },
+        { pattern: 'ripple', n: 6, step: 0.3, aim: 'alternate' },
+      ],
+      start: 3,
+      every: 3,
+      end: 21,
+      strays: 3,
+    },
     fire: [],
   },
   {
-    trucks: [
-      { at: 0, lock: 0, bank: 'north', count: 3, missiles: 1 },
-      { at: 0.8, lock: 1, bank: 'north', count: 2, missiles: 1 },
-      { at: 1.6, lock: 0, bank: 'south', count: 3, missiles: 1 },
-      { at: 2.4, lock: 1, bank: 'south', count: 2, missiles: 1 },
-    ],
-    swarms: 1,
-    size: 5,
+    // The dense parade: a volley all at once, a ripple at the two locks,
+    // pairs, and the grand rolling barrage (every truck on the road, front
+    // to back), which also closes the round.
+    parade: {
+      gap: [1, 1.3],
+      span: 12,
+      missiles: 4,
+      cycle: [
+        { pattern: 'sync', n: 5 },
+        { pattern: 'ripple', n: 6, step: 0.3, aim: 'alternate' },
+        { pattern: 'pairs', n: 8, step: 0.5 },
+        { pattern: 'sweep', step: 0.25 },
+      ],
+      start: 3,
+      every: 2.8,
+      end: 21,
+      finale: { pattern: 'sweep', step: 0.25 },
+      strays: 3,
+    },
     fire: [],
   },
 ];
 
-/** The Gatecrashers' trucks: 4 hits each, in at 2.2 × a truck's speed,
- *  85 px apart nose to tail (log v46; 58 at v42: so close that the latest
- *  Armory's Wide Warhead took most of a column with a few blasts, the bot
- *  losing 0 / 0.05 / 0.4 a round), a wreck stalling the ones behind it 2 s. A Missile
- *  Truck marks its ship (the dashed red line) and fills its ring while it
- *  raises its missile (FOE.missileTruck: 2.6 s, held up 0.5 s). */
-export const SALTGATE_TRUCK = { hp: 4, drive: 2.2, spacing: 85, stall: 2 };
+/** The Gatecrashers' Missile Trucks (log v62): 4 hits each, along the road
+ *  at 2.3 x a truck's own speed (a crossing of about 12 s, so a round fits
+ *  in 30 s), raising each missile 2.2 s before it fires (the red ring
+ *  filling and the mark line to its ship). At 3 hits the bot shot nearly
+ *  every truck off the road before it fired twice (won 83-92%, the rounds
+ *  0.1-0.3 / 0.9-1.1 / 0.8-1.1). With the parade's trucks coming one by
+ *  one, the bot's rack runs dry about half as long as on v46's columns
+ *  (tools/v3/saltgate/boss.ts). */
+export const SALTGATE_TRUCK = { hp: 4, drive: 2.3, lift: 2.4 };
 
 /** Battery Point's Blackout (log v45, docs/design/v3-ch3-battery.md): night,
  *  and stealth strafers from alternate sides (before: 8, 2.4 s apart, and a

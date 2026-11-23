@@ -1,8 +1,83 @@
 # Saltgate Canal: map card (map rebuild, chapter 2)
 
-**Date:** 2026-11-20. Saltgate Canal (`saltgate`, chapter 2 "The Narrows", the 10th map and the chapter's last) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island, the Behemoth Run, the Needle of Bosk and the Archipelago (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`). Encounter rev 4; play log v38, reworked at log v42 after the player's play (below: "Log v42: the trucks"), and its boss again at **log v46** after the player's review (below: "Log v46: the missile parade").
+**Date:** 2026-11-20. Saltgate Canal (`saltgate`, chapter 2 "The Narrows", the 10th map and the chapter's last) brought to the map and wave rules (`docs/design/v3-map-wave-rules.md`), after the Island, the Behemoth Run, the Needle of Bosk and the Archipelago (`docs/design/v3-ch2-island.md`, `v3-ch2-behemoth.md`, `v3-ch2-needle.md`, `v3-ch2-archipelago.md`). Encounter rev 4; play log v38, reworked at log v42 after the player's play (below: "Log v42: the trucks"), its boss again at **log v46** after the player's review (below: "Log v46: the missile parade"), and again at **log v62** after the player played it (below: "Log v62: the Missile Truck parade"; 2026-11-23).
+
+## Log v62: the Missile Truck parade (the player's play of the v46 boss)
+
+The player played the v46 Gatecrashers in the Test Lab, died in boss rounds 2-3 (6 of 7 ships to the trucks' missiles) and ran out of ammo: *"Alright this boss is really bad. What I was thinking was a row of trucks going in a "parade" from the left to the right across the road. It would be a truck every 1 to 3 seconds randomly and it would just randomly fire out a missile without stopping, it would just keep going, and all the trucks going [would] do that and it can have them fire off in an elaborate pattern. So redo this"*.
+
+**What it is now.** The Gatecrashers (the event's id is still `run-the-canal`; lab only, under the encounter layer) are a parade of Missile Trucks along the map's road behind the silos (its existing runner, `roads.runners[0]`, x -60 to 1660 at y 100-200, already drawn, with tunnel mouths at both ends; no new road was needed). The trucks drive west to east at 2.3 × a truck's speed (161 px/s, about 12 s across) and **never stop**: not to fire, and not for a wreck ahead (v46's stall is gone). A truck sets out every 1-3 s at a seeded interval (each round has its own range inside 1-3 s). Each truck carries 3 missiles (4 in round 3) and fires them **on the move**, when the round's patterns call it. The warning is the existing one: the red ring fills round the truck as it raises the missile (2.2 s), and the dashed red mark line runs to its ship, with a ring on that ship. Then the missile goes: an ordinary ballistic, lobbed at least 3 s with its red landing circle, at a ship held at a lock (the one fewest trucks have marked). A truck takes 4 hits, and one shot off the road fires nothing more.
+
+**The patterns** (`ParadeRound.cycle`, `paradeBeats`; `sim/parade.ts` `layBeat`). Every few seconds a beat is laid on the trucks on screen at that moment, front (east) to back:
+- **ripple:** a run of trucks side by side, one after another down the column, 0.3 s apart;
+- **pairs:** side-by-side pairs, each pair at once, the next pair 0.5-0.6 s on;
+- **sync:** trucks spread down the column, all at once;
+- **sweep:** the rolling barrage, every truck on the road front to back, 0.25 s apart.
+- `from: 'back'` runs a pattern back to front.
+- `aim: 'alternate'` sends its launches at the west lock and the east lock in turn.
+- A few **strays** (lone launches at seeded moments) fall between the beats.
+
+A beat uses only trucks that are free, so a truck shot before its beat leaves a gap in the pattern and the rest go on.
+
+| Round | Identity | Trucks (a truck every) | Missiles each | Beats | Seen with nothing shot (6 seeds) |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Ripples, front to back, then back to front | 1.05-2.1 s, about 8 | 3 | a ripple of up to 6 every 3 s; 3 strays | 19 launches, a ripple 2.4 trucks |
+| 2 | Synchronized pairs and ripples, the two locks in turn | 1-1.9 s, about 9 | 3 | pairs (8) and ripple (6) in turn, every 3 s, alternate locks; 3 strays | 20 launches, a pair beat 2.6, a ripple 2.4 |
+| 3 | The dense parade: volleys at once, ripples, pairs, and the grand rolling barrage, which also closes the round | 1-1.3 s, about 11 | 4 | sync 5, ripple 6 (alternate), pairs 8, sweep, every 2.8 s; finale sweep; 3 strays | 25 launches, a ripple 3.9, pairs 4.3, sweep 2.9 (up to 6+) |
+
+Each round lasts about 27 s with nothing shot (B1 to B3: 22-24 s on the bot, the rule's 15-30 s). The parade is seeded by the run's seed, the wave, the round and the step it began on (`paradeRng`), so it replays exactly, and a Test Lab rerun plays a new parade.
+
+**How it was tuned (the bot, the player's Armory).** The bot shoots trucks well: at 3 hits it shot nearly every truck off the road before it fired twice (won 83-96%, the rounds 0.0-0.3 / 0.1-1.1 / 0.8-1.2). At 4 hits with the trucks a little denser it lands near the asked shape. The warning was tried at 1.8, 2.0, 2.2 and 2.4 s. At 2.0-2.2 the bot won 42-50%. At 2.4 it wins inside the band, and the warning stays close to v46's (2.6 + 0.5 s).
+
+Code (log v62):
+- `src/v3/data/encounters.ts`: `ParadeRound`, `ParadeBeat`, `paradeBeats`, `BossRound.parade` (replacing `trucks`/`TruckRun`), `SALTGATE_BOSS_ROUNDS`, `SALTGATE_TRUCK` (`hp`, `drive`, `lift`);
+- `src/v3/sim/parade.ts` (new): `paradeSpawns`, `paradeCalls`, `layBeat`, `paradeSpacing`;
+- `src/v3/sim/events.ts`: `paradeRoad`, `paradeOf`, `paradeTruck`, `paradeBeat`, `EventRun.parade` (the road, spawns, calls and every launch laid, with its beat); the v46 `bankRoad`, `gateTruck` and `columnGap` are gone, and so is the Missile Truck's stall in `eventFoeDown`;
+- `src/v3/sim/foes.ts`: `updateMissileTruck` (drives on, raises on the move, fires at `fires[0].at`), `erectorUp`, `lockShip` and `markShip` with a lock, `truckMark`, `foeEta` (until its next launch), `FoeData.fires` and `lift`;
+- `src/v3/data/foes.ts`: `FOE.missileTruck` (`raise` 2, `flight`, `apex`, `lower`; no `hold`, `reload` or `leave`) and its blurb;
+- `src/v3/ui/foes.ts`: the ring fills over the truck's own `lift`;
+- `src/v3/ui/app.ts`: the first-sight text ("A parade of them drives the road, raising ballistic missiles on the move ... four hits");
+- `src/v3/data/lab.ts`: Ready to test, Saltgate at v62;
+- `tools/v3/saltgate/boss.ts`: now also shots, seconds dry and the rack's lowest; `--parade=<json|@file>` and `--truck`;
+- `tools/v3/saltgate/parade-dbg.ts` (the parade with nothing shot: launches and launches a beat by pattern);
+- `tools/v3/saltgate/parade-shots.mjs` (the phone shots).
+
+### Bot results, log v62 (quick.ts, the player's Armory on 96 seeds 900-995; the others on 48)
+
+| | v46 (columns) | v62 (parade) |
+| --- | --- | --- |
+| **The player's Armory: won** | 57% | **58%** (63 / 67 / 54 / 50% on the four 24s) |
+| Boss r1 / r2 / r3 (reached) | 0.86 / 1.66 / 1.94 | **0.89 / 1.35 / 1.96** |
+| **The latest Armory: won** | 67% | 52% |
+| Boss r1 / r2 / r3 | 0.56 / 0.74 / 1.90 | 0.46 / 1.69 / 1.76 |
+| **No Armory: won** | 10% | 4% |
+| Boss r1 / r2 / r3 | 1.70 / 2.20 / 1.00 (8-10 runs) | 0.70 / 2.20 / 4.17 (6-10 runs) |
+
+The ammo (`boss.ts`, 48 seeds, the player's Armory; means a round):
+
+| | v46 | v62 |
+| --- | --- | --- |
+| Shots | 28.6 / 33.7 / 32.8 | 33.9 / 37.1 / 38.0 |
+| Seconds with an empty rack | 1.9 / 2.4 / 2.4 | **1.1 / 1.4 / 1.9** |
+| Trucks; shot off the road; shot before they fired | 8 / 9 / 10; 7.8 / 7.8 / 7.1; 2.6 / 2.1 / 2.0 | 8.1 / 8.8 / 10.9; 7.5 / 7.4 / 8.2; 4.1 / 3.5 / 3.3 |
+| Missiles fired; shot down; most in the air at once | 5.2 / 6.7 / 7.6; 3.0 / 3.0 / 3.2; 4.5 / 6.3 / 7.2 | 5.9 / 8.9 / 11.4; 3.9 / 4.4 / 6.0; 2.3 / 3.4 / 4.9 |
+
+- **The rack runs dry less (1.1-1.9 s a round, from 1.9-2.4):** the trucks come one by one, a kill of 4 hits at a time. v46's columns arrived together and raised together.
+- **Waves 1-10 are unchanged** (the per-wave losses match v46 to the run).
+- **The boss rises** 0.9 → 1.35 → 2.0 and wins 58%. It is under the asked 1.5 / 2 / 2.5, as v42 and v46 were. The three rounds share a loss limit of 6, so 1.5 + 2 + 2.5 = 6 would lose about half the runs. At 2.0-2.2 s warnings (1.0-1.1 / 1.6-2.0 / 2.1-2.2) the bot won 42-50%.
+
+### Not satisfied, or uncertain (log v62)
+
+- **Under the asked 1.5 / 2 / 2.5:** 0.9 / 1.35 / 2.0, traded for a 58% win, as at v42 and v46. Recommended: play it first. The player lost more than the bot on v46 (6 of 7 in rounds 2-3, where the bot lost 1.7 and 1.9), so the bot's numbers likely flatter a person.
+- **The 30 s round limits the parade.** A truck takes about 12 s to cross, so the trucks set out for only 12 s of each round: about 8, 9 and 11 trucks, 5-9 on the road at once. A longer parade means longer rounds than the rule allows.
+- **Patterns thin out under fire.** Each truck needs 3.2 s between its launches, and many are shot early. On the bot a ripple rolls 2-4 trucks, not 6, and the full barrage shows mostly when trucks are left alive.
+- **The rack still runs dry** for 1-2 s a round on the bot (it was 2-2.5). A truck still takes 4 hits. At 3 hits the boss was too easy (the bot won 83-96%).
+- **The latest Armory wins 52%** (was 67%): Wide Warhead's blast no longer takes several trucks at once, because the parade is spread out.
+- **No campaign change:** the campaign plays Run the Canal. The parade sits on `MAP_BOSS` under the encounter layer (rev 4), so it does not share the campaign's code path.
 
 ## Log v46: the missile parade (the player's review of the Gatecrashers)
+
+*(Superseded at log v62, above: the columns no longer park; the parade drives on.)*
 
 The player's verdict on the v42 boss was **Change**: *"i thought this would be the ballistic missile trucks? we already have a rocket truck convoy. make it the missile trucks so it is different. Should be a parade of them shooting off the ballistic missiles."* (Their first idea: *"a shit ton of trucks for one of the boss ones like they all drive in and they can shoot missiles and it could be pretty intense if all the ships are clustered together"*.)
 
@@ -199,7 +274,7 @@ One encounter a wave, none repeated. Every shell the shared wave would send from
 
 Wave 1 loses no ship (all three reports). Log v42: the wave's own budget moves a little from waves 6–10 to waves 1–5 (`SALTGATE_CLIMB`: ×1.08, 1.1, 1.1, 1.06, 1.04, then 0.88, 0.9, 0.94, 0.88, 0.96; ten in all), and a truck an encounter sends stands in for a swarm of the wave's own (it takes 4 hits and fires 2–3 salvos).
 
-## The boss: the Gatecrashers, a missile parade (log v46)
+## The boss: the Gatecrashers, a missile parade (log v46; superseded at v62, see "Log v62" at the top)
 
 The map's event under the encounter layer is a parade of Missile Trucks (`SALTGATE_BOSS_ROUNDS`, `SALTGATE_TRUCK`; the event's id stays `run-the-canal`, its name on every card is "Gatecrashers"; the campaign and a rev 3 log play Run the Canal as it was). Columns set out on the enemy's bank (`north`) down the pop-up road by a lock's exit, then west along the bank 29 px from the lock's water; on your own bank (`south`) up from the bottom of the screen and along the bank the same way. Nose to tail, 85 px apart: the first parks just short of the entry gate, the rest behind it along the bank and up the road, all at once, so the column raises its missiles together (2.6 s, the rings and the mark lines) and fires one volley, each missile at a held ship of its own. A drone swarm of 5 comes 11 s in. No Rocket Truck, no cluster.
 
@@ -225,7 +300,7 @@ Columns of Rocket Trucks down to the banks by the locks, 58 px apart: round 1 ei
 
 Torpedo Subs as the round opens (3 a round), an attack helicopter over the far bank by a lock (1, 1, then 2), a block of armored drones (4, 6, 6), drone swarms of 5 (2, 3, 3), clusters off the lock silos (1, 1, 2) and a guided missile from the east shore (rounds 1 and 2). On the bot at v38: 0.95 / 1.54 / 1.78 (96 seeds); the subs were most of its teeth.
 
-## Bot results, log v46 (the missile parade)
+## Bot results, log v46 (the missile parade; v62's are under "Log v62" at the top)
 
 Waves 1–10 play the same game as at v42 (every change is the boss's), so only the boss and the win rate move. Reports: `tools/v3/map-report/results/saltgate-player.md`, `saltgate-latest.md`, `saltgate.md` (24 seeds, 900–923); v42's are kept as `saltgate-v42*.md`. The quick reads are `quick.ts` on 96 seeds (900–995) for the player's Armory, 48 (900–947) for the others.
 
@@ -324,6 +399,15 @@ Log v42:
 - **Wave 7 aims nothing at a lock**, as at v38.
 - **Waves 6 and 9 keep their periscopes** (a sub lobbing shells from the West or East Sea): they are launch subs, not Torpedo Subs, and stay; say if you want them out too.
 
+## The play log (v62)
+
+`LOG_VERSION` 62, `LOG_REPLAYS` `[62]` (`src/v3/sim/playlog.ts`), after 61 (the Tide).
+- The change is lab only, under the encounter layer. The campaign plays Run the Canal as it did. A Saltgate card log before v62 no longer replays to the same game.
+- The map-lab baseline (the Strait, the Gauntlet and Harbor) was rewritten with `--write`. Only its version changed, and it replays exactly with telemetry on and off.
+- The pins moved with `pins.py 61 62`, and `scorecard.test.ts` pins 62.
+- Merged with the rail cleanup (#229, still log 61) before the e2e run.
+- Ready to test lists Saltgate at v62.
+
 ## The play log (v46)
 
 `LOG_VERSION` 46, `LOG_REPLAYS` `[46]` (`src/v3/sim/playlog.ts`); after 44 (the Armory rework, #209) and 45 (the Battery rebuild, #210), both merged into this branch first; the bot numbers above were read on the merged build too (the same to the run). The change is lab only, under the encounter layer, but it adds a threat kind (`missileTruck`), so every log's counts carry it: the map-lab baseline (the Strait, the Gauntlet and Harbor) changed only its version and state hashes (the same runs, the same numbers), was rewritten with `--write`, and replays exactly with telemetry on and off. The version pins moved to 46 (`tools/v3/playtest-fixes/pins.py`). "Ready to test" lists Saltgate Canal at v46 ("Boss: a parade of missile trucks. Kill them as they raise, or shoot the missiles. Intense?").
@@ -344,6 +428,21 @@ Log v42:
 - **Saltgate's convoy sails the campaign's schedule (flow 1), the other chapter 2 maps' flow 2. Keep it?** Recommended: keep.
 
 ## Tests
+
+Log v62 (`tests/v3/encounters.test.ts`, "Saltgate Canal's boss rounds (log v62 ...)"):
+- **A parade every round:** Missile Trucks only (no Rocket Truck, sub, gunship, block, cluster or swarm). Each round is 15-30 s (seed 204, the tryhard bot). Every round's gap is inside 1-3 s and denser round on round. The patterns are as above: round 1 ripples, round 2 pairs and ripples at alternate locks, round 3 sync and sweep, closing on the sweep.
+- **The parade, deterministic (new),** seed 208, waves 11-13, nothing shot, every hull kept afloat:
+  - the same seed plays the same spawns, launches and lobs;
+  - a truck enters every 1-3 s (inside the round's own gap), along a road from off the west edge to off the east edge;
+  - no truck ever stops or slows (its distance along the road grows every step at its full speed);
+  - every missile is launched from a truck that moved that step, on screen;
+  - every launch laid fires;
+  - at least 70% of the round's beats play, with every pattern of the round;
+  - a ripple or sweep rolls one launch at a time, `step` apart, a ripple 2+ trucks on average; a sync fires at one instant; pairs two at a time; round 3 has a volley of 3+ and a barrage of 4+; alternate beats aim at both locks;
+  - more missiles each round.
+- **Shot on the road and while it raises:** the parade drives on past a wreck. A truck marks a ship mostly held at a lock and lobs a ballistic (at least 3 s, mostly 150 px high) that can be shot down.
+
+The v46 entries below are kept for history.
 
 - `tests/v3/encounters.test.ts`:
   - the ten listed, rev 4, v1 only; the budget, legality (a Rocket Truck down a pop-up road from wave 2, a chapter 1 enemy), warning (a road truck comes, tagged) and replay checks cover the map;

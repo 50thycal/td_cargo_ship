@@ -246,8 +246,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   saltgate: {
-    look: 'Skip to boss: missile trucks drive in nose to tail, raise their missiles (red ring, dashed line to the ship) and lob them at the ships held at the locks. Is it intense and different enough from the rocket trucks?',
+    look: 'Skip to boss: is the parade the one you pictured, trucks rolling left to right and firing on the move in patterns? Does your ammo hold through round 3’s rolling barrage?',
     history: [
+      {
+        date: '2026-11-23',
+        log: 62,
+        title: 'The boss: a real Missile Truck parade',
+        what: 'The Gatecrashers’ Missile Trucks drive the road behind the silos left to right, a truck every 1–3 s, and never stop: they raise and fire their missiles on the move, in patterns that build each round (ripples, then synchronized pairs, then the rolling barrage down the whole column). A truck takes 4 hits, and the parade drives on past its wrecks.',
+        why: 'Your play of the v46 boss: “this boss is really bad”; you pictured “a row of trucks going in a parade from the left to the right”, firing without stopping.',
+      },
       BUSY,
       {
         date: '2026-11-21',

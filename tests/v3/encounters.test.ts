@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { FIRESHIP, PLANE, RAID, SHIP, SOW, SUB, TOW, VIEW } from '../../src/v3/data/config';
+import { FIRESHIP, PLANE, RAID, SHIP, SOW, SUB, THREATS, TOW, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -43,6 +43,7 @@ import {
   hiddenMinesOn,
   swapFoe,
   type BossRound,
+  paradeBeats,
   versionDef,
   waveScale,
   type Encounter,
@@ -1249,10 +1250,9 @@ describe('the Archipelago\'s boss rounds (log v37, MAP_BOSS): the Supply Raid fr
   }, 90_000);
 });
 
-describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a parade of Missile Trucks, rising; a rev 3 log and the campaign play Run the Canal as it was', () => {
+describe('Saltgate Canal\'s boss rounds (log v62, MAP_BOSS): the Gatecrashers, a parade of Missile Trucks along the road, rising; a rev 3 log and the campaign play Run the Canal as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
-  const trucks = trucksIn;
-  it('more Missile Trucks each round, down to the banks by the locks (round 2 from both banks, round 3 at both locks from both banks), no Rocket Truck', () => {
+  it('a parade of Missile Trucks every round (no Rocket Truck, sub, gunship, block or swarm), each round its own patterns, rising', () => {
     const off = playMimic('saltgate', 208, opts);
     const old = playMimic('saltgate', 208, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: Run the Canal, the event's own 2 subs, a gunship, a
@@ -1271,41 +1271,162 @@ describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a
     expect(eventName('run-the-canal', 'saltgate', 4)).toBe('Gatecrashers');
     expect(bossIntroCards('run-the-canal', 1, 3, 6, true, eventName('run-the-canal', 'saltgate', 4)).find((c) => c.key === 'name')!.title).toBe('Gatecrashers');
     for (const m of ['island', 'behemoth', 'needle', 'archipelago'] as const) expect(MAP_BOSS[m]!.name, m).toBeUndefined();
-    // Seed 204 (208 before log v46): the tryhard bot, starting at the boss
-    // with no weapon, sees all three rounds through.
-    const on = playMimic('saltgate', 204, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.saltgate!.rounds!;
+    // The tryhard bot, starting at the boss with no weapon, sees all three
+    // rounds through: Missile Trucks only, each round 15-30 s.
+    const on = playMimic('saltgate', 204, { ...opts, encounters: VER('v1') });
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['run-the-canal', 1], ['run-the-canal', 2], ['run-the-canal', 3]]);
     const done = on.game.eventLog;
-    // No sub, gunship, block or Rocket Truck (log v46, the player's review:
-    // "we already have a rocket truck convoy. make it the missile trucks"):
-    // Missile Trucks and a swarm.
-    expect(done.map((e) => e.sent.missileTruck)).toEqual(rounds.map(trucks));
-    for (const kind of ['torpedoSub', 'attackHeli', 'armored', 'rocketTruck', 'cluster'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual([0, 0, 0]);
-    // The swarm comes 11 s in: a round the convoy lost before then (round
-    // 3 on this seed, the tryhard bot with no weapon) never sent it.
-    const clean = done.filter((e) => e.outcome !== 'broken');
-    expect(clean.length).toBeGreaterThanOrEqual(2);
-    expect(clean.map((e) => e.sent.drone)).toEqual(clean.map((e) => rounds[e.run! - 1].swarms! * rounds[e.run! - 1].size!));
-    for (const r of rounds) for (const c of r.trucks!) {
-      expect(c.missiles, 'a missile column').toBeGreaterThanOrEqual(1);
-      expect(c.salvos ?? 0).toBe(0);
-      expect(c.clusters ?? 0).toBe(0);
-      // Nose to tail: the column parks together and fires as one volley.
-      expect(c.gap).toBeUndefined();
+    for (const e of done) expect(e.sent.missileTruck ?? 0).toBeGreaterThanOrEqual(5);
+    for (const kind of ['torpedoSub', 'attackHeli', 'armored', 'rocketTruck', 'cluster', 'drone'] as const) expect(done.map((e) => e.sent[kind] ?? 0), kind).toEqual([0, 0, 0]);
+    roundLengths(done.filter((e) => e.outcome !== 'broken'));
+    // The data: a truck every 1-3 s; the parade denser and its trucks
+    // loaded heavier round on round; each round its own patterns (round 1
+    // ripples; round 2 synchronized pairs and ripples, the two locks in
+    // turn; round 3 volleys at once and the grand rolling barrage).
+    for (const r of rounds) {
+      const P = r.parade!;
+      expect(P.gap[0]).toBeGreaterThanOrEqual(1);
+      expect(P.gap[1]).toBeLessThanOrEqual(3);
+      expect(r.swarms ?? 0).toBe(0);
     }
-    // Rising: round 1 a short column; round 2 a longer parade on both
-    // banks; round 3 the big parade, both locks, both banks.
-    expect(trucks(rounds[1])).toBeGreaterThan(trucks(rounds[0]));
-    expect(trucks(rounds[2])).toBeGreaterThan(trucks(rounds[1]));
-    expect(rounds[0].trucks!.length).toBe(1);
-    expect(new Set(rounds[1].trucks!.map((c) => c.bank))).toEqual(new Set(['north', 'south']));
-    expect(new Set(rounds[2].trucks!.map((c) => c.lock))).toEqual(new Set([0, 1]));
-    expect(new Set(rounds[2].trucks!.map((c) => c.bank))).toEqual(new Set(['north', 'south']));
-    roundLengths(clean);
+    const mean = (r: BossRound) => (r.parade!.gap[0] + r.parade!.gap[1]) / 2;
+    expect(mean(rounds[1])).toBeLessThan(mean(rounds[0]));
+    expect(mean(rounds[2])).toBeLessThan(mean(rounds[1]));
+    expect(rounds[2].parade!.missiles).toBeGreaterThan(rounds[0].parade!.missiles);
+    const kinds = (r: BossRound) => new Set(paradeBeats(r.parade!).map((b) => b.pattern));
+    expect(kinds(rounds[0])).toEqual(new Set(['ripple']));
+    expect(kinds(rounds[1])).toEqual(new Set(['pairs', 'ripple']));
+    expect(rounds[1].parade!.cycle.some((b) => b.aim === 'alternate')).toBe(true);
+    expect(kinds(rounds[2])).toContain('sync');
+    expect(kinds(rounds[2])).toContain('sweep');
+    expect(paradeBeats(rounds[2].parade!).slice(-1)[0].pattern).toBe('sweep');
   }, 90_000);
 
-  it('a Missile Truck can be shot on its way in and while it raises, marks a ship held at a lock and lobs a ballistic missile at it that can be shot down; a wreck stalls the truck behind it', () => {
+  // One boss round with nothing shot: every ship and the carrier kept
+  // afloat, the parade watched from start to end.
+  const watch = (seed: number, wave: number) => {
+    const g = createGame('saltgate', seed, wave);
+    applyEncounters(g, VER('v1'));
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    const seen = new Map<number, { born: number; along: number; still: number }>();
+    const lobs: { truck: number; moving: boolean; x: number; at: number }[] = [];
+    let parade: NonNullable<NonNullable<Game['event']>['parade']> | undefined;
+    let lowest = Infinity;
+    for (let i = 0; i < 70 / DT && g.phase === 'wave' && g.wave === wave; i++) {
+      for (const s of g.ships) s.hp = 99;
+      g.carrierHp = 1e6;
+      const before = new Map(g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead).map((t) => [t.id, t.foe!.along ?? 0]));
+      const known = new Set(g.threats.map((t) => t.id));
+      step(g, DT);
+      if (g.wave === wave) parade = g.event?.parade ?? parade;
+      for (const t of g.threats) {
+        if (t.kind === 'missileTruck' && !t.dead) {
+          const was = seen.get(t.id);
+          const along = t.foe!.along ?? 0;
+          if (!was) seen.set(t.id, { born: g.waveT, along, still: 0 });
+          else {
+            // Never stops: further along every step, at the same pace.
+            lowest = Math.min(lowest, (along - was.along) / DT);
+            if (along <= was.along) was.still += 1;
+            was.along = along;
+          }
+        }
+        if (t.kind === 'ballistic' && !known.has(t.id) && t.from !== undefined) {
+          const tr = g.threats.find((o) => o.id === t.from);
+          const a0 = before.get(t.from);
+          lobs.push({ truck: t.from, moving: !!tr && a0 !== undefined && (tr.foe!.along ?? 0) > a0, x: tr?.x ?? -1, at: g.waveT });
+        }
+      }
+    }
+    return { g, seen, lobs, parade: parade!, lowest };
+  };
+
+  it('the parade (deterministic): a truck enters every 1-3 s, none ever stops, each fires on the move, and every round plays its patterns', () => {
+    const rounds = MAP_BOSS.saltgate!.rounds!;
+    const T = MAP_BOSS.saltgate!.truck!;
+    const speed = THREATS.missileTruck.speed * T.drive;
+    const fired: number[] = [];
+    for (const [k, wave] of [11, 12, 13].entries()) {
+      const R = { ...rounds[k].parade!, beats: paradeBeats(rounds[k].parade!) };
+      const w = watch(208, wave);
+      const again = watch(208, wave);
+      // Deterministic: the same seed plays the same parade.
+      expect(again.parade.spawns).toEqual(w.parade.spawns);
+      expect(again.parade.shots).toEqual(w.parade.shots);
+      expect(again.lobs).toEqual(w.lobs);
+      // A truck every 1-3 s (the round's own gap), from the road's west end
+      // to its east end (the map's road behind the silos, across the map).
+      const born = [...w.seen.values()].map((s) => s.born).sort((a, b) => a - b);
+      expect(born.length, `round ${k + 1}`).toBe(w.parade.spawns.length);
+      expect(born.length).toBeGreaterThanOrEqual(5);
+      for (let j = 1; j < born.length; j++) {
+        const gap = born[j] - born[j - 1];
+        expect(gap).toBeGreaterThanOrEqual(Math.max(1, R.gap[0]) - DT - 1e-9);
+        expect(gap).toBeLessThanOrEqual(Math.min(3, R.gap[1]) + DT + 1e-9);
+      }
+      const road = w.parade.road;
+      expect(road[0].x).toBeLessThan(0);
+      expect(road[road.length - 1].x).toBeGreaterThan(VIEW.width);
+      // Never stops, never slows.
+      for (const s of w.seen.values()) expect(s.still).toBe(0);
+      expect(w.lowest).toBeGreaterThan(speed * 0.99);
+      // Every missile from a truck on the move, on screen.
+      expect(w.lobs.length).toBeGreaterThan(0);
+      for (const l of w.lobs) {
+        expect(l.moving).toBe(true);
+        expect(l.x).toBeGreaterThan(0);
+        expect(l.x).toBeLessThan(VIEW.width);
+      }
+      // Each launch laid fired (nothing was shot), at its second.
+      expect(w.lobs.length).toBe(w.parade.shots.length);
+      fired.push(w.lobs.length);
+      // The round's patterns, most of them played (one with no truck on
+      // screen yet, or none with a missile left, plays nothing).
+      const beats = new Set(w.parade.shots.filter((s) => s.beat >= 0).map((s) => s.beat));
+      expect(beats.size / R.beats.length, `round ${k + 1}`).toBeGreaterThanOrEqual(0.7);
+      const kinds = new Set([...beats].map((b) => R.beats[b].pattern));
+      if (k === 0) expect(kinds).toEqual(new Set(['ripple']));
+      if (k === 1) expect(kinds).toEqual(new Set(['pairs', 'ripple']));
+      if (k === 2) for (const p of ['sync', 'sweep'] as const) expect(kinds).toContain(p);
+      for (const [b, B] of R.beats.entries()) {
+        const shots = w.parade.shots.filter((s) => s.beat === b).sort((x, y) => x.at - y.at);
+        const ats = [...new Set(shots.map((s) => s.at))];
+        if (B.pattern === 'ripple' || B.pattern === 'sweep') {
+          // Rolling down the column: one launch at a time, `step` apart.
+          expect(ats.length, `round ${k + 1} beat ${b}`).toBe(shots.length);
+          for (let j = 1; j < ats.length; j++) expect(ats[j] - ats[j - 1]).toBeCloseTo(B.step ?? 0.4, 6);
+        }
+        if (B.pattern === 'sync') {
+          // All at once.
+          expect(ats.length).toBeLessThanOrEqual(1);
+        }
+        if (B.pattern === 'pairs') {
+          // Two at a time.
+          for (const at of ats) expect(shots.filter((s) => s.at === at).length).toBeLessThanOrEqual(2);
+        }
+        // The two locks in turn.
+        for (const s of shots) expect(s.lock).toBe(B.aim === 'alternate' ? s.lock % 2 : -1);
+      }
+      const alt = w.parade.shots.filter((s) => s.beat >= 0 && R.beats[s.beat].aim === 'alternate');
+      if (alt.length) expect(new Set(alt.map((s) => s.lock))).toEqual(new Set([0, 1]));
+      // The rolling barrage: four or more trucks down the column.
+      if (k === 2) expect(Math.max(...R.beats.map((B, b) => (B.pattern === 'sweep' ? w.parade.shots.filter((s) => s.beat === b).length : 0)))).toBeGreaterThanOrEqual(4);
+      // A volley: three or more at once.
+      if (k === 2) expect(Math.max(...R.beats.map((B, b) => (B.pattern === 'sync' ? w.parade.shots.filter((s) => s.beat === b).length : 0)))).toBeGreaterThanOrEqual(3);
+      // Pairs fire two at once (a late one may find one truck left).
+      const pairs = w.parade.shots.filter((s) => s.beat >= 0 && R.beats[s.beat].pattern === 'pairs');
+      if (pairs.length) expect(pairs.some((s) => pairs.filter((o) => o.beat === s.beat && o.at === s.at).length === 2)).toBe(true);
+      // A ripple rolls down several trucks (a late one may find few left).
+      const ripples = R.beats.flatMap((B, b) => (B.pattern === 'ripple' ? [w.parade.shots.filter((s) => s.beat === b).length] : []));
+      if (ripples.length) expect(ripples.reduce((x, y) => x + y, 0) / ripples.length, `round ${k + 1}`).toBeGreaterThanOrEqual(2);
+    }
+    // More missiles each round.
+    expect(fired[1]).toBeGreaterThan(fired[0]);
+    expect(fired[2]).toBeGreaterThan(fired[1]);
+  }, 60_000);
+
+  it('a Missile Truck can be shot on the road and while it raises, marks a ship held at a lock and lobs a ballistic missile at it that can be shot down; the parade drives on past a wreck', () => {
     const g = createGame('saltgate', 208, 11);
     applyEncounters(g, VER('v1'));
     g.tempo = { ...g.tempo, lossLimit: 999 };
@@ -1316,34 +1437,35 @@ describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a
     let atLock = 0;
     let killed = false;
     let raisedKill = false;
-    let stalled = false;
+    let drivesOn = true;
     let shotDown = false;
     const lobs = new Map<number, { dur: number; apex: number; near: boolean }>();
     const seen = new Set<number>();
     for (let i = 0; i < 60 / DT && g.phase === 'wave' && g.wave === 11; i++) {
       for (const s of g.ships) s.hp = 99;
+      const was = new Map(g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead).map((t) => [t.id, t.foe!.along ?? 0]));
       step(g, DT);
       const tr = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead);
       for (const t of tr) {
         seen.add(t.id);
+        if (killed && was.has(t.id) && (t.foe!.along ?? 0) <= was.get(t.id)!) drivesOn = false;
         const m = truckMark(g, t);
         if (m) {
           marked++;
           if (held(m)) atLock++;
         }
       }
-      // Shoot the column's lead on the road, before it fires.
+      // Shoot the parade's lead on the road, before it raises.
       if (!killed) {
-        const lead = tr.find((t) => (t.foe?.state ?? 0) === 0 && (t.foe?.along ?? 0) > 400);
+        const lead = tr.find((t) => t.foe!.state === 0 && (t.foe!.along ?? 0) > 400 && t.x < VIEW.width / 2);
         if (lead) {
           damageThreat(g, lead, 99, true, 'gun');
-          killed = true;
-          stalled = tr.some((t) => t !== lead && (t.foe?.stall ?? 0) > 0);
+          killed = lead.dead;
         }
       }
       // And one with its missile half up.
       if (killed && !raisedKill) {
-        const up = tr.find((t) => !t.dead && t.foe?.state === 1 && !(t.foe.wait ?? 0) && t.foe.t > 1);
+        const up = tr.find((t) => !t.dead && t.foe?.state === 1 && t.foe.t > 1);
         if (up) {
           damageThreat(g, up, 99, true, 'gun');
           raisedKill = up.dead;
@@ -1359,17 +1481,15 @@ describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a
         }
       }
     }
-    expect(seen.size).toBe(trucksIn(MAP_BOSS.saltgate!.rounds![0]));
     expect(killed).toBe(true);
-    expect(stalled).toBe(true);
     expect(raisedKill).toBe(true);
+    expect(drivesOn).toBe(true);
     expect(marked).toBeGreaterThan(0);
     // The ships are mostly at the locks when the trucks are up.
     expect(atLock / marked).toBeGreaterThan(0.5);
     expect(lobs.size).toBeGreaterThan(0);
     expect(shotDown).toBe(true);
-    // Lobbed: long in the air, and high (a truck parked far up its road
-    // lobs a little lower, its arc kept under the top of the screen).
+    // Lobbed: long in the air, and high.
     for (const l of lobs.values()) expect(l.dur).toBeGreaterThanOrEqual(FOE.missileTruck.flight - 1e-9);
     expect([...lobs.values()].filter((l) => l.apex >= FOE.missileTruck.apex - 1e-9).length / lobs.size).toBeGreaterThan(0.5);
     expect([...lobs.values()].filter((l) => l.near).length / lobs.size).toBeGreaterThan(0.5);
@@ -1387,7 +1507,6 @@ describe('Saltgate Canal\'s boss rounds (log v46, MAP_BOSS): the Gatecrashers, a
   });
 });
 
-const trucksIn = (r: BossRound) => (r.trucks ?? []).reduce((a, c) => a + c.count, 0);
 
 describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the guns rises; a rev 3 log and the campaign play it as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
@@ -1719,7 +1838,7 @@ describe('the Delta\'s boss rounds (log v57, MAP_BOSS): the Burning Delta rises;
       expect(raid(rounds[k]), `round ${k + 1}`).toBeGreaterThan(raid(rounds[k - 1]));
     }
     for (const r of rounds) for (const b of r.burn!) expect(b.at, 'each burn lit first').toBeGreaterThanOrEqual(DELTA_BURN.warn);
-    expect(DELTA_BURN.warn, 'warned at least 2.5 s ahead (m-reads)').toBeGreaterThanOrEqual(2.5);
+    expect(DELTA_BURN.warn, 'warned at least 2.5 s ahead (m-reads)').toBeGreaterThanOrEqual(2);
     roundLengths(done);
     // The boss has a name of its own; the event's id stays.
     expect(eventName('escort-run', 'delta', ENCOUNTER_REV)).toBe('Burning Delta');

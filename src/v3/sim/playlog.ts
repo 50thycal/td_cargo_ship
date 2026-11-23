@@ -498,6 +498,19 @@ import type { EncounterSetup } from '../data/encounters';
  *      deep channel (game.ts leaveFlats, Ship `cross`). A Tide log before v61
  *      (the card or the campaign) no longer replays to the same game; the
  *      other maps play as they did. (Built as 59 alongside Dunmar Crossing, 58, and the Citadel, 60; it ships as 61.)
+ *  62: Saltgate Canal's boss redone as a Missile Truck parade (docs/design/
+ *      v3-ch2-saltgate.md; lab, under the encounter layer; the player: "a
+ *      row of trucks going in a parade from the left to the right across
+ *      the road ... a truck every 1 to 3 seconds randomly ... fire out a
+ *      missile without stopping ... in an elaborate pattern"): the
+ *      Gatecrashers' trucks drive the road behind the silos west to east
+ *      and never stop (MAP_BOSS.saltgate `parade`, sim/parade.ts), a truck
+ *      every 1-3 s (seeded), each raising and lobbing its ballistic
+ *      missiles on the move as the round's patterns call them (ripples,
+ *      synchronized pairs, volleys at once, the rolling barrage), 3 hits a
+ *      truck (4 before). A Saltgate card log before v62 no longer replays
+ *      to the same game; the campaign and the other maps play as they
+ *      did.
  *  64: the Test Lab's Armory and all cards (the player: "modify my armory
  *      ... based on where the map is in the chapters ... and then have all
  *      cards unlocked so I can test it out"): a Test Lab run's `lab` can
@@ -507,8 +520,8 @@ import type { EncounterSetup } from '../data/encounters';
  *      player's own, recorded as ever in the log's `armory`, with `lab.
  *      armory` saying which chapter's range set it. A log without
  *      `allCards` plays as it did (the map-lab baseline replays
- *      unchanged); one with it needs this build. (62 and 63 are the
- *      Saltgate boss and the convoy-control work, built alongside.) */
+ *      unchanged); one with it needs this build. (62 is the
+ *      Saltgate parade, built alongside; 63 was never shipped.) */
 export const LOG_VERSION = 64;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */

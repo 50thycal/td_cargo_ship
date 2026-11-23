@@ -528,9 +528,10 @@ try {
   check(onIsland.includes('New on The Narrows: Attack helicopter'), `the Island's card: the Attack Helicopter's debut card, though met before, at Call-outs: Essential (${onIsland.join(' | ')})`);
   const onStrait = await debutTitles('strait', 'all', 'attackHeli');
   // Only the helicopter's own debut is under test. At Call-outs: All the
-  // Strait may still give a NEW card to what it fires (its missile) or to the
-  // map's own wave-1 enemies, depending on timing, so ignore those.
-  check(!onStrait.some((t) => /^new/i.test(t) && /helicopter/i.test(t)), `the Strait's card (not its debut): no card for an enemy met before (${onStrait.join(' | ')})`);
+  // Strait may still give a NEW card to what it fires (its missile, "NEW:
+  // Helicopter missile") or to the map's own wave-1 enemies, depending on
+  // timing, so ignore those.
+  check(!onStrait.some((t) => /^new/i.test(t) && /helicopter(?! missile)/i.test(t)), `the Strait's card (not its debut): no card for an enemy met before (${onStrait.join(' | ')})`);
   const off = await debutTitles('island', 'off', 'torpedoSub');
   check(!off.some((t) => /^new/i.test(t)), `Call-outs: Off: no debut card (${off.join(' | ')})`);
   await page.evaluate(() => localStorage.removeItem('straitwatch.v3.callouts'));
