@@ -309,11 +309,18 @@ export class App {
   private raidSounded = new Set<string>();
   /** The sound board's music choice while it is open (undefined: closed). */
   private boardMusic: MusicCue | null | undefined = undefined;
-  private leftRail = el('div', 'v2-rail v2-rail-left');
+  /** Round 16 (the player: "use up that blank space we have on the left"):
+   *  no left rail any more. What it held (the golden bomb, the power-up
+   *  timers, the map's convoy command) and Focus's button sit in this dock,
+   *  an overlay in the battlefield's lower-left corner, inside the safe
+   *  area; the battlefield itself takes the width the rail had. */
+  private leftRail = el('div', 'v2-rail v2-rail-left v3-dock');
+  /** The dock's column: bomb, timers and command, stacked up from the foot. */
+  private dockCol = el('div', 'v3-dock-col');
   private rightRail = el('div', 'v2-rail v2-rail-right');
   /** The map's convoy command (round 15: one big button at the foot of the
-   *  left rail, Hold on Sowers' Reach). Every game type: a map with no
-   *  command leaves the foot of the rail empty (round 16: the ship-flow
+   *  left rail, Hold on Sowers' Reach; round 16: the foot of the dock).
+   *  Every game type: a map with no command shows nothing there (the ship-flow
    *  slider, the formation button and "CONVOY sails itself" are gone). */
   private commandBox = el('div', 'v3-commands');
   private commandBtns: { id: CommandId; el: HTMLButtonElement; state: HTMLElement; bar: HTMLElement; key: string }[] = [];
@@ -326,7 +333,7 @@ export class App {
   /** Playtest notes: the pause menu's "Add a note" and "Rate last volley"
    *  (round 15: the rail's NOTE / RATE button is gone, in every game type;
    *  see openNote / openRate). */
-  /** Quartermaster 3+ (Armory): the golden bomb, in the left rail from the
+  /** Quartermaster 3+ (Armory): the golden bomb, in the dock from the
    *  run's start until it is tapped (the Nuke's blast, once a run). */
   private bombBtn = button('', 'v3-gold-bomb', () => this.tapGoldBomb());
   private notesOn = !STORE && notesEnabled();
@@ -477,7 +484,7 @@ export class App {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
     root.classList.toggle('notes', this.notesOn);
-    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.focusBtn, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
     // Landscape only: on every screen, not just in a run (menus round).
     const phone = el('div', 'v3-rotate-phone');
     phone.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="51" r="2.2" fill="currentColor"/></svg>`;
@@ -983,11 +990,14 @@ export class App {
     // the run's schedule and formation (the campaign's DEFAULT_FLOW in
     // Pairs; a lab map's own convoy), and the big button is the one convoy
     // control, where the map has a command.
-    this.leftRail.append(
+    // Round 16, full width: the left rail is gone; its pieces and Focus's
+    // button sit in the dock over the battlefield's lower-left corner.
+    this.dockCol.append(
       this.bombBtn,
       this.timers,
       this.commandBox,
     );
+    this.leftRail.append(this.dockCol, this.focusBtn);
     this.bombBtn.innerHTML = GOLD_BOMB_SVG + '<b>BOMB</b>';
     this.bombBtn.dataset.goldBomb = '1';
     this.bombBtn.setAttribute('aria-label', 'Golden bomb: destroy everything attacking, once a run');
@@ -1605,15 +1615,23 @@ export class App {
     this.canvas.height = Math.round(h * this.dpr);
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
-    // The battlefield sits inside the safe area, with the two rails reserved
-    // beside it so they never cover it (or hide under the island).
-    const availW = w - sa.l - sa.r - RAIL_W * 2;
+    // Round 16, full width (the player: "use up that blank space we have on
+    // the left"): only the right rail is reserved. The battlefield is fitted
+    // to the rest of the screen from its left edge, and stays clear of the
+    // left inset (the island) as far as the space it does not need allows:
+    // where it needs that width its art runs under the inset (the buttons
+    // over it, in the dock, keep to the safe area: style.css). The world is
+    // still VIEW; this is the view's scale and offset only.
+    const availW = w - sa.r - RAIL_W;
     const availH = h - sa.t - sa.b;
     this.scale = Math.max(0.05, Math.min(availW / VIEW.width, availH / VIEW.height));
-    this.offX = sa.l + RAIL_W + (availW - VIEW.width * this.scale) / 2;
-    this.offY = sa.t + (availH - VIEW.height * this.scale) / 2;
+    const mapW = VIEW.width * this.scale;
+    const mapH = VIEW.height * this.scale;
+    this.offX = Math.max(0, Math.min(sa.l, availW - mapW));
+    this.offY = sa.t + (availH - mapH) / 2;
     this.root.style.setProperty('--map-left', `${this.offX}px`);
-    this.root.style.setProperty('--map-width', `${VIEW.width * this.scale}px`);
+    this.root.style.setProperty('--map-width', `${mapW}px`);
+    this.root.style.setProperty('--map-bottom', `${h - this.offY - mapH}px`);
     this.root.style.setProperty('--safe-l', `${sa.l}px`);
     this.root.style.setProperty('--safe-r', `${sa.r}px`);
     this.placeBanner();
@@ -2145,7 +2163,7 @@ export class App {
     });
   }
 
-  /** The power-up countdowns in the left rail; rebuilt only when a number changes. */
+  /** The power-up countdowns in the dock; rebuilt only when a number changes. */
   private syncTimers(g: Game | null): void {
     const chips: [string, number, string][] = [];
     if (g && g.phase === 'wave') {
@@ -4144,7 +4162,7 @@ export class App {
     this.renderHud(this.game);
   }
 
-  /** The foot of the left rail: the map's convoy command, one big button
+  /** The foot of the dock (round 16: no left rail): the map's convoy command, one big button
    *  (Tactical on a map with a command: Hold on Sowers' Reach). Every other
    *  run, in every game type, shows nothing there (round 16: no "CONVOY
    *  sails itself" note, and no flow slider or formation button). */
@@ -4157,7 +4175,7 @@ export class App {
     this.commandsTaught.clear();
     this.commandSays.classList.remove('on');
     const cmds = g ? convoyCommands(g) : [];
-    // The rail's foot is laid out for the button only when there is one.
+    // The dock's foot is laid out for the button only when there is one.
     this.root.classList.toggle('convoy-command', cmds.length > 0);
     if (!cmds.length) return;
     for (const id of cmds) {

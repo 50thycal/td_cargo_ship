@@ -103,12 +103,58 @@ body {
   display: flex;
 }
 
-.v2-rail-left {
-  left: calc(var(--map-left) - var(--rail-w));
-}
-
+/* Round 16, full width: there is no left rail. Its element is the dock
+   (.v3-dock, below), over the battlefield's lower-left corner. The right
+   rail takes the column from the battlefield's right edge to the safe area,
+   its controls centred in it (a phone whose battlefield is height-bound has
+   a wider column than the rail). */
 .v2-rail-right {
   left: calc(var(--map-left) + var(--map-width));
+  right: var(--safe-r, 0px);
+  width: auto;
+  min-width: var(--rail-w);
+}
+
+/* The dock: the map's convoy command, the golden bomb, the power-up timers
+   and Focus's button, in the battlefield's lower-left corner, inside the
+   safe area (the battlefield's art may run under the island; a button never
+   does). Only its buttons take touches: the water between them is the
+   gun's. */
+.v2-rail.v3-dock {
+  top: auto;
+  bottom: calc(max(var(--map-bottom, 0px), var(--sa-b)) + 8px);
+  left: calc(max(var(--map-left, 0px), var(--safe-l, 0px)) + 8px);
+  width: auto;
+  z-index: 5;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.v3-dock-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-right: 8px;
+}
+
+.v3-dock-col > *,
+.v3-dock > .v3-focus-btn {
+  pointer-events: auto;
+}
+
+.v3-dock .v2-timers {
+  position: static;
+  width: max-content;
+  pointer-events: none;
+}
+
+.v3-dock .v2-timer {
+  width: 72px;
 }
 
 .v2-pause {
@@ -1117,7 +1163,8 @@ body {
 }
 
 /* Round 14: running power-ups, pinned to the foot of the left rail so the
-   rail's controls never move when one starts. */
+   rail's controls never move when one starts (round 16: in the dock, over
+   the command, .v3-dock .v2-timers). */
 .v2-timers {
   position: absolute;
   left: 4px;
@@ -5426,10 +5473,9 @@ a.v3-lab-page {
 .v3-focus-btn {
   --focus: #93c5fd;
   --bank: 1;
-  position: absolute;
-  z-index: 5;
-  left: calc(var(--map-left, 0px) + 12px);
-  bottom: calc(var(--sa-b) + 18px);
+  /* In the dock (round 16), beside the command: in its flow, not placed. */
+  position: relative;
+  flex: none;
   width: 88px;
   height: 88px;
   border-radius: 50%;
@@ -7797,8 +7843,8 @@ a.v3-lab-page {
   color: #1a0d02;
 }
 
-/* Quartermaster 3+: the golden bomb, in the left rail under the ships
-   slider, from the run's start until it is tapped. */
+/* Quartermaster 3+: the golden bomb, at the top of the dock (round 16),
+   from the run's start until it is tapped. */
 .v3-gold-bomb {
   width: 56px;
   height: 56px;
@@ -7944,36 +7990,40 @@ a.v3-lab-page {
 /* ---- Round 15: the convoy command is one big button, bottom left -------
    The player: "the option to hit a larger [Hold] button on the bottom left
    of the screen ... that button should glow when it is advantageous to use
-   it". The rail's command box sits at the rail's foot; the power-up timers
-   move up over it. */
-.convoy-command .v3-commands {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  bottom: 8px;
-}
-
-.convoy-command .v2-timers {
-  bottom: 104px;
-}
-
+   it". Round 16, full width: it sits at the foot of the dock, over the
+   battlefield's lower-left corner, the power-up timers and the bomb above
+   it. Compact (76 x 64, still a thumb's target) and see-through while it
+   only waits, so the water under it still reads; solid the moment it is
+   the moment (advised), while it holds, or under a finger. */
 .v3-command.v3-big-cmd {
-  width: 100%;
-  min-height: 88px;
-  padding: 8px 2px 12px;
+  width: 76px;
+  min-height: 64px;
+  padding: 6px 2px 10px;
   border-width: 2px;
   border-radius: 14px;
-  gap: 4px;
+  gap: 2px;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.35);
+  opacity: 0.78;
+  transition: opacity 0.15s;
+}
+
+/* Ready and waiting only: the other states keep their own fills. */
+.v3-command.v3-big-cmd:not(.active, .waiting, .advised) {
+  background: color-mix(in srgb, var(--accent) 16%, rgb(7 13 18 / 0.5));
+}
+
+.v3-command.v3-big-cmd:is(.advised, .active, :active) {
+  opacity: 1;
 }
 
 .v3-command.v3-big-cmd b {
-  font-size: 17px;
+  font-size: 16px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .v3-command.v3-big-cmd small {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .v3-command.v3-big-cmd i {

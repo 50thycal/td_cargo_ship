@@ -945,12 +945,15 @@ try {
     await wp.waitForSelector('[data-focus-btn].on', { timeout: 2000 }).catch(() => {});
     const fbox = await wp.evaluate(() => {
       const b = document.querySelector('[data-focus-btn]').getBoundingClientRect();
-      const rail = document.querySelector('.v2-rail-left').getBoundingClientRect();
       const cv = document.querySelector('canvas').getBoundingClientRect();
-      return { w: b.width, h: b.height, left: b.left, right: b.right, top: b.top, bottom: b.bottom, rail: rail.right, cvLeft: cv.left, cvBottom: cv.bottom, mid: (cv.left + cv.right) / 2 };
+      const tl = window.__v3.toClient(0, 0);
+      const br = window.__v3.toClient(1600, 900);
+      return { w: b.width, h: b.height, left: b.left, right: b.right, top: b.top, bottom: b.bottom, docked: !!document.querySelector('.v3-dock [data-focus-btn]'), mapLeft: tl.x, mapBottom: br.y, cvBottom: cv.bottom, mid: (cv.left + cv.right) / 2 };
     });
     const f0 = await fstate();
-    check(f0.on && fbox.w >= 72 && fbox.h >= 72 && fbox.left >= fbox.rail && fbox.right < fbox.mid && fbox.bottom <= fbox.cvBottom && /10\.0s/.test(f0.text), `Focus: its button shows on the left edge, thumb-sized, clear of the rail, with the slow motion banked (${JSON.stringify({ ...fbox, text: f0.text })})`);
+    // Round 16, full width: no left rail; the button is in the dock, over
+    // the battlefield's lower-left corner.
+    check(f0.on && fbox.docked && fbox.w >= 72 && fbox.h >= 72 && fbox.left >= fbox.mapLeft && fbox.right < fbox.mid && fbox.bottom <= fbox.mapBottom && fbox.bottom <= fbox.cvBottom && /10\.0s/.test(f0.text), `Focus: its button shows in the dock, over the battlefield's lower-left corner, thumb-sized, with the slow motion banked (${JSON.stringify({ ...fbox, text: f0.text })})`);
     // A tap on the water: a shot, and no slow-down (whatever finger it is).
     const qa = await c(900, 200);
     await finger('pointerdown', 11, qa.x, qa.y);
@@ -1117,17 +1120,17 @@ try {
     // Lifeboats: the extra life is a seventh pip, lifeboat orange.
     await qp.waitForSelector('.v2-hud-lost[data-limit="7"]');
     check((await qp.locator('.v2-hud-lost i').count()) === 7 && (await qp.locator('.v2-hud-lost i.life').count()) === 1, 'the HUD shows seven pips, the extra life in orange');
-    // The golden bomb: in the left rail, gold, on the screen, clear of the
-    // other controls.
+    // The golden bomb: in the dock (round 16: no left rail), gold, on the
+    // screen, clear of the other controls.
     const bombBox = await qp.evaluate(() => {
       const b = document.querySelector('.v3-gold-bomb');
       if (!b || b.hidden) return null;
       const r = b.getBoundingClientRect();
-      const others = [...document.querySelectorAll('.v2-rail button, .v2-rail .v2-hud, .v2-rail input')].filter((o) => o !== b && o.offsetParent).map((o) => o.getBoundingClientRect());
+      const others = [...document.querySelectorAll('.v2-rail button, .v2-rail .v2-hud, .v2-rail input, .v3-dock [data-focus-btn], .v2-timer')].filter((o) => o !== b && o.offsetParent).map((o) => o.getBoundingClientRect());
       const clash = others.some((o) => o.left < r.right && o.right > r.left && o.top < r.bottom && o.bottom > r.top);
       return { l: r.left, t: r.top, r: r.right, b: r.bottom, clash, gold: getComputedStyle(b).backgroundImage.includes('gradient') };
     });
-    check(!!bombBox && bombBox.l >= 0 && bombBox.t >= 0 && bombBox.r <= 874 && bombBox.b <= 402 && !bombBox.clash && bombBox.gold, `the golden bomb sits in the left rail, on screen and clear of the other controls (${JSON.stringify(bombBox)})`);
+    check(!!bombBox && bombBox.l >= 0 && bombBox.t >= 0 && bombBox.r <= 874 && bombBox.b <= 402 && !bombBox.clash && bombBox.gold, `the golden bomb sits in the dock, on screen and clear of the other controls (${JSON.stringify(bombBox)})`);
     await qp.waitForFunction(() => window.__v3.game().threats.some((t) => !t.dead), null, { timeout: 20000 });
     await qp.screenshot({ path: `${SHOT_DIR}/10a-golden-bomb.png` });
     await qp.locator('.v3-gold-bomb').tap();
