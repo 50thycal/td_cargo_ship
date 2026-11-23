@@ -521,11 +521,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      armory` saying which chapter's range set it. A log without
  *      `allCards` plays as it did (the map-lab baseline replays
  *      unchanged); one with it needs this build. (62 is the
- *      Saltgate parade, built alongside; 63 was never shipped.) */
-export const LOG_VERSION = 64;
+ *      Saltgate parade, built alongside; 63 was never shipped.)
+ *  65: Watch mode in the Test Lab (the player: "I should be able to run a
+ *      simulator on that too ... watch it be played and I can jump in at
+ *      any time ... The game log should note that too, so it knows when it
+ *      was a full playtest or had sim"): a map card run the "you" bot plays
+ *      on screen, the player taking over and handing back at will. The log
+ *      says who played: `control` (mode 'watch', the bot, segments of
+ *      {fromTick, toTick, by}, the player's share of ticks and a label,
+ *      'full playtest' | 'sim' | 'mixed'), and each note made in it `by`
+ *      whom and on which `wave`. Both sides' inputs are ordinary commands
+ *      (the 'c' switches are UI only), so the log replays exactly. Nothing
+ *      in the sim changed: a v64 log plays the same game; the version
+ *      marks the logs that can carry the new fields. */
+export const LOG_VERSION = 65;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [64];
+export const LOG_REPLAYS: readonly number[] = [65];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
@@ -555,6 +567,9 @@ export interface LabResult {
    *  encounter version played (absent: 'v1'). */
   score?: Scorecard;
   variant?: string;
+  /** A Watch run (log v65): played by the bot ('sim') or by both
+   *  ('mixed'); absent: played by hand, as every run before. */
+  played?: PlayKind;
 }
 export const SIM_DT = 1 / 60;
 
@@ -612,6 +627,34 @@ export type LogCommand =
 
 /** Who is at the controls: the player, or the watch-mode bot. */
 export type Controller = 'you' | 'bot';
+
+/** Who played a stretch of a run, as the log's readers name it. */
+export type PlayedBy = 'bot' | 'player';
+/** A stretch of a run one side played: ticks (sim steps) from `fromTick`
+ *  up to, not including, `toTick`. */
+export interface ControlSegment {
+  fromTick: number;
+  toTick: number;
+  by: PlayedBy;
+}
+/** How a run was played: all by hand, all by the bot, or both. */
+export type PlayKind = 'full playtest' | 'sim' | 'mixed';
+/** A Test Lab Watch run (log v65): the bot that played, who was at the
+ *  controls tick by tick, and the run in one word. Worked out from the
+ *  log's 'c' commands as it is saved (see `controlSegments`); never read
+ *  by replay. */
+export interface PlayControl {
+  mode: 'watch';
+  bot: string;
+  segments: ControlSegment[];
+  /** Ticks played by each side, and the player's share of them (0-1). */
+  botTicks: number;
+  playerTicks: number;
+  playerShare: number;
+  /** Times the controls changed hands. */
+  switches: number;
+  label: PlayKind;
+}
 export type FlagKind = 'bug' | 'wrong' | 'hard' | 'easy';
 
 export interface PlayLog {
@@ -631,6 +674,10 @@ export interface PlayLog {
    *  from. Balance analysis should leave these logs out. */
   tempo?: Tempo;
   dev?: { preset: string; retryOf?: string; watch?: boolean; bot?: string };
+  /** A Test Lab Watch run (log v65): the bot played it on screen and the
+   *  player could take over at any moment. Who played when, and the run's
+   *  label; `playKind` reads any log's. Never read by replay. */
+  control?: PlayControl;
   /** A Free Play run (round 7): its setup, applied as the game is created. */
   freePlay?: FreePlaySetup;
   /** A Test Lab run: its card, applied after the Free Play setup. A map
@@ -743,6 +790,8 @@ export class Recorder {
   mark: WaveMark;
   /** Volleys and moments, followed frame by frame (see `observe`). */
   readonly watch: Watch;
+  /** Who is at the controls now (a Watch run starts with the bot). */
+  controller: Controller = 'you';
 
   /** `from` continues an earlier run's inputs (a dev wave retry): the game
    *  passed in must already be that run replayed up to `from.mark`. */
@@ -764,6 +813,7 @@ export class Recorder {
     if (from) this.drafts = (from.log.summary?.drafts ?? []).filter((d) => d.wave < from.mark.wave);
     this.mark = { wave: game.wave, steps: game.steps, commands: this.log.commands.length };
     this.watch = new Watch(game);
+    this.controller = lastController(this.log);
   }
 
   /** Map & Convoy Lab telemetry for this run, from here on (call it before
@@ -789,6 +839,7 @@ export class Recorder {
     rec.drafts = (summary?.drafts ?? []).map((d) => ({ ...d, offered: [...d.offered] }));
     rec.mark = { ...mark };
     rec.watch.restore(game, volleys ?? [], moments ?? []);
+    rec.controller = lastController(rec.log);
     return rec;
   }
 
@@ -800,7 +851,10 @@ export class Recorder {
 
   /** The player's note, stamped with this step and the game as it stands. */
   note(n: Omit<PlayNote, 'step' | 'at' | 'ctx'>): PlayNote {
-    const note: PlayNote = { step: this.game.steps, at: new Date().toISOString(), ...n, ctx: noteContext(this.game) };
+    // A Watch run's note says who was playing as it was written, and the
+    // wave (its tick is `step`).
+    const who = this.log.control ? { by: (this.controller === 'bot' ? 'bot' : 'player') as PlayedBy, wave: this.game.wave } : {};
+    const note: PlayNote = { step: this.game.steps, at: new Date().toISOString(), ...n, ...who, ctx: noteContext(this.game) };
     (this.log.notes ??= []).push(note);
     return note;
   }
@@ -962,6 +1016,7 @@ export class Recorder {
   /** Watch mode: the bot or the player takes the controls from this step. */
   control(who: Controller): void {
     this.log.commands.push([this.game.steps, 'c', who]);
+    this.controller = who;
   }
 
   /** The player marked this moment for Claude to look at. */
@@ -1012,9 +1067,12 @@ export class Recorder {
       drafts: [...this.drafts],
       waves: [...g.history],
     };
+    // A Watch run: who played, from its switches up to now.
+    if (this.log.control) this.log.control = playControl(this.log.control.bot, controlSegments(this.log.commands, g.steps, startController(this.log)));
     const { volleys, moments } = this.watch;
     return {
       ...this.log,
+      ...(this.log.control ? { control: { ...this.log.control, segments: this.log.control.segments.map((x) => ({ ...x })) } } : {}),
       commands: [...this.log.commands],
       ...(this.log.notes ? { notes: this.log.notes.map((n) => ({ ...n })) } : {}),
       ...(this.log.waveRatings ? { waveRatings: this.log.waveRatings.map((w) => ({ ...w, rating: { ...w.rating } })) } : {}),
@@ -1145,4 +1203,108 @@ export class Playback {
     step(g, SIM_DT);
     return true;
   }
+}
+
+/** Who holds the controls as a log's run starts: the bot on a Watch run,
+ *  a dev watch run, or a bot's own run (a sweep, the map lab); else the
+ *  player. */
+export function startController(log: Pick<PlayLog, 'control' | 'dev' | 'device'>): Controller {
+  return log.control || log.dev?.watch || log.device?.ua === 'mimic' ? 'bot' : 'you';
+}
+
+/** Who holds the controls after a log's last input. */
+function lastController(log: PlayLog): Controller {
+  let who = startController(log);
+  for (const c of log.commands) if (c[1] === 'c') who = c[2];
+  return who;
+}
+
+/** Who played which ticks, from the 'c' switches: segments in order, none
+ *  empty, the last ending at `end` (the run's last tick). */
+export function controlSegments(commands: readonly LogCommand[], end: number, start: Controller = 'you'): ControlSegment[] {
+  const out: ControlSegment[] = [];
+  let who = start;
+  let from = 0;
+  const close = (to: number) => {
+    if (to <= from) return;
+    const by: PlayedBy = who === 'bot' ? 'bot' : 'player';
+    const last = out[out.length - 1];
+    if (last && last.by === by && last.toTick === from) last.toTick = to;
+    else out.push({ fromTick: from, toTick: to, by });
+  };
+  for (const c of commands) {
+    if (c[1] !== 'c' || c[2] === who) continue;
+    const at = Math.min(c[0], end);
+    close(at);
+    from = Math.max(from, at);
+    who = c[2];
+  }
+  close(end);
+  return out;
+}
+
+/** A Watch run's control summary, from its segments. */
+export function playControl(bot: string, segments: ControlSegment[]): PlayControl {
+  const botTicks = ticksBy(segments, 'bot');
+  const playerTicks = ticksBy(segments, 'player');
+  const total = botTicks + playerTicks;
+  return {
+    mode: 'watch',
+    bot,
+    segments,
+    botTicks,
+    playerTicks,
+    playerShare: total ? Math.round((playerTicks / total) * 1000) / 1000 : 0,
+    switches: Math.max(0, segments.length - 1),
+    label: kindOf(botTicks, playerTicks, 'sim'),
+  };
+}
+
+const ticksBy = (segs: readonly ControlSegment[], by: PlayedBy) => segs.filter((x) => x.by === by).reduce((a, x) => a + x.toTick - x.fromTick, 0);
+
+function kindOf(botTicks: number, playerTicks: number, none: PlayKind): PlayKind {
+  if (!botTicks && !playerTicks) return none;
+  if (!botTicks) return 'full playtest';
+  if (!playerTicks) return 'sim';
+  return 'mixed';
+}
+
+type ControlFields = Pick<PlayLog, 'control' | 'dev' | 'device' | 'commands' | 'summary'>;
+
+/** A log's segments: its `control`'s, else worked out from its commands
+ *  (a dev watch run, a bot's run, or a run with no bot: one player
+ *  segment). */
+export function logSegments(log: ControlFields): ControlSegment[] {
+  if (log.control?.segments?.length) return log.control.segments;
+  const end = log.summary?.steps ?? log.commands.reduce((m, c) => Math.max(m, c[0]), 0);
+  return controlSegments(log.commands, end, startController(log));
+}
+
+/** How a log's run was played: 'full playtest' (every tick by hand),
+ *  'sim' (every tick by a bot: a Watch run never taken over, a dev watch
+ *  run, a sweep's log) or 'mixed'. */
+export function playKind(log: ControlFields): PlayKind {
+  if (log.control?.label) return log.control.label;
+  const segs = logSegments(log);
+  return kindOf(ticksBy(segs, 'bot'), ticksBy(segs, 'player'), startController(log) === 'bot' ? 'sim' : 'full playtest');
+}
+
+/** Was the run played by hand from start to end? The tools that read how
+ *  the player plays take only these whole, or only their player ticks
+ *  (`byPlayer`). */
+export function handPlayed(log: ControlFields): boolean {
+  return playKind(log) === 'full playtest';
+}
+
+/** Was this tick played by the player? A tick past the last segment
+ *  belongs to whoever held the controls at the end. */
+export function byPlayer(log: ControlFields): (tick: number) => boolean {
+  const segs = logSegments(log);
+  const end = segs[segs.length - 1];
+  const start = startController(log);
+  return (tick) => {
+    if (!end) return start === 'you';
+    const x = tick >= end.toTick ? end : segs.find((sg) => tick >= sg.fromTick && tick < sg.toTick);
+    return (x ?? segs[0]).by === 'player';
+  };
 }

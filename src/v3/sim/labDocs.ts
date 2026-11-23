@@ -9,7 +9,7 @@ import { LAB_ROUNDS, cardChangeList, labCard, retiredCard } from '../data/lab';
 import { POLICY_NAME } from '../data/convoy';
 import { MAP_VARIANT_DEFAULT, cleanScorecard, type Scorecard } from '../data/scorecard';
 import { evidenceLines, type LabPlays } from './lab';
-import type { LabResult, PlayLog } from './playlog';
+import { playKind, type LabResult, type PlayKind, type PlayLog } from './playlog';
 
 /** A map card's full run in three numbers, from its log's summary (Test
  *  Lab round 11; no extra telemetry): the share of ships that finished
@@ -37,6 +37,10 @@ export interface ScoredRun {
   /** The player's scorecard (absent: skipped or blank), and the numbers. */
   score?: Scorecard;
   auto?: MapRunNumbers;
+  /** A Test Lab Watch run (log v65): 'sim' (the bot played it all) or
+   *  'mixed'. Absent: played by hand. Its numbers are not the player's
+   *  alone, so the page's averages leave them out (scores.mjs). */
+  played?: PlayKind;
 }
 
 /** The most runs a card's document keeps for the averages (newest first). */
@@ -72,6 +76,8 @@ export interface LabResultDoc {
   score?: Scorecard;
   auto?: MapRunNumbers;
   runs?: ScoredRun[];
+  /** The latest verdict's run was a Watch run: 'sim' or 'mixed'. */
+  played?: PlayKind;
 }
 
 export interface LabBuildDoc {
@@ -152,6 +158,7 @@ export function labResultDocs(logs: PlayLog[]): { results: Record<string, LabRes
       ...(logPlays(l) ? { plays: logPlays(l), setup: labSetupText(l) } : {}),
       ...mapRunFields(l),
       ...(runs.length ? { runs } : {}),
+      ...playedField(l),
     };
     results[id] = doc;
     // An enemy card's verdict also goes on the enemy page's Build tab.
@@ -208,6 +215,13 @@ export function mapRunNumbers(l: PlayLog): MapRunNumbers | undefined {
   return { delivered: s.delivered, deliveredPct: done ? Math.round((100 * s.delivered) / done) : null, lost: s.lost, firstLoss: first };
 }
 
+/** How a log's run was played, when not all by hand (a Test Lab Watch
+ *  run, log v65). */
+export function playedField(l: PlayLog): { played?: PlayKind } {
+  const k = l.labResult?.played ?? playKind(l);
+  return k === 'full playtest' ? {} : { played: k };
+}
+
 /** A map card's encounter version: what the log says, else v1. */
 export function logVariant(l: PlayLog): string {
   return l.labResult?.variant ?? l.lab?.variant ?? MAP_VARIANT_DEFAULT;
@@ -239,6 +253,7 @@ export function mapRuns(logs: PlayLog[]): ScoredRun[] {
         verdict: l.labResult!.verdict,
         ...(f.score ? { score: f.score } : {}),
         ...(f.auto ? { auto: f.auto } : {}),
+        ...playedField(l),
       };
     });
 }

@@ -10,7 +10,7 @@
 // over the speed slider); a bot's over the game speed it plays at.
 
 import type { ArmoryLevels } from '../../../src/v3/data/armory';
-import { SIM_DT, applyCommand, replaysHere, setupGame, type LogCommand, type PlayLog } from '../../../src/v3/sim/playlog';
+import { SIM_DT, applyCommand, byPlayer, handPlayed, replaysHere, setupGame, type LogCommand, type PlayLog } from '../../../src/v3/sim/playlog';
 import { funDigest, funOfLog, funSummary, type FunDigest, type FunWaveSummary, type Save } from '../../../src/v3/sim/funMetrics';
 import { CARRIER_TARGET, released, step, timeToImpact, worthShooting, type Game } from '../../../src/v3/sim/game';
 
@@ -104,7 +104,9 @@ export interface RunMeasure {
  *  of the bot that plays on in each fork. */
 export function measureFun(log: PlayLog, dice = 3): Pick<RunMeasure, 'fun' | 'saves'> {
   if (!replaysHere(log.v)) return {};
-  const r = funOfLog(log, { dice });
+  // A Watch run (log v65): only the saves the player made, not the bot's.
+  const mine = handPlayed(log) ? null : byPlayer(log);
+  const r = funOfLog(log, { dice, ...(mine ? { only: (a) => mine(a.step) } : {}) });
   if (!r.exact) return {};
   // A save keeps what a person reads: where, what, how much, the stakes.
   const saves = r.saves.map(({ near: _n, ...sv }) => ({ ...sv, t: Math.round(sv.t * 10) / 10, margin: Math.round(sv.margin * 100) / 100 }));
@@ -132,6 +134,9 @@ export function measure(log: PlayLog, who: 'you' | 'bot', opts: { react?: boolea
   const s = log.summary!;
   const waves = s.waves;
   const speed = speedAt(log.commands, who, who === 'bot' ? (opts.botSpeed ?? 1) : 1);
+  // A person's measures read only the ticks they played (a Test Lab Watch
+  // run, log v65: the bot's stretches are not how the player plays).
+  const mine = who === 'you' && !handPlayed(log) ? byPlayer(log) : () => true;
   // Wave windows in steps: a wave record's `t` is the game clock at its end.
   const ends = waves.map((w) => Math.round(w.t / SIM_DT));
   const waveOf = (st: number) => {
@@ -141,11 +146,12 @@ export function measure(log: PlayLog, who: 'you' | 'bot', opts: { react?: boolea
   let realSec = 0;
   let fast = 0;
   for (let st = 0; st < s.steps; st += 6) {
+    if (!mine(st)) continue;
     const sp = speed(st);
     realSec += (6 * SIM_DT) / sp;
     if (sp > 1.01) fast += (6 * SIM_DT) / sp;
   }
-  const tapSteps = log.commands.filter((c) => c[1] === 't' || c[1] === 'd').map((c) => c[0]);
+  const tapSteps = log.commands.filter((c) => (c[1] === 't' || c[1] === 'd') && mine(c[0])).map((c) => c[0]);
   const bursts: number[] = [];
   const gaps: number[] = [];
   const rests: number[] = [];
@@ -197,7 +203,7 @@ export function measure(log: PlayLog, who: 'you' | 'bot', opts: { react?: boolea
     untapped: {},
     grab: {},
   };
-  if (opts.react !== false) Object.assign(m, reactions(log, speed, opts.eyesTo ?? EYES_TO));
+  if (opts.react !== false) Object.assign(m, reactions(log, speed, opts.eyesTo ?? EYES_TO, mine));
   return m;
 }
 
@@ -205,7 +211,7 @@ export function measure(log: PlayLog, who: 'you' | 'bot', opts: { react?: boolea
  *  recorded, timing each threat from showing on screen to the first tap
  *  that lands within reach of it. */
 type Eyes = Pick<RunMeasure, 'react' | 'exact' | 'rank' | 'ttiAtTap' | 'shown' | 'untapped' | 'grab'>;
-function reactions(log: PlayLog, speed: (s: number) => number, eyesTo: number): Eyes {
+function reactions(log: PlayLog, speed: (s: number) => number, eyesTo: number, mine: (tick: number) => boolean = () => true): Eyes {
   const rec = log.summary!.waves;
   const g: Game = setupGame(log);
   const cmds = log.commands;
@@ -223,7 +229,8 @@ function reactions(log: PlayLog, speed: (s: number) => number, eyesTo: number): 
   for (let guard = 0; guard < 5_000_000; guard++) {
     while (i < cmds.length && cmds[i][0] <= g.steps) {
       const c = cmds[i++];
-      if ((c[1] === 't' || c[1] === 'd') && g.phase === 'wave') {
+      // A bot's tap (a Watch run's bot stretch) plays, but is not timed.
+      if ((c[1] === 't' || c[1] === 'd') && g.phase === 'wave' && mine(c[0])) {
         const live = worthShooting(g, g.threats).filter((th) => !th.dead && released(th) && on(th.x, th.y));
         let near = null as (typeof live)[number] | null;
         let nd = REACH;

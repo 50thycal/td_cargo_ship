@@ -8321,3 +8321,88 @@ html:root[data-theme='dark'] {
   border-top: 1px solid var(--panel-edge);
   font-family: var(--mono);
 }
+
+/* ======================================================================
+ * Test Lab Watch (log v65): the bot plays a map card on screen; Take over
+ * and Let bot play swap the controls.
+ * ====================================================================== */
+
+.v2-btn.v3-ready-watch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border-color: rgb(245 197 66 / 0.55);
+}
+
+.v3-lab-tile.v3-lab-watch {
+  width: 20px;
+  font-size: 12px;
+  color: var(--gold);
+}
+
+/* The control on the rail: big and gold while the bot plays. */
+.watch-lab .v2-control {
+  width: 72px;
+  min-height: 52px;
+  gap: 2px;
+}
+
+.watch-lab .v2-control b {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.watch-lab .v2-control.bot {
+  background: var(--gold);
+  color: #1d1600;
+  box-shadow: 0 0 0 2px rgb(245 197 66 / 0.35), 0 0 14px rgb(245 197 66 / 0.45);
+}
+
+.watch-lab .v2-control.bot span {
+  color: #3d3000;
+}
+
+.v2-hud-dev.v3-hud-watch {
+  color: var(--gold);
+}
+
+/* While the bot plays a Watch run, the field takes no taps. */
+.watch-lab.watch-bot canvas {
+  cursor: not-allowed;
+}
+
+.v2-draft-head .v3-draft-watch {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--gold);
+  border-color: rgb(245 197 66 / 0.6);
+}
+
+.v2-draft-head:has(.v3-draft-watch) {
+  position: relative;
+  align-self: stretch;
+}
+
+.v3-watch-line {
+  margin: 2px 0 4px;
+  padding: 5px 9px;
+  border-left: 3px solid var(--gold);
+  background: rgb(245 197 66 / 0.08);
+  color: var(--gold);
+  font-size: 12.5px;
+  font-weight: 700;
+}

@@ -4,6 +4,10 @@
 //   GET  /api/playlog          index of stored logs, newest first
 //   GET  /api/playlog?id=…     one log
 //   GET  /api/playlog?all=1    the newest logs in full (limit=N, max 50)
+//   GET  /api/playlog?all=1&played=hand
+//                              the same, only runs played by hand: no Test Lab
+//                              Watch run the bot played (all or part, V3 log
+//                              v65 `control`), dev watch run or bot run
 // Reads only answer on per-deployment URLs (td-cargo-ship-<hash>-…vercel.app),
 // which Vercel Authentication protects, so the public site can write but not
 // read. Needs a Blob store connected to the project (BLOB_READ_WRITE_TOKEN);
@@ -73,6 +77,20 @@ export async function POST(request: Request): Promise<Response> {
   return json({ ok: true, id: log.id }, 200, CORS);
 }
 
+/** How a log's run was played (V3 log v65; any older or V2 log is read the
+ *  same way): 'sim' or 'mixed' when a bot played any of it. Kept in step
+ *  with src/v3/sim/playlog.ts `playKind`, without the game's code. */
+function playedBy(x: unknown): 'full playtest' | 'sim' | 'mixed' {
+  const l = (x ?? {}) as { control?: { label?: string }; dev?: { watch?: boolean }; device?: { ua?: string }; commands?: unknown[] };
+  if (l.control?.label === 'sim' || l.control?.label === 'mixed' || l.control?.label === 'full playtest') return l.control.label;
+  if (l.control || l.dev?.watch || l.device?.ua === 'mimic') {
+    const takes = (l.commands ?? []).some((c) => Array.isArray(c) && c[1] === 'c' && c[2] === 'you');
+    return takes ? 'mixed' : 'sim';
+  }
+  const bot = (l.commands ?? []).some((c) => Array.isArray(c) && c[1] === 'c' && c[2] === 'bot');
+  return bot ? 'mixed' : 'full playtest';
+}
+
 async function readLog(pathname: string): Promise<unknown> {
   const r = await get(pathname, { access: 'private', useCache: false });
   return r ? JSON.parse(await new Response(r.stream).text()) : null;
@@ -99,6 +117,16 @@ export async function GET(request: Request): Promise<Response> {
     blobs.sort((a, b) => +new Date(b.uploadedAt) - +new Date(a.uploadedAt));
     if (url.searchParams.get('all')) {
       const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+      // played=hand: the tools that read how the player plays (the bot
+      // fit) leave out what a bot played.
+      if (url.searchParams.get('played') === 'hand') {
+        const out: unknown[] = [];
+        for (let i = 0; i < blobs.length && out.length < limit; i += limit) {
+          const page = await Promise.all(blobs.slice(i, i + limit).map((b) => readLog(b.pathname)));
+          out.push(...page.filter((l) => l && playedBy(l) === 'full playtest'));
+        }
+        return json(out.slice(0, limit));
+      }
       return json(await Promise.all(blobs.slice(0, limit).map((b) => readLog(b.pathname))));
     }
     return json({

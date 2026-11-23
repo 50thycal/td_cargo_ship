@@ -14,7 +14,7 @@ import { CALLOUT_LEVELS, type CalloutLevel } from './alerts';
 import { loadLabArmory } from './labArmory';
 import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
-import type { LabResult, PlayLog } from '../sim/playlog';
+import type { LabResult, PlayControl, PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, suggestWaves, waveChips, waveLabel, waveScoreText, type ScoreCategory, type Scorecard, type WaveScore } from '../data/scorecard';
 import { RUN_RATING_AXES, type MomentKind, type Rating } from '../sim/feedback';
@@ -310,6 +310,9 @@ export function roundTitle(): string {
 
 export interface HubHandlers {
   start: (id: string) => void;
+  /** Watch (log v65): the card's run, played on screen by the "you" bot;
+   *  take over and hand back at will. */
+  watch?: (id: string) => void;
   /** A map's card: what changed and why, its history, the Armory it plays. */
   notes: (map: MapId) => void;
 }
@@ -394,6 +397,8 @@ function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
     const foot = el('div', 'v3-ready-foot');
     foot.append(notes, play);
     card.append(top, el('p', 'v3-ready-note', r.note), foot);
+    // Watch: the same run, the bot at the controls until you take over.
+    if (h.watch) card.append(watchButton(h.watch, mapCardId(r.map), MAPS[r.map].name, 'v2-btn v3-ready-watch', 'Watch'));
     list.append(card);
   }
   box.append(head, list);
@@ -440,6 +445,8 @@ function mapGrid(p: LabProgress, status: Map<string, LabStatus>, h: HubHandlers)
         tile.append(plays);
         cell.append(tile);
       }
+      // Watch: the map's own card played by the bot, on screen.
+      if (h.watch) cell.append(watchButton(h.watch, mapCardId(id), MAPS[id].name, 'v3-lab-tile v v3-lab-watch', ''));
       // The map's notes: what changed, why, what to look for, its history.
       const info = button('i', 'v3-lab-tile v v3-lab-info', () => h.notes(id));
       info.dataset.mapNotes = id;
@@ -1374,4 +1381,30 @@ export function labReport(p: LabProgress, rewatch: (log: PlayLog, step: number) 
   acts.append(send1, page);
   box.append(acts, out);
   return box;
+}
+
+/** A map card's Watch button (log v65): `text` beside the eye, or the eye
+ *  alone on a tile. */
+function watchButton(watch: (id: string) => void, card: string, name: string, cls: string, text: string): HTMLButtonElement {
+  const b = button('', cls, () => watch(card));
+  b.innerHTML = `<span aria-hidden="true">👁</span>${text ? `<span>${text}</span>` : ''}`;
+  b.dataset.watch = card;
+  b.title = `Watch the bot play ${name}; take over any time`;
+  b.setAttribute('aria-label', `Watch the bot play ${name}. Take over any time.`);
+  return b;
+}
+
+/** A Watch run in one line, for its scorecard: who played it. */
+export function watchLine(c: PlayControl): HTMLElement {
+  const pct = Math.round(c.playerShare * 100);
+  const text =
+    c.label === 'sim'
+      ? 'Watch run · the bot played all of it (sim)'
+      : c.label === 'mixed'
+        ? `Mixed run · you played ${pct}%, the bot ${100 - pct}% · ${c.switches} hand-over${c.switches === 1 ? '' : 's'}`
+        : 'Watch run · you took over at the start and played all of it';
+  const p = el('p', `v3-watch-line ${c.label === 'full playtest' ? 'hand' : c.label}`, text);
+  p.dataset.watchLabel = c.label;
+  p.dataset.playerShare = String(c.playerShare);
+  return p;
 }

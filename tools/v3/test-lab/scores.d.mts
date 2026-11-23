@@ -4,9 +4,9 @@ export interface ScoreCatDef { id: string; label: string; help?: string; scale: 
 export interface ScorecardDef { rev: number; bossFrom: number; categories: ScoreCatDef[] }
 export interface WaveScoreDef { n: number; difficulty?: number; fun?: number; intensity?: number; note?: string }
 export type Score = { rev?: number; waves?: WaveScoreDef[]; [id: string]: number | string | WaveScoreDef[] | undefined };
-export interface Run { rev?: number; variant?: string; end?: 'won' | 'lost' | 'quit'; score?: Score; auto?: { delivered: number; deliveredPct: number | null; lost: number; firstLoss: number | null }; [k: string]: unknown }
+export interface Run { rev?: number; variant?: string; end?: 'won' | 'lost' | 'quit'; played?: 'full playtest' | 'sim' | 'mixed'; score?: Score; auto?: { delivered: number; deliveredPct: number | null; lost: number; firstLoss: number | null }; [k: string]: unknown }
 export type Average = { n: number; mean?: number; near?: string; counts?: Record<string, number>; top?: number; topCount?: number };
-export interface Numbers { runs: number; won: number; deliveredPct: number | null; lost: number | null }
+export interface Numbers { runs: number; won: number; deliveredPct: number | null; lost: number | null; bot?: number }
 export interface Group { variant: string; numbers: Numbers; scored: number; oldScored: number; averages: Record<string, Average> }
 
 export function waveName(n: number, bossFrom: number): string;
