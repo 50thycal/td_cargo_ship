@@ -132,7 +132,7 @@ async function openMenu(page) {
 }
 
 /** Free Play's own setup (the player's Free Play screen), then Start. */
-async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequentDrops = true, speedClicks = 2 }) {
+async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequentDrops = true, speedClicks = 0 }) {
   if (page.url() === 'about:blank') await openMenu(page);
   await page.evaluate(
     (fp) => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify(fp)),
@@ -217,7 +217,7 @@ const CLIPS = {
     title: 'Defend the convoy',
     takes: 4,
     async play(page, t) {
-      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false, speedClicks: 3 });
+      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
       t.start = t.now();
       t.cue('Straitwatch', 'my convoy-defense prototype', 2.6);
       const k0 = (await kills(page)).kills;
@@ -231,7 +231,7 @@ const CLIPS = {
           cued = 2;
           t.cue('Goal: get the cargo ships across', null, 5);
         }
-        return sec > 17 || (await state(page))?.phase !== 'wave';
+        return sec > 18 || (await state(page))?.phase !== 'wave';
       });
       const k = (await kills(page)).kills - k0;
       t.score = k;
@@ -245,7 +245,7 @@ const CLIPS = {
     title: 'Railgun',
     takes: 4,
     async play(page, t) {
-      await startFreePlay(page, { wave: 7, weapons: ['railgun'], speedClicks: 3 });
+      await startFreePlay(page, { wave: 7, weapons: ['railgun'] });
       const tPlay = t.now();
       // Normal gun until the game drops a railgun pickup with a burst on the water. The clip
       // then starts ~5 s earlier (the footage is already recorded), so the lead-in is real play.
@@ -265,7 +265,7 @@ const CLIPS = {
         }
       }
       if (!pk) throw new Error('no weapon pickup could be tapped in time');
-      t.start = Math.max(tPlay, tCue - 4.8);
+      t.start = Math.max(tPlay, tCue - 3.6);
       t.cues.unshift({ at: t.start + 0.2, head: 'Tap a missile to intercept it', sub: 'normal main gun', dur: 3.4 });
       await page.mouse.click(pk.x, pk.y);
       await sleep(150);
@@ -305,7 +305,7 @@ const CLIPS = {
     title: 'Arsenal',
     takes: 4,
     async play(page, t) {
-      await startFreePlay(page, { wave: 7, weapons: ['airstrike', 'thermo', 'well'], speedClicks: 3 });
+      await startFreePlay(page, { wave: 7, weapons: ['airstrike', 'thermo', 'well'] });
       const tPlay = t.now();
       const k0 = (await kills(page)).kills;
       const seen = [];
@@ -317,7 +317,7 @@ const CLIPS = {
       const m0 = Date.now();
       // Normal gun, and whichever of the three weapons the game drops next. Load each on a real
       // threat count, then fire only where it will hit. Different weapons only.
-      while (seen.length < 3 && sinceS(m0) < 70 && (tFirst === null || t.now() - tFirst < 16)) {
+      while (seen.length < 3 && sinceS(m0) < 70 && (tFirst === null || t.now() - tFirst < 17.5)) {
         const s = await state(page);
         if (s?.phase !== 'wave') break;
         const field = await fieldThreats(page);
@@ -453,7 +453,7 @@ function ffmpeg(args) {
 function encode(name, { raw, t, end }) {
   const start = Math.max(0, t.start - 0.1);
   t.cues = t.cues.filter((c) => c.at >= start); // nothing from before the clip starts
-  const dur = Math.min(end - start + 0.6, 24.5);
+  const dur = Math.min(end - start + 0.6, 25);
   const tail = Math.max(0, dur - 0.6);
   // Silent AAC track: X's uploader and some players reject video with no audio stream.
   const silent = ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100'];

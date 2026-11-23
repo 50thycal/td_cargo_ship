@@ -24,7 +24,7 @@ Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
 
 | clip | what happens |
 |---|---|
-| `convoy` | a real wave (Free Play, wave 7, 2x): tap incoming missiles and drones with the normal gun |
+| `convoy` | a real wave (Free Play, wave 7, normal 1x speed): tap incoming missiles and drones with the normal gun |
 | `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
 | `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
 
