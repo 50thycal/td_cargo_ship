@@ -63,9 +63,27 @@ const openThreats = (page) =>
       .filter((p) => p.x > 5 && p.x < innerWidth - 90 && p.y > 5 && p.y < innerHeight - 5);
   });
 
-/** Tap up to `max` threats with the normal gun. */
-async function defend(page, max = 2) {
-  for (const p of (await openThreats(page)).slice(0, max)) await page.mouse.click(p.x, p.y);
+let lastTap = 0;
+/**
+ * Tap the nearest open threat with the normal gun: only with rounds in the rack, at most one tap
+ * every `gap` ms, and not while several interceptors are already in the air. (A bot that taps
+ * constantly just drains the rack into the reload, which looks like spam.)
+ */
+async function defend(page, max = 1, gap = 420) {
+  if (Date.now() - lastTap < gap) return;
+  const pts = await g(page, () => {
+    const gm = window.__v3.game();
+    if (!gm || gm.phase !== 'wave' || gm.ammo < 1 || gm.interceptors.length >= 3) return [];
+    return gm.threats
+      .filter((t) => !t.dead && !gm.interceptors.some((i) => i.target === t.id))
+      .sort((a, b) => b.y - a.y)
+      .map((t) => window.__v3.toClient(t.x, t.y))
+      .filter((p) => p.x > 5 && p.x < innerWidth - 90 && p.y > 140 && p.y < innerHeight - 5);
+  });
+  for (const p of pts.slice(0, max)) {
+    await page.mouse.click(p.x, p.y);
+    lastTap = Date.now();
+  }
 }
 
 /** A weapon pickup lying on the water, if any (client coords). */
@@ -104,12 +122,13 @@ async function installCounter(page) {
   await page.addInitScript(() => {
     const seen = new Set();
     let prev = new Set();
-    window.__vc = { kills: 0, seen: 0, log: [] };
+    window.__vc = { kills: 0, seen: 0, log: [], dt: [] };
+    { let l = performance.now(); const f = (n) => { window.__vc.dt.push(n - l); l = n; requestAnimationFrame(f); }; requestAnimationFrame(f); }
     const tick = () => {
       const gm = window.__v3?.game?.();
       if (gm) {
         // Scene filter (a clip opts in): only ammo and repair pickups stay on the water.
-        if (window.__onlySupplies) for (let i = gm.pickups.length - 1; i >= 0; i--) if (gm.pickups[i].kind !== 'ammo' && gm.pickups[i].kind !== 'repair') gm.pickups.splice(i, 1);
+        if (window.__onlySupplies) for (let i = gm.pickups.length - 1; i >= 0; i--) if (gm.pickups[i].kind !== 'ammo' && gm.pickups[i].kind !== 'repair' && !(window.__allowWeapon && gm.pickups[i].kind === 'weapon')) gm.pickups.splice(i, 1);
         const stamp = Date.now();
         if (!window.__vc.last || stamp - window.__vc.last > 250) {
           window.__vc.last = stamp;
@@ -147,6 +166,8 @@ async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequen
     (fp) => localStorage.setItem('straitwatch.v3.freeplay', JSON.stringify(fp)),
     { map, wave, weapons: [0, 1, 2].map((i) => (weapons[i] ? { id: weapons[i], level: 1 } : null)), armory: { gun: null, hull: null, supply: null }, frequentDrops, enemies: 'campaign' },
   );
+  // The clips are silent, and the game's sound effects hitch the frame (about 270 ms the first time each plays): mute them.
+  await page.evaluate(() => localStorage.setItem('straitwatch-v3-audio', JSON.stringify({ volume: 0, music: 0, muted: true })));
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-screen="menu"]');
   await sleep(600);
@@ -242,6 +263,14 @@ const studioSpawn = (page, kind, n = 1) =>
     for (let i = 0; i < n; i++) gm.queue.push({ at: gm.waveT + 0.05 + i * 0.2, kind, base: i % bases });
     gm.queue.sort((a, b) => a.at - b.at); // the queue is read from the front; the placeholder stays last
   }, [kind, n]);
+/** Drop a weapon pickup the player holds (as a kill would) at (x, y). */
+const studioDropWeapon = (page, x, y) =>
+  g(page, ([x, y]) => {
+    const gm = window.__v3.game();
+    const id = gm.slots[gm.slots.length - 1];
+    if (id) gm.pickups.push({ id: 80500 + Math.floor(Math.random() * 999), kind: 'weapon', weapon: id, x, y, age: 0 });
+    return id ?? null;
+  }, [x, y]);
 /** Put an ammo or repair drop on the water (world coordinates). */
 const studioDrop = (page, kind, x, y) =>
   g(page, ([kind, x, y]) => window.__v3.game().pickups.push({ id: 80000 + Math.floor(Math.random() * 9999), kind, x, y, age: 0 }), [kind, x, y]);
@@ -251,7 +280,7 @@ const studioDrop = (page, kind, x, y) =>
  * | { at, cue: [head, sub, secs] } | { at, end: true }. `at` is seconds from this call.
  * Returns when the wave has ended (phase no longer 'wave') or `limit` seconds pass.
  */
-async function runTimeline(page, t, events, { limit = 60 } = {}) {
+async function runTimeline(page, t, events, { limit = 60, tick = null } = {}) {
   const todo = [...events].sort((a, b) => a.at - b.at);
   const t0 = Date.now();
   while (sinceS(t0) < limit) {
@@ -259,10 +288,12 @@ async function runTimeline(page, t, events, { limit = 60 } = {}) {
       const e = todo.shift();
       if (e.spawn) await studioSpawn(page, ...e.spawn);
       if (e.drop) await studioDrop(page, ...e.drop);
+      if (e.weaponDrop) await studioDropWeapon(page, ...e.weaponDrop);
       if (e.cue) t.cue(...e.cue);
       if (e.end) await studioEnd(page);
     }
-    await defend(page, 2);
+    if (tick) await tick(sinceS(t0));
+    else await defend(page, 1);
     await grabSupplies(page);
     if ((await state(page))?.phase !== 'wave') return;
     await sleep(140);
@@ -276,40 +307,42 @@ async function runTimeline(page, t, events, { limit = 60 } = {}) {
 
 const CLIPS = {
   // Menu -> Free Play wave 3 -> real intercepts with the normal gun.
-  // The launch clip, scripted to the post: the three enemy types on screen, only ammo and
-  // repair drops, the upgrade pick, then the attack stepping up. Studio mode (see above).
+  // The launch clip, scripted to the post: wave 1 with the three enemy types, only ammo and
+  // repair drops, the upgrade pick, then the attack stepping up and the new weapon dropping.
   convoy: {
     title: 'Defend the convoy (studio)',
     studio: true,
+    vertical: true,
     takes: 2,
     capture: 'cdp',
+    viewport: { width: 1080, height: 608 },
     async play(page, t) {
       t.maxSeconds = 75;
-      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
+      await startFreePlay(page, { wave: 1, weapons: [], frequentDrops: false });
       await page.evaluate(() => (window.__onlySupplies = true));
       await studioBegin(page);
       const k0 = (await kills(page)).kills;
       t.start = t.now();
       const T = (x) => t.start + x;
-      // Wave 7: drones, then ballistic, then supersonic, building.
       t.cues.push(
         { at: T(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
         { at: T(5.2), head: 'Protect as many ships as you can', sub: 'as the enemy relentlessly attacks your convoy', dur: 5.4 },
         { at: T(11.2), head: 'Tap enemy missiles to intercept them', sub: 'drones, ballistic and supersonic missiles', dur: 6 },
       );
+      // Wave 1: three enemy types, easing in.
       await runTimeline(page, t, [
-        { at: 0.5, spawn: ['drone', 5] },
-        { at: 4.5, spawn: ['ballistic', 2] },
+        { at: 0.5, spawn: ['drone', 3] },
+        { at: 4.5, spawn: ['ballistic', 1] },
         { at: 6.5, drop: ['ammo', 760, 330] },
-        { at: 8.0, spawn: ['supersonic', 2] },
-        { at: 10.5, spawn: ['drone', 6] },
-        { at: 13.0, spawn: ['ballistic', 3] },
+        { at: 8.0, spawn: ['supersonic', 1] },
+        { at: 10.5, spawn: ['drone', 4] },
+        { at: 13.0, spawn: ['ballistic', 2] },
         { at: 14.5, drop: ['repair', 900, 320] },
-        { at: 16.0, spawn: ['supersonic', 2] },
-        { at: 19.0, end: true },
+        { at: 16.0, spawn: ['supersonic', 1] },
+        { at: 18.0, end: true },
       ], { limit: 60 });
       const phase = (await state(page))?.phase;
-      if (phase !== 'draft') throw new Error(`wave 7 ended in "${phase}", not a clear`);
+      if (phase !== 'draft') throw new Error(`wave 1 ended in "${phase}", not a clear`);
       // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
       await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
       await sleep(400);
@@ -317,30 +350,61 @@ const CLIPS = {
       await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
       const tDraft = t.now();
       await sleep(2800);
-      await page.click('.v2-draft .v2-card');
-      await page.waitForFunction(() => window.__v3.game()?.wave === 8 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
+      // The card to pick: the first of the weapons that show best on camera, else the first card.
+      const cards = await page.$$eval('.v2-draft .v2-card', (cs) => cs.map((c) => ({ id: c.dataset.upgrade ?? '', name: c.querySelector('.v2-card-name')?.textContent?.trim() ?? c.textContent.slice(0, 20) })));
+      const LIKE = ['railgun', 'thermo', 'airstrike', 'shrapnel', 'well', 'scatter', 'boomerang', 'flak', 'seeker', 'frigate'];
+      const pickIx = Math.max(0, LIKE.map((id) => cards.findIndex((c) => c.id === id)).find((i) => i >= 0) ?? 0);
+      const pickedName = cards[pickIx]?.name ?? 'New weapon';
+      await page.locator('.v2-draft .v2-card').nth(pickIx).click();
+      await page.waitForFunction(() => window.__v3.game()?.wave === 2 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
       await studioBegin(page);
-      const tWave8 = t.now();
+      await page.evaluate(() => (window.__allowWeapon = true));
+      const tWave2 = t.now();
       t.cues.push(
-        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave8 - tDraft + 6.5 },
-        { at: tWave8 + 7, head: 'Still in development', sub: 'Free Play testing coming soon', dur: 5 },
+        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave2 - tDraft + 5.5 },
       );
-      // Wave 8: the same three types, harder and faster.
+      // Wave 2: the same three types, a notch harder; the weapon you just picked drops and gets used.
+      let loaded = false;
+      let dropAt = null;
+      let lastShot = 0;
+      let shots = 0;
       await runTimeline(page, t, [
-        { at: 0.3, spawn: ['drone', 8] },
-        { at: 2.0, spawn: ['ballistic', 3] },
-        { at: 3.5, spawn: ['supersonic', 3] },
-        { at: 5.0, drop: ['ammo', 700, 340] },
-        { at: 6.0, spawn: ['drone', 9] },
-        { at: 7.5, spawn: ['ballistic', 4] },
-        { at: 9.0, spawn: ['supersonic', 3] },
-        { at: 10.0, drop: ['repair', 880, 330] },
-        { at: 12.0, end: true },
-      ], { limit: 16 });
+        { at: 0.3, spawn: ['drone', 4] },
+        { at: 2.0, spawn: ['ballistic', 2] },
+        { at: 3.5, spawn: ['supersonic', 1] },
+        { at: 5.5, weaponDrop: [740, 320], cue: ['Your new weapon drops', 'tap it to load your main gun', 3.4] },
+        { at: 5.5, spawn: ['drone', 5] },
+        { at: 8.5, spawn: ['ballistic', 3] },
+        { at: 10.5, spawn: ['supersonic', 2] },
+        { at: 12.0, drop: ['ammo', 700, 340] },
+        { at: 12.5, spawn: ['drone', 5] },
+      ], {
+        limit: 17.5,
+        tick: async (sec) => {
+          if (sec >= 5.5 && dropAt === null) dropAt = sec;
+          const w = await weaponPickup(page);
+          if (!loaded && w && sec >= (dropAt ?? 99) + 2.4) {
+            await page.mouse.click(w.x, w.y);
+            await sleep(120);
+            loaded = (await state(page))?.weapon != null;
+            if (loaded) t.cue(pickedName, 'loaded for 15 seconds', 4);
+            return;
+          }
+          const s = await state(page);
+          if (s?.weapon) {
+            if (s.ammo > 0 && Date.now() - lastShot > 950 && (await fireAt(page, s.weapon, 1))) {
+              lastShot = Date.now();
+              shots++;
+            }
+          } else await defend(page, 1);
+        },
+      });
+      if (!loaded) throw new Error('the dropped weapon was never loaded');
+      t.cues.push({ at: tWave2 + 12.5, head: 'Still in development', sub: 'Free Play testing coming soon', dur: 5 });
       t.stopAt = t.now();
       const k = (await kills(page)).kills - k0;
-      t.score = k;
-      t.note(`studio scene: ${k} enemies shot down; enemies launched by the script (drones, ballistic, supersonic), ammo/repair drops placed`);
+      t.score = k + shots * 3;
+      t.note(`studio scene: ${k} enemies shot down; the picked weapon (${pickedName}) fired ${shots} aimed shots; ammo/repair drops placed`);
     },
   },
 
@@ -564,11 +628,12 @@ async function recordTake(browser, name, clip, take) {
   const dir = join(WORK, `${name}-${take}`);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, ...(cdpMode ? {} : { recordVideo: { dir, size: { width: W, height: H } } }) });
+  const vp = clip.viewport ?? { width: W, height: H };
+  const ctx = await browser.newContext({ viewport: vp, ...(cdpMode ? {} : { recordVideo: { dir, size: { width: W, height: H } } }) });
   const page = await ctx.newPage();
   const t0 = Date.now();
   const now = () => (Date.now() - t0) / 1000;
-  const t = { now, studio: !!clip.studio, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
+  const t = { now, studio: !!clip.studio, vertical: !!clip.vertical, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
@@ -577,13 +642,12 @@ async function recordTake(browser, name, clip, take) {
   if (cdpMode) {
     mkdirSync(join(dir, 'f'), { recursive: true });
     cdp = await ctx.newCDPSession(page);
+    // Frames are only buffered while the scene plays (no disk work competing with the game); written afterwards.
     cdp.on('Page.screencastFrame', (f) => {
-      const file = join(dir, 'f', `${String(frames.length).padStart(6, '0')}.jpg`);
-      writeFileSync(file, Buffer.from(f.data, 'base64'));
-      frames.push({ file, ts: f.metadata.timestamp });
+      frames.push({ data: f.data, ts: f.metadata.timestamp });
       cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
     });
-    await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, everyNthFrame: 1 });
+    await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 82, maxWidth: vp.width, maxHeight: vp.height, everyNthFrame: 1 });
   }
 
   let failed = null;
@@ -594,18 +658,39 @@ async function recordTake(browser, name, clip, take) {
   }
   const end = t.stopAt ?? now();
   let raw;
+  let rebuild = null;
   let fps = 30;
   let offset = 0; // seconds between the director's clock and the first captured frame
   if (cdpMode) {
     await cdp.send('Page.stopScreencast').catch(() => {});
+    {
+      const gaps = frames.slice(1).map((f, i) => (f.ts - frames[i].ts) * 1000);
+      const raf = await page.evaluate(() => window.__vc.dt.slice(5)).catch(() => []);
+      const q = (a, p) => [...a].sort((x, y) => x - y)[Math.floor(a.length * p)] ?? 0;
+      const stalls = gaps.map((x, i) => [x, (frames[i].ts - frames[0].ts - (t.start - (frames[0].ts - t0 / 1000)))]).filter(([x]) => x > 50).map(([x, at]) => `${at.toFixed(0)}s:${x.toFixed(0)}ms`);
+      t.notes.push(`stalls over 50ms (clip time): ${stalls.join(' ') || 'none'}`);
+      t.notes.push(`capture: ${frames.length} frames, gaps p50 ${q(gaps, 0.5).toFixed(1)} p95 ${q(gaps, 0.95).toFixed(1)} max ${Math.max(0, ...gaps).toFixed(0)} ms, ${gaps.filter((x) => x > 25).length} over 25ms; game rAF p50 ${q(raf, 0.5).toFixed(1)} p95 ${q(raf, 0.95).toFixed(1)} ms, ${raf.filter((x) => x > 25).length}/${raf.length} over 25ms`);
+    }
     await ctx.close();
     if (frames.length < 10) throw new Error('screencast produced no frames');
+    frames.forEach((f, i) => {
+      f.file = join(dir, 'f', `${String(i).padStart(6, '0')}.jpg`);
+      writeFileSync(f.file, Buffer.from(f.data, 'base64'));
+      f.data = null;
+    });
     // A constant 60 fps timeline: each frame is held until the next one arrives.
     const list = frames.map((f, i) => `file '${f.file}'\nduration ${(((frames[i + 1]?.ts ?? f.ts + 1 / 60) - f.ts) || 1 / 60).toFixed(5)}`).join('\n') + `\nfile '${frames.at(-1).file}'\n`;
     writeFileSync(join(dir, 'list.txt'), list);
     raw = join(dir, `${name}.mkv`);
-    ffmpeg(['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', 'fps=60', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
-    rmSync(join(dir, 'f'), { recursive: true, force: true });
+    // The capture stream drops a handful of frames at a time now and then (a Chromium headless quirk; the game keeps
+    // running at 60 fps through them). A cheap constant-60 fps version is made now (so takes can be judged); the
+    // kept take is rebuilt with the holes motion-interpolated, so nothing freezes (see record()).
+    const holes = frames.slice(1).filter((f, i) => (f.ts - frames[i].ts) * 1000 > 40).length;
+    t.notes.push(`capture holes over 40ms: ${holes}`);
+    raw = join(dir, `${name}.mkv`);
+    const build = (vf) => ffmpeg(['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
+    build('fps=60');
+    rebuild = holes > 0 && process.env.VIDEO_FILL !== '0' ? () => build('minterpolate=fps=60:mi_mode=mci:mc_mode=obmc:me_mode=bidir:me=hexbs:vsbmc=0') : null;
     fps = 60;
     offset = frames[0].ts - t0 / 1000;
   } else {
@@ -614,7 +699,7 @@ async function recordTake(browser, name, clip, take) {
     raw = join(dir, `${name}.webm`);
     renameSync(await video.path(), raw);
   }
-  return { raw, t, end, failed, errors, take, fps, offset };
+  return { raw, t, end, failed, errors, take, fps, offset, rebuild };
 }
 
 /** Record `clip.takes` real runs (the game's waves are random) and keep the best-scoring one. */
@@ -630,6 +715,10 @@ async function record(browser, name, clip) {
   }
   if (!best) throw new Error(`${name}: every take failed`);
   console.log(`  keeping take ${best.take}`);
+  if (best.rebuild) {
+    console.log('  filling capture holes by motion interpolation (the slow step)...');
+    best.rebuild();
+  }
   return best;
 }
 
@@ -673,7 +762,7 @@ function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
 
   // 16:9
   const land = captionFilters(t.cues, start, { headSize: 40, subSize: 24, yHead: 'h*0.80', ySub: 'h*0.80+62', boxPad: 14 });
-  ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
+  if (!t.vertical) ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
 
   // 9:16: sharp game in the middle band over a blurred, zoomed copy of itself.
   const vert = captionFilters(t.cues, start, { headSize: 54, subSize: 34, yHead: 'h*0.18', ySub: 'h*0.18+100', boxPad: 20 });
@@ -714,7 +803,7 @@ try {
     console.log(`recording ${name}...`);
     const rec = await record(browser, name, CLIPS[name]);
     const dur = encode(name, rec);
-    console.log(`  -> ${name}-16x9.mp4, ${name}-9x16.mp4 (${dur.toFixed(1)}s)`);
+    console.log(`  -> ${CLIPS[name].vertical ? '' : name + '-16x9.mp4, '}${name}-9x16.mp4 (${dur.toFixed(1)}s)`);
   }
   writeFileSync(join(OUT, 'index.json'), JSON.stringify(names.map((n) => ({ name: n, title: CLIPS[n].title, files: [`${n}-16x9.mp4`, `${n}-9x16.mp4`] })), null, 2));
 } finally {

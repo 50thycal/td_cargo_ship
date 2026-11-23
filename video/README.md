@@ -24,7 +24,7 @@ Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
 
 | clip | what happens |
 |---|---|
-| `convoy` | studio scene for the launch post: drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then a heavier wave 8 |
+| `convoy` | studio scene for the launch post (vertical only): wave 1 with drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then wave 2 and the picked weapon dropping and firing |
 | `convoy-real` | the same idea on a natural wave 7 and 8 (no placed enemies) |
 | `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
 | `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
@@ -59,7 +59,11 @@ Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave 
 Playwright's built-in video is a fixed 25 fps screen grab, which looks steppy on fast scenes (about 18% exact
 repeat frames after conversion to 30 fps). A clip can set `capture: 'cdp'` (or run with `VIDEO_CAPTURE=cdp`) to
 record Chromium's own frame stream instead, at about 60 fps with real timestamps, and the clip is encoded at 60 fps
-(0% repeats). The game itself holds 60 fps headless; the stutter was only ever in the recorder. `convoy` uses it.
+(0% repeats). The game itself holds 60 fps headless; the stutter was only ever in the recorder.
+Chromium's capture stream also drops about 16 frames at a time every few seconds while the game is busy (not caused by
+the game, the bot, audio, CSS or browser flags; all tested). The kept take is rebuilt with those holes
+motion-interpolated (`VIDEO_FILL=0` to skip; this is the slow step, about 8 minutes per clip). The recording is also
+muted and the bot taps calmly (rounds in the rack only, one tap at a time) to keep the machine's load down. `convoy` uses it.
 
 ## How it works
 
