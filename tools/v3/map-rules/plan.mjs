@@ -69,7 +69,7 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-22',
+  updated: '2026-11-23',
   headline: 'All 20 maps are rebuilt. Building from your notes: Saltgate’s boss redone as a Missile Truck parade (trucks enter every 1–3 s and fire on the move in patterns), and the old convoy controls (slider, formation button, “sails itself”) gone from every mode in favour of the big button. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
