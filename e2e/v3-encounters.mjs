@@ -18,6 +18,7 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 // The authored data itself (type-only imports, so Node loads the .ts as is):
 // the checks expect the current encounter rev and what it plays, not a copy.
 const { ENCOUNTER_REV, encountersFor } = await import(new URL('../src/v3/data/encounters.ts', import.meta.url).href);
+const { TIDE_TURN } = await import(new URL('../src/v3/sim/tide.ts', import.meta.url).href);
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:4173';
 const OUT_DIR = process.env.OUT_DIR ?? 'e2e/shots/v3-encounters';
@@ -227,7 +228,7 @@ try {
   // current, stealth bombers that sow them, and the Carpet Run ----
   await open(page, 'lab=map-sowers&seed=7');
   const sw = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command) }));
-  check(sw.map === 'sowers' && sw.rev === ENCOUNTER_REV && sw.cmds.join() === 'hold', `Sowers' Reach's card opens with its encounters and Hold (${JSON.stringify(sw)})`);
+  check(sw.map === 'sowers' && sw.rev === ENCOUNTER_REV && sw.cmds.join() === '', `Sowers' Reach's card opens with its encounters and no Hold button (the Hold is automatic, log v68) (${JSON.stringify(sw)})`);
   await labMenu(page);
   const swArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
   check(/Boss rounds: Carpet Run/.test(swArc), `Sowers' Reach's script names its boss, the Carpet Run (${swArc})`);
@@ -511,44 +512,61 @@ try {
     await one.screenshot({ path: `${OUT_DIR}/tide-boss.png` });
     await one.close();
   }
-  // The tide turning (log v61, the player: "the ships did not navigate off
-  // the low tide area"): wave 1 played through its ebb at the phone's own
-  // size, a shot at high water with ships on both lanes, one as the tide
-  // goes out (the flats ships crossing to the deep channel, the sand coming
-  // up from the shore), and one at low water (the flats dry, no ship on
-  // them).
+  // The tide turning (log v68, the player: "the whole water should pull back
+  // ... the ships left in the low tide are just stuck until the next high
+  // tide ... slower too"): wave 1 played through its ebb at the phone's own
+  // size, shots at high water with ships on both lanes, as the sea goes out
+  // (the sand showing along both shores), at low water (the whole sea back
+  // in the deep channel's bed, the carrier on sand, the ships on the flats
+  // aground) and as it floods back. No ship changes lane on the way.
   {
     const one = await browser.newPage({ ...PHONE, deviceScaleFactor: 1 });
     await open(one, 'lab=map-tide&seed=7');
     const tideAt = () =>
-      one.evaluate(() => {
-        const g = window.__v3.game();
-        const [a, b] = g.ebb ?? [Infinity, Infinity];
-        const t = g.waveT;
-        const phase = t < a - 4 ? 'high' : t < a ? 'falling' : t < b ? 'low' : t < b + 3 ? 'rising' : 'high';
-        const flats = g.map.channels.find((c) => c.tide);
-        const inBand = g.ships.filter((s) => s.y > flats.y - flats.halfWidth - 50 && s.y < flats.y + flats.halfWidth + 50).length;
-        return { wave: g.wave, phase, t: Math.round(t * 10) / 10, a, ships: g.ships.length, inBand, crossing: g.ships.filter((s) => s.cross).length };
-      });
+      one.evaluate(
+        ({ fall, rise }) => {
+          const g = window.__v3.game();
+          const [a, b] = g.ebb ?? [Infinity, Infinity];
+          const t = g.waveT;
+          const phase = t < a - fall ? 'high' : t < a ? 'falling' : t < b ? 'low' : t < b + rise ? 'rising' : 'high';
+          const flats = g.map.channels.findIndex((c) => c.tide);
+          const on = g.ships.filter((s) => s.channel === flats);
+          return { wave: g.wave, phase, t: Math.round(t * 10) / 10, a, b, ships: g.ships.length, onFlats: on.length, lanes: Object.fromEntries(g.ships.map((s) => [s.id, s.channel])), ds: on.map((s) => Math.round(s.d * 100) / 100) };
+        },
+        { fall: TIDE_TURN.fall, rise: TIDE_TURN.rise },
+      );
     const shots = {};
+    const lane = new Map();
+    let switched = 0;
     let st = await tideAt();
-    for (let k = 0; k < 900 && !shots.low; k++) {
+    for (let k = 0; k < 1500 && !shots.rising; k++) {
       if (await one.evaluate(() => window.__v3.game().phase !== 'wave')) await one.mouse.click(437, 300);
       await one.evaluate(() => window.__v3.advance(0.1));
       st = await tideAt();
       if (st.wave < 1) continue;
-      if (!shots.high && st.phase === 'high' && st.t > st.a - 8 && st.inBand > 0) {
+      for (const [id, ch] of Object.entries(st.lanes)) {
+        if (lane.has(id) && lane.get(id) !== ch) switched++;
+        lane.set(id, ch);
+      }
+      if (!shots.high && st.phase === 'high' && st.t > st.a - TIDE_TURN.fall - 6 && st.onFlats > 0) {
         await one.screenshot({ path: `${OUT_DIR}/tide-high.png` });
         shots.high = st;
-      } else if (shots.high && !shots.mid && st.phase === 'falling' && st.t >= st.a - 3.3) {
+      } else if (shots.high && !shots.mid && st.phase === 'falling' && st.t >= st.a - TIDE_TURN.fall / 2) {
         await one.screenshot({ path: `${OUT_DIR}/tide-falling.png` });
         shots.mid = st;
-      } else if (shots.mid && !shots.low && st.phase === 'low' && st.t >= st.a + 2) {
+      } else if (shots.mid && !shots.low && st.phase === 'low' && st.t >= st.a + 3) {
+        // Aground: the flats' hulls have not moved over the next second.
+        await one.evaluate(() => window.__v3.advance(1));
+        const later = await tideAt();
         await one.screenshot({ path: `${OUT_DIR}/tide-low.png` });
-        shots.low = st;
+        shots.low = { ...st, stuck: st.ds.length > 0 && st.ds.join() === later.ds.slice(0, st.ds.length).join() };
+      } else if (shots.low && !shots.rising && st.phase === 'rising' && st.t >= st.b + TIDE_TURN.rise / 2) {
+        await one.screenshot({ path: `${OUT_DIR}/tide-rising.png` });
+        shots.rising = st;
       }
     }
-    check(!!shots.high && !!shots.mid && !!shots.low && shots.low.inBand === 0, `the tide turns: ships on the flats at high water, crossing as it falls, none on the dry flats at low water (${JSON.stringify(shots)})`);
+    const brief = (x) => (x ? { phase: x.phase, t: x.t, onFlats: x.onFlats, stuck: x.stuck } : x);
+    check(!!shots.high && !!shots.mid && !!shots.low && !!shots.rising && shots.low.onFlats > 0 && shots.low.stuck && switched === 0, `the tide turns: ships on the flats at high water, none changing lane as it falls, aground and still at low water, the sea coming back (${JSON.stringify({ high: brief(shots.high), mid: brief(shots.mid), low: brief(shots.low), rising: brief(shots.rising), switched })})`);
     await one.close();
   }
 

@@ -208,9 +208,9 @@ describe('resume a run in progress', () => {
     expect(draft.save.phase).toBe('draft');
   });
 
-  it('a map card with the convoy\'s Hold continues, its commands and all', () => {
+  it('a map card with the convoy\'s Hold (?hold=1, log v68: Sowers\' own Hold is automatic) continues, its commands and all', () => {
     const card = labCard('map-sowers')!;
-    const plan = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), null);
+    const plan = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), new URLSearchParams('hold=1'));
     expect(plan.convoy?.policy).toBe('tactical');
     const opts: RunOpts = { persona: PERSONAS.you, lab: plan.lab, convoy: plan.convoy!, ...(plan.encounters ? { encounters: plan.encounters } : {}), pilot: 'sharp' };
     let given = 0;
@@ -221,6 +221,15 @@ describe('resume a run in progress', () => {
     expect(given).toBeGreaterThan(0);
     expect(save.log.commands.filter((c) => c[1] === 'k').length).toBeGreaterThan(0);
     expect(game.convoy?.def.commands).toEqual(['hold']);
+  });
+
+  it('Sowers\' Reach\'s automatic Hold continues too: a ship stopped for a mine is stopped again on resume', () => {
+    const card = labCard('map-sowers')!;
+    const plan = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), null);
+    expect(plan.convoy?.tune).toBeUndefined();
+    const opts: RunOpts = { persona: PERSONAS.you, lab: plan.lab, convoy: plan.convoy!, ...(plan.encounters ? { encounters: plan.encounters } : {}), pilot: 'sharp' };
+    const { game } = checkResume('sowers', 4, opts, (g) => g.wave === 3 && g.phase === 'wave' && g.waveT > 15, 'lab');
+    expect(game.convoy?.def).toMatchObject({ commands: [], autoHold: true });
   });
 
   it('a Free Play run continues', () => {

@@ -8,12 +8,11 @@
 // - The Rig Field under the layer: a rig counts the player's shots, not
 //   their damage.
 import { describe, expect, it } from 'vitest';
-import { MINE, RIG_SHOTS, TOW } from '../../src/v3/data/config';
+import { MINE, RIG_SHOTS, THREATS, TOW } from '../../src/v3/data/config';
 import { ENCOUNTER_REV, encountersFor, hiddenMinesOn, shotRigsOn } from '../../src/v3/data/encounters';
 import { MAPS } from '../../src/v3/data/maps';
 import { applyConvoy } from '../../src/v3/sim/convoy';
-import { commandAdvised, applyEncounters, createGame, damageThreat, hiddenMines, released, rigAt, rigStations, shotRigs, spawnThreat, step, worthShooting, type Game } from '../../src/v3/sim/game';
-import { mapConvoy } from '../../src/v3/data/convoy';
+import { commandAdvised, applyEncounters, createGame, damageThreat, hiddenMines, released, rigAt, rigStations, shipAhead, shotRigs, spawnThreat, step, worthShooting, type Game } from '../../src/v3/sim/game';
 
 const DT = 1 / 60;
 const LAYER = { rev: ENCOUNTER_REV, version: 'v1' as const };
@@ -76,8 +75,9 @@ describe('Round 15: hidden mines on Sowers\' Reach', () => {
 
   it('a surfaced mine about to meet a hull lights the Hold button (commandAdvised); a hidden one does not', () => {
     const g = sowers();
-    applyConvoy(g, { policy: 'tactical', obligation: 'natural', rev: 3 });
-    expect(mapConvoy('sowers').commands).toEqual(['hold']);
+    // (The button is back for this: log v68 made Sowers' own Hold automatic.)
+    applyConvoy(g, { policy: 'tactical', obligation: 'natural', rev: 4, tune: { hold: true } });
+    expect(g.convoy!.def.commands).toEqual(['hold']);
     for (let i = 0; i < 12 / DT && g.ships.length < 2; i++) step(g, DT);
     const s = g.ships.reduce((a, b) => (b.x > a.x ? b : a));
     const m = spawnThreat(g, 'mine', s.x + 60, s.y, 'base');
@@ -90,6 +90,68 @@ describe('Round 15: hidden mines on Sowers\' Reach', () => {
     m.y = 40;
     expect(commandAdvised(g, 'hold')).toBe(false);
     expect(MINE.surface).toBeGreaterThan(1.4);
+  });
+
+  it('log v68: mines surface 1.5 times as far ahead of a ship (3.75 s, from 2.5 s)', () => {
+    expect(MINE.surface).toBeCloseTo(2.5 * 1.5, 6);
+  });
+
+  it('log v68: a ship about to sail onto a mine in sight stops by itself, a third of the spotting time short of it, until it is shot; a hidden mine stops nothing', () => {
+    const g = sowers();
+    applyConvoy(g, { policy: 'tactical', obligation: 'natural', rev: 4 });
+    expect(g.convoy!.def).toMatchObject({ commands: [], autoHold: true });
+    g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
+    g.raids = [];
+    g.raiderQueue = [];
+    for (let i = 0; i < 20 / DT && g.ships.length < 2; i++) step(g, DT);
+    const s = g.ships.reduce((a, b) => (b.x > a.x ? b : a));
+    // A mine that meets the ship's course in 4 s, drifting down the current.
+    const meet = (t: number) => {
+      const p = shipAhead(g, s, t);
+      const c = g.map.current!;
+      const k = THREATS.mine.speed / Math.hypot(c.x, c.y);
+      const m = spawnThreat(g, 'mine', p.x - c.x * k * t, p.y - c.y * k * t, 'base');
+      m.hidden = false;
+      return m;
+    };
+    const mine = meet(4);
+    const x0 = s.x;
+    let held = false;
+    let nearest = Infinity;
+    for (let i = 0; i < 12 / DT && !mine.dead; i++) {
+      step(g, DT);
+      if (s.mineHold) held = true;
+      nearest = Math.min(nearest, Math.hypot(s.x - mine.x, s.y - mine.y));
+      // Until the mine is shot, the ship is never on it.
+      if (held && !mine.dead) expect(Math.hypot(s.x - mine.x, s.y - mine.y)).toBeGreaterThan(MINE.hitRadius);
+    }
+    expect(held).toBe(true);
+    // It stopped well short of the mine: more than a hull's reach from it.
+    expect(nearest).toBeGreaterThan(MINE.hitRadius);
+    // Shoot it: the ship sails on.
+    const m2 = meet(1);
+    for (let i = 0; i < 2 / DT && !s.mineHold; i++) step(g, DT);
+    expect(s.mineHold).toBe(true);
+    const xHeld = s.x;
+    m2.dead = true;
+    for (let i = 0; i < 2 / DT; i++) step(g, DT);
+    expect(s.mineHold).toBe(false);
+    expect(s.x).toBeGreaterThan(xHeld + 20);
+    expect(s.x).toBeGreaterThan(x0);
+    // A hidden mine stops nothing (it is not in sight).
+    const m3 = spawnThreat(g, 'mine', s.x + 100, s.y, 'base');
+    m3.hidden = true;
+    for (let i = 0; i < 0.5 / DT; i++) step(g, DT);
+    expect(s.mineHold).toBe(false);
+  });
+  it('log v68: the campaign (no convoy layer) never stops a ship for a mine', () => {
+    const g = createGame('sowers', 3, 1);
+    expect(g.convoy).toBeNull();
+    for (let i = 0; i < 20 / DT && g.ships.length < 1; i++) step(g, DT);
+    const s = g.ships[0];
+    spawnThreat(g, 'mine', s.x + 90, s.y, 'base');
+    for (let i = 0; i < 2 / DT; i++) step(g, DT);
+    expect(s.mineHold).toBeFalsy();
   });
 
   it('the encounters\' chute beats light no raid warning on the Sowers', () => {

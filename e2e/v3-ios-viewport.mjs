@@ -51,7 +51,7 @@ const H = 402;
  *  event reaches the game (what iOS does as a launch settles), and, with
  *  `standalone`, the page is a home-screen app whose visualViewport reads
  *  `staleVV` px tall until `window.__fixVV()`. */
-function initScript({ standalone, staleVV }) {
+function initScript({ standalone, staleVV, staleWin }) {
   for (const t of ['resize', 'orientationchange']) window.addEventListener(t, (e) => e.stopImmediatePropagation(), true);
   const vv = window.visualViewport;
   if (vv) vv.addEventListener = () => {};
@@ -62,6 +62,23 @@ function initScript({ standalone, staleVV }) {
     let stale = true;
     window.__fixVV = () => (stale = false);
     Object.defineProperty(vv, 'height', { get: () => (stale ? staleVV : real.call(vv)) });
+  }
+  // Log v66 (the player: "I still have to rotate my screen when it initially
+  // loads as it is not sized right"): a launch whose window AND visual
+  // viewport both still read the size from before it settled (here, the
+  // upright phone's), with no event when they change. Only the browser's
+  // own box (the page's size probe) is right until `window.__fixWin()`.
+  if (staleWin && vv) {
+    let stale = true;
+    window.__fixWin = () => (stale = false);
+    const wi = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+    const hi = Object.getOwnPropertyDescriptor(window, 'innerHeight');
+    const vw = Object.getOwnPropertyDescriptor(VisualViewport.prototype, 'width').get;
+    const vh = Object.getOwnPropertyDescriptor(VisualViewport.prototype, 'height').get;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => (stale ? staleWin.w : wi.get ? wi.get.call(window) : wi.value) });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => (stale ? staleWin.h : hi.get ? hi.get.call(window) : hi.value) });
+    Object.defineProperty(vv, 'width', { get: () => (stale ? staleWin.w : vw.call(vv)) });
+    Object.defineProperty(vv, 'height', { get: () => (stale ? staleWin.h : vh.call(vv)) });
   }
   try {
     localStorage.removeItem('straitwatch.v3.run');
@@ -175,6 +192,44 @@ const errors = [];
   await page.evaluate(() => window.__fixVV());
   await page.waitForTimeout(300);
   fits(await measure(page), W, H, 'visualViewport corrected');
+  await ctx.close();
+}
+
+// ---- 4. A first load whose window and visual viewport read the upright phone ----
+{
+  const ctx = await browser.newContext(phone);
+  await ctx.addInitScript(initScript, { standalone: false, staleWin: { w: H, h: 812 } });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-screen="menu"]');
+  await giveInsets(page, INSETS);
+  await page.waitForTimeout(500);
+  check(await page.evaluate(() => window.innerWidth === 402 && window.innerHeight === 812), 'the stale window reading is in place (402×812)');
+  const m = await measure(page);
+  fits(m, W, H, 'stale window and visualViewport');
+  inSafeArea(m, W, H, INSETS, 'stale window and visualViewport');
+  check(await page.evaluate(() => !document.getElementById('app').classList.contains('portrait')), 'stale window and visualViewport: not taken for an upright phone ("Turn your phone sideways" is not up)');
+  await ctx.close();
+}
+
+// ---- 5. Opened upright, turned sideways, no event heard ----
+{
+  const up = { width: H, height: 812 };
+  const ctx = await browser.newContext({ ...phone, viewport: up, screen: up });
+  await ctx.addInitScript(initScript, { standalone: false });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto(`${BASE_URL}/v3.html`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-screen="menu"]');
+  check(await page.evaluate(() => document.getElementById('app').classList.contains('portrait')), 'opened upright: the turn-sideways note is up');
+  await page.setViewportSize({ width: W, height: H });
+  await giveInsets(page, INSETS);
+  await page.waitForTimeout(500);
+  const m = await measure(page);
+  fits(m, W, H, 'turned sideways');
+  inSafeArea(m, W, H, INSETS, 'turned sideways');
+  check(await page.evaluate(() => !document.getElementById('app').classList.contains('portrait')), 'turned sideways: the note is gone');
   await ctx.close();
 }
 

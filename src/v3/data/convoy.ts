@@ -28,12 +28,14 @@ export type CommandId = 'hold';
 
 /** The rules' revision: bump when a command's numbers or meaning change, so
  *  runs under different rules are never compared as one. */
-export const CONVOY_REV = 3;
+export const CONVOY_REV = 4;
 // Rev 2 (round 9): Hold stops every ship short of the map's hold line, on
 // the water where it can be seen. Rev 1 kept only the groups that came due
 // while it was on off the map, which at the map's flow was usually none or
 // one, for under a second: it changed nothing a player could see
 // (docs/design/v3-round9-fixes.md).
+// Rev 4 (log v68): Sowers' Reach's Hold is automatic (MapConvoy `autoHold`),
+// its button gone.
 // Rev 3 (round 11, docs/design/v3-round11-map-notes.md):
 // - Rush and Disperse are gone. The player: "cut them all but Hold". Their
 //   logs showed why: 15 presses in about 24 minutes, 13 with nothing in the
@@ -64,8 +66,10 @@ export interface ConvoySetup {
   /** A lab override of the map's schedule (a flow step), to compare
    *  policies at another rate of sailing. */
   flow?: number;
-  /** Lab overrides of the commands' numbers (a sweep). */
-  tune?: Partial<{ holdMax: number }>;
+  /** Lab overrides of the commands' numbers (a sweep). `hold` (log v68):
+   *  the Hold button back on a map that has none (and the map's own
+   *  automatic Hold off), to test and sweep the command. */
+  tune?: Partial<{ holdMax: number; hold: boolean }>;
 }
 
 /** The command's numbers. (Rush and Disperse, cut in round 11, were
@@ -102,6 +106,10 @@ export interface MapConvoy {
   formation: FormationId;
   /** The map's commands under D (round 11: Hold, or none). */
   commands: CommandId[];
+  /** Log v66: the map's own Hold, automatic: a ship about to sail onto a
+   *  mine pauses by itself until the mine is gone (sim/game.ts minePace). No
+   *  button; the player's "just make it automatic". */
+  autoHold?: boolean;
   /** The one decision the map asks for. */
   dilemma: string;
 }
@@ -156,7 +164,9 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // campaign's own schedule (step 1), as the Battery's; no command. The
   // battleship is fought by shooting, not by sailing.
   dreadnought: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
-  sowers: { flow: 1, formation: 'pairs', commands: ['hold'], dilemma: 'Stop the convoy while mines drift across the lane, against delivering later and sitting still under the rest of the wave.' },
+  // Log v66 (the player: "make the vault command automatic"): no button; a
+  // ship about to sail onto a mine pauses by itself until it is gone.
+  sowers: { flow: 1, formation: 'pairs', commands: [], autoHold: true, dilemma: 'Shoot the mines before they reach the ships: a ship pauses by itself in front of one, and every pause is a ship not delivered.' },
   // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the campaign's own
   // schedule, as the Battery's, and no command: the rigs are answered by
   // shooting them, not by sailing.

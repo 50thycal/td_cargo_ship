@@ -118,7 +118,7 @@ const open = async (page, q, ships = 4) => {
 async function holdCheck(page, shot) {
   const size = page.viewportSize();
   const tag = `${size.width} x ${size.height}`;
-  await open(page, 'lab=map-sowers&seed=7');
+  await open(page, 'lab=map-sowers&hold=1&seed=7');
   const hb = await page.evaluate(() => [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command).join());
   const hold = await centre(page, '[data-command="hold"]');
   const top = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('[data-command]')?.dataset.command ?? document.elementFromPoint(x, y)?.className, hold);
@@ -184,7 +184,7 @@ try {
   check(harbor.policy === 'tactical' && harbor.cmds === 0, `Harbor Mouth has no Hold now (${JSON.stringify(harbor)})`);
 
   // ---- Sowers' Reach: Hold, by touch ----
-  await open(page, 'lab=map-sowers&seed=7');
+  await open(page, 'lab=map-sowers&hold=1&seed=7');
   const rail = await page.evaluate(() => {
     const vis = (sel) => [...document.querySelectorAll(sel)].some((e) => e.getBoundingClientRect().width > 0);
     const btns = [...document.querySelectorAll('.v3-command')].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.command, w: r.width, h: r.height, top: r.top, bottom: r.bottom, label: b.textContent, aria: b.getAttribute('aria-label') }; });
@@ -299,15 +299,43 @@ try {
   const opts = await page.evaluate(() => document.querySelectorAll('[data-lab-convoy]').length);
   await page.tap('[data-lab-reset]');
   await page.tap('[data-lab-apply]');
-  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical' && document.querySelectorAll('.v3-command').length === 1, null, { timeout: 8000 });
-  check(opts === 0, `the setup sheet has no Convoy row (round 16); Reset to production setup restarts the test with Hold (${opts} policy buttons)`);
+  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical', null, { timeout: 8000 });
+  check(opts === 0, `the setup sheet has no Convoy row (round 16) (${opts} policy buttons)`);
+  // Log v66 (the player: "just make [Hold] automatic"): Sowers' Reach has no
+  // Hold button now; a ship stops by itself in front of a mine, with the
+  // pause mark over it, and none is sunk by one while it does.
+  await page.evaluate(() => {
+    const g = window.__v3.game();
+    g.tempo = { ...g.tempo, lossLimit: 999 };
+    g.carrierHp = g.stats.carrierHp = 1e6;
+  });
+  // Nothing is shot: the waves run on (a draft is picked through) until a
+  // ship has stopped for a mine (the first mines come in wave 2).
+  let held = 0;
+  for (let k = 0; k < 4000 && held < 20; k++) {
+    const ph = await page.evaluate(() => window.__v3.game().phase);
+    if (ph === 'draft') await page.evaluate(() => document.querySelector('.v2-overlay')?.querySelector('button, .v2-card, [data-pick]')?.click());
+    else if (ph !== 'wave') await page.mouse.click(437, 300);
+    held += await page.evaluate(() => {
+      window.__v3.game().carrierHp = 1e6;
+      window.__v3.advance(0.1);
+      return window.__v3.game().ships.some((s) => s.mineHold) ? 1 : 0;
+    });
+  }
+  const auto = await page.evaluate(() => {
+    const g = window.__v3.game();
+    return { cmds: document.querySelectorAll('.v3-command, [data-command]').length, auto: g.convoy.def.autoHold, commands: g.convoy.def.commands, held: 0, phase: g.phase, wave: g.wave };
+  });
+  auto.held = held;
+  check(auto.cmds === 0 && auto.auto === true && auto.commands.length === 0, `Sowers' Reach has no Hold button: its Hold is automatic (${JSON.stringify({ cmds: auto.cmds, auto: auto.auto })})`);
+  check(auto.held > 10, `a ship stopped by itself in front of a mine, in wave ${auto.wave} (${auto.held} steps held)`);
   await page.screenshot({ path: `${OUT_DIR}/sowers-tactical.png` });
   check(errs.length === 0, `no page errors (${errs[0] ?? 'none'})`);
   await page.close();
 
   // ---- A smaller phone: the dock still fits ----
   const small = await browser.newPage({ viewport: { width: 667, height: 375 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-  await open(small, 'lab=map-sowers&seed=7');
+  await open(small, 'lab=map-sowers&hold=1&seed=7');
   const fit = await small.evaluate(() => {
     const kids = [...document.querySelector('.v3-dock-col').children].filter((e) => e.getBoundingClientRect().height > 0).map((e) => e.getBoundingClientRect());
     const overlap = kids.some((a, i) => kids.some((b, j) => j > i && a.bottom > b.top + 1 && b.bottom > a.top + 1 && a.right > b.left + 1 && b.right > a.left + 1));

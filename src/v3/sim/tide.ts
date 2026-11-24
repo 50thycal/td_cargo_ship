@@ -2,24 +2,28 @@
 // function of the map and the clocks, so the sim (game.ts), the telemetry
 // and the drawing all read the same tide.
 //
-// Log v59 (the player: "the ships did not navigate off the low tide area,
-// make sure that mechanic actually works"). The tide no longer snaps from
-// high to low: it falls over TIDE_TURN.fall s before low water and rises
-// over TIDE_TURN.rise s after it. The flats lane takes new ships only at
-// high water; as soon as the tide starts to fall every ship on the flats
-// crosses to the deep channel (game.ts updateShips, TIDE_TURN.cross px/s),
-// ahead of the sand, which shows from the shore side up (`sandEdge`), so no
-// ship is ever on exposed sand and none is left on it.
+// Log v66 (the player: "it should be the whole water moving in and out, and
+// slower too", "the ships left in the low tide are just stuck until the next
+// high tide", "tide times should last longer"). The whole sea pulls back, not
+// a strip of sand growing in: at low water the water is held in the deep
+// channel's bed and every other yard between the two shores is dry, the
+// carrier's berth too (`seaEdges`, drawn by ui/features.ts). The tide falls
+// over TIDE_TURN.fall s and rises over TIDE_TURN.rise s. The flats lane takes
+// new ships only at high water; a ship already on it when the water drops
+// ground out (`floatPace`): it slows, stops, and stays aground until the
+// tide has come back in, and nothing moves it to the deep channel. (Log v61
+// to v65 sent every ship on the flats across to the deep channel as the tide
+// fell.)
 
 import type { Channel, MapDef } from '../data/mapTypes';
 
 export type TidePhase = 'high' | 'falling' | 'low' | 'rising';
 
-/** Seconds the tide takes to fall before low water and to rise after it,
- *  and how fast a ship on the flats crosses to the deep channel as it
- *  falls (px/s: the flats lane to the deep channel, about 290 px, in under
- *  2.5 s, ahead of the sand). */
-export const TIDE_TURN = { fall: 4, rise: 3, cross: 120 } as const;
+/** Seconds the tide takes to fall before low water and to rise after it
+ *  (log v68: 8 and 9 s, from 4 and 3), and the water level on the flats at
+ *  which a ship runs aground (`ground`: below it a hull is stopped) and
+ *  floats free again (`float`: at or above it a hull sails at full pace). */
+export const TIDE_TURN = { fall: 8, rise: 9, ground: 0.3, float: 0.55 } as const;
 
 export interface TideNow {
   phase: TidePhase;
@@ -58,16 +62,31 @@ export function tideAt(map: Pick<MapDef, 'tide'>, t: number, waveT: number, ebb?
   return { phase: 'low', level: 0, left: cycle - c, frac: (cycle - c) / T.low };
 }
 
-/** The flats (a tide lane's band, as drawn): from `top` to `bottom`. */
+/** The flats (a tide lane's band, as the gauge sits over it): from `top`
+ *  to `bottom`. */
 export function flatsBand(ch: Pick<Channel, 'y' | 'halfWidth'>): { top: number; bottom: number } {
   return { top: ch.y - ch.halfWidth - 50, bottom: ch.y + ch.halfWidth + 50 };
 }
 
-/** Where the sand ends at a water level: the water leaves the flats from
- *  the shore side (the bottom of the band) up towards the deep channel as
- *  it falls, and comes back the same way. Sand lies below this y (none at
- *  level 1, the whole band at level 0). */
-export function sandEdge(ch: Pick<Channel, 'y' | 'halfWidth'>, level: number): number {
-  const { top, bottom } = flatsBand(ch);
-  return top + (bottom - top) * Math.max(0, Math.min(1, level));
+/** How afloat a hull on the flats is at a water level: 1 afloat (the
+ *  water at `float` or over), 0 aground (at `ground` or under), between
+ *  them it eases to a stop. (A hull on any other lane is always afloat.) */
+export function floatPace(level: number): number {
+  const { ground, float } = TIDE_TURN;
+  return Math.max(0, Math.min(1, (level - ground) / (float - ground)));
+}
+
+/** The water's edges at a level, as y on the map: the sea pulls back from
+ *  both shores towards the deep channel's bed as the tide falls, and comes
+ *  back the same way. Water lies from `top` to `bottom` and nowhere else;
+ *  at level 1 that is the whole map (the shores' own edges cut it), at 0 the
+ *  deep channel and `margin` px beside it. */
+export function seaEdges(deep: Pick<Channel, 'y' | 'halfWidth'>, level: number, height: number): { top: number; bottom: number } {
+  const margin = 34;
+  const lowTop = deep.y - deep.halfWidth - margin;
+  const lowBottom = deep.y + deep.halfWidth + margin;
+  // Smoothed, so the water slows as it gets to either end.
+  const k = Math.max(0, Math.min(1, level));
+  const e = k * k * (3 - 2 * k);
+  return { top: lowTop * (1 - e) - 20 * e, bottom: lowBottom + (height + 20 - lowBottom) * e };
 }

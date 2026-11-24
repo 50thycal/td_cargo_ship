@@ -6188,7 +6188,7 @@ const CROSSING_R4: Omit<Encounter, 'version' | 'rev'>[] = [
  *  delivery end, the lanes' late third (where the bunched boxes are as the
  *  strikes land); the safe stretch the way in. */
 export const TIDE_EBB = [0.9, 0.45, 0.4, 0.4, 0.4, 0.42, 0.4, 0.42, 0.42, 0.5];
-export const TIDE_LOW = [9, 11, 13, 15, 16, 16, 17, 17, 18, 20];
+export const TIDE_LOW = [12, 15, 18, 21, 22, 22, 24, 24, 25, 28];
 const ebb = (w: number, plus = 0) => ({ at: TIDE_EBB[w - 1], plus });
 /** The shells, guided missiles and clusters a Tide wave gives up (its
  *  `replaces`, past the encounter's own) come as `n` drones (strings of up
@@ -7064,9 +7064,10 @@ const DREAD_CLIMB = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const BATTERY_CLIMB = [1.05, 1.05, 1, 0.96, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
 /** Sowers' Reach (log v48): its shared waves are among the heaviest of any
  *  map (threat scale 1.45: the bot won 0-8% with the player's Armories), so
- *  waves 4-10 send a little less, within ±15% of each wave and never more
- *  than the ten. */
-const SOWERS_CLIMB = [1, 0.95, 0.92, 0.9, 0.9, 0.88, 0.88, 0.88, 0.88, 0.9];
+ *  waves 4-10 sent a little less (0.88-0.95). Log v66: the whole wave again,
+ *  the mines' own pause (a ship stops itself for one) and their earlier
+ *  sighting having taken most of what the cut gave back. */
+const SOWERS_CLIMB = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 /** The Rig Field (log v49): its shared waves are the heaviest of any map
  *  (threat scale 1.7), flat for seven waves and then a cliff on wave 8, so
  *  waves 1-5 send a little more and waves 8-10 a little less, within ±15%
@@ -7901,9 +7902,9 @@ export const BATTERY_BOSS_ROUNDS: BossRound[] = [
  *  chutes drop more and the silos fire at the lead ship. Rising: more vees,
  *  closer together, more mines and more fire each round. */
 export const SOWERS_BOSS_ROUNDS: BossRound[] = [
-  { vees: 2, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 6 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
-  { vees: 3, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }] },
-  { vees: 3, veeAt: 1, veeGap: 7, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 9, count: 2, gap: 3, base: 4, aim: 'lead' }] },
+  { vees: 2, veeAt: 1, veeGap: 8, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 6 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 7, count: 1, gap: 0.8, base: 3, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 6, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'ballistic', at: 6, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 11, count: 1, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 7, count: 2, gap: 0.8, base: 3, aim: 'lead' }] },
+  { vees: 3, veeAt: 1, veeGap: 5.5, veeHp: 3, sow: 3, fire: [{ kind: 'mine', at: 0, count: 3, gap: 1.2, base: 7 }, { kind: 'mine', at: 0, count: 3, gap: 1.2, base: 5 }, { kind: 'ballistic', at: 5, count: 3, gap: 0.8, base: 3, aim: 'lead' }, { kind: 'guided', at: 9, count: 2, gap: 3, base: 4, aim: 'lead' }, { kind: 'ballistic', at: 7, count: 2, gap: 0.8, base: 3, aim: 'lead' }] },
 ];
 
 /** The Rig Field's Rig Barrage (log v49, docs/design/v3-ch3-rigs.md), in

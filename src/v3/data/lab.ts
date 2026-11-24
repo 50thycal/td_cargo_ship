@@ -264,7 +264,8 @@ export function productionText(map: MapId, version: EncounterVersion = VERSION_D
   const p = mapProduction(map);
   if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
   const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
-  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ` · encounters ${versionLabel(map, version)}` : ''}`;
+  const own = mapConvoy(map).autoHold ? "The map's own convoy (no commands; a ship stops by itself for a mine)" : "The map's own convoy (no commands)";
+  return `${cmds ? `Commands: ${cmds}` : own}${p.encounters ? ` · encounters ${versionLabel(map, version)}` : ''}`;
 }
 
 /** What a map card plays, as its hub card and the review page say it.
@@ -714,14 +715,14 @@ export interface ReadyToTest {
 export const READY_TO_TEST: ReadyToTest[] = [
   { map: 'delta', log: 69, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },
   { map: 'coves', log: 69, tag: 'Polished', note: 'Speedboats ram and burn, gunboats lock on one ship, rocket boats fire from afar.' },
+  { map: 'tide', log: 68, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
+  { map: 'sowers', log: 68, tag: 'Polished', note: 'No Hold button: ships stop by themselves for a mine; mines show 1.5× sooner. Better?' },
   { map: 'citadel', log: 67, tag: 'Polished', note: 'Destroyed once (~70 shots), a ruin till the boss rebuilds it; new look. Better?' },
   { map: 'dreadnought', log: 67, tag: 'Polished', note: 'Three gun turrets fire the artillery: shoot them out. Silo for missiles. Less lame?' },
   { map: 'lantern', log: 67, tag: 'Polished', note: 'Always dark, no star shells; a new lighthouse, beam and lamp. Readable on a phone?' },
   { map: 'battery', log: 67, tag: 'Polished', note: 'The Blackout boss is always dark now (no star shell). Can you still read it?' },
   { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
-  { map: 'tide', log: 61, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
-  { map: 'sowers', log: 55, tag: 'Polished', note: 'Mines stay hidden till a ship is close; the big Hold button glows when to press it. Fair?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },

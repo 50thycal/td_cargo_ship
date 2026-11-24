@@ -553,8 +553,26 @@ import type { EncounterSetup } from '../data/encounters';
  *      its generators stay down, its fire off the far silos, until the
  *      boss's rise rebuilds them (game.ts citadelDown, raiseShield: a keep
  *      still up for the boss is brought down to the round's numbers). Map-
- *      lab logs before v67 no longer replay to the same game. (66 is built
- *      alongside.)
+ *      lab logs before v67 no longer replay to the same game. (66 was built
+ *      alongside and ships as 68.)
+ *  68: the Tide moves as a whole and strands ships; Sowers' Hold is
+ *      automatic (the player: "the whole water should pull back and the
+ *      ships left in the low tide are just stuck until the next high tide",
+ *      "tide times should last longer", "just make [the Hold] automatic ...
+ *      make mines spottable about 1.5 from what it is now ... right before
+ *      the ships collided with the mine about 1/3 the spotting distance the
+ *      ship in the path will pause until that mine is shot down"). The tide
+ *      falls over 8 s and rises over 9 s (4 and 3), the campaign's clock is
+ *      55 s high and 30 s low (25 and 20) and the encounter layer's low
+ *      water lasts longer (data/encounters.ts TIDE_LOW); a ship on the
+ *      flats when the water drops runs aground and stays so until it is
+ *      back (game.ts aground; no crossing to the deep channel, Ship `cross`
+ *      is gone). Sowers' convoy has no Hold command but `autoHold`: a ship
+ *      whose course would put it on a mine within a third of the spotting
+ *      time stops by itself until the mine is gone (game.ts minePace); hidden
+ *      mines surface 3.75 s ahead (2.5 s before) and Sowers' waves send
+ *      the whole wave (1.0, from 0.88-0.95); CONVOY_REV 4. A Tide or Sowers log before v68 no
+ *      longer replays to the same game; the other maps play as they did. 
  *  69: the Coves' attack boats overhauled, the Delta rebuilt as one long
  *      river, and the bot holds the Lance (the player's notes on the v65
  *      logs; docs/design/v3-ch4-coves.md, v3-ch4-delta.md; lab, under the
@@ -577,7 +595,7 @@ import type { EncounterSetup } from '../data/encounters';
  *      charge shows and letting go, and swipes a loaded Laser Cutter
  *      (Persona `gestures`, BotIO press/move/release; BOT_REV 4). A
  *      Coves or Delta log before v69 no longer replays to the same game; the
- *      other maps play as they did. (68 is built alongside.) */
+ *      other maps play as they did. */
 export const LOG_VERSION = 69;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */

@@ -307,8 +307,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   sowers: {
-    look: 'Mines stay hidden until about 2.5 s before a ship reaches them; the big Hold button glows NOW! when holding saves a ship. Is 2.5 s enough warning on your phone?',
+    look: 'Mines stay hidden until about 3.75 s before a ship reaches them, and a ship stops by itself about 1.25 s short of one until it is shot or has drifted past. Is that enough time to shoot, and does the stopping feel fair, not too safe?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 68,
+        title: 'The Hold is automatic; mines show 1.5× earlier',
+        what: 'The big Hold button is gone from this map. A ship whose course would put it on a mine pauses by itself, about a third of the spotting distance short of it (1.25 s), and sails on when the mine is shot or has drifted past; a gold pause mark shows over it. Mines surface 3.75 s before a ship reaches them, from 2.5 s. Boss rounds get a little more fire.',
+        why: 'Your note: “just make [the vault command] automatic… make mines spottable 1.5 from what it is now… the ship in the path will pause until that mine is shot down.” Mines had caused 3 of your 6 losses.',
+      },
       {
         date: '2026-11-22',
         log: 55,
@@ -433,8 +440,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   tide: {
-    look: 'Watch a ship leave the flats on waves 1 and 3: is the crossing too fast or slow? Is the sand too strong? Does “THE TIDE TURNS” warn you in time?',
+    look: 'Does the whole sea pull back and come in slowly enough, with the carrier left on dry sand? Are ships caught on the flats stuck till high tide, and does “THE TIDE TURNS” (8 s ahead) warn you in time?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 68,
+        title: 'The whole sea moves; ships on the flats are stranded',
+        what: 'At low water the whole sea pulls back from both shores to the deep channel’s bed and floods back in, over 8 s out and 9 s in (from 4 s and 3 s); the carrier’s berth dries too. A ship on the flats lane when the water drops runs aground and stays stuck until the tide is back; nothing moves it to the deep channel. Low water lasts 12–28 s a wave (9–20 s before), and the campaign’s clock is 55 s high, 30 s low. The gauge warns 8 s ahead.',
+        why: 'Your notes: “the whole water should pull back… ships left in the low tide are just stuck until the next high tide… tide times should last longer… slower.”',
+      },
       {
         date: '2026-11-22',
         log: 61,

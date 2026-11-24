@@ -88,7 +88,7 @@ import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
-import { TIDE_TURN, tideAt, type TideNow } from './tide';
+import { floatPace, tideAt, type TideNow } from './tide';
 import { armBoat, boatEta, updateBoat, type BoatState } from './boats';
 import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
@@ -181,16 +181,14 @@ export function supersonicDelay(age: number): number {
 
 export interface Ship {
   id: number;
+  /** Log v66 (a map's `autoHold`): paused in front of a mine this step. */
+  mineHold?: boolean;
   /** Where it is drawn and hit: worked out each step from `d` and `lat`. */
   x: number;
   y: number;
   /** Distance along its lane, and its offset across it (lanes.ts). */
   d: number;
   lat: number;
-  /** Tidewater Flats (log v61): crossing from the flats to the deep channel
-   *  as the tide falls (sim/tide.ts): its `lat` closes on its slot at
-   *  TIDE_TURN.cross px/s, not the slot's ease. */
-  cross?: boolean;
   /** The way its bow points (radians). */
   heading: number;
   hp: number;
@@ -5691,17 +5689,13 @@ function fileLat(g: Game, s: Ship, ch: Channel, d: number): number {
 
 function updateShips(g: Game, dt: number): void {
   const ease = Math.min(1, SHIP.slotEase * dt);
-  // Tidewater Flats (log v61): once the tide starts to fall, every ship on
-  // the flats crosses to the deep channel at once, from where it is, ahead
-  // of the sand (sim/tide.ts): it keeps its distance along (the lanes run
-  // side by side) and sails across to its slot.
-  if (g.map.tide && g.ships.length) leaveFlats(g);
   // Keep station on the rails: a hull eases off when the one ahead in its lane
   // is too close. This is what turns two ships abreast into a single file when
   // a formation change merges their lanes, instead of stacking them. "Ahead"
   // and "in its lane" are measured along and across the hull's own heading,
   // so the same rule holds on a bend, a reversed lane or a fork.
   const order = [...g.ships].sort((a, b) => b.d - a.d || a.id - b.id);
+  const mines = autoHold(g) ? g.threats.filter((th) => th.kind === 'mine' && released(th)) : [];
   const want = order.map((s) => slotLat(g, s));
   const aim = order.map((s, i) => laneAt(g.map.channels[s.channel], s.d, want[i]));
   for (let i = 0; i < order.length; i++) {
@@ -5724,7 +5718,7 @@ function updateShips(g: Game, dt: number): void {
     }
     const slow = clamp((gap - SHIP.minGap) / SHIP.easeGap, 0, 1);
     // (The lab's Hold, sim/convoy.ts: a held hull eases to a stop.)
-    const next = s.d + laneSpeed(g, s) * slow * (g.convoy ? holdPace(g, s) : 1) * dt;
+    const next = s.d + laneSpeed(g, s) * slow * (g.convoy ? holdPace(g, s) : 1) * minePace(g, s, mines) * dt;
     s.d = Math.max(s.d, Math.min(next, stopAt(g, s)));
     placeShip(g, s);
     // Only move across into the new lane once that stretch of it is empty.
@@ -5734,15 +5728,7 @@ function updateShips(g: Game, dt: number): void {
       const off = Math.abs((o.x - aim[i].x) * nx + (o.y - aim[i].y) * ny);
       return along >= SHIP.minGap || off >= SHIP.laneMatch;
     });
-    if (s.cross) {
-      const step = TIDE_TURN.cross * dt;
-      const off = want[i] - s.lat;
-      if (Math.abs(off) <= step) {
-        s.lat = want[i];
-        s.cross = false;
-      } else s.lat += Math.sign(off) * step;
-      placeShip(g, s);
-    } else if (clear) {
+    if (clear) {
       s.lat += (want[i] - s.lat) * ease;
       placeShip(g, s);
     }
@@ -5760,24 +5746,12 @@ function updateShips(g: Game, dt: number): void {
   if (arrived.length) g.ships = g.ships.filter((s) => !arrived.includes(s));
 }
 
-/** Tidewater Flats (log v61): the tide falling, every ship on a tide lane
- *  moves to the lane beside it that never dries (the deep channel), at the
- *  same distance along, its offset the way across from where it is. */
-function leaveFlats(g: Game): void {
-  if (tideNow(g).phase === 'high') return;
-  const chans = g.map.channels;
-  const deep = chans.findIndex((c) => !c.tide && !c.vip);
-  if (deep < 0) return;
-  for (const s of g.ships) {
-    if (!chans[s.channel].tide) continue;
-    const to = laneAt(chans[deep], s.d, 0);
-    s.channel = deep;
-    // Across the deep lane's own normal, from its centre to the hull.
-    const t = lanePoint(chans[deep], s.d);
-    s.lat = (s.x - to.x) * -t.ty + (s.y - to.y) * t.tx;
-    s.cross = true;
-    placeShip(g, s);
-  }
+/** Tidewater Flats (log v68): how afloat a hull is, 1 on any lane but the
+ *  flats; on the flats it eases to a stop as the water drops and is stuck
+ *  until the tide is back in (sim/tide.ts floatPace). */
+export function aground(g: Game, s: Ship): number {
+  if (!g.map.tide || !g.map.channels[s.channel]?.tide) return 1;
+  return floatPace(tideNow(g).level);
 }
 
 /** The supertanker came through: every hull gets a point back and a weapon
@@ -5823,7 +5797,9 @@ export function shipSpeed(g: Game): number {
 
 /** A hull's speed in its own channel (some lanes are crossed faster). */
 function laneSpeed(g: Game, s: Ship): number {
-  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1);
+  // Tidewater Flats (log v68): a hull on the flats runs aground as the
+  // water drops and sits there until the tide is back (sim/tide.ts).
+  return shipSpeed(g) * (g.map.channels[s.channel]?.speed ?? 1) * (g.map.tide ? aground(g, s) : 1);
 }
 
 /** Tidewater Flats: is the tide in, the flats lane taking new ships? Only
@@ -7948,6 +7924,38 @@ export function commandAdvised(g: Game, id: CommandId): boolean {
 /** When a command is advised (commandAdvised): a mine this many seconds
  *  from a hull; a shell with this long still to fly. */
 const ADVISE = { mine: 2.6, shell: [0.6, 3] as const };
+
+/** Log v66: does this game's map hold its ships back from mines by itself
+ *  (the map's convoy `autoHold`, a lab convoy setup)? */
+export function autoHold(g: Game): boolean {
+  return !!g.convoy?.def.autoHold;
+}
+
+/** Log v66 (the player: "make the vault command automatic... right before
+ *  the ships collided with the mine, about 1/3 the spotting distance, the
+ *  ship in the path will pause until that mine is gone or shot down"): 0 for
+ *  a ship whose course, sailing on, would put it on a mine in sight within
+ *  MINE.surface * MINE.holdShare s; it waits where it is (every hull but the
+ *  ones behind it, which queue) until that mine is shot or has drifted past
+ *  its course, then sails on. 1 for every other ship. */
+function minePace(g: Game, s: Ship, mines: Threat[]): number {
+  s.mineHold = false;
+  if (!mines.length) return 1;
+  const T = MINE.surface * MINE.holdShare;
+  const c = g.map.current ?? { x: 0, y: 1 };
+  for (const th of mines) {
+    const k = th.speed / (Math.hypot(c.x, c.y) || 1);
+    const reach = MINE.hitRadius + (s.vip ? 24 : 0) + 6;
+    for (let t = 0; t <= T + 1e-9; t += 0.15) {
+      const p = shipAhead(g, s, t);
+      if (dist(p.x, p.y, th.x + c.x * k * t, th.y + c.y * k * t) <= reach) {
+        s.mineHold = true;
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
 
 /** Log v55 (round 15, HIDDEN_MINES): do this map's mines drift hidden? */
 export function hiddenMines(g: Game): boolean {
