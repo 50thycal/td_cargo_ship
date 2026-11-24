@@ -12,6 +12,7 @@ FILES = {
     'e2e/v3-map-lab.mjs': [r'done\.log\.v === OLD', r'version OLD'],
     'e2e/v3.mjs': [r'logged\.v === OLD', r'saved\.v === OLD'],
     'e2e/v3-map-cards.mjs': [r'saved\.v === OLD'],
+    'e2e/v3-watch.mjs': [r'log\.v === OLD'],
 }
 for path, pats in FILES.items():
     s = open(path).read()

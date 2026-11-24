@@ -28,7 +28,9 @@ const setup = (policy: ConvoyPolicy, obligation: ConvoySetup['obligation'] = 'fi
  *  back, sailed for `seconds`. */
 function lab(map: Parameters<typeof createGame>[0], policy: ConvoyPolicy, seconds = 20, obligation: ConvoySetup['obligation'] = 'fixed'): Game {
   const g = createGame(map, 4, 1);
-  applyConvoy(g, setup(policy, obligation));
+  // (Sowers' Reach's Hold is automatic since log v68, with no button: these tests
+  // of the command put it back with the lab's `tune.hold`.)
+  applyConvoy(g, { ...setup(policy, obligation), ...(map === 'sowers' ? { tune: { hold: true } } : {}) });
   logTelemetry(g, { id: 'convoy-test', build: 'test', v: LOG_VERSION, firstWave: 1, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'test');
   g.queue = [{ at: 1e9, kind: 'drone', base: 0 }];
   g.raids = [];
@@ -87,7 +89,9 @@ describe('a campaign run has no convoy layer', () => {
     // schedule in a Spread (the Citadel's shells and heavies land a breath
     // from its keep: one hull at half their splash), no command.
     expect(mapConvoy('citadel')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'spread', commands: [] });
-    expect(mapConvoy('sowers').commands).toEqual(['hold']);
+    // Log v66: no button, an automatic Hold (a ship stops itself in front of a mine).
+    expect(mapConvoy('sowers')).toMatchObject({ commands: [], autoHold: true });
+    for (const id of MAP_ORDER) if (id !== 'sowers') expect(mapConvoy(id).autoHold, id).toBeUndefined();
     // Sowers' Reach keeps the campaign's own schedule and formation.
     expect(mapConvoy('sowers')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
     expect(Object.keys(COMMANDS)).toEqual(['hold']);
@@ -237,7 +241,7 @@ describe('Hold (Sowers\' Reach, round 11)', () => {
     expect(refusalText(g, 'hold', 'none')).toBe('No ships afloat');
     expect(cmds(g).at(-1)).toMatchObject({ what: 'hold', ok: 0, why: 'none' });
     for (const [id, def] of Object.entries(MAP_CONVOY)) expect('stage' in def!, id).toBe(false);
-    expect(CONVOY_REV).toBe(3);
+    expect(CONVOY_REV).toBe(4);
   });
 
   it('never for long: it ends by itself after its seconds; the next ships wait at the entry meanwhile', () => {
@@ -291,7 +295,7 @@ describe('the gate: the same seed is the same game, and the log replays it', () 
   const spec = (over: Partial<TrialSpec>): TrialSpec => ({ map: 'strait', seed: 31, policy: 'tactical', obligation: 'fixed', pilot: 'sharp', persona: 'tryhard', armory: { warhead: 3 }, firstWave: 5, ...over });
 
   it('two trials of one spec are identical; the log carries its policy and its commands and replays to the same state, with telemetry on or off', () => {
-    for (const s of [spec({}), spec({ map: 'sowers', pilot: 'spam' }), spec({ map: 'gauntlet', policy: 'current', obligation: 'natural' })]) {
+    for (const s of [spec({}), spec({ map: 'sowers', pilot: 'spam', tune: { hold: true } }), spec({ map: 'gauntlet', policy: 'current', obligation: 'natural' })]) {
       const a = runTrial(s);
       const b = runTrial(s);
       const strip = ({ log: _l, ...t }: typeof a) => t;
@@ -311,7 +315,7 @@ describe('the gate: the same seed is the same game, and the log replays it', () 
   }, 60_000);
 
   it('the commands are in the telemetry with the ships they took and the reason for each refusal', () => {
-    const t = runTrial(spec({ map: 'sowers', pilot: 'spam' }));
+    const t = runTrial(spec({ map: 'sowers', pilot: 'spam', tune: { hold: true } }));
     const sc = replay(t.log, { telemetry: true }).tel!;
     const list = sc.events.filter((e): e is Extract<TelEvent, { k: 'cmd' }> => e.k === 'cmd' && e.what === 'hold');
     expect(list.filter((c) => c.ok).length).toBeGreaterThan(5);
@@ -330,7 +334,7 @@ describe('no command is a way round the fight', () => {
   // the waves (spam 34,220 against 25,275 on 41 to 44; over 41 to 52 the two
   // are within 4%).
   const seeds = [41, 42, 43, 44, 45, 46, 47, 48];
-  const of = (map: TrialSpec['map'], policy: ConvoyPolicy, pilot: TrialSpec['pilot']) => cohort(`${policy}:${pilot}`, seeds.map((seed) => runTrial({ ...base, map, seed, policy, pilot })));
+  const of = (map: TrialSpec['map'], policy: ConvoyPolicy, pilot: TrialSpec['pilot']) => cohort(`${policy}:${pilot}`, seeds.map((seed) => runTrial({ ...base, map, seed, policy, pilot, tune: { hold: true } })));
 
   it('on the map with a command, giving it the instant it is ready: no lane, queue or wave breaks, and nobody is made safe', () => {
     for (const map of ['sowers'] as const) {

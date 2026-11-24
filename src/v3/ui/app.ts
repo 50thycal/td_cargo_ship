@@ -458,6 +458,10 @@ export class App {
   private rotateNote = el('div', 'v2-rotate');
   /** Reads env(safe-area-inset-*) as pixels (notch / Dynamic Island / corners). */
   private safeProbe = el('div', 'v2-safe-probe');
+  /** A box the browser itself sizes to the visible viewport (CSS: fixed,
+   *  inset 0), read as one more witness of the screen's size beside
+   *  innerWidth/innerHeight and visualViewport (log v68, `viewport`). */
+  private sizeProbe = el('div', 'v2-size-probe');
   private layoutKey = '';
   /** When the per-frame check last read the safe-area insets, and until when
    *  it reads them every frame (see settle). */
@@ -494,7 +498,7 @@ export class App {
     root.classList.add('v2-root');
     root.classList.toggle('dev', this.dev);
     root.classList.toggle('notes', this.notesOn);
-    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe);
+    root.append(this.canvas, this.dangerEdge, this.vignette, this.stamp, this.eventCard, this.alerts.el, this.leftRail, this.rightRail, this.overlay, this.rotateNote, this.safeProbe, this.sizeProbe);
     // Landscape only: on every screen, not just in a run (menus round).
     const phone = el('div', 'v3-rotate-phone');
     phone.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="52" rx="5" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="51" r="2.2" fill="currentColor"/></svg>`;
@@ -513,6 +517,12 @@ export class App {
     // (see `settle`): measure again once things have had time to land.
     window.addEventListener('load', () => this.settle());
     window.addEventListener('pageshow', () => this.settle());
+    // Log v66 (the player, an iPhone held sideways: "I still have to rotate my
+    // screen when it initially loads as it is not sized right"): iOS can leave
+    // a freshly loaded page measuring the screen as it was a moment ago, and
+    // says nothing when that changes. The first touches, a scroll and a focus
+    // are all moments it has changed: measure again at each, early on.
+    for (const type of ['pointerdown', 'touchstart', 'scroll', 'focus']) window.addEventListener(type, () => this.recheck(), { passive: true, capture: true });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') this.settle();
     });
@@ -1598,8 +1608,20 @@ export class App {
    *  per-frame check, reading the same stale box, never noticed. */
   private viewport(): { w: number; h: number } {
     const vv = window.visualViewport;
+    // Log v66: a third witness, a box the browser itself sizes to the
+    // screen (CSS fixed, inset 0): a page that loads while the window's and
+    // the visual viewport's readings still show the size from before it
+    // settled (an upright phone's, say) read too tall, and nothing says
+    // when they change. The width is the box's. The height is never made
+    // taller by it (with Safari's toolbar showing the box may be taller than
+    // what is visible), only cut to it.
+    const pb = this.sizeProbe.getBoundingClientRect();
     let w = Math.round(Math.max(window.innerWidth, vv?.width ?? 0)) || this.root.clientWidth;
     let h = Math.round(Math.max(window.innerHeight, vv?.height ?? 0)) || this.root.clientHeight;
+    if (pb.width >= 100 && pb.height >= 100) {
+      w = Math.round(pb.width);
+      h = Math.min(h, Math.round(pb.height));
+    }
     // A home-screen app fills the screen and never more. Right after an iOS
     // launch one of the two readings can still be stale, and taking the
     // larger of them then makes the game taller than the screen (its bottom
@@ -1627,8 +1649,34 @@ export class App {
   private settle(): void {
     this.resize();
     requestAnimationFrame(() => requestAnimationFrame(() => this.resize()));
-    for (const ms of [100, 300, 700, 1500]) setTimeout(() => this.resize(), ms);
-    this.settleUntil = performance.now() + 2000;
+    // Log v66: a launch has been seen to take longer than 1.5 s to settle
+    // (a slow load, a page opened from a link): keep measuring to 6 s.
+    for (const ms of [100, 300, 700, 1500, 2500, 4000, 6000]) setTimeout(() => this.resize(), ms);
+    this.settleUntil = performance.now() + 6500;
+    this.fixZoom();
+  }
+
+  /** Log v66: a touch, a scroll or a focus on a page that has not yet
+   *  measured the same screen twice: lay out again at once if it moved, and
+   *  keep reading every frame for a moment. */
+  private recheck(): void {
+    this.settleUntil = Math.max(this.settleUntil, performance.now() + 1200);
+    this.checkLayout(performance.now());
+    this.fixZoom();
+  }
+
+  /** Log v66: iOS can load a page already zoomed in after a turn to
+   *  landscape (the page, not the game, is scaled; the player sees it "not
+   *  sized right" and a rotation resets it). The viewport tag says 1, 1; put
+   *  it back to say so again when the page is not at 1. */
+  private fixZoom(): void {
+    const scale = window.visualViewport?.scale ?? 1;
+    if (Math.abs(scale - 1) < 0.01) return;
+    const meta = document.querySelector('meta[name="viewport"]');
+    const content = meta?.getAttribute('content');
+    if (!meta || !content) return;
+    meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    setTimeout(() => meta.setAttribute('content', content), 300);
   }
 
   private resize(): void {

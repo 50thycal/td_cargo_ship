@@ -253,7 +253,9 @@ export function labRunPlan(card: LabCard, setup: LabRunSetup, link?: URLSearchPa
   const map = card.kind === 'map';
   if (map && !s.plays) s.plays = 'full';
   const full = map && s.plays === 'full';
-  const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV } : null;
+  // (`?hold=1`, log v68: the Hold button on a map with none, to test it.)
+  const holdBack = link?.get('hold') === '1';
+  const convoy: ConvoySetup | null = s.convoy && s.convoy !== 'current' ? { policy: s.convoy, obligation: 'natural', rev: CONVOY_REV, ...(holdBack ? { tune: { hold: true } } : {}) } : null;
   // The map's encounter version (round 12): the card's, unless the setup
   // says otherwise.
   const version: EncounterVersion = isVersion(s.variant) ? s.variant : cardVersion(card);

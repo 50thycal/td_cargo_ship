@@ -201,7 +201,7 @@ describe('a map card is the full production map', () => {
     expect(productionText('harbor', 'v3')).toBe("The map's own convoy (no commands) · encounters v3 Enemy pairs");
     // Chapter 3's Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): its
     // Hold, and now its encounters.
-    expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
+    expect(productionText('sowers')).toBe("The map's own convoy (no commands; a ship stops by itself for a mine) · encounters v1 Original");
     // Chapter 1's Kesh and Marrow: the map's own convoy and their encounters.
     expect(productionText('kesh')).toBe("The map's own convoy (no commands) · encounters v1 Original");
     expect(productionText('marrow')).toBe("The map's own convoy (no commands) · encounters v1 Original");
@@ -239,7 +239,7 @@ describe('a map card is the full production map', () => {
 describe('the three reference maps open ready to test', () => {
   // Round 11: no command on the reference maps (Rush and Disperse are cut,
   // Hold moved to Sowers' Reach); their convoy sails the map's own schedule.
-  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '', sowers: 'hold', rigs: '', dreadnought: '', lantern: '', coves: '', delta: '', crossing: '', tide: '', citadel: '' };
+  const want: Record<string, string> = { strait: '', gauntlet: '', harbor: '', kesh: '', marrow: '', island: '', behemoth: '', needle: '', archipelago: '', saltgate: '', battery: '', sowers: '', rigs: '', dreadnought: '', lantern: '', coves: '', delta: '', crossing: '', tide: '', citadel: '' };
 
   it('from the hub: D and authored encounters (the reference maps, Kesh and Marrow); Sowers\' Reach: D with Hold and its encounters (log v48); the other 10: today\'s convoy, no encounters', () => {
     for (const id of MAP_ORDER) {
@@ -338,9 +338,10 @@ describe('the log carries the setup, replays exactly, and the bridge reads it', 
     expect(log.freePlay).toBeUndefined();
     expect(log.convoy).toMatchObject({ policy: 'tactical', obligation: 'natural', rev: CONVOY_REV });
     expect(log.encounters).toEqual({ rev: ENCOUNTER_REV, version: 'v1' });
-    // (Round 11: The Strait has no command; Sowers' Reach has Hold.)
+    // (Round 11: The Strait has no command; Sowers' Reach had Hold until log
+    // v66, when it became automatic: no command, no button.)
     expect(log.commands.some((c) => c[1] === 'k')).toBe(false);
-    expect(played('sowers', 3).log.commands.some((c) => c[1] === 'k')).toBe(true);
+    expect(played('sowers', 3).log.commands.some((c) => c[1] === 'k')).toBe(false);
     expect(logPlays(log)).toBe('full');
     expect(labSetupText(log)).toBe(`Full map from wave 1 · D · Tactical commands · authored encounters rev ${ENCOUNTER_REV} · v1 · production setup`);
   });

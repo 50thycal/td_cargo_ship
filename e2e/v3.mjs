@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 67 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 68 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -1270,7 +1270,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, old: !!document.querySelector('[data-card="diveBomber"]') };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 67 && !saved.old, `the verdict is kept on the device, with its round and the card's version, and rides in the test's log; back on the hub, which lists no old card (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 68 && !saved.old, `the verdict is kept on the device, with its round and the card's version, and rides in the test's log; back on the hub, which lists no old card (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

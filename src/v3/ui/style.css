@@ -38,6 +38,14 @@
   --sa-l: env(safe-area-inset-left, 0px);
 }
 
+/* Log v66: sized by the browser to the visible viewport; read, never seen. */
+.v2-size-probe {
+  position: fixed;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Measures the safe-area insets for the layout code (never visible). */
 .v2-safe-probe {
   position: fixed;

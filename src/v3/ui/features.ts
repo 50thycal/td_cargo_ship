@@ -4,13 +4,13 @@
 // lock gates, the Delta's switch buoy, the tide, night and words on the map.
 // Like render.ts it reads the game and mutates nothing.
 
-import { THREATS } from '../data/config';
+import { THREATS, VIEW } from '../data/config';
 import { FOE } from '../data/foes';
 import { FORK_RADIUS, tideGauge, lockCountdown, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 import { drawCitadelUnder, drawGenerator as drawCitadelGenerator, drawKeep } from './citadel';
 import { drawDreadnought, drawTurret } from './dread';
-import { flatsBand, sandEdge } from '../sim/tide';
+import { flatsBand, seaEdges } from '../sim/tide';
 
 const RED = '#ff5a3d';
 const RIM = '#d94a3a';
@@ -55,49 +55,121 @@ export function drawMapUnder(ctx: CanvasRenderingContext2D, g: Game): void {
   if (m.fork) drawFork(ctx, g);
 }
 
-function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
-  const lane = g.map.channels.find((c) => c.tide);
-  if (!lane) return;
-  // Log v59 (sim/tide.ts): the tide falls and rises over a few seconds
-  // instead of snapping; the water leaves the flats from the shore side up
-  // to the deep channel, so the sand grows from the bottom of the band and
-  // its edge, a line of surf, moves as the water does. Under the encounter
-  // layer the tide keeps each wave's clock: one ebb a wave.
-  const tide = tideGauge(g);
-  const { phase, left, frac, level } = tide;
-  const { top, bottom } = flatsBand(lane);
-  // The shallows: a wet sheen over the whole band, whatever the tide.
-  ctx.fillStyle = 'rgba(201,183,138,0.08)';
-  ctx.fillRect(0, top, 1600, bottom - top);
-  const edge = sandEdge(lane, level);
-  if (edge < bottom - 0.5) {
-    // The exposed flats read as land: sand, ribbed by the ebb.
-    ctx.fillStyle = 'rgba(206,186,136,0.72)';
-    ctx.fillRect(0, edge, 1600, bottom - edge);
+/** Tidewater Flats' sea (log v68; drawn over the water, under the shores
+ *  and the lanes): the whole sea pulls back from both shores towards the
+ *  deep channel's bed as the tide falls, and floods back in as it rises
+ *  (sim/tide.ts seaEdges). What it leaves is wet sand, drying as it goes
+ *  from the water's edge, ribbed by the ebb, with a line of foam that
+ *  swashes a little on the sea's own slow beat. The carrier's berth dries
+ *  with the rest. */
+export function drawTideSea(ctx: CanvasRenderingContext2D, g: Game): void {
+  const deep = g.map.channels.find((c) => !c.tide && !c.vip);
+  if (!deep || !g.map.tide) return;
+  const H = VIEW.height;
+  const W = VIEW.width;
+  const { level } = tideGauge(g);
+  if (level >= 0.999) return;
+  const { top, bottom } = seaEdges(deep, level, H);
+  // The swash breathes in and out a little, slowly, and fades as the
+  // tide reaches either end (it is the water's own motion, not the tide).
+  const swash = 7 * Math.sin(g.t * 0.9) * Math.sin(Math.PI * Math.min(1, Math.max(0, level)));
+  const wet = 70;
+  // One dry stretch of seabed from `y0` (its far edge) to `y1` (the water's
+  // edge); `dir` is 1 when the water is below it, -1 when above.
+  const bed = (y0: number, y1: number, dir: 1 | -1) => {
+    const lo = Math.min(y0, y1);
+    const hi = Math.max(y0, y1);
+    if (hi - lo < 0.5) return;
+    const grad = ctx.createLinearGradient(0, y1, 0, y1 - dir * wet);
+    // The wet strip by the water, then the dry sand beyond it.
+    grad.addColorStop(0, 'rgb(112,102,82)');
+    grad.addColorStop(0.55, 'rgb(158,143,105)');
+    grad.addColorStop(1, 'rgb(190,171,126)');
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, edge, 1600, bottom - edge);
+    ctx.rect(0, lo, W, hi - lo);
     ctx.clip();
-    ctx.strokeStyle = 'rgba(120,96,60,0.4)';
+    ctx.fillStyle = 'rgb(190,171,126)';
+    ctx.fillRect(0, lo, W, hi - lo);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, y1 - wet, W, wet * 2);
+    // Ribs the ebb left: long soft ripples along the shore.
+    ctx.strokeStyle = 'rgba(96,78,48,0.22)';
     ctx.lineWidth = 2;
-    for (let x = -60; x < 1660; x += 46) {
+    for (let y = Math.floor(lo / 30) * 30 + 15; y < hi; y += 30) {
       ctx.beginPath();
-      ctx.moveTo(x, top + 10);
-      ctx.lineTo(x + 30, bottom - 10);
+      for (let x = 0; x <= W; x += 40) {
+        const yy = y + 3 * Math.sin(x / 70 + y / 9);
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
       ctx.stroke();
     }
     ctx.restore();
-    // The water's edge: a line of surf that moves with the tide.
-    ctx.strokeStyle = 'rgba(235,245,250,0.85)';
+  };
+  bed(0, top + swash, -1);
+  bed(H, bottom + swash, 1);
+  // The shallows beyond the edge and the foam on it.
+  for (const [edge, dir] of [[top + swash, 1], [bottom + swash, -1]] as const) {
+    if (edge < -10 || edge > H + 10) continue;
+    const sh = ctx.createLinearGradient(0, edge, 0, edge + dir * 34);
+    sh.addColorStop(0, 'rgba(176,232,226,0.5)');
+    sh.addColorStop(1, 'rgba(176,232,226,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(0, Math.min(edge, edge + dir * 34), W, 34);
+    ctx.strokeStyle = 'rgba(240,248,250,0.85)';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    for (let x = 0; x <= 1600; x += 20) {
-      const y = edge + 4 * Math.sin(x / 55 + g.t * 2.2);
+    for (let x = 0; x <= W; x += 20) {
+      const y = edge + 3.5 * Math.sin(x / 55 + g.t * 1.3 + (dir > 0 ? 0 : 2));
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(240,248,250,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 20) {
+      const y = edge + dir * 12 + 3 * Math.sin(x / 40 - g.t * 1.1);
       if (x === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
   }
+}
+
+/** A hull aground on the flats (log v68): a bank of wet sand about it, so
+ *  it reads as stuck until the tide is back. `k` is how afloat it is. */
+export function drawAground(ctx: CanvasRenderingContext2D, x: number, y: number, k: number, seed: number): void {
+  if (k > 0.98) return;
+  const a = 1 - k;
+  ctx.save();
+  ctx.translate(x, y + 6);
+  ctx.fillStyle = `rgba(120,106,80,${0.75 * a})`;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 56, 17, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = `rgba(176,158,116,${0.7 * a})`;
+  ctx.beginPath();
+  ctx.ellipse(-4, -2, 44, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(238,246,250,${0.55 * a})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 56 + 2 * Math.sin(seed), 17, 0, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
+  const lane = g.map.channels.find((c) => c.tide);
+  if (!lane) return;
+  // The sea itself is drawn under the shores (drawTideSea); this is the
+  // gauge between the lanes. Under the encounter layer the tide keeps each
+  // wave's clock: one ebb a wave.
+  const tide = tideGauge(g);
+  const { phase, left, frac } = tide;
+  const { top } = flatsBand(lane);
   // The gauge between the lanes, mid-map and large enough to read on a
   // phone held sideways (log v61: at the right edge, at 18 px, it was
   // clipped and about 8 px tall on an iPhone). Gold while the tide is about
@@ -105,10 +177,10 @@ function drawTide(ctx: CanvasRenderingContext2D, g: Game): void {
   const gx = 800;
   const gy = top - 16;
   const secs = Number.isFinite(left) ? ` · ${Math.ceil(left)} s` : '';
-  const warn = (phase === 'high' && left <= 5) || phase === 'falling';
+  const warn = (phase === 'high' && left <= 8) || phase === 'falling';
   const col = warn ? GOLD : phase === 'high' ? CYAN : '#ead7a4';
   bar(ctx, gx, gy, 260, frac, col);
-  const text = phase === 'falling' ? `TIDE GOING OUT${secs}` : phase === 'low' ? `LOW TIDE · flats dry${secs}` : phase === 'rising' ? `TIDE COMING IN${secs}` : warn ? `THE TIDE TURNS${secs}` : `HIGH TIDE${secs}`;
+  const text = phase === 'falling' ? `TIDE GOING OUT${secs}` : phase === 'low' ? `LOW TIDE · ships aground${secs}` : phase === 'rising' ? `TIDE COMING IN${secs}` : warn ? `THE TIDE TURNS${secs}` : `HIGH TIDE${secs}`;
   label(ctx, text, gx, gy - 10, col, warn ? 36 : 28);
 }
 

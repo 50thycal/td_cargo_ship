@@ -12,7 +12,7 @@
 // map: v1 (the original nine, unchanged), v2 "Set pieces", v3 "Enemy pairs".
 
 import { describe, expect, it } from 'vitest';
-import { FIRESHIP, PLANE, RAID, SHIP, SOW, SUB, THREATS, TOW, VIEW } from '../../src/v3/data/config';
+import { FIRESHIP, PLANE, RAID, SOW, SUB, THREATS, TOW, VIEW } from '../../src/v3/data/config';
 import {
   BUSY,
   ENCOUNTERS,
@@ -54,7 +54,7 @@ import { MAPS, MAP_ORDER, chapterOf } from '../../src/v3/data/maps';
 import { mapDebutsFoe } from '../../src/v3/data/mapRules';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind } from '../../src/v3/data/pairs';
 import { WAVE_TABLE, waveSpec } from '../../src/v3/data/waves';
-import { flatsBand, sandEdge, tideAt, TIDE_TURN } from '../../src/v3/sim/tide';
+import { floatPace, seaEdges, tideAt, TIDE_TURN } from '../../src/v3/sim/tide';
 import { CONVOY_REV } from '../../src/v3/data/convoy';
 import { CARRIER_TARGET, aimBeat, tideNow, applyEncounters, branchBurning, branchMouth, createGame, damageThreat, highTide, lightFireShip, quieterBranch, rigAt, rigStations, spawnThreat, step, switchLane, throwSwitch, towRig, vipRoute, type Game } from '../../src/v3/sim/game';
 import { DELTA_BURN, beaconMark } from '../../src/v3/sim/events';
@@ -2887,74 +2887,114 @@ describe('Dunmar Crossing (log v58): spotter beacons at the crossing, the signat
 
 // Chapter 4, Open War: Tidewater Flats (docs/design/v3-ch4-tide.md, log v61).
 describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the ebb strike and Low Water', () => {
-  // The player: "the ships did not navigate off the low tide area, so just
-  // make sure that mechanic actually works". Every step of whole bot runs
-  // (the card's production setup, the boss rounds too, and the campaign's
-  // own clock): no hull is ever on exposed sand (sim/tide.ts sandEdge: the
-  // water leaves the flats from the shore side as the tide falls), none is
-  // in the flats at all at low water, a ship on the flats when the tide
-  // starts to fall has crossed to the deep channel before the sand reaches
-  // it, and no hull stalls on its lane.
+  // Log v66 (the player: "the whole water should pull back ... the ships left
+  // in the low tide are just stuck until the next high tide"). Every step of
+  // whole bot runs (the card's production setup, the boss rounds too, and the
+  // campaign's own clock): a hull never changes lanes (nothing moves it to
+  // the deep channel), a hull on the flats lane is stopped dead while the
+  // water is under TIDE_TURN.ground and sails at full pace once it is back
+  // over TIDE_TURN.float, and none stays stuck once the tide is in.
   const sweepTide = (seed: number, layer: boolean, waves: number) => {
     const run = new BotRun('tide', seed, { persona: PERSONAS.you, armory: { reload: 5, repair: 4, stockpile: 5 }, ...(layer ? { encounters: VER('v1'), convoy: { policy: 'tactical' as const, obligation: 'natural' as const, rev: CONVOY_REV } } : {}) });
     const g = run.game;
     g.tempo = { ...g.tempo, lossLimit: 999 };
     g.carrierHp = g.stats.carrierHp = 1e6;
-    const flats = MAPS.tide.channels.find((c) => c.tide)!;
-    const band = flatsBand(flats);
-    const seen = { low: 0, falling: 0, rising: 0, crossed: new Set<number>(), onSand: [] as string[], inFlatsLow: [] as string[], stalled: [] as string[] };
-    const still = new Map<number, { d: number; n: number }>();
+    const flatsLane = MAPS.tide.channels.findIndex((c) => c.tide);
+    const seen = { low: 0, falling: 0, rising: 0, stuck: new Set<number>(), switched: [] as string[], movedAground: [] as string[], stalled: [] as string[] };
+    const lane = new Map<number, number>();
+    const last = new Map<number, number>();
+    const still = new Map<number, number>();
     while (!run.done && g.wave <= waves) {
       run.advance(1);
       if (g.phase !== 'wave') {
         still.clear();
+        last.clear();
         continue;
       }
       const tide = tideNow(g);
       if (tide.phase !== 'high') seen[tide.phase] += 1;
-      const edge = sandEdge(flats, tide.level);
       for (const sh of g.ships) {
-        if (sh.cross) seen.crossed.add(sh.id);
-        // A hull's whole width (SHIP.hitRadius) clear of the sand.
-        if (sh.y + SHIP.hitRadius > edge && sh.y - SHIP.hitRadius < band.bottom && sh.x > 0 && sh.x < VIEW.width) seen.onSand.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id} y ${sh.y.toFixed(0)} sand from ${edge.toFixed(0)}`);
-        if (tide.phase === 'low' && sh.y > band.top && sh.y < band.bottom) seen.inFlatsLow.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id}`);
-        const was = still.get(sh.id);
-        if (!was || sh.d > was.d + 1e-6) still.set(sh.id, { d: sh.d, n: 0 });
-        else if (++was.n === 5 * 60) seen.stalled.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id} at d ${sh.d.toFixed(0)}`);
+        if (lane.has(sh.id) && lane.get(sh.id) !== sh.channel) seen.switched.push(`w${g.wave} ship ${sh.id}`);
+        lane.set(sh.id, sh.channel);
+        const before = last.get(sh.id);
+        last.set(sh.id, sh.d);
+        const onFlats = sh.channel === flatsLane;
+        // Water under the grounding mark: not one step of way made.
+        if (onFlats && tide.level <= TIDE_TURN.ground) {
+          seen.stuck.add(sh.id);
+          if (before !== undefined && sh.d > before + 1e-9) seen.movedAground.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id}`);
+        }
+        // Standing still with the tide in (and nothing the matter): stalled.
+        if (before !== undefined && sh.d <= before + 1e-6 && tide.level >= TIDE_TURN.float) {
+          const n = (still.get(sh.id) ?? 0) + 1;
+          still.set(sh.id, n);
+          if (n === 12 * 60) seen.stalled.push(`w${g.wave} t${g.waveT.toFixed(2)} ship ${sh.id} at d ${sh.d.toFixed(0)}`);
+        } else still.set(sh.id, 0);
       }
     }
     return seen;
   };
 
-  it('no ship is ever on exposed sand, none is in the flats at low water, the flats ships cross to the deep channel as the tide falls, and none stalls (the card, waves 1-10 and the boss, three seeds)', () => {
+  it('no ship ever changes lane, a ship on the flats makes no way while the water is low and is stuck there, and none stalls once the tide is in (the card, waves 1-10 and the boss, three seeds)', () => {
     for (const seed of [3, 11, 29]) {
       const r = sweepTide(seed, true, 13);
-      expect(r.onSand.slice(0, 3), `seed ${seed}`).toEqual([]);
-      expect(r.inFlatsLow.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.switched.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.movedAground.slice(0, 3), `seed ${seed}`).toEqual([]);
       expect(r.stalled.slice(0, 3), `seed ${seed}`).toEqual([]);
       // The tide turned every wave, and ships were caught on the flats by it.
-      expect(r.low, `seed ${seed}`).toBeGreaterThan(60 * 60);
-      expect(r.falling, `seed ${seed}`).toBeGreaterThan(60 * 20);
-      expect(r.rising, `seed ${seed}`).toBeGreaterThan(60 * 10);
-      expect(r.crossed.size, `seed ${seed}`).toBeGreaterThan(5);
+      expect(r.low, `seed ${seed}`).toBeGreaterThan(60 * 90);
+      expect(r.falling, `seed ${seed}`).toBeGreaterThan(60 * 40);
+      expect(r.rising, `seed ${seed}`).toBeGreaterThan(60 * 15);
+      expect(r.stuck.size, `seed ${seed}`).toBeGreaterThan(3);
     }
   }, 240_000);
 
   it('the same on the campaign\'s own clock (no layer), waves 1-6', () => {
     for (const seed of [5, 17]) {
       const r = sweepTide(seed, false, 6);
-      expect(r.onSand.slice(0, 3), `seed ${seed}`).toEqual([]);
-      expect(r.inFlatsLow.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.switched.slice(0, 3), `seed ${seed}`).toEqual([]);
+      expect(r.movedAground.slice(0, 3), `seed ${seed}`).toEqual([]);
       expect(r.stalled.slice(0, 3), `seed ${seed}`).toEqual([]);
       expect(r.low, `seed ${seed}`).toBeGreaterThan(0);
-      expect(r.crossed.size, `seed ${seed}`).toBeGreaterThan(0);
+      expect(r.stuck.size, `seed ${seed}`).toBeGreaterThan(0);
     }
   }, 240_000);
+
+  it('the whole sea pulls back: its edges close on the deep channel as the water falls, run to the shores at high water, and leave the carrier\'s berth dry at low water', () => {
+    const deep = MAPS.tide.channels.find((c) => !c.tide)!;
+    const high = seaEdges(deep, 1, 900);
+    expect(high.top).toBeLessThan(0);
+    expect(high.bottom).toBeGreaterThan(900);
+    const low = seaEdges(deep, 0, 900);
+    expect(low.top).toBeLessThan(deep.y - deep.halfWidth);
+    expect(low.bottom).toBeGreaterThan(deep.y + deep.halfWidth);
+    // The deep channel stays under water, and the carrier sits on sand.
+    expect(low.bottom).toBeLessThan(MAPS.tide.carrier.y - 100);
+    let prev = high.bottom;
+    for (let l = 1; l >= 0; l -= 0.05) {
+      const e = seaEdges(deep, l, 900);
+      expect(e.bottom, `level ${l.toFixed(2)}`).toBeLessThanOrEqual(prev + 1e-9);
+      prev = e.bottom;
+    }
+    // A hull's way: all of it over `float`, none under `ground`.
+    expect(floatPace(1)).toBe(1);
+    expect(floatPace(TIDE_TURN.float)).toBe(1);
+    expect(floatPace(TIDE_TURN.ground)).toBe(0);
+    expect(floatPace(0)).toBe(0);
+    expect(floatPace((TIDE_TURN.ground + TIDE_TURN.float) / 2)).toBeCloseTo(0.5, 5);
+  });
+
+  it('the tide is slower and lasts longer than it did (log v68): 8 s out, 9 s in, low water 12 s or more, the campaign\'s 55 s high and 30 s low', () => {
+    expect(TIDE_TURN.fall).toBeGreaterThanOrEqual(8);
+    expect(TIDE_TURN.rise).toBeGreaterThanOrEqual(8);
+    expect(Math.min(...TIDE_LOW)).toBeGreaterThanOrEqual(12);
+    expect(MAPS.tide.tide).toEqual({ high: 55, low: 30 });
+  });
 
   it('the tide turns smoothly: the water falls over TIDE_TURN.fall s and rises over TIDE_TURN.rise s, never snapping', () => {
     const ebb: [number, number] = [20, 32];
     let prev = tideAt(MAPS.tide, 0, 0, ebb).level;
-    for (let t = 0; t < 45; t += 1 / 60) {
+    for (let t = 0; t < 55; t += 1 / 60) {
       const now = tideAt(MAPS.tide, 0, t, ebb);
       expect(Math.abs(now.level - prev), `t ${t.toFixed(2)}`).toBeLessThanOrEqual(1 / (60 * Math.min(TIDE_TURN.fall, TIDE_TURN.rise)) + 1e-9);
       prev = now.level;
@@ -2963,7 +3003,8 @@ describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the eb
     expect(tideAt(MAPS.tide, 0, 18, ebb).phase).toBe('falling');
     expect(tideAt(MAPS.tide, 0, 25, ebb)).toMatchObject({ phase: 'low', level: 0 });
     expect(tideAt(MAPS.tide, 0, 33, ebb).phase).toBe('rising');
-    expect(tideAt(MAPS.tide, 0, 40, ebb)).toMatchObject({ phase: 'high', level: 1 });
+    expect(tideAt(MAPS.tide, 0, 40, ebb).phase).toBe('rising');
+    expect(tideAt(MAPS.tide, 0, 32 + TIDE_TURN.rise + 0.01, ebb)).toMatchObject({ phase: 'high', level: 1 });
     // The campaign's clock too.
     let p2 = tideAt(MAPS.tide, 0, 0).level;
     for (let t = 0; t < 90; t += 1 / 60) {
@@ -3001,7 +3042,7 @@ describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the eb
     expect(tideClock('coves', 4, VER('v1'))).toBeUndefined();
   });
 
-  it('at low water no new ship takes the flats lane, and the flats ships still out sail on; at high water both lanes take ships', () => {
+  it('at low water no new ship takes the flats lane; at high water both lanes take ships', () => {
     const g = createGame('tide', 7, 4);
     applyEncounters(g, VER('v1'));
     g.tempo = { ...g.tempo, lossLimit: 999 };

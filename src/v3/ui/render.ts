@@ -4,12 +4,12 @@
 import { BALLISTIC, CARRIER, PICKUPS, SHIP, SUPERSONIC, THREATS, VIEW, VIP, type PickupKind, type RaidTheme } from '../data/config';
 import { FORMATIONS } from '../data/formations';
 import { type Landmass, type Point } from '../data/maps';
-import { CARRIER_TARGET, beatClock, domed, boostLevel, held, highTide, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Threat } from '../sim/game';
+import { CARRIER_TARGET, aground, beatClock, domed, boostLevel, held, highTide, lanceCharge, pickupLife, raidWarning, reticleVisible, supersonicPace, warping, type Blade, type Bomb, type Launchers, type Escort, type Field, type Game, type Pickup, type Ship, type Threat } from '../sim/game';
 import { AB, ABILITY_MAX, SHORT_NAME, type AbilityId } from '../data/abilities';
 import { ICON_COLOR, iconImage } from './icons';
 import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
-import { drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTracked } from './features';
+import { drawAground, drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTideSea, drawTracked } from './features';
 import { drawEventOver, drawEventUnder } from './events';
 import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, drawWarningMarks, isFoeAircraft } from './foes';
 import { pickupLocked } from '../sim/foes';
@@ -64,6 +64,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   ctx.save();
   if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
   drawWater(ctx, g);
+  if (g.map.tide) drawTideSea(ctx, g);
   for (const land of g.map.land) drawLand(ctx, land);
   drawRoads(ctx, g);
   drawLanes(ctx, g);
@@ -82,6 +83,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, g: Game, ripples: Rippl
   drawFields(ctx, g, 'well');
   drawFields(ctx, g, 'sun');
   drawFields(ctx, g, 'laser');
+  if (g.map.tide) for (const s of g.ships) drawAground(ctx, s.x, s.y, aground(g, s), s.id);
   for (const s of g.ships) drawShip(ctx, s.x, s.y, s.hp, s.id, g.t, s.vip ? VIP.hp : g.stats.shipHp, false, s.heading, s.vip);
   drawHeldShips(ctx, g);
   drawPosts(ctx, g);
@@ -290,9 +292,13 @@ function drawLanes(ctx: CanvasRenderingContext2D, g: Game): void {
 /** While a Hold is on, every hull it stopped carries a pause mark. Rev 3
  *  (round 11): that is every ship afloat; there is no hold line. */
 function drawHeldShips(ctx: CanvasRenderingContext2D, g: Game): void {
-  if (!g.convoy?.holding) return;
+  // Log v66: a ship the map's own Hold has stopped in front of a mine
+  // (sim/game.ts minePace) wears the same mark.
+  const held = new Set<Ship>(g.convoy?.holding ? holdable(g) : []);
+  for (const s of g.ships) if (s.mineHold) held.add(s);
+  if (!held.size) return;
   ctx.save();
-  for (const s of holdable(g)) {
+  for (const s of held) {
     const x = s.x;
     const y = s.y - 34;
     ctx.fillStyle = 'rgba(7,13,18,0.85)';
