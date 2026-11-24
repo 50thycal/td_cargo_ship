@@ -20,7 +20,7 @@ import type { Channel, MapDef } from '../data/mapTypes';
 export type TidePhase = 'high' | 'falling' | 'low' | 'rising';
 
 /** Seconds the tide takes to fall before low water and to rise after it
- *  (log v66: 8 and 9 s, from 4 and 3), and the water level on the flats at
+ *  (log v68: 8 and 9 s, from 4 and 3), and the water level on the flats at
  *  which a ship runs aground (`ground`: below it a hull is stopped) and
  *  floats free again (`float`: at or above it a hull sails at full pace). */
 export const TIDE_TURN = { fall: 8, rise: 9, ground: 0.3, float: 0.55 } as const;

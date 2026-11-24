@@ -9,7 +9,7 @@ Seven notes from your 2026-11-20 playtest (Island v31, Marrow, Behemoth and Kesh
 
 Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 
-## The Tide moves as a whole and strands ships; Sowers' Hold is automatic; first-load sizing (log v66)
+## The Tide moves as a whole and strands ships; Sowers' Hold is automatic; first-load sizing (log v68)
 
 > Tide: "the whole water should pull back ... the ships left in the low tide are just stuck until the next high tide", "tide times should last longer", "it should be slower". Sowers: "just make [the vault command] automatic ... make mines spottable about a distance 1.5 from what it is now ... right before the ships collided with the mine, about 1/3 the spotting distance, the ship in the path will pause until that mine is shot down". Bug: "I still have to rotate my screen when it initially loads as it is not sized right."
 
@@ -18,7 +18,7 @@ Screenshots: `docs/design/img/playtest-fixes/` (`before-*` and `after-*`).
 - **Stranding:** nothing crosses to the deep channel any more. A ship on the flats lane when the water drops under 0.55 slows, is stopped below 0.3, and stays aground (a bank of wet sand about it) until the tide is back over 0.55. New ships still take the flats only at high water. Low Water, the boss, keeps its intent: the round's tide out early and the shore firing at the crowd; the crowd now includes the hulls stuck on the flats.
 - **Sowers' Hold** (`sim/game.ts` `minePace`): the big button is gone from the map (`MapConvoy.commands: []`, `autoHold: true`; `CONVOY_REV` 4). A ship whose course would put it on a mine in sight within a third of the spotting time (1.25 s) stops by itself, a gold pause mark over it, until the mine is shot or has drifted past its course; the ships behind queue. Mines surface 3.75 s ahead (2.5 s before). The campaign (no lab convoy layer) is unchanged. The command itself stays in the engine for the lab: `?hold=1` (or `tune: { hold: true }` in a convoy setup) puts the button back on a map with none, and the tests and e2e use that.
 - **First-load sizing** (`ui/app.ts` `viewport`, `settle`, `recheck`): see the report in the PR. The layout reads a third witness of the screen's size (a fixed box the browser sizes itself), re-measures on the first touches, scrolls and focus, keeps measuring for 6 s after a launch (1.5 s before), and puts the page back to zoom 1 if iOS left it zoomed. e2e `v3-ios-viewport.mjs` checks 4 and 5 (stale window and visual viewport readings of the upright phone; opened upright then turned) fail on the old code.
-- **Numbers** (the bot, 192 seeds; band 50 to 70%): see the PR description for before and after. Sowers' waves send about 10% more (`SOWERS_CLIMB` 1.05 to 1.1) to give back the difficulty the automatic Hold and the earlier mines took out.
+- **Numbers** (the bot, 192 seeds; band 50 to 70%): see the PR description for before and after. boss rounds get a little more fire.
 - `LOG_VERSION` 66, `LOG_REPLAYS` `[66]`; the map-lab baseline was written again; pins moved with `pins.py 65 66`.
 
 ## Watch mode in the Test Lab: watch the bot, take over any time (log v65)

@@ -34,7 +34,7 @@ export const CONVOY_REV = 4;
 // while it was on off the map, which at the map's flow was usually none or
 // one, for under a second: it changed nothing a player could see
 // (docs/design/v3-round9-fixes.md).
-// Rev 4 (log v66): Sowers' Reach's Hold is automatic (MapConvoy `autoHold`),
+// Rev 4 (log v68): Sowers' Reach's Hold is automatic (MapConvoy `autoHold`),
 // its button gone.
 // Rev 3 (round 11, docs/design/v3-round11-map-notes.md):
 // - Rush and Disperse are gone. The player: "cut them all but Hold". Their
@@ -66,7 +66,7 @@ export interface ConvoySetup {
   /** A lab override of the map's schedule (a flow step), to compare
    *  policies at another rate of sailing. */
   flow?: number;
-  /** Lab overrides of the commands' numbers (a sweep). `hold` (log v66):
+  /** Lab overrides of the commands' numbers (a sweep). `hold` (log v68):
    *  the Hold button back on a map that has none (and the map's own
    *  automatic Hold off), to test and sweep the command. */
   tune?: Partial<{ holdMax: number; hold: boolean }>;

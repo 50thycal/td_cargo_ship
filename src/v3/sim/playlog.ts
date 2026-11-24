@@ -534,7 +534,28 @@ import type { EncounterSetup } from '../data/encounters';
  *      (the 'c' switches are UI only), so the log replays exactly. Nothing
  *      in the sim changed: a v64 log plays the same game; the version
  *      marks the logs that can carry the new fields.
- *  66: the Tide moves as a whole and strands ships; Sowers' Hold is
+ *  67: the Black Strait and Blackout always dark, the Dreadnought's guns and
+ *      the Citadel destroyed once (the player: "there should not be a light
+ *      drop it should always be dark"; "the ship is lame, have it actually
+ *      use the targets where the shot artillery"; "it was down in wave 4, it
+ *      should really only be destroyed once, but it will come back for the
+ *      boss wave"). No Star Shell drops on the Black Strait or in Blackout
+ *      (game.ts dropPickup, events.ts eventDropWeights, no 'shell' step in
+ *      Blackout). Under the encounter layer the Dreadnought carries three
+ *      gun turrets (TURRET, Threat kind 'turret', game.ts updateTurret):
+ *      its artillery shells come off them, one turret at a time on its own
+ *      cycle, each shot out in 4 hits and silent after; the silo launches
+ *      the rest of a broadside (guided missiles, drones), its hatches
+ *      opening before it fires. A gun turret is a target (worthShooting)
+ *      and as urgent as its next shell is near (timeToImpact). On the
+ *      Citadel the shield still rises again every wave until the Citadel is
+ *      destroyed; destroyed (70 shots dealt over the waves, 14 before; two of a wave's launches a wave come off it under the dome, one before) it and
+ *      its generators stay down, its fire off the far silos, until the
+ *      boss's rise rebuilds them (game.ts citadelDown, raiseShield: a keep
+ *      still up for the boss is brought down to the round's numbers). Map-
+ *      lab logs before v67 no longer replay to the same game. (66 was built
+ *      alongside and ships as 68.)
+ *  68: the Tide moves as a whole and strands ships; Sowers' Hold is
  *      automatic (the player: "the whole water should pull back and the
  *      ships left in the low tide are just stuck until the next high tide",
  *      "tide times should last longer", "just make [the Hold] automatic ...
@@ -550,12 +571,12 @@ import type { EncounterSetup } from '../data/encounters';
  *      whose course would put it on a mine within a third of the spotting
  *      time stops by itself until the mine is gone (game.ts minePace); hidden
  *      mines surface 3.75 s ahead (2.5 s before) and Sowers' waves send
- *      about 10% more; CONVOY_REV 4. A Tide or Sowers log before v66 no
+ *      the whole wave (1.0, from 0.88-0.95); CONVOY_REV 4. A Tide or Sowers log before v68 no
  *      longer replays to the same game; the other maps play as they did. */
-export const LOG_VERSION = 66;
+export const LOG_VERSION = 68;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [66];
+export const LOG_REPLAYS: readonly number[] = [68];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

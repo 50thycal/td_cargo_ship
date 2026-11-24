@@ -1512,8 +1512,8 @@ describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the 
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more stealth strafers each round, closer together, with shells and heavies at the shore guns', () => {
-    const off = playMimic('battery', 218, opts);
-    const old = playMimic('battery', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    const off = playMimic('battery', 201, opts);
+    const old = playMimic('battery', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own 8 strafers and nothing else.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
     expect(old.log.commands).toEqual(off.log.commands);
@@ -1522,7 +1522,7 @@ describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the 
       expect(e.sent.stealthJet).toBe(8);
       expect((e.sent.ballistic ?? 0) + (e.sent.heavy ?? 0)).toBe(0);
     }
-    const on = playMimic('battery', 218, { ...opts, encounters: VER('v1') });
+    const on = playMimic('battery', 201, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.battery!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['blackout', 1], ['blackout', 2], ['blackout', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
@@ -2984,7 +2984,7 @@ describe('Tidewater Flats (log v61): the tide\'s clock a wave, the crowd, the eb
     expect(floatPace((TIDE_TURN.ground + TIDE_TURN.float) / 2)).toBeCloseTo(0.5, 5);
   });
 
-  it('the tide is slower and lasts longer than it did (log v66): 8 s out, 9 s in, low water 12 s or more, the campaign\'s 55 s high and 30 s low', () => {
+  it('the tide is slower and lasts longer than it did (log v68): 8 s out, 9 s in, low water 12 s or more, the campaign\'s 55 s high and 30 s low', () => {
     expect(TIDE_TURN.fall).toBeGreaterThanOrEqual(8);
     expect(TIDE_TURN.rise).toBeGreaterThanOrEqual(8);
     expect(Math.min(...TIDE_LOW)).toBeGreaterThanOrEqual(12);

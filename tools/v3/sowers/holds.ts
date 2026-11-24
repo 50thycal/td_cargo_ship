@@ -1,4 +1,4 @@
-// How often a ship stops by itself for a mine (log v66, sim/game.ts
+// How often a ship stops by itself for a mine (log v68, sim/game.ts
 // minePace): per wave, steps with a ship held, and mines that sank a ship.
 //   npx vite-node tools/v3/sowers/holds.ts -- [--seed=900] [--waves=10]
 import { CONVOY_REV } from '../../../src/v3/data/convoy';

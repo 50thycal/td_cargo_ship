@@ -75,7 +75,7 @@ describe('Round 15: hidden mines on Sowers\' Reach', () => {
 
   it('a surfaced mine about to meet a hull lights the Hold button (commandAdvised); a hidden one does not', () => {
     const g = sowers();
-    // (The button is back for this: log v66 made Sowers' own Hold automatic.)
+    // (The button is back for this: log v68 made Sowers' own Hold automatic.)
     applyConvoy(g, { policy: 'tactical', obligation: 'natural', rev: 4, tune: { hold: true } });
     expect(g.convoy!.def.commands).toEqual(['hold']);
     for (let i = 0; i < 12 / DT && g.ships.length < 2; i++) step(g, DT);
@@ -92,11 +92,11 @@ describe('Round 15: hidden mines on Sowers\' Reach', () => {
     expect(MINE.surface).toBeGreaterThan(1.4);
   });
 
-  it('log v66: mines surface 1.5 times as far ahead of a ship (3.75 s, from 2.5 s)', () => {
+  it('log v68: mines surface 1.5 times as far ahead of a ship (3.75 s, from 2.5 s)', () => {
     expect(MINE.surface).toBeCloseTo(2.5 * 1.5, 6);
   });
 
-  it('log v66: a ship about to sail onto a mine in sight stops by itself, a third of the spotting time short of it, until it is shot; a hidden mine stops nothing', () => {
+  it('log v68: a ship about to sail onto a mine in sight stops by itself, a third of the spotting time short of it, until it is shot; a hidden mine stops nothing', () => {
     const g = sowers();
     applyConvoy(g, { policy: 'tactical', obligation: 'natural', rev: 4 });
     expect(g.convoy!.def).toMatchObject({ commands: [], autoHold: true });
@@ -144,7 +144,7 @@ describe('Round 15: hidden mines on Sowers\' Reach', () => {
     for (let i = 0; i < 0.5 / DT; i++) step(g, DT);
     expect(s.mineHold).toBe(false);
   });
-  it('log v66: the campaign (no convoy layer) never stops a ship for a mine', () => {
+  it('log v68: the campaign (no convoy layer) never stops a ship for a mine', () => {
     const g = createGame('sowers', 3, 1);
     expect(g.convoy).toBeNull();
     for (let i = 0; i < 20 / DT && g.ships.length < 1; i++) step(g, DT);

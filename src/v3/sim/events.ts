@@ -36,7 +36,7 @@ import type { AbilityId } from '../data/abilities';
 import type { Point } from '../data/maps';
 import { laneAt, laneLength } from './lanes';
 import { crossingSpot, foeData, launchFoe, spotterLife, offMapGun, onLand, seesLane, siegeSpotAt, subSite, subSpot, wetRun } from './foes';
-import { CARRIER_TARGET, launchBoss, addFx, addPickup, branchMouth, raiseShield, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
+import { CARRIER_TARGET, launchBoss, addFx, branchMouth, raiseShield, callCargoPlane, clamp, cue, dist, launchPlane, pathLength, pickBase, raiseRig, rigAt, rigStations, shipAhead, sowMines, spawnThreat, targetable, type Game, type Ship, type Threat } from './game';
 
 /** One step of an event's script: at `at` s into the event, do `op`
  *  (the event's own), the `k`th of them. */
@@ -424,14 +424,14 @@ export function beaconMark(g: Game, th: Threat): Ship | undefined {
   return id === undefined || id < 0 ? undefined : g.ships.find((s) => s.id === id);
 }
 
-/** The drop table under an event's rules: no ammo (the Drone Storm), a
- *  star shell in the dark (Blackout); and in every event, no Nuke (Test Lab
- *  round 6: "no nukes for these special events"). */
-export function eventDropWeights(g: Game, w: Record<string, number>, starshell: number): void {
+/** The drop table under an event's rules: no ammo (the Drone Storm); and in
+ *  every event, no Nuke (Test Lab round 6: "no nukes for these special
+ *  events"). Log v67: no star shell in the dark either (Blackout is always
+ *  dark). */
+export function eventDropWeights(g: Game, w: Record<string, number>): void {
   if (!g.event) return;
   w.nuke = 0;
   if (hasRule(g, 'noAmmo') || openingDry(g)) w.ammo = 0;
-  if (hasRule(g, 'night')) w.starshell = Math.max(w.starshell ?? 0, starshell);
 }
 
 // ---------------------------------------------------------------------------
@@ -769,7 +769,7 @@ function plan(g: Game, ev: EventRun): EventStep[] {
       const E = EV.blackout;
       const R = bossRound(g, ev);
       const every = R?.jetGap ?? E.every;
-      return [...steps(R?.jets ?? E.strafers, (k) => (R?.jetAt ?? 0) + k * every, 'jet'), ...steps(1, () => E.shellAt, 'shell'), ...fireSteps(R)];
+      return [...steps(R?.jets ?? E.strafers, (k) => (R?.jetAt ?? 0) + k * every, 'jet'), ...fireSteps(R)];
     }
     case 'carpet-run': {
       // Encounters rev 4 (lab only; docs/design/v3-ch3-sowers.md): Sowers'
@@ -1176,10 +1176,6 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'blackout': {
-      if (s.op === 'shell') {
-        addPickup(g, 'starshell', c.x + rng.range(-170, 170), c.y - 190, undefined, 'event');
-        return;
-      }
       launchPlane(g, { at: g.waveT, kind: 'stealthJet', base: -1, side: s.k % 2 ? -1 : 1 });
       sent(ev, 'stealthJet');
       return;

@@ -28,7 +28,7 @@ const setup = (policy: ConvoyPolicy, obligation: ConvoySetup['obligation'] = 'fi
  *  back, sailed for `seconds`. */
 function lab(map: Parameters<typeof createGame>[0], policy: ConvoyPolicy, seconds = 20, obligation: ConvoySetup['obligation'] = 'fixed'): Game {
   const g = createGame(map, 4, 1);
-  // (Sowers' Reach's Hold is automatic since log v66, with no button: these tests
+  // (Sowers' Reach's Hold is automatic since log v68, with no button: these tests
   // of the command put it back with the lab's `tune.hold`.)
   applyConvoy(g, { ...setup(policy, obligation), ...(map === 'sowers' ? { tune: { hold: true } } : {}) });
   logTelemetry(g, { id: 'convoy-test', build: 'test', v: LOG_VERSION, firstWave: 1, device: { w: 0, h: 0, dpr: 1, touch: false, ua: 'test' } }, 'sim', 'test');

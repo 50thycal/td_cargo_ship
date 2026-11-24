@@ -208,7 +208,7 @@ describe('resume a run in progress', () => {
     expect(draft.save.phase).toBe('draft');
   });
 
-  it('a map card with the convoy\'s Hold (?hold=1, log v66: Sowers\' own Hold is automatic) continues, its commands and all', () => {
+  it('a map card with the convoy\'s Hold (?hold=1, log v68: Sowers\' own Hold is automatic) continues, its commands and all', () => {
     const card = labCard('map-sowers')!;
     const plan = labRunPlan(card, defaultSetup(card, parseLabProgress(null)), new URLSearchParams('hold=1'));
     expect(plan.convoy?.policy).toBe('tactical');

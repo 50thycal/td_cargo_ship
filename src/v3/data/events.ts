@@ -41,7 +41,7 @@ export type EventKind = 'map' | 'bonus';
 
 /** A rule an event switches on (named on its card). Most last the whole
  *  event; `noAmmoOpening` only its first phase. */
-export type EventRule = 'noAmmo' | 'noAmmoOpening' | 'hydraThree' | 'pickupRain' | 'night' | 'starShell' | 'lureAll' | 'beaconCall';
+export type EventRule = 'noAmmo' | 'noAmmoOpening' | 'hydraThree' | 'pickupRain' | 'night' | 'lureAll' | 'beaconCall';
 
 /** What the card says for each rule: the rule, never the answer to it. */
 export const RULE_TEXT: Record<EventRule, string> = {
@@ -50,7 +50,6 @@ export const RULE_TEXT: Record<EventRule, string> = {
   hydraThree: 'Hydras split into three, not two',
   pickupRain: 'Pickups rain down',
   night: 'Night',
-  starShell: 'A star shell is on the way',
   lureAll: 'Helpers chase the beacons',
   beaconCall: 'Beacons call missiles on the ship nearest them',
 };
@@ -82,7 +81,7 @@ export const EVENTS: Record<EventId, EventDef> = {
   'shield-wall': { id: 'shield-wall', kind: 'map', name: 'Shield Wall', foe: 'armored', rules: [], look: 'Armored drones from three bases joining into one block: does it read as one wall?' },
   'supply-raid': { id: 'supply-raid', kind: 'map', name: 'Supply Raid', foe: 'scavenger', rules: ['pickupRain'], look: 'Pickups raining, and drones locking the ones in their rings: fun scramble or busywork?' },
   'run-the-canal': { id: 'run-the-canal', kind: 'map', name: 'Run the Canal', foe: 'torpedoSub', also: ['attackHeli', 'armored'], rules: [], look: 'Cut down: two subs, a gunship over the bank, then a smaller armored block. Fair now?' },
-  blackout: { id: 'blackout', kind: 'map', name: 'Blackout', foe: 'stealthJet', rules: ['night', 'starShell'], look: 'The lights go out: can you still see enough on your phone?' },
+  blackout: { id: 'blackout', kind: 'map', name: 'Blackout', foe: 'stealthJet', rules: ['night'], look: 'The lights go out and stay out: can you still see enough on your phone?' },
   'carpet-run': { id: 'carpet-run', kind: 'map', name: 'Carpet Run', foe: 'stealthBomber', rules: [], look: 'Three bombers abreast across the lane: big enough to feel like an event?' },
   'dive-circus': { id: 'dive-circus', kind: 'map', name: 'Dive Circus', foe: 'diveBomber', rules: [], look: 'Dives on the beat and missiles between them: does it still find a rhythm?' },
   bombardment: { id: 'bombardment', kind: 'map', name: 'Bombardment', foe: 'siege', rules: [], look: 'Three hatches taking turns, and drones in between: fair now, at night?' },
@@ -381,9 +380,9 @@ export const EV = {
    *  covers. A ring holds several pickups, so three are enough to lock most
    *  of a drop; shooting one down frees what it held. */
   'supply-raid': { drops: [8, 6], dropAt: [0, 12], scav: [3, 3], scavAt: [2.5, 13.5], apart: 0.8, swarms: 5, size: 6, every: 3.5 },
-  /** `strafers` stealth strafers, one every `every` s from alternate sides;
-   *  a star shell drops at `shellAt` s. */
-  blackout: { strafers: 8, every: 2.4, shellAt: 6 },
+  /** `strafers` stealth strafers, one every `every` s from alternate sides.
+   *  (Log v67: no star shell any more; the sea stays dark.) */
+  blackout: { strafers: 8, every: 2.4 },
   /** `passes` vees of three stealth bombers, `gap` s apart, across `spread`
    *  of the lane's half-width; `hp` hits each (the design's "six hits
    *  each, three at once"). */

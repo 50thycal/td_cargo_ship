@@ -261,7 +261,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch3-sowers.md
   sowers: {
-    problem: 'Mines drift down across the lane on the current, from three chutes on the far shore and from stealth bombers that sow them just ahead of the ships: a ship cannot steer round one and one sinks it, so each must be shot before a ship stops short of it by itself (log v66: the Hold is automatic), while the shells, missiles and swarms keep coming, most of all at the middle of the lane, where the middle chute\'s curtains cross and a held convoy sits still.',
+    problem: 'Mines drift down across the lane on the current, from three chutes on the far shore and from stealth bombers that sow them just ahead of the ships: a ship cannot steer round one and one sinks it, so each must be shot before a ship stops short of it by itself (log v68: the Hold is automatic), while the shells, missiles and swarms keep coming, most of all at the middle of the lane, where the middle chute\'s curtains cross and a held convoy sits still.',
     // The fire is mines in strings and curtains across the lane (one hit
     // each, but every one in a ship's way must go), sown by stealth bombers
     // just ahead of the ships, and swarms and clusters at the lead ship in
@@ -277,7 +277,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
     // chapter 3's draft.
     counters: ['tesla', 'flak', 'shield'],
     offCounter: ['seeker', 'shrapnel', 'fullSteam'],
-    convoy: 'The map\'s own convoy at the campaign\'s schedule, with no command (log v66): pairs west to east down one lane under the three chutes, past the carrier in the middle, delivering in the east under the silos over the east end; a ship whose course would put it on a mine stops by itself just short of it, until the mine is shot or has drifted past, at the cost of sitting still under the rest of the wave.',
+    convoy: 'The map\'s own convoy at the campaign\'s schedule, with no command (log v68): pairs west to east down one lane under the three chutes, past the carrier in the middle, delivering in the east under the silos over the east end; a ship whose course would put it on a mine stops by itself just short of it, until the mine is shot or has drifted past, at the cost of sitting still under the rest of the wave.',
     stretches: { danger: 'middle', safe: 'early' },
     boss: {
       plan: 'The Carpet Run sowing: vees of three stealth bombers across the lane (2, 3, then 3; 8, 8 and 7 s apart; 3 hits each), each sowing 3 mines just ahead of the convoy in place of its missiles (the event sends 2 vees, 11 s apart, dropping guided missiles, every round), with mines off the chutes (3, 3, then 6), 3 shells from the east silo and guided missiles from the enemy\'s bank in the south-east (1, 1, then 2) at the lead ship (encounters rev 4, MAP_BOSS; lab only). Rising below the asked 1.5 / 2 / 2.5 a round on the bot, as on the Battery, to keep the win rate up.',
@@ -340,7 +340,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch3-lantern.md
   lantern: {
-    problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
+    problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp lights it (it is always dark), and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
     // The fire comes out of the dark bank behind the ships on the shortest
     // flights on the map (shells, missiles, clusters, swarms), with siege
     // guns rising there whose shells no interceptor can stop. The
@@ -389,7 +389,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch4-citadel.md (chapter 4's last map and the game's)
   citadel: {
-    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map; from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then more on the Citadel to silence it for the wave, or every shot on what is coming?',
+    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map until the Citadel itself is destroyed (once: it stays a ruin until the boss rebuilds it); from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then the Citadel\'s seventy shots across the waves, or every shot on what is coming?',
     // The fire is the Citadel's, a breath from its keep over the narrows
     // and from wave 4 shielded under its dome, and drones on the long
     // flight off the far silo; the shield rises every wave, so the

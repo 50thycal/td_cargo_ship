@@ -713,17 +713,17 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'tide', log: 66, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
-  { map: 'sowers', log: 66, tag: 'Polished', note: 'No Hold button: ships stop by themselves for a mine; mines show 1.5× sooner. Better?' },
+  { map: 'tide', log: 68, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
+  { map: 'sowers', log: 68, tag: 'Polished', note: 'No Hold button: ships stop by themselves for a mine; mines show 1.5× sooner. Better?' },
+  { map: 'citadel', log: 67, tag: 'Polished', note: 'Destroyed once (~70 shots), a ruin till the boss rebuilds it; new look. Better?' },
+  { map: 'dreadnought', log: 67, tag: 'Polished', note: 'Three gun turrets fire the artillery: shoot them out. Silo for missiles. Less lame?' },
+  { map: 'lantern', log: 67, tag: 'Polished', note: 'Always dark, no star shells; a new lighthouse, beam and lamp. Readable on a phone?' },
+  { map: 'battery', log: 67, tag: 'Polished', note: 'The Blackout boss is always dark now (no star shell). Can you still read it?' },
   { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
-  { map: 'citadel', log: 60, tag: 'New', note: 'The finale: the shield rises every wave; fire under the dome can\'t be shot. Break it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
   { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
   { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
-  { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
-  { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },
-  { map: 'battery', log: 45, tag: 'New', note: 'Shells and heavies go for your shore guns; wave 3 smoothed; jets dark from wave 4. Fair?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },
   { map: 'behemoth', log: 34, tag: 'Polished', note: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike. Shield no help?' },

@@ -228,7 +228,7 @@ try {
   // current, stealth bombers that sow them, and the Carpet Run ----
   await open(page, 'lab=map-sowers&seed=7');
   const sw = await page.evaluate(() => ({ map: window.__v3.game().map.id, rev: window.__v3.game().enc?.setup.rev, cmds: [...document.querySelectorAll('.v3-command')].map((b) => b.dataset.command) }));
-  check(sw.map === 'sowers' && sw.rev === ENCOUNTER_REV && sw.cmds.join() === '', `Sowers' Reach's card opens with its encounters and no Hold button (the Hold is automatic, log v66) (${JSON.stringify(sw)})`);
+  check(sw.map === 'sowers' && sw.rev === ENCOUNTER_REV && sw.cmds.join() === '', `Sowers' Reach's card opens with its encounters and no Hold button (the Hold is automatic, log v68) (${JSON.stringify(sw)})`);
   await labMenu(page);
   const swArc = await page.evaluate(() => document.querySelector('.v3-enc-arc')?.textContent ?? '');
   check(/Boss rounds: Carpet Run/.test(swArc), `Sowers' Reach's script names its boss, the Carpet Run (${swArc})`);
@@ -511,7 +511,7 @@ try {
     await one.screenshot({ path: `${OUT_DIR}/tide-boss.png` });
     await one.close();
   }
-  // The tide turning (log v66, the player: "the whole water should pull back
+  // The tide turning (log v68, the player: "the whole water should pull back
   // ... the ships left in the low tide are just stuck until the next high
   // tide ... slower too"): wave 1 played through its ebb at the phone's own
   // size, shots at high water with ships on both lanes, as the sea goes out
