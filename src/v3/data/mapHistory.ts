@@ -287,8 +287,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   battery: {
-    look: 'Shells and heavies go for your shore guns; dark Stealth Strafer jets from wave 4. Is wave 3 smooth now, and does the Blackout boss rise fairly?',
+    look: 'The Blackout boss is always dark now (no star shell at 6 s). Can you still read the jets and the shore guns in the dark on your phone?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 67,
+        title: 'Blackout is always dark',
+        what: 'The Blackout boss no longer drops a star shell: it is night for the whole round, lit only by your lamp, launch flashes and blasts. Same jets, same shells and heavies at the guns. Bot, your usual Armory, 96 seeds: wins 60% (58% before), boss rounds 0.53 / 0.67 / 0.90 (0.68 / 0.77 / 1.18).',
+        why: 'Your note: "Change the boss mode to not include that light power up. It should always be dark."',
+      },
       BUSY,
       {
         date: '2026-11-21',
@@ -338,8 +345,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   lantern: {
-    look: 'Threats are glows until the beam, your lamp or a star shell lights them; the dark bank behind you fires from close. Can you read the dark on your phone? Do the shells from behind feel fair?',
+    look: 'Always dark now: does the lighthouse (a tower, a soft beam, a turning lamp) read on your phone? Does a threat the beam finds ping? Do the shells from the dark bank behind you still feel fair without a star shell?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 67,
+        title: 'Always dark; the lighthouse, beam and lamp redone',
+        what: 'No Star Shell drops any more: the strait stays dark all wave. The lighthouse is a real tower with a lamp that turns, its beam a soft cone with a bright core, glints on the water and a pale footprint where it lands, easing as it turns at each end; your lamp is a warm pool with a ring that opens out to show where its light ends; a threat the beam finds pings once; a threat in the dark is a glow with a tail along its heading. Bot, your usual Armory, 96 seeds: wins 57% (52% before), waves 1-5 0.74 ships.',
+        why: 'Your note: "There should not be a light drop it should always be dark" and "improve the animation and look of the spot light".',
+      },
       {
         date: '2026-11-22',
         log: 52,
@@ -350,8 +364,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   dreadnought: {
-    look: 'Is the boss different enough from the battleship in the waves? Does sinking it (50 hits) feel like a real choice against shooting each broadside down?',
+    look: 'Do the three gun turrets read as targets, and is shooting them out (4 hits each) worth the ammo against the shells they fire? Does the silo opening before a missile or drone launch read? Does the battleship look and move like a real one now?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 67,
+        title: 'The battleship fires from gun turrets you can shoot out',
+        what: 'The Dreadnought is redrawn as a real battleship: flared bow, bow wave and wake, conning tower with a turning radar, funnels smoking, three gun turrets that train on your ships, fire with a flash and a puff of smoke and slide back on recoil. Its artillery shells now come only from those turrets, one at a time, and each turret takes 4 hits to shoot out (it burns and fires no more). Missiles and drones launch from a silo aft whose hatches open before every launch. Under the encounter layer; the campaign battleship is drawn the same but fires as before. Bot, your usual Armory, 192 seeds: wins 61% (68% before), waves 1-5 0.55 ships, boss rounds 0.79 / 1.59 / 1.19.',
+        why: 'Your notes: "The ship is lame. Have it actually use the targets where the shot artillery and you can take out the targets. You can still have it launch missiles and drones too, just make the missile look like it has a silo for that" and "improve that dreadnought ship and improve the look and animation".',
+      },
       {
         date: '2026-11-22',
         log: 51,
@@ -410,8 +431,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   citadel: {
-    look: 'Is opening the Citadel a real choice, or always right (the bot opens it almost every wave)? Can you read the GRAND SALVO warning? Is it a finale?',
+    look: 'Is the Citadel destroyed once (about 70 shots over the waves, the shield rising each wave until it falls) and a ruin after? Does THE CITADEL RETURNS read at the boss, and is the Last Stand a finale (grand salvo lock-on, final collapse)? Does the dome still matter before it falls?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 67,
+        title: 'Destroyed once, back for the boss; new dome, generators, keep',
+        what: 'The Citadel is destroyed once: the shield still rises each wave until it falls, the Citadel keeps what it has been dealt from wave to wave (70 shots in all), and once down it and its generators stay down, a smoking ruin, its fire off the far silos, until the boss rebuilds it. Two of a wave\'s launches a wave (one before) come off it under the dome from wave 4, so the dome matters while it stands. New look: a hex-lattice dome with a sweeping band, a pulse every few seconds, ripples where a shot is turned away, flicker as generators fall and a shatter when the last goes; each generator charges up and feeds the keep along a lightning tether; the keep is a star fort with turning radar, bastion ports and an iris over its silo that opens for a salvo; it falls in a chain of explosions. For the boss the Citadel is rebuilt (blueprint, walls rising under welding sparks, the dome closing, "THE CITADEL RETURNS"); each grand salvo is announced by rings closing on the keep and a line to the lead ship, and the last Citadel of the game falls longest. Bot, your usual Armory, 192 seeds: wins 60% (51% before), waves 1-5 0.98 ships, boss rounds 0.42 / 1.05 / 2.38; the Citadel falls in wave 4 for 38% of runs, wave 5 for 71%, wave 6 for 88% (dome fire is 8% / 13% of what shows in waves 4 / 5, 3% over waves 4-10, 45% in the boss).',
+        why: 'Your note: "It was down in wave 4, it should really only be destroyed once, but it will come back for the boss wave. It should also be better looking and have more unique animations." (Boss rated 3.)',
+      },
       {
         date: '2026-11-22',
         log: 60,

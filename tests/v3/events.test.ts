@@ -330,23 +330,23 @@ describe('event rules: on for the event, off after', () => {
     const g = eventGame('drone-storm');
     expect(hasRule(g, 'noAmmo')).toBe(true);
     const w: Record<string, number> = { ammo: 40, repair: 20 };
-    eventDropWeights(g, w, 16);
+    eventDropWeights(g, w);
     expect(w.ammo).toBe(0);
     expect(w.repair).toBe(20);
     g.event = null;
     const w2: Record<string, number> = { ammo: 40 };
-    eventDropWeights(g, w2, 16);
+    eventDropWeights(g, w2);
     expect(w2.ammo).toBe(40);
   });
 
-  it('Blackout: night (and star shells in the drops) while it runs, and a star shell drops', () => {
+  it('Blackout: night while it runs, always dark: no star shell in the drops, none drops (log v67)', () => {
     const g = eventGame('blackout');
     expect(hasRule(g, 'night')).toBe(true);
     const w: Record<string, number> = { starshell: 0 };
-    eventDropWeights(g, w, 16);
-    expect(w.starshell).toBe(16);
-    run(g, EVENT.breather + 8, () => g.pickups.some((p) => p.kind === 'starshell'));
-    expect(g.pickups.some((p) => p.kind === 'starshell')).toBe(true);
+    eventDropWeights(g, w);
+    expect(w.starshell).toBe(0);
+    run(g, EVENT.breather + 14);
+    expect(g.pickups.some((p) => p.kind === 'starshell')).toBe(false);
   });
 
   it('Siren Field: every helper chases a beacon, however far; not after the event', () => {
@@ -509,7 +509,7 @@ describe('the play log', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : 'quit');
-    expect(log.v).toBe(65);
+    expect(log.v).toBe(67);
     expect(log.events).toHaveLength(1);
     const e = log.events![0];
     expect(e.id).toBe('drone-storm');

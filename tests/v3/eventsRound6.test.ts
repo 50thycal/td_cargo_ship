@@ -61,12 +61,12 @@ describe('no Nuke in any special event ("no nukes for these special events")', (
     for (const id of EVENT_ORDER) {
       const g = eventGame(id);
       const w: Record<string, number> = { ...PICKUPS.weights, nuke: 50 };
-      eventDropWeights(g, w, 16);
+      eventDropWeights(g, w);
       expect(w.nuke, id).toBe(0);
     }
     const g = createGame('kesh', 1, 5);
     const w: Record<string, number> = { ...PICKUPS.weights };
-    eventDropWeights(g, w, 16);
+    eventDropWeights(g, w);
     expect(w.nuke).toBe(PICKUPS.weights.nuke);
   });
 

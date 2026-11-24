@@ -192,11 +192,11 @@ describe('the three chapter finales', () => {
     const g = eventGame('breakout', 2);
     const w: Record<string, number> = { ammo: 40, repair: 10 };
     run(g, EVENT.breather + 2);
-    eventDropWeights(g, w, 0);
+    eventDropWeights(g, w);
     expect(w.ammo).toBe(0);
     run(g, EV.breakout.open);
     const w2: Record<string, number> = { ammo: 40 };
-    eventDropWeights(g, w2, 0);
+    eventDropWeights(g, w2);
     expect(w2.ammo).toBe(40);
     const seen = firstRun(g);
     for (const k of ['drone', 'sprinter', 'hydra', 'rocketTruck'] as ThreatKind[]) expect(seen.has(k), k).toBe(true);
@@ -387,7 +387,7 @@ describe('determinism and replay', () => {
       step(g, DT);
     }
     const log = rec.finish(g.phase === 'won' ? 'won' : g.phase === 'lost' ? 'lost' : 'quit');
-    expect(log.v).toBe(65);
+    expect(log.v).toBe(67);
     expect(log.events!.length).toBeGreaterThanOrEqual(1);
     expect(log.events![0].id).toBe('beacon-strike');
     const again = replay(log);

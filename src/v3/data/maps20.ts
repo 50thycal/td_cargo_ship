@@ -395,7 +395,7 @@ const rigs: MapDef = {
 // 14. The Black Strait — night, and a lighthouse beam.
 // Night: threats show only as a faint engine glow until they are lit by the
 // lighthouse's sweeping beam, the carrier's own lamp, or a launch flash, so
-// warnings are shorter. A new pickup, the Star Shell, lights an area for 5 s.
+// warnings are shorter. It is always dark (log v67: no Star Shell drops).
 const LANTERN_BASES: BaseDef[] = [
   { x: 250, y: 95, kinds: ['drone', 'guided'] },
   { x: 650, y: 90, kinds: ['ballistic', 'supersonic'] },
@@ -407,7 +407,7 @@ const LANTERN_BASES: BaseDef[] = [
 const lantern: MapDef = {
   id: 'lantern',
   name: 'The Black Strait',
-  blurb: 'Night. Threats are a faint glow until the lighthouse beam sweeps over them. Watch the light, and fire Star Shells into the dark.',
+  blurb: 'Night, always. Threats are a faint glow until the lighthouse beam sweeps over them. Watch the light.',
   land: [
     { side: 'enemy', points: shore('top', 140, 13, 1.9) },
     { side: 'friendly', points: closeBottom(smooth([{ x: 0, y: 790 }, { x: 300, y: 800 }, { x: 500, y: 772 }, { x: 610, y: 712 }, { x: 680, y: 694 }, { x: 760, y: 750 }, { x: 900, y: 792 }], 8)) },

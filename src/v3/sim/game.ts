@@ -42,6 +42,7 @@ import {
   type PowerKind,
   type ThreatKind,
   BOSS,
+  TURRET,
   FASTBOAT,
   LOCK,
   MINE,
@@ -308,6 +309,13 @@ export interface Threat {
    *  its next broadside. */
   along?: number;
   fireT?: number;
+  /** Log v67 (Dreadnought Pass, TURRET): a gun turret's ship (`from`), place
+   *  on its hull (`slot`), where its barrel points (`rot`, radians) and the
+   *  game second it, or the silo, last fired (`shotT`; the drawing's recoil,
+   *  muzzle flash and hatches). */
+  slot?: number;
+  rot?: number;
+  shotT?: number;
   /** Log v51 (Dreadnought Pass, lab only): its pass's own numbers
    *  (data/encounters.ts DreadPass), and seconds left on station while it
    *  heaves to. */
@@ -965,6 +973,10 @@ export interface Game {
   posts: PostState[];
   /** Bases whose rig or Citadel has been destroyed (they launch no more). */
   baseDown: boolean[];
+  /** Log v67 (The Citadel; the drawing's timeline, nothing in the sim reads
+   *  it): the game seconds the Citadel last fell, the shield last dropped
+   *  and was last raised (or rebuilt). */
+  cit: { fellAt: number; domeDownAt: number; domeUpAt: number };
   /** The wave the Dreadnought last sailed in. */
   bossWave: number;
   /** The Black Strait: seconds left of a Star Shell's light. */
@@ -1169,6 +1181,7 @@ export function createGame(mapId: MapId, seed: number, firstWave = 1, tempo: Tem
     lockState: [],
     posts: [],
     baseDown: [],
+    cit: { fellAt: -99, domeDownAt: -99, domeUpAt: -99 },
     bossWave: 0,
     flareT: 0,
     boost: null,
@@ -1241,8 +1254,12 @@ function startWave(g: Game): void {
   }
   g.waveSpeed = spec.speed;
   // Log v60 (The Citadel, SHIELD_RISES): the shield is raised again for
-  // every wave, and a silenced Citadel manned again.
-  if (shieldRises(g)) raiseShield(g, CITADEL.generator, CITADEL.citadel);
+  // every wave. Log v67 (the player: "it was down in wave 4, it should
+  // really only be destroyed once, but it will come back for the boss
+  // wave"): until the Citadel falls; once it has, it and its generators
+  // stay down for the rest of the waves, and only the boss rebuilds them
+  // (sim/events.ts lastStand).
+  if (shieldRises(g) && !citadelDown(g)) raiseShield(g, CITADEL.generator, CITADEL.citadel);
   const only = g.enc?.setup.only;
   const version = setupVersion(g.enc?.setup);
   const authored = g.enc ? encountersFor(g.map.id, g.wave, version, g.enc.setup.rev).filter((e) => !only || only.includes(e.id)) : [];
@@ -5893,6 +5910,7 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   generator: 0,
   citadel: 0,
   dreadnought: 0,
+  turret: 0,
   // The enemy build: drones and missiles speed up with the wave like their
   // kin; platforms and aircraft barely.
   sprinter: 1,
@@ -5966,6 +5984,12 @@ function launch(g: Game, l: Launch): void {
     // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
     // first wave everything the Citadel fires leaves under its dome.
     if (base.core && (l.dome || !!signatureOf(g.map.id, g.wave, g.enc?.setup)?.dome)) th.dome = true;
+    // Log v67 (the drawing's salvo: the keep's hatches, its flash): when the
+    // Citadel last launched.
+    if (base.core) {
+      const keep = g.threats.find((t) => t.kind === 'citadel' && t.base === l.base && !t.dead);
+      if (keep) keep.shotT = g.t;
+    }
     if (l.aim) aimBeat(g, th, l.aim, l.inLane);
     if (l.called) th.called = true;
     if (l.paired) th.paired = true;
@@ -6442,6 +6466,7 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   th.age += dt;
   if (isStructure(th.kind)) {
     if (th.kind === 'dreadnought') updateBoss(g, th, dt);
+    else if (th.kind === 'turret') updateTurret(g, th, dt);
     else if (th.tow !== undefined) updateTow(g, th, dt);
   } else if (th.kind === 'mine') {
     updateMine(g, th, dt);
@@ -7554,9 +7579,10 @@ export function worthShooting(g: Game, list: Threat[]): Threat[] {
   // a few hits on the way in, before it stands; and in the Rig Barrage the
   // rigs are the boss, each firing volleys until it is brought down.
   const barrage = !!g.event && g.event.id === 'dive-circus' && (g.enc?.setup.rev ?? 0) >= 4 && g.map.id === 'rigs';
-  const strikers = live.filter((t) => !isStructure(t.kind) || t.tow !== undefined || (barrage && t.kind === 'rig'));
+  // (Log v67: a Dreadnought's gun turret is a target like a launcher: worth a shot while it fires.)
+  const strikers = live.filter((t) => !isStructure(t.kind) || t.tow !== undefined || t.kind === 'turret' || (barrage && t.kind === 'rig'));
   const rail = !!held(g, 'railgun');
-  const structures = live.filter((t) => isStructure(t.kind) && t.tow === undefined && !(barrage && t.kind === 'rig') && hittable(g, t));
+  const structures = live.filter((t) => isStructure(t.kind) && t.kind !== 'turret' && t.tow === undefined && !(barrage && t.kind === 'rig') && hittable(g, t));
   if (rail) return [...strikers, ...structures];
   if (strikers.length) return strikers;
   return g.overdriveT > 0 || g.ammo >= g.stats.rack - 1 ? structures : [];
@@ -7591,6 +7617,11 @@ export function domed(g: Game, th: Threat): boolean {
   return !!th.dome && !!s && !th.dead && dist(th.x, th.y, s.x, s.y) <= s.r && shieldUp(g);
 }
 
+/** Log v67: has the Citadel fallen (and not been rebuilt)? */
+export function citadelDown(g: Game): boolean {
+  return g.map.bases.some((b, i) => !!b.core && g.baseDown[i]);
+}
+
 /** Log v60 (SHIELD_RISES): does this run raise the Citadel's shield again
  *  every wave (the map card under its encounter layer)? */
 export function shieldRises(g: Game): boolean {
@@ -7603,20 +7634,32 @@ export function shieldRises(g: Game): boolean {
  *  generators and the Citadel still standing keep what they have. */
 export function raiseShield(g: Game, gen: number, core: number): boolean {
   let rose = false;
+  let returned = false;
   g.map.bases.forEach((b, i) => {
     const kind: ThreatKind | null = b.generator ? 'generator' : b.core ? 'citadel' : null;
     if (!kind) return;
-    if (g.threats.some((t) => !t.dead && t.kind === kind && t.base === i)) return;
+    const standing = g.threats.find((t) => !t.dead && t.kind === kind && t.base === i);
+    if (standing) {
+      // Log v67: one still up for the boss round is brought down to the
+      // round's own numbers (a Citadel worn down over the waves keeps what
+      // is left of its 70, up to the round's).
+      const cap = kind === 'generator' ? gen : core;
+      if (standing.hp > cap) standing.hp = cap;
+      if ((standing.maxHp ?? Infinity) > cap) standing.maxHp = cap;
+      return;
+    }
     g.baseDown[i] = false;
     const th = structure(g, kind, b.x, b.y, kind === 'generator' ? gen : core, i);
     th.maxHp = th.hp;
     g.threats.push(th);
     if (g.tel) g.tel.spawn(g, th, 'structure');
     addFx(g, 'emp', b.x, b.y, { life: 0.8, r: kind === 'citadel' ? 90 : 46 });
+    if (kind === 'citadel') returned = true;
     rose = true;
   });
   const s = g.map.shield;
-  if (rose && s) addFx(g, 'text', s.x, s.y - s.r - 18, { life: 2.2, text: 'SHIELD RAISED' });
+  if (rose) g.cit.domeUpAt = g.t;
+  if (rose && s) addFx(g, 'text', s.x, s.y - s.r - 18, { life: 2.6, text: returned ? 'THE CITADEL RETURNS' : 'SHIELD RAISED' });
   return rose;
 }
 
@@ -7625,6 +7668,7 @@ const STRUCTURE_DOWN: Partial<Record<ThreatKind, string>> = {
   generator: 'GENERATOR DOWN',
   citadel: 'CITADEL SILENCED',
   dreadnought: 'DREADNOUGHT SUNK',
+  turret: 'TURRET DOWN',
 };
 
 /** A structure falls: its base launches no more, and it goes up in a big
@@ -7636,6 +7680,8 @@ function structureDown(g: Game, th: Threat): void {
   addFx(g, 'boom', th.x, th.y, { life: 1.2, r: 70 });
   addFx(g, th.kind === 'dreadnought' ? 'sink' : 'burst', th.x, th.y, { life: 1.4, r: 60 });
   const shieldFalls = th.kind === 'generator' && !shieldUp(g) && !!g.map.shield;
+  if (shieldFalls) g.cit.domeDownAt = g.t;
+  if (th.kind === 'citadel') g.cit.fellAt = g.t;
   const label = shieldFalls ? 'SHIELD DOWN' : th.tow !== undefined ? 'TOW SUNK' : STRUCTURE_DOWN[th.kind] ?? 'DESTROYED';
   cue(g, 'structure.down', th.x, th.y);
   if (shieldFalls) cue(g, 'shield.down', th.x, th.y);
@@ -7663,6 +7709,20 @@ export function launchBoss(g: Game, pass?: DreadPass): Threat {
   }
   g.threats.push(th);
   if (g.tel) g.tel.spawn(g, th, 'structure');
+  // Log v67 (under the encounter layer): its artillery is three turrets on
+  // the deck, targets the player can shoot out.
+  if (pass) {
+    const every = turretEvery(pass);
+    TURRET.slots.forEach((_, i) => {
+      const t = structure(g, 'turret', th.x, th.y, TURRET.hp);
+      t.from = th.id;
+      t.slot = i;
+      t.rot = Math.PI;
+      t.fireT = (pass.first ?? BOSS.firstShot) + (i * every) / TURRET.slots.length;
+      g.threats.push(t);
+      if (g.tel) g.tel.spawn(g, t, 'structure');
+    });
+  }
   g.events.push({ kind: 'boss' });
   cue(g, 'boss.horn', p.x, p.y);
   return th;
@@ -7703,10 +7763,17 @@ function updateBoss(g: Game, th: Threat, dt: number): void {
   th.fireT = (th.fireT ?? BOSS.every) - dt;
   if (th.fireT > 0 || th.x > VIEW.width - 40 || th.x < 40) return;
   th.fireT = P?.every ?? BOSS.every;
-  const kinds: readonly ThreatKind[] = P?.broadside ?? BOSS.broadside;
-  const apart = kinds.length > 3 ? 40 : 60;
+  // Log v67 (under the layer): the artillery shells come off the turrets
+  // (updateTurret); the silo launches the rest, its hatches already open.
+  const kinds: readonly ThreatKind[] = (P?.broadside ?? BOSS.broadside).filter((k) => !P || k !== 'ballistic');
+  if (P && !kinds.length) return;
+  const apart = P ? 16 : kinds.length > 3 ? 40 : 60;
+  const sx = P ? th.x + Math.cos(th.heading) * TURRET.silo : th.x;
+  const sy = P ? th.y + Math.sin(th.heading) * TURRET.silo : th.y;
+  if (P) th.shotT = g.t;
   kinds.forEach((kind, k) => {
-    const m = spawnThreat(g, kind, th.x + (k - (kinds.length - 1) / 2) * apart, th.y, 'base');
+    const off = (k - (kinds.length - 1) / 2) * apart;
+    const m = spawnThreat(g, kind, P ? sx + Math.cos(th.heading) * off : th.x + off, P ? sy + Math.sin(th.heading) * off : th.y, 'base');
     m.from = th.id;
     if (P) {
       m.parent = 'dreadnought';
@@ -7719,7 +7786,53 @@ function updateBoss(g: Game, th: Threat, dt: number): void {
       } else if (P.aim) aimBeat(g, m, P.aim);
     }
   });
-  addFx(g, 'launch', th.x, th.y, { life: 0.6, r: 40 });
+  addFx(g, 'launch', sx, sy, { life: 0.6, r: P ? 30 : 40 });
+  cue(g, 'boss.broadside', sx, sy);
+}
+
+/** Seconds between one turret's shells on a pass (TURRET.slow x its broadside
+ *  cadence; a glimpse, the first wave's teaching pass, three times slower; a
+ *  boss round's battleship, heaving to on station, TURRET.bossQuick x faster). */
+function turretEvery(P: DreadPass | undefined): number {
+  return (P?.every ?? BOSS.every) * TURRET.slow * (P?.turn !== undefined ? 3 : 1) * (P?.hold ? TURRET.bossQuick : 1);
+}
+
+/** Log v67 (Dreadnought Pass, TURRET): a gun turret rides its ship's deck,
+ *  trains on the ship nearest it, and fires an artillery shell (a ballistic
+ *  missile, aimed as the pass aims its broadsides) every `slow` x the pass's
+ *  cadence, off its own clock. Shot out, it fires no more; the ship sunk or
+ *  gone, it goes with it. */
+function updateTurret(g: Game, th: Threat, dt: number): void {
+  const ship = g.threats.find((t) => t.id === th.from && t.kind === 'dreadnought');
+  if (!ship || ship.dead) {
+    th.dead = true;
+    return;
+  }
+  const lx = TURRET.slots[th.slot ?? 0];
+  th.x = ship.x + Math.cos(ship.heading) * lx;
+  th.y = ship.y + Math.sin(ship.heading) * lx;
+  th.heading = ship.heading;
+  // Train on the nearest ship (the carrier when none sails).
+  const pool = targetable(g);
+  let want = th.rot ?? ship.heading;
+  if (pool.length) {
+    const near = pool.reduce((a, b) => (dist(b.x, b.y, th.x, th.y) < dist(a.x, a.y, th.x, th.y) ? b : a));
+    want = Math.atan2(near.y - th.y, near.x - th.x);
+  }
+  th.rot = (th.rot ?? ship.heading) + clamp(angleDiff(want, th.rot ?? ship.heading), -TURRET.turn * dt, TURRET.turn * dt);
+  th.fireT = Math.max(0, (th.fireT ?? 0) - dt);
+  if (th.fireT > 0 || th.x > VIEW.width - 40 || th.x < 40) return;
+  const P = ship.dread;
+  th.fireT = turretEvery(P);
+  th.shotT = g.t;
+  const mx = th.x + Math.cos(th.rot) * 30;
+  const my = th.y + Math.sin(th.rot) * 30;
+  const m = spawnThreat(g, 'ballistic', mx, my, 'base');
+  m.from = ship.id;
+  m.parent = 'dreadnought';
+  if (P?.aim) aimBeat(g, m, P.aim);
+  th.rot = Math.atan2(m.iy - th.y, m.ix - th.x);
+  addFx(g, 'launch', mx, my, { life: 0.3, r: 14 });
   cue(g, 'boss.broadside', th.x, th.y);
 }
 
@@ -7988,13 +8101,15 @@ const BOOSTED_POWERS: [PowerKind, AbilityId][] = [['overdrive', 'overdrive'], ['
 
 /** A kill drops a power-up, picked by PICKUPS.weights. */
 function dropPickup(g: Game, x: number, y: number): void {
-  const base = g.map.night ? { ...PICKUPS.weights, starshell: PICKUPS.starshellWeight } : PICKUPS.weights;
+  // Log v67 (the player: "there should not be a light drop it should always be
+  // dark"): the Black Strait and Blackout drop no Star Shell.
+  const base = PICKUPS.weights;
   // The Nuke: not before wave nukeFrom, and one on the water at a time.
   const w = g.wave < PICKUPS.nukeFrom || g.pickups.some((p) => p.kind === 'nuke') ? { ...base, nuke: 0 } : { ...base };
   // The power-ups that became boosts leave the drops once their boost is
   // live (Free Play: now, so it plays the plan's rules).
   for (const [k, id] of BOOSTED_POWERS) if (g.freePlay || ROSTER[id].status === 'live') w[k] = 0;
-  eventDropWeights(g, w, PICKUPS.starshellWeight);
+  eventDropWeights(g, w);
   let roll = g.rng.drops.next() * PICKUP_KINDS.reduce((a, k) => a + w[k], 0);
   let kind: PowerKind = 'ammo';
   for (const k of PICKUP_KINDS) {
@@ -8188,6 +8303,7 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   generator: 'structure.down',
   citadel: 'structure.down',
   dreadnought: 'structure.down',
+  turret: 'structure.down',
   // The enemy build.
   sprinter: 'kill.small',
   hydra: 'kill.missile',
@@ -8324,6 +8440,8 @@ export function reticleVisible(g: Game, th: Threat): boolean {
 
 /** Seconds until a threat reaches what it is aimed at (bot + UI warnings). */
 export function timeToImpact(g: Game, th: Threat): number {
+  // Log v67: a gun turret is as urgent as its next shell is near.
+  if (th.kind === 'turret') return (th.fireT ?? 9) + 3;
   if (isStructure(th.kind)) return 99;
   // Inside a standing radar's sweep it flies slowed (log v29): the time
   // left as if it stays slowed (the bots and the warnings read it).
