@@ -54,6 +54,22 @@ also hides nukes and other power-ups).
 Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave clips (`convoy-real`, `railgun`,
 `arsenal`) when a post should say "this is a natural wave".
 
+## Why some clips still hitch (and what helps)
+
+Headless Chromium's frame capture drops about a quarter of a second of frames now and then. Measured: the game itself
+renders every frame; the stalls are in the capture. What the pipeline does about it, in order of effect:
+
+1. A hidden rehearsal in the same page before the clip starts (studio scenes), so the first draw of each enemy type, drop
+   and weapon is paid off camera. This removed most of them.
+2. Frames go on an even 1/60 s grid (the capture's own timestamps jitter), and the game gets an even 60 Hz clock, so the
+   game takes one physics step per frame like a phone display.
+3. Short holes (under 100 ms) are filled by motion interpolation. Long ones are held: interpolation cannot span fast movement
+   and a wrong fill looks like an object jumping, which is worse than a short hold.
+4. Takes are scored on the stalls that land inside the finished clip, and the smoothest is kept.
+
+A few short freezes can remain in the busiest seconds. For a perfectly smooth result, screen-record the real game on an
+iPhone and use this tool's captions and cuts on that footage.
+
 ## Cuts and trims
 
 `t.cuts.push([from, to])` takes a stretch out of the video and moves later captions up to match (the convoy scene

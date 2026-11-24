@@ -120,6 +120,25 @@ const state = (page) =>
 /** Counts real threats taken down (gone from play) so a clip can prove its shots hit. */
 async function installCounter(page) {
   await page.addInitScript(() => {
+    // An even 60 Hz clock for the game. Its loop adds the time since the last frame to an accumulator and takes a fixed
+    // 1/60 s step each time it passes one; on a real phone display that is one step per frame, but headless Chromium's
+    // frame timestamps wobble by a fraction of a millisecond, and every wobble gives a frame with no step (everything
+    // freezes) followed by one with two (everything jumps). Reporting exact 1/60 s frame times (a hair over, so float
+    // rounding can never fall short) makes it one step per frame, like a real display.
+    {
+      const orig = window.requestAnimationFrame.bind(window);
+      const STEP = 1000 / 60 + 0.003;
+      let virt = 0;
+      let lastReal = -1;
+      window.requestAnimationFrame = (cb) =>
+        orig((t) => {
+          if (t !== lastReal) {
+            lastReal = t;
+            virt = virt ? virt + STEP : t;
+          }
+          cb(virt);
+        });
+    }
     const seen = new Set();
     let prev = new Set();
     window.__vc = { kills: 0, seen: 0, log: [], dt: [] };
@@ -275,6 +294,9 @@ const studioOffer = (page, id) =>
     const gm = window.__v3.game();
     gm.offer = [id, ...gm.offer.filter((x) => x !== id)].slice(0, 3);
   }, id);
+/** Hold a weapon with no draft (a studio rehearsal), and put it away again. */
+const studioGive = (page, id) => g(page, (id) => { const gm = window.__v3.game(); gm.levels = { ...gm.levels, [id]: 1 }; gm.slots = [id]; }, id);
+const studioTake = (page) => g(page, () => { const gm = window.__v3.game(); gm.levels = {}; gm.slots = []; gm.weapon = null; gm.pickups = gm.pickups.filter((p) => p.kind !== 'weapon'); });
 /** Drop a weapon pickup the player holds (as a kill would) at (x, y). */
 const studioDropWeapon = (page, x, y) =>
   g(page, ([x, y]) => {
@@ -332,9 +354,50 @@ const CLIPS = {
       t.maxSeconds = 75;
       await startFreePlay(page, { wave: 1, weapons: [], frequentDrops: false });
       await page.evaluate(() => (window.__onlySupplies = true));
+      await page.evaluate(() => (window.__allowWeapon = true));
       await studioBegin(page);
+      // Rehearsal, off camera: the first time the game draws something new (each enemy type, the drops, the lance) the capture
+      // drops a quarter of a second of frames, which shows as a stutter. Playing each once first, in this same page, pays that
+      // cost before the clip starts. The rehearsal runs in wave 1 with the wave held open; nothing from it is in the clip.
+      await studioGive(page, 'lance');
+      let warmLoaded = false;
+      let warmShot = 0;
+      await runTimeline(page, t, [
+        { at: 0.2, spawn: ['drone', 3] },
+        { at: 2.5, spawn: ['ballistic', 2] },
+        { at: 4.0, drop: ['ammo', 760, 330] },
+        { at: 4.5, spawn: ['supersonic', 2] },
+        { at: 5.5, weaponDrop: [740, 320] },
+        { at: 7.0, drop: ['repair', 900, 320] },
+        { at: 8.0, spawn: ['drone', 4] },
+        { at: 10.0, spawn: ['ballistic', 2] },
+        { at: 11.5, spawn: ['supersonic', 2] },
+      ], {
+        limit: 17,
+        tick: async (sec) => {
+          const w = await weaponPickup(page);
+          if (!warmLoaded && w && sec >= 6.2) {
+            await page.mouse.click(w.x, w.y);
+            await sleep(120);
+            warmLoaded = (await state(page))?.weapon != null;
+            return;
+          }
+          const s = await state(page);
+          if (s?.weapon) {
+            if (s.ammo > 0 && Date.now() - warmShot > 1100 && (await fireAt(page, s.weapon, 1))) warmShot = Date.now();
+          } else await defend(page, 1);
+        },
+      });
+      const c0 = Date.now();
+      while (sinceS(c0) < 10 && (await state(page))?.threats > 0) {
+        await defend(page, 1);
+        await sleep(140);
+      }
+      await studioTake(page);
+      await studioBegin(page);
+      await sleep(7000); // the rehearsal's notices ("weapon drop" and so on) fade out before the clip starts
       const k0 = (await kills(page)).kills;
-      t.start = t.now() + 0.4; // the setup screen fades out just before this
+      t.start = t.now() + 0.4; // a short settle before the clip's first frame
       const T = (x) => t.start + x;
       t.cues.push(
         { at: T(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
@@ -689,14 +752,36 @@ async function recordTake(browser, name, clip, take) {
     }
     await ctx.close();
     if (frames.length < 10) throw new Error('screencast produced no frames');
+    // Every frame must be exactly the viewport's size (an odd one out would stop the encoder): read each JPEG's size and drop strays.
+    const jpegSize = (b) => {
+      for (let i = 2; i < b.length - 9; ) {
+        if (b[i] !== 0xff) { i++; continue; }
+        const m = b[i + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)];
+        i += 2 + b.readUInt16BE(i + 2);
+      }
+      return [0, 0];
+    };
+    const sized = frames.filter((f) => {
+      const [w, h] = jpegSize(Buffer.from(f.data, 'base64'));
+      return w === vp.width && h === vp.height;
+    });
+    if (sized.length !== frames.length) t.notes.push(`dropped ${frames.length - sized.length} frames of the wrong size`);
+    frames.length = 0;
+    frames.push(...sized);
     frames.forEach((f, i) => {
       f.file = join(dir, 'f', `${String(i).padStart(6, '0')}.jpg`);
       writeFileSync(f.file, Buffer.from(f.data, 'base64'));
       f.data = null;
     });
     // A constant 60 fps timeline: each frame is held until the next one arrives.
+    // The game renders at an even 60 fps (its own frame timer shows it), but the capture's timestamps jitter a few
+    // milliseconds, and laying frames out by those timestamps turns the jitter into repeated frames followed by a jump.
+    // So frames go on an even 1/60 s grid, in order; only a real hole (a frame or more missing) gets extra time.
+    const FRAME = 1 / 60;
+    const holeMs = 28;
     const writeList = (arr) => {
-      const list = arr.map((f, i) => `file '${f.file}'\nduration ${(((arr[i + 1]?.ts ?? f.ts + 1 / 60) - f.ts) || 1 / 60).toFixed(5)}`).join('\n') + `\nfile '${arr.at(-1).file}'\n`;
+      const list = arr.map((f) => `file '${f.file}'\nduration ${(f.dur ?? FRAME).toFixed(6)}`).join('\n') + `\nfile '${arr.at(-1).file}'\n`;
       writeFileSync(join(dir, 'list.txt'), list);
     };
     raw = join(dir, `${name}.mkv`);
@@ -705,9 +790,22 @@ async function recordTake(browser, name, clip, take) {
     // running at 60 fps through them). A plain constant-60 fps version is made now, so takes can be judged. The kept take
     // is rebuilt with ONLY those holes filled by motion interpolation (every other frame is untouched, so nothing else
     // can smear or jump): see record().
-    const holeAt = frames.map((f, i) => (frames[i + 1] ? (frames[i + 1].ts - f.ts) * 1000 : 0)).map((ms, i) => (ms > 40 && ms < 1000 ? i : -1)).filter((i) => i >= 0);
-    t.notes.push(`capture holes over 40ms: ${holeAt.length}`);
-    t.score -= holeAt.length * 0.7; // between near-equal takes, prefer the smoother capture
+    const holeAt = frames.map((f, i) => (frames[i + 1] ? (frames[i + 1].ts - f.ts) * 1000 : 0)).map((ms, i) => (ms > holeMs && ms <= 100 ? i : -1)).filter((i) => i >= 0);
+    const longHoles = frames.filter((f, i) => frames[i + 1] && frames[i + 1].ts - f.ts > 0.1).length;
+    t.notes.push(`capture holes: ${holeAt.length} short (${holeMs}-100 ms, filled), ${longHoles} long (held)`);
+    const base = t0 / 1000;
+    const cutEnds = t.cuts.map(([, b]) => b);
+    const inClip = frames.filter((f, i) => {
+      if (!(frames[i + 1] && frames[i + 1].ts - f.ts > 0.1)) return false;
+      const x = f.ts - base; // director clock
+      if (x < t.start || x > (t.stopAt ?? Infinity)) return false;
+      return !t.cuts.some(([a, b]) => x >= a - 1 && x <= b + 3.5); // the cleared banner and draft screen are static anyway
+    }).length;
+    t.notes.push(`long holes (over 100 ms) inside the clip: ${inClip}`);
+    t.score -= holeAt.length * 0.2 + inClip * 8 + longHoles * 0.5; // between near-equal takes, prefer the smoother capture
+    // The plain version (for judging takes): even frames, and a hole simply holds the frame before it.
+    // (A hole over 100 ms is held: motion interpolation cannot span fast movement, and a wrong fill looks like a jump.)
+    frames.forEach((f, i) => (f.dur = holeAt.includes(i) || (frames[i + 1] && frames[i + 1].ts - f.ts > 0.1 && frames[i + 1].ts - f.ts < 1) ? frames[i + 1].ts - f.ts : FRAME));
     writeList(frames);
     build();
     rebuild = holeAt.length && process.env.VIDEO_FILL !== '0'
@@ -716,16 +814,20 @@ async function recordTake(browser, name, clip, take) {
           mkdirSync(hd, { recursive: true });
           const out = [];
           frames.forEach((f, i) => {
-            out.push(f);
-            if (!holeAt.includes(i)) return;
+            if (!holeAt.includes(i)) {
+              const gapS = frames[i + 1] ? frames[i + 1].ts - f.ts : 0;
+              out.push({ ...f, dur: gapS > 0.1 && gapS < 1 ? gapS : FRAME });
+              return;
+            }
+            out.push({ ...f, dur: FRAME });
             const gap = frames[i + 1].ts - f.ts;
-            const n = Math.round(gap * 60) - 1; // in-between frames a 60 fps timeline needs here
+            const n = Math.round(gap * 60) - 1; // the in-between frames a 60 fps timeline needs here
             const lst = join(hd, `${i}.txt`);
             writeFileSync(lst, `file '${f.file}'\nduration ${gap.toFixed(5)}\nfile '${frames[i + 1].file}'\nduration 0.01667\nfile '${frames[i + 1].file}'\n`);
             ffmpeg(['-f', 'concat', '-safe', '0', '-i', lst, '-vf', 'minterpolate=fps=60:mi_mode=mci:mc_mode=obmc:me_mode=bidir:me=hexbs:vsbmc=0', '-q:v', '2', join(hd, `${i}-%03d.jpg`)]);
             for (let k = 1; k <= n; k++) {
               const file = join(hd, `${i}-${String(k + 1).padStart(3, '0')}.jpg`); // output 1 is the frame itself
-              if (existsSync(file)) out.push({ file, ts: f.ts + k / 60 });
+              if (existsSync(file)) out.push({ file, ts: f.ts + k / 60, dur: FRAME });
             }
           });
           writeList(out);
