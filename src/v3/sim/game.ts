@@ -249,6 +249,8 @@ export interface Threat {
   bank?: number;
   /** Bomber: guided missiles still aboard, and seconds since the last drop. */
   bombs?: number;
+  /** A sowing bomber (log v70): guided missiles it drops at a ship once its mines are down. */
+  sowRack?: number;
   dropT?: number;
   /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`): a stealth bomber that
    *  sows mines ahead of the ships in place of its missiles (`bombs` is the
@@ -6183,7 +6185,7 @@ export function launchPlane(g: Game, l: Launch): void {
   th.hits = [];
   th.bombs = l.kind === 'bomber' ? PLANE.bombs : l.kind === 'stealthBomber' ? FOE.stealthBomber.bombs : 0;
   th.dropT = 99;
-  if (l.sow) sowMines(th, l.sow);
+  if (l.sow) sowMines(th, l.sow, SOW.rack);
 }
 
 /** Log v49 (The Rig Field): where an encounter's launch off rig station
@@ -6299,9 +6301,14 @@ function dockRig(g: Game, th: Threat): void {
 
 /** Log v48 (Sowers' Reach): a bomber that sows `n` mines in place of its
  *  missiles. */
-export function sowMines(th: Threat, n: number): void {
+export function sowMines(th: Threat, n: number, rack = 0): void {
   th.sow = true;
   th.bombs = n;
+  if (rack > 0) {
+    th.sowRack = rack;
+    th.hp += SOW.armor;
+    th.maxHp = th.hp;
+  }
 }
 
 /** A sowing bomber's line (log v48): along the first lane, SOW.line of its
@@ -6694,6 +6701,25 @@ function updatePlane(g: Game, th: Threat, dt: number): void {
         // Log v55: a hidden mine goes into the water with a splash under
         // the bomber, and is gone from sight until a ship comes close.
         if (m.hidden) addFx(g, 'splash', th.x, th.y, { life: 0.5, r: 16 });
+        g.origins.air -= 1;
+        g.origins.child += 1;
+      }
+    }
+    // Log v70: with its mines down, a signature bomber drops its guided
+    // missiles on the ships its mines have halted.
+    if (th.sow && (th.bombs ?? 0) <= 0 && (th.sowRack ?? 0) > 0 && th.dropT >= PLANE.dropEvery && inside >= (th.kind === 'stealthBomber' ? FOE.stealthBomber.runIn : PLANE.bomberRunIn)) {
+      const tgt = g.ships
+        .filter((s) => (r ? planeFrame(g, th, s, th.x, th.y, tx, ty, r.s).along : (s.x - th.x) * side) > 0)
+        .sort((a, b) => dist(a.x, a.y, th.x, th.y) - dist(b.x, b.y, th.x, th.y))[0];
+      if (tgt) {
+        th.sowRack! -= 1;
+        th.dropT = 0;
+        const m = spawnThreat(g, 'guided', th.x, th.y, 'air');
+        m.target = tgt.id;
+        m.parent = th.kind;
+        m.src = th.id;
+        cue(g, 'bomber.drop', th.x, th.y);
+        m.hp = 1;
         g.origins.air -= 1;
         g.origins.child += 1;
       }

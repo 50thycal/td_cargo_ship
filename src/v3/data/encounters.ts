@@ -4309,7 +4309,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Shows the map\'s mechanic on wave 1: mines drift down across the lane on the current, and the ships cannot steer round them.',
     },
     beats: [
-      { at: 0.2, kind: 'mine', count: 3, gap: 1.4, from: base(7) },
+      { at: 0.2, kind: 'mine', count: 3, gap: 0.63, from: base(7) },
       { at: 0.45, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'lead' },
     ],
     replaces: { drones: 6, extras: { mine: 2 } },
@@ -4331,7 +4331,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The mines as a curtain the convoy must pass, in place of the wave\'s own mines and its shells (a swarm, easy to kill, where the shells were).',
     },
     beats: [
-      { at: 0.25, kind: 'mine', count: 3, gap: 1.4, from: base(6) },
+      { at: 0.25, kind: 'mine', count: 3, gap: 0.63, from: base(6) },
       { at: 0.7, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
     ],
     replaces: { drones: 1, ballistic: 3, extras: { mine: 3 } },
@@ -4353,7 +4353,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The shot split: a mine and a shell in the same seconds, in place of the wave\'s own mines and most of its shells.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.4, from: base(7) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.63, from: base(7) },
       { at: 0.3, plus: 7, kind: 'ballistic', count: 2, gap: 0.8, from: base(3), aim: 'lead' },
       { at: 0.6, kind: 'drone', count: 5, gap: 0.35, from: base(2), aim: 'lead' },
     ],
@@ -4401,7 +4401,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Hold\'s cost: the ships stopped for the mines sit still for the shells, in place of the wave\'s own mines, its shells, a guided missile and its cluster.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.5, from: base(6) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.68, from: base(6) },
       { at: 0.3, plus: 8, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'mid' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(2) },
@@ -4426,8 +4426,8 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Both ends at once, in place of the wave\'s own mines, its cluster and most of its shells.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.4, from: base(5) },
-      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.63, from: base(5) },
+      { at: 0.3, kind: 'mine', count: 3, gap: 0.54, from: base(7) },
       { at: 0.3, plus: 6, kind: 'drone', count: 3, gap: 0.35, from: base(2), aim: 'lead' },
       { at: 0.5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.75, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
@@ -4452,7 +4452,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'Short warning in the danger stretch while the field crosses it, in place of the wave\'s own mines, its shells, a guided missile and its two clusters.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 3, gap: 1.2, from: base(7) },
+      { at: 0.3, kind: 'mine', count: 3, gap: 0.54, from: base(7) },
       { at: 0.3, plus: 6, kind: 'ballistic', count: 2, gap: 0.75, from: sub(1), aim: 'lead' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 8, gap: 0.35, from: base(2) },
@@ -4502,9 +4502,9 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The mechanic across the whole lane at once, in place of the wave\'s own mines, most of its shells, two guided missiles and a cluster.',
     },
     beats: [
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(5) },
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(6) },
-      { at: 0.3, kind: 'mine', count: 2, gap: 1.2, from: base(7) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.54, from: base(5) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.54, from: base(6) },
+      { at: 0.3, kind: 'mine', count: 2, gap: 0.54, from: base(7) },
       { at: 0.3, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
       { at: 0.55, kind: 'guided', count: 1, from: base(1), aim: 'mid' },
       { at: 0.15, kind: 'drone', count: 7, gap: 0.35, from: base(0), aim: 'mid' },
@@ -4530,7 +4530,7 @@ const SOWERS_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 1, plus: 1, kind: 'stealthBomber', count: 1, from: { air: -1 } },
-      { at: 1, plus: 2, kind: 'mine', count: 3, gap: 1.1, from: base(7) },
+      { at: 1, plus: 2, kind: 'mine', count: 3, gap: 0.49, from: base(7) },
       { at: 1, plus: 4, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
       { at: 1, plus: 6, kind: 'ballistic', count: 1, from: base(3), aim: 'lead' },
       { at: 1, plus: 5, kind: 'drone', count: 6, gap: 0.35, from: base(0), aim: 'rear' },

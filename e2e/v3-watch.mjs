@@ -200,7 +200,7 @@ try {
   const log = JSON.parse(readFileSync(file, 'utf8'));
   const segs = log.control?.segments ?? [];
   const cmdsC = log.commands.filter((c) => c[1] === 'c');
-  check(log.v === 69 && log.control?.mode === 'watch' && log.control.bot === 'you' && log.control.label === 'mixed', `the downloaded log: v${log.v}, mode ${log.control?.mode}, bot ${log.control?.bot}, label ${log.control?.label}`);
+  check(log.v === 70 && log.control?.mode === 'watch' && log.control.bot === 'you' && log.control.label === 'mixed', `the downloaded log: v${log.v}, mode ${log.control?.mode}, bot ${log.control?.bot}, label ${log.control?.label}`);
   check(
     segs.map((s) => s.by).join() === 'bot,player,bot' && segs[0].fromTick === 0 && segs[1].fromTick === cmdsC[0][0] && segs[2].fromTick === cmdsC[1][0] && segs[2].toTick === log.summary.steps && segs.every((s, i) => !i || s.fromTick === segs[i - 1].toTick),
     `its control segments: bot, then the player from the take-over tick, then the bot from the hand-back (${JSON.stringify(segs)})`,
