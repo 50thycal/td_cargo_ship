@@ -518,7 +518,7 @@ function fireStep(g: Game, ev: EventRun, k: number): void {
   const kb = liveBases(g, f.kind);
   const b = f.base !== undefined && !g.baseDown[f.base] ? f.base : kb[k % kb.length];
   if (b === undefined) return;
-  g.queue.push({ at: g.waveT, kind: f.kind, base: b, ...(f.aim ? { aim: f.aim } : {}) });
+  g.queue.push({ at: g.waveT, kind: f.kind, base: b, ...(f.aim ? { aim: f.aim } : {}), ...(f.boat ? { boat: f.boat } : {}) });
   g.queue.sort((x, y) => x.at - y.at);
   sent(ev, f.kind);
 }
@@ -670,7 +670,7 @@ function lowWater(g: Game, ev: EventRun, s: EventStep): void {
     return;
   }
   for (const f of up) {
-    for (let i = 0; i < f.count; i++) g.queue.push({ at: g.waveT + i * (f.gap ?? 0.35), kind: f.kind, base: f.base, aim: 'crowd' });
+    for (let i = 0; i < f.count; i++) g.queue.push({ at: g.waveT + i * (f.gap ?? 0.35), kind: f.kind, base: f.base, aim: f.aim ?? 'crowd' });
     sent(ev, f.kind, f.count);
   }
   g.queue.sort((a, b) => a.at - b.at);
@@ -837,13 +837,18 @@ function plan(g: Game, ev: EventRun): EventStep[] {
     }
     case 'escort-run': {
       // Encounters rev 4 (lab only; docs/design/v3-ch4-delta.md): the
-      // Delta's boss is the Burning Delta, burning oil across the fork's
-      // branches and a raid at the ships bunched on the way in (MAP_BOSS
-      // `burn`), in place of the guarded heavy.
+      // Delta's boss is the Long Gauntlet (log v68), the whole shore firing
+      // down the river silo by silo, each lit before it fires (MAP_BOSS
+      // `strikes`), in place of the guarded heavy. (Log v57's Burning
+      // Delta, `burn`, went with the fork.)
       const R = bossRound(g, ev);
       if (R?.burn) {
         ev.burning = [];
         return [...R.burn.flatMap((b, k) => [{ at: B + Math.max(0, b.at - DELTA_BURN.warn), op: 'lit', k }, { at: B + b.at, op: 'burn', k }]), ...fireSteps(R)];
+      }
+      if (R?.strikes) {
+        const S = R.strikes;
+        return [...steps(S.length, (k) => S[k].at - S[k].warn, 'lit'), ...steps(S.length, (k) => S[k].at, 'strike'), ...fireSteps(R)];
       }
       const E = EV['escort-run'];
       return [...steps(1, () => 0, 'escort'), ...steps(E.swarms, (k) => 5 + k * 7, 'swarm')];
@@ -1302,6 +1307,11 @@ function run(g: Game, ev: EventRun, s: EventStep): void {
       return;
     }
     case 'escort-run': {
+      if (bossRound(g, ev)?.strikes) {
+        if (s.op === 'fire') fireStep(g, ev, s.k);
+        else lowWater(g, ev, s);
+        return;
+      }
       if (s.op === 'lit' || s.op === 'burn' || s.op === 'fire') {
         burningDelta(g, ev, s);
         return;

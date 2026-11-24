@@ -162,6 +162,10 @@ export interface Beat {
    *  (data/config.ts FIRESHIP): more hits, and where one is sunk or rams,
    *  its fireball burns on the water. */
   fire?: boolean;
+  /** The Coves (log v68): a fast boat that comes as a gunboat (a cannon, it
+   *  locks a ship and sails with it) or a rocket boat (slow, sturdy, long
+   *  range, salvos of red rockets): data/config.ts BOATS. */
+  boat?: 'gun' | 'rocket';
   /** Dunmar Crossing (log v58): aimed only at ships in this lane (its
    *  index: 0 the outbound north lane, 1 the inbound south lane), when it
    *  has any. */
@@ -5398,9 +5402,9 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'The south cove',
     callout: 'Boats from both shores',
-    premise: 'A boat comes at the lead ship from the north-east cove and then one out of the south cove, on the ships\' own side, at the ship halfway along, and a guided missile off the north shore follows them.',
-    decision: 'The first stakes: two boats from two sides at one ship, two seconds out. Which first?',
-    counters: 'One boat each side as they leave the coves; the missile after.',
+    premise: 'A speedboat rushes the lead ship from the north-east cove, then a gunboat comes out of the south cove, on the ships\' own side: it locks the ship halfway along, sails beside it and shells it until it sinks. A guided missile off the north shore follows them.',
+    decision: 'The first stakes: a speedboat that will blow and a gunboat that will not let go. Which first?',
+    counters: 'The speedboat as it leaves its cove; the gunboat before it is alongside (once it is, it shells until it is sunk); the missile after.',
     succeeds: 'A close call at the delivery end in most runs; a good player loses under half a ship.',
     notes: {
       sites: 'The north-east cove (1401, 150) and the south cove (1238, 820; on the ships\' own side), a fast boat each, and a second out of the south cove; the north-middle silo (640, 100; a guided missile, a long flight).',
@@ -5409,7 +5413,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'fastboat', count: 1, from: base(6), aim: 'lead' },
-      { at: 0.35, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid' },
+      { at: 0.35, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid', boat: 'gun' },
       { at: 0.35, plus: 5, kind: 'guided', count: 1, from: base(1), aim: 'lead' },
       { at: 0.75, kind: 'fastboat', count: 1, from: base(7), aim: 'rear' },
       { at: 0.15, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
@@ -5449,7 +5453,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Both ends',
     callout: 'Shells and boats',
-    premise: 'Shells from the far silo fall on the ships coming in while boats come out of the north-east cove at the lead ship and the south cove at the ship halfway along: the two ends of the convoy at once.',
+    premise: 'Shells from the far silo fall on the ships coming in while a speedboat comes out of the north-east cove at the lead ship and a gunboat out of the south cove locks the ship halfway along: the two ends of the convoy at once.',
     decision: 'The shells at the back or the boats at the front?',
     counters: 'The shells as they climb (long warning), the boats as they leave the coves (short).',
     succeeds: 'A close call at one end in most runs; a good player loses under a ship.',
@@ -5461,7 +5465,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(0), aim: 'rear' },
       { at: 0.3, plus: 2, kind: 'fastboat', count: 1, from: base(6), aim: 'lead' },
-      { at: 0.3, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid' },
+      { at: 0.3, plus: 2.5, kind: 'fastboat', count: 1, from: base(7), aim: 'mid', boat: 'gun' },
       { at: 0.7, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
       { at: 0.1, kind: 'drone', count: 3, gap: 0.35, from: base(0) },
       { at: 0.5, kind: 'drone', count: 2, gap: 0.35, from: base(0), aim: 'lead' },
@@ -5475,9 +5479,9 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Periscope by the cove',
     callout: 'A periscope by the cove',
-    premise: 'A sub surfaces off the north-east cove and lobs two shells back up the lane at the ship halfway along, while a boat comes out of the north-west cove at the ships coming in.',
-    decision: 'The middle or the back: the sub\'s shells, or the boat at the way in?',
-    counters: 'The shells from the sub as they climb; the boat at the cove mouth.',
+    premise: 'A sub surfaces off the north-east cove and lobs two shells back up the lane at the ship halfway along, while a rocket boat creeps out of the north-west cove and takes station off the ships coming in: slow, hard to sink, and its red rockets cannot be shot.',
+    decision: 'The middle or the back: the sub\'s shells, or the rocket boat at the way in, which takes nine hits and shells the convoy from far off?',
+    counters: 'The shells from the sub as they climb; the rocket boat itself (only the boat can be stopped, not its rockets).',
     succeeds: 'A close call at one end in most runs.',
     notes: {
       sites: 'The sub spot off the north-east cove (1520, 262; 2 shells), the north-west cove (381, 150; a fast boat), the far north-west silo (drones).',
@@ -5486,7 +5490,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.35, kind: 'ballistic', count: 2, gap: 1.4, from: sub(1), aim: 'mid' },
-      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'rear' },
+      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'rear', boat: 'rocket' },
       { at: 0.75, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'rear' },
       { at: 0.1, kind: 'drone', count: 4, gap: 0.35, from: base(0) },
       { at: 0.55, kind: 'drone', count: 3, gap: 0.35, from: base(0), aim: 'mid' },
@@ -5502,8 +5506,8 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Fire from both shores',
     callout: 'Fire from both shores',
-    premise: 'A cluster off the north-east silo splits over the ship halfway along, and as it does fire ships come out of the north-east and south coves at the lead ship, from both sides of the lane.',
-    decision: 'The cluster first, or the fire ships? Sunk near the lane, a fire ship burns where the next ships sail.',
+    premise: 'A cluster off the north-east silo splits over the ship halfway along, and as it does a fire ship comes out of the north-east cove at the lead ship and a gunboat out of the south cove, from both sides of the lane.',
+    decision: 'The cluster first, or the boats? Sunk near the lane, a fire ship burns where the next ships sail; the gunboat is on the lead ship in seconds.',
     counters: 'The cluster before it splits; the fire ships at the cove mouths, one each side.',
     succeeds: 'A close call in the east in most runs; one fire ship burns on the lane in some.',
     notes: {
@@ -5514,7 +5518,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     beats: [
       { at: 0.3, kind: 'cluster', count: 1, from: base(2), aim: 'mid' },
       { at: 0.3, plus: 3, kind: 'fastboat', count: 1, from: base(6), aim: 'lead', fire: true },
-      { at: 0.3, plus: 3.5, kind: 'fastboat', count: 1, from: base(7), aim: 'lead' },
+      { at: 0.3, plus: 3.5, kind: 'fastboat', count: 1, from: base(7), aim: 'lead', boat: 'gun' },
       { at: 0.65, kind: 'drone', count: 6, gap: 0.35, from: base(0) },
       { at: 0.1, kind: 'drone', count: 5, gap: 0.35, from: base(0) },
       { at: 0.85, kind: 'drone', count: 5, gap: 0.35, from: base(0), aim: 'mid' },
@@ -5531,7 +5535,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'The whole north shore',
     callout: 'Every north cove',
-    premise: 'All three north coves send boats at once, a fire ship out of the middle one at the ship passing it and boats from the outer two along the lane, while a guided missile comes off the south-east shore at the lead ship.',
+    premise: 'All three north coves send boats at once, a fire ship out of the middle one at the ship passing it, a gunboat out of the west one at the lead ship and a speedboat out of the east one at the ships coming in, while a guided missile comes off the south-east shore at the lead ship.',
     decision: 'Three coves at once along the convoy: which ship do you save?',
     counters: 'The fire ship at the cove mouth, then the boats nearest their ships; the missile.',
     succeeds: 'A close call along the convoy in most runs.',
@@ -5541,7 +5545,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The whole north shore\'s coves at once, along the convoy; in place of the wave\'s own fast boats and guided missiles.',
     },
     beats: [
-      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'lead' },
+      { at: 0.4, kind: 'fastboat', count: 1, from: base(4), aim: 'lead', boat: 'gun' },
       { at: 0.4, kind: 'fastboat', count: 1, from: base(5), aim: 'near', fire: true },
       { at: 0.4, kind: 'fastboat', count: 1, from: base(6), aim: 'rear' },
       { at: 0.4, plus: 1, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
@@ -5560,7 +5564,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'Face to face',
     callout: 'Both coves at once',
-    premise: 'Boats come out of the north-east and south coves at once at the ships passing between them, then one more from each down the lane, while shells from the far silo fall on the ships coming in.',
+    premise: 'A speedboat from the north-east cove and a gunboat from the south cove at once at the ships passing between them, then a pair of speedboats down the lane, while shells from the far silo fall on the ships coming in.',
     decision: 'Four boats from two sides by the delivery end, shells at the back: which end do you hold?',
     counters: 'The boats as they leave the coves, one side then the other; the shells as they climb.',
     succeeds: 'A close call in the east in most runs; wave 10 is still the hardest.',
@@ -5571,7 +5575,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     },
     beats: [
       { at: 0.3, kind: 'fastboat', count: 1, from: base(6), aim: 'near' },
-      { at: 0.3, plus: 0.6, kind: 'fastboat', count: 1, from: base(7), aim: 'near' },
+      { at: 0.3, plus: 0.6, kind: 'fastboat', count: 1, from: base(7), aim: 'near', boat: 'gun' },
       { at: 0.3, plus: 3, kind: 'fastboat', count: 1, from: base(6), aim: 'rear' },
       { at: 0.3, plus: 3.6, kind: 'fastboat', count: 1, from: base(7), aim: 'rear' },
       { at: 0.6, kind: 'ballistic', count: 2, gap: 1, from: base(0), aim: 'rear' },
@@ -5589,7 +5593,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'climax',
     name: 'Every cove',
     callout: 'Every cove at once',
-    premise: 'Once the wave\'s own fire is spent, a breath, then all four coves empty at once: fire ships out of the north-east and south coves, boats out of the others, all at the convoy, and a guided missile off the north-middle silo at the lead ship.',
+    premise: 'Once the wave\'s own fire is spent, a breath, then all four coves empty at once: fire ships out of the north-east and south coves, a gunboat and a rocket boat out of the others, all at the convoy, and a guided missile off the north-middle silo at the lead ship.',
     decision: 'Everything the coves hold at once: which fire ship do you sink first, and where?',
     counters: 'The fire ships at the cove mouths, the boats nearest their ships, the missile.',
     succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
@@ -5599,8 +5603,8 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'The map\'s problem at its hardest, every cove at once; in place of the wave\'s own fast boats and a guided missile; the climax may reach the safe stretch.',
     },
     beats: [
-      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(4), aim: 'lead' },
-      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(5), aim: 'near' },
+      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(4), aim: 'lead', boat: 'gun' },
+      { at: 1, plus: 1, kind: 'fastboat', count: 1, from: base(5), aim: 'near', boat: 'rocket' },
       { at: 1, plus: 2, kind: 'drone', count: 2, gap: 0.35, from: base(0) },
       { at: 1, plus: 1.5, kind: 'fastboat', count: 1, from: base(6), aim: 'near', fire: true },
       { at: 1, plus: 1.5, kind: 'fastboat', count: 1, from: base(7), aim: 'near', fire: true },
@@ -5617,115 +5621,120 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Chapter 4's Delta (log v57, docs/design/v3-ch4-delta.md): the river
- *  forks three ways at the buoy, and the switch sends the next ships north
- *  (under the enemy bank, the shortest flights), middle (past the carrier,
- *  under the island's silos) or south (out of reach, the long flights).
- *  The enemy reads the switch: from wave 4 incendiary missiles burst on the
- *  water at the mouth of the branch it is set to (MAP_SIGNATURE), so the
- *  safe branch is only safe until the enemy fires on it. The danger is the
- *  fork and the branch mouths just past it (the lanes' middle third),
- *  where the ships come out of the river under the fork's silo and the
- *  fire on the branches; the safe stretch is the branch ends. Bases counted from 0 here: 0 the north-west silo over the
- *  river (220, 150; drones, shells), 1 the silo over the fork (560, 175;
- *  guided, supersonic), 2 the north bank's silo over the north branch (860,
- *  82; heavies, shells), 3 the island's west silo between the north and
- *  middle branches (1060, 285; clusters, drones), 4 the island's east silo
- *  (1430, 272; guided, heavies, motherships). No sub spots: the delta is
- *  too shallow. */
+/** Chapter 4's Delta (log v68, docs/design/v3-ch4-delta.md): one very long
+ *  river, about three times the usual lane. The ships come in on the north
+ *  leg heading east, turn at the east bend, sail the middle leg west past
+ *  the carrier's bay, turn at the west bend and sail the south leg east to
+ *  the delivery: nothing to switch, everything to cover. Each stretch has
+ *  its own silo (the north coast over the first leg, the island between
+ *  the first two legs, the islets either side of the carrier's bay, the
+ *  south-east marsh behind the last stretch), so a wave's fire comes at
+ *  the ships on whichever leg it is nearest and the convoy is under fire
+ *  for the whole run. From wave 4 the wave's new enemies are Rocket Trucks
+ *  on the banks (MAP_SIGNATURE), a truck over every leg. The danger stretch
+ *  is the island's, where its two silos are point-blank on the north and
+ *  middle legs at once; the safe stretch the south leg's east end. Bases
+ *  counted from 0 here: 0 the north-west coast silo (190, 74; drones,
+ *  shells), 1 the north-middle coast silo (640, 66; guided, supersonic), 2
+ *  the north-east coast silo (1090, 70; heavies, shells), 3 the island's
+ *  west silo (520, 322; clusters, drones), 4 the island's east silo (1000,
+ *  322; guided, heavies, motherships), 5 the east islet's silo (1330, 582;
+ *  drones, clusters, shells), 6 the west islet's silo (360, 582; guided,
+ *  shells), 7 the south-east marsh silo (1440, 842; guided, shells,
+ *  supersonics). No sub spots: the delta is too shallow. */
 const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   {
-    id: 'delta-three-ways',
+    id: 'delta-long-river',
     map: 'delta',
     waves: [1],
     role: 'teach',
-    name: 'Three ways',
-    callout: 'Drones at the fork',
-    premise: 'Drones come off the island at the lead ship as it reaches the fork, and a few off the north-west silo once the ships are past it: the buoy at the fork sends the next ships north, middle or south.',
-    decision: 'The first look at the map: the river splits three ways, and the switch picks the branch for the next ships.',
-    counters: 'The drones before they reach the fork; a tap on the buoy to try a branch.',
-    succeeds: 'Nothing is sunk on wave 1; the fork and its three branches read at a glance.',
+    name: 'The long river',
+    callout: 'Drones all along the river',
+    premise: 'Drones come off the west islet at the ship furthest down the river, then off the east islet at the ship halfway along and the lead ship again: a long flight each, the river the length it is.',
+    decision: 'The first look at the map: the river is three times the usual length, and every stretch has its own silo.',
+    counters: 'Each string of drones as it leaves its silo; the ships on the next leg are already under the next.',
+    succeeds: 'Nothing is sunk on wave 1; the river reads as one long run under fire.',
     notes: {
-      sites: 'The island\'s west silo (1060, 285; drones), the north-west silo over the river (220, 150; drones, late).',
-      target: 'The lead ship (both): the north-west silo\'s once the convoy is past it, a longer flight.',
-      usesMap: 'Shows the map on wave 1: everything comes down one river and splits at the buoy.',
+      sites: 'The island\'s west and east silos (drones), in the middle of the river: every drone has a long flight to the ships at its ends.',
+      target: 'The ship furthest along (the west islet\'s silo, then the east islet\'s again) and the ship halfway along (the east islet\'s).',
+      usesMap: 'Shows the map on wave 1: three stretches of one river, each under its own silo, the length itself the problem.',
     },
     beats: [
-      { at: 0.15, kind: 'drone', count: 3, gap: 0.6, from: base(3), aim: 'lead' },
-      { at: 0.45, kind: 'drone', count: 3, gap: 0.6, from: base(3), aim: 'lead' },
-      { at: 0.75, kind: 'drone', count: 2, gap: 0.6, from: base(0), aim: 'lead' },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.6, from: base(6), aim: 'lead' },
+      { at: 0.45, kind: 'drone', count: 3, gap: 0.6, from: base(5), aim: 'mid' },
+      { at: 0.75, kind: 'drone', count: 2, gap: 0.6, from: base(5), aim: 'lead' },
     ],
     replaces: { drones: 8 },
   },
   {
-    id: 'delta-read-switch',
+    id: 'delta-round-the-bend',
     map: 'delta',
     waves: [2],
     role: 'teach',
-    name: 'They read the switch',
-    callout: 'Fire on your branch',
-    premise: 'A shell off the north-west silo and a string of drones off the island come at the newest ships on the branch the switch is set to.',
-    decision: 'The enemy fires where the switch sends the ships: keep them on that branch, or throw the switch for the next ones?',
-    counters: 'The shell as it climbs, the drones; the buoy.',
-    succeeds: 'No ship lost on wave 2; the player sees the fire follow the switch.',
+    name: 'Round the bend',
+    callout: 'Shells at the bends',
+    premise: 'A shell off the north-east coast falls on the ship halfway along and a second off the west islet on the ship furthest along, while drones come off the east islet at the ships on the north leg.',
+    decision: 'Which leg first: the ships far down the river, or the ones just turning?',
+    counters: 'Each shell as it climbs; the drones.',
+    succeeds: 'No ship lost on wave 2 in most runs; the player sees fire on two legs at once.',
     notes: {
-      sites: 'The north-west silo (a shell), the island\'s west silo (drones).',
-      target: 'The newest ship bound for the switch\'s branch (both).',
-      usesMap: 'The map\'s question on wave 2: the enemy aims at the branch the switch is set to.',
+      sites: 'The north-east coast silo (a shell), the west islet\'s silo (a shell), the east islet\'s silo (drones).',
+      target: 'The ship halfway along (the first shell), the ship furthest along (the second), the ships on the north leg (the drones).',
+      usesMap: 'The river doubles back: the ship halfway along and the one furthest along are on different legs, and so is the fire.',
     },
     beats: [
-      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'switch' },
-      { at: 0.55, kind: 'drone', count: 4, gap: 0.4, from: base(3), aim: 'switch' },
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.55, kind: 'ballistic', count: 1, from: base(6), aim: 'lead' },
+      { at: 0.6, kind: 'drone', count: 4, gap: 0.4, from: base(5), aim: 'mid' },
     ],
-    replaces: { drones: 4, ballistic: 1 },
+    replaces: { drones: 4, ballistic: 2 },
   },
   {
-    id: 'delta-under-bank',
+    id: 'delta-island-guns',
     map: 'delta',
     waves: [3],
     role: 'teach',
-    name: 'Under the bank',
-    callout: 'Shells from the bank',
-    premise: 'The north bank\'s silo shells the ship nearest it, point-blank over the north branch, and a guided missile off the silo over the fork comes at the ships coming in.',
-    decision: 'The first stakes: the north branch is short but under the bank; is it worth it?',
-    counters: 'The shells as they climb, the missile as it leaves the fork\'s silo.',
-    succeeds: 'A close call at the fork in most runs; a good player loses under half a ship.',
+    name: 'Between two legs',
+    callout: 'Shells from the island',
+    premise: 'The island between the north and middle legs shells the ship nearest it, point-blank, and a guided missile off the north-middle coast comes at the ships coming in.',
+    decision: 'The first stakes: the island is 130 px from two legs at once. Save your shots for it, or for the missile?',
+    counters: 'The shells as they climb, the missile as it leaves the coast.',
+    succeeds: 'A close call along the island in most runs; a good player loses under half a ship.',
     notes: {
-      sites: 'The north bank\'s silo (860, 82; shells), the silo over the fork (560, 175; a guided missile).',
-      target: 'The ship nearest the north bank (the north branch if one sails it, else the middle); the ships coming in, at the fork.',
-      usesMap: 'The branches differ: the north is point-blank under the bank, and the fork itself is under a silo.',
+      sites: 'The island\'s west silo (shells), the north-middle coast silo (a guided missile), the east islet\'s silo (drones).',
+      target: 'The ship nearest the island\'s west silo (the shells, a short flight); the ships coming in (the missile, a long flight over the first leg).',
+      usesMap: 'The island is the danger stretch: its silos are point-blank on both the north and the middle legs, with no warning to speak of.',
     },
     beats: [
-      { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(2), aim: 'near' },
+      { at: 0.3, kind: 'ballistic', count: 2, gap: 1.2, from: base(3), aim: 'near' },
       { at: 0.6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.85, kind: 'drone', count: 4, gap: 0.5, from: base(3) },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.5, from: base(5), aim: 'mid' },
     ],
     replaces: { ballistic: 6, guided: 1 },
   },
   {
-    id: 'delta-fire-branch',
+    id: 'delta-truck-bank',
     map: 'delta',
     waves: [4],
     role: 'combine',
-    name: 'Fire on the branch',
-    callout: 'Incendiary at the fork',
-    premise: 'A slow incendiary missile off the island flies for the mouth of the branch the switch is set to and bursts there, a fireball burning on the water where the next ships will sail; shells and drones come at the ships coming in.',
-    decision: 'Shoot the firebomb far out, or let it burn and throw the switch to send the ships round it?',
-    counters: 'The incendiary far from the ships, or the buoy; the shells, the drones.',
-    succeeds: 'The fire burns an empty branch in most runs; no ship lost in most runs.',
+    name: 'Trucks on the bank',
+    callout: 'A truck on the bank',
+    premise: 'A Rocket Truck drives down to the bank over one leg and raises its launcher; shells off the north coast and drones off the island come at the ships on the legs either side of it.',
+    decision: 'The signature\'s first wave: a truck on the bank over a leg you cannot reach with a rocket of your own. Kill the truck before its rockets, or the missiles first?',
+    counters: 'The truck while its ring fills (four hits); the shells as they climb; the drones.',
+    succeeds: 'The truck is down before its second salvo in most runs; no ship lost in most runs.',
     notes: {
-      sites: 'The island\'s west silo (an incendiary missile), the north-west silo (a shell, drones).',
-      target: 'The mouth of the switch\'s branch (the fireball); the ships coming in (the shell, the drones).',
-      usesMap: 'The signature\'s first wave: the switch is the answer to the enemy\'s fire, in place of the wave\'s own new enemy and a shell.',
+      sites: 'A pop-up road to a bank over one of the river\'s legs (the signature\'s first truck, with the wave), the north coast\'s silos (shells), the west islet\'s silo (drones).',
+      target: 'The ship nearest the truck (its salvos); the ship halfway along (the shells); the ships nearest the island (the drones).',
+      usesMap: 'The signature\'s first wave: a truck on a bank beside the long river, one more stretch of the run with a gun on it; in place of the wave\'s own shells, a guided missile and drones.',
     },
     beats: [
-      { at: 0.3, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
-      { at: 0.45, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
-      { at: 0.6, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
-      { at: 0.65, kind: 'drone', count: 4, gap: 0.5, from: base(0) },
-      { at: 0.85, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.55, kind: 'ballistic', count: 1, from: base(2), aim: 'mid' },
+      { at: 0.65, kind: 'drone', count: 4, gap: 0.5, from: base(6), aim: 'mid' },
+      { at: 0.85, kind: 'drone', count: 3, gap: 0.5, from: base(5), aim: 'lead' },
     ],
-    replaces: { ballistic: 8, guided: 1, extras: { cloud: 1 } },
+    replaces: { ballistic: 8, guided: 1 },
   },
   {
     id: 'delta-both-ends',
@@ -5734,21 +5743,21 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'Both ends',
     callout: 'A shell and a cluster',
-    premise: 'A shell off the north-west silo comes at the ships coming down the river while a cluster missile off the island and a guided missile off its east silo go for the lead ship at the far end.',
-    decision: 'The river or the far end: which first?',
+    premise: 'A shell off the north-west coast falls on the ships coming in while a cluster off the east islet and a guided missile off the south-east marsh go for the ship furthest along: the head and the tail of a convoy five thousand pixels long.',
+    decision: 'The river\'s start or its end: which first? Nothing can cover both.',
     counters: 'The shell as it climbs, the cluster before it splits, the missile.',
-    succeeds: 'A close call at the fork in most runs; one ship lost at most.',
+    succeeds: 'A close call at one end in most runs; one ship lost at most.',
     notes: {
-      sites: 'The north-west silo (a shell, drones), the island\'s west silo (a cluster, drones), the island\'s east silo (a guided missile).',
-      target: 'The ships coming in (the shell); the lead ship (the cluster, the missile); any ship (the drones).',
-      usesMap: 'Front and rear of the convoy at once (rule g-split), across the whole delta.',
+      sites: 'The north-west coast silo (a shell, drones), the east islet\'s silo (a cluster), the south-east marsh silo (a guided missile), the west islet\'s silo (drones).',
+      target: 'The ships coming in (the shell); the ship furthest along (the cluster, the missile); any ship (the drones).',
+      usesMap: 'Front and rear of the convoy at once (rule g-split): the convoy is spread over the whole river, so its two ends are two fronts.',
     },
     beats: [
       { at: 0.3, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
-      { at: 0.3, plus: 2, kind: 'cluster', count: 1, from: base(3), aim: 'lead' },
-      { at: 0.7, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.5, kind: 'drone', count: 5, gap: 0.5, from: base(0) },
-      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(3), aim: 'mid' },
+      { at: 0.3, plus: 2, kind: 'cluster', count: 1, from: base(5), aim: 'lead' },
+      { at: 0.7, kind: 'guided', count: 1, from: base(7), aim: 'lead' },
+      { at: 0.5, kind: 'drone', count: 5, gap: 0.5, from: base(6), aim: 'mid' },
+      { at: 0.85, kind: 'drone', count: 4, gap: 0.35, from: base(5), aim: 'mid' },
     ],
     replaces: { ballistic: 8, guided: 2, extras: { cluster: 1 } },
   },
@@ -5759,149 +5768,150 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'combine',
     name: 'The island between',
     callout: 'Fire from the island',
-    premise: 'The island between the north and middle branches fires both ways: a cluster at the ship halfway along, a guided missile at the ship nearest its east silo, and an incendiary at the switch\'s branch.',
-    decision: 'The island covers two branches: send the next ships south and leave the two under it to the guns?',
-    counters: 'The cluster before it splits, the missiles, the incendiary far out.',
-    succeeds: 'A close call in most runs; a run that sends ships south meets the incendiary there.',
+    premise: 'The island between the north and middle legs fires both ways: a cluster at the ship halfway along, a guided missile at the ship nearest its east silo and shells off the north-east coast, while drones come off the north-west.',
+    decision: 'The island covers two legs: which one do you cover while it reloads?',
+    counters: 'The cluster before it splits, the missiles, the shells.',
+    succeeds: 'A close call in most runs; a good player keeps the island\'s ships whole.',
     notes: {
-      sites: 'The island\'s west silo (a cluster, an incendiary, drones), the island\'s east silo (guided missiles).',
-      target: 'The ship halfway along (the cluster, the drones); the ships nearest the east silo (the missiles); the switch\'s branch (the incendiary).',
-      usesMap: 'The island sits between two branches and fires at both; the south is out of its reach but not the incendiary\'s.',
+      sites: 'The island\'s west silo (a cluster, drones), the island\'s east silo (a guided missile), the north-east coast silo (shells), the north-west coast silo (a shell).',
+      target: 'The ship halfway along (the cluster, the drones); the ship nearest the island\'s east silo (the missile, the shells).',
+      usesMap: 'The island sits between two legs and fires at both; the south leg is out of its reach, not the others\'.',
     },
     beats: [
       { at: 0.25, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
       { at: 0.4, kind: 'guided', count: 1, from: base(4), aim: 'near' },
-      { at: 0.55, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
+      { at: 0.55, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
       { at: 0.7, kind: 'ballistic', count: 1, from: base(2), aim: 'near' },
-      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.87, kind: 'drone', count: 2, gap: 0.5, from: base(3) },
-      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
-      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.87, kind: 'drone', count: 2, gap: 0.5, from: base(6) },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'rear' },
+      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 11, guided: 2, extras: { cluster: 1, cloud: 1 } },
+    replaces: { ballistic: 11, guided: 2, extras: { cluster: 1 } },
   },
   {
-    id: 'delta-lock-fork',
+    id: 'delta-down-the-river',
     map: 'delta',
     waves: [7],
     role: 'escalate',
-    name: 'Lock at the fork',
-    callout: 'Supersonic at the fork',
-    premise: 'The silo over the fork locks a supersonic missile on the newest ship of the switch\'s branch, then guided missiles at the ships coming in, while incendiaries burst on the branch mouths.',
-    decision: 'The fork is where the ships bunch: the supersonic, the missiles or the firebombs?',
-    counters: 'The supersonic as it lifts off, the missiles, the incendiaries far out; the buoy.',
+    name: 'Down the whole river',
+    callout: 'Supersonic from the coast',
+    premise: 'The north-middle silo locks a supersonic missile on the ship furthest along, a long flight down the whole river, then guided missiles at the ships coming in, while the east islet shells the ships on the middle leg.',
+    decision: 'The long flight and the short one at once: the supersonic is slow to arrive, the shells are not.',
+    counters: 'The supersonic as it lifts off, the missiles, the shells.',
     succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The silo over the fork (a supersonic, guided missiles), the island\'s west silo and the north-west silo (incendiaries), the north-west silo (drones).',
-      target: 'The newest ship on the switch\'s branch (the supersonic); the ships coming in (the missiles, the drones); the switch\'s branch mouth (the incendiaries).',
-      usesMap: 'The fork\'s own silo at the bunched convoy, and fire wherever the switch sends the next ships.',
+      sites: 'The north-middle coast silo (a supersonic, guided missiles), the east islet\'s silo (shells), the west islet\'s silo (drones).',
+      target: 'The ship furthest along (the supersonic, a flight across the whole map); the ships coming in (the missiles, the drones); the ship nearest the east islet (the shells).',
+      usesMap: 'The river is long enough that a supersonic fired at its far end has seconds of warning and a long way to go; the islet\'s shells have none.',
     },
     beats: [
-      { at: 0.3, kind: 'supersonic', count: 1, from: base(1), aim: 'switch' },
+      { at: 0.3, kind: 'supersonic', count: 1, from: base(1), aim: 'lead' },
       { at: 0.3, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.5, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
-      { at: 0.5, plus: 7, kind: 'cloud', count: 1, from: base(0), aim: 'switch' },
-      { at: 0.7, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
-      { at: 0.82, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.9, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 1, kind: 'drone', count: 2, gap: 0.5, from: base(0) },
+      { at: 0.5, kind: 'ballistic', count: 2, gap: 1, from: base(5), aim: 'near' },
+      { at: 0.65, kind: 'guided', count: 1, from: base(6), aim: 'near' },
+      { at: 0.7, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'rear' },
+      { at: 0.82, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.15, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.27, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.9, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 1, kind: 'drone', count: 2, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 11, guided: 5, extras: { supersonic: 1, cloud: 2 } },
+    replaces: { ballistic: 11, guided: 5, extras: { supersonic: 1 } },
   },
   {
-    id: 'delta-every-branch',
+    id: 'delta-every-leg',
     map: 'delta',
     waves: [8],
     role: 'escalate',
-    name: 'Every branch',
-    callout: 'Fire down every branch',
-    premise: 'Each branch gets its own: shells off the north bank at the ship nearest it, a cluster off the island at the ship halfway along, guided missiles at the lead ship, and an incendiary at the switch\'s branch.',
-    decision: 'No branch is quiet: which one do you cover?',
-    counters: 'The shells, the cluster, the missiles in turn; the incendiary far out.',
+    name: 'Every leg',
+    callout: 'Fire on every leg',
+    premise: 'Each leg gets its own: shells off the north coast at the ship nearest it, a cluster off the island at the ship halfway along, guided missiles from the south-east marsh at the ship furthest along, and shells off the west islet at the south leg.',
+    decision: 'No stretch of the river is quiet: which one do you cover?',
+    counters: 'The shells, the cluster, the missiles in turn.',
     succeeds: 'A close call in most runs; the wave hurts but does not end the run.',
     notes: {
-      sites: 'The north bank\'s silo (shells), the island\'s west silo (a cluster, an incendiary), the island\'s east silo (guided missiles), the north-west silo (drones).',
-      target: 'The ship nearest the north bank (the shells); the ship halfway along (the cluster); the lead ship (the missiles); the switch\'s branch (the incendiary); the ships coming in (the drones).',
-      usesMap: 'All three branches under fire at once: the switch alone cannot dodge it.',
+      sites: 'The north-east coast silo (shells), the island\'s west silo (a cluster), the south-east marsh silo (guided missiles), the west islet\'s silo (shells), the north-west coast silo and the island (drones).',
+      target: 'The ship nearest the north coast (the shells); the ship halfway along (the cluster); the ship furthest along (the missiles); the ship nearest the west islet (its shells); the ships coming in (the drones).',
+      usesMap: 'All three legs under fire at once: with the convoy strung along five thousand pixels, no one finger covers the river.',
     },
     beats: [
       { at: 0.25, kind: 'ballistic', count: 2, gap: 0.9, from: base(2), aim: 'near' },
       { at: 0.4, kind: 'cluster', count: 1, from: base(3), aim: 'mid' },
-      { at: 0.55, kind: 'guided', count: 1, from: base(4), aim: 'lead' },
-      { at: 0.45, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
-      { at: 0.8, kind: 'drone', count: 4, gap: 0.5, from: base(0), aim: 'rear' },
-      { at: 0.92, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.62, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.55, kind: 'guided', count: 1, from: base(7), aim: 'lead' },
+      { at: 0.45, kind: 'ballistic', count: 1, from: base(6), aim: 'near' },
+      { at: 0.8, kind: 'drone', count: 4, gap: 0.5, from: base(6), aim: 'rear' },
+      { at: 0.92, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.62, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 14, guided: 6, extras: { cluster: 1, cloud: 1 } },
+    replaces: { ballistic: 14, guided: 6, extras: { cluster: 1 } },
   },
   {
-    id: 'delta-funnel',
+    id: 'delta-trucks-and-raid',
     map: 'delta',
     waves: [9],
     role: 'escalate',
-    name: 'Fire and the funnel',
-    callout: 'Two branches burning',
-    premise: 'An incendiary bursts on the switch\'s branch, and a few seconds later another on the branch it is thrown to; the ships bunch at the fork while a raid off the north-west silo and the fork\'s silo comes at them.',
-    decision: 'Two branches burning: which one is still open, and can you cover the ships bunched on the way to it?',
-    counters: 'The incendiaries far out, then the raid on the ships coming in.',
-    succeeds: 'Most of the raid is shot down; a run that shoots the second incendiary keeps two branches open.',
+    name: 'Trucks and a raid',
+    callout: 'Two trucks and a raid',
+    premise: 'Two Rocket Trucks take the banks over the ships on the island\'s legs while a raid off the north-west coast and the north-middle silo comes at the ships coming in, and the island shells the ships in the east bend.',
+    decision: 'Two trucks and a raid on the way in: the trucks have the better angle, the raid the numbers.',
+    counters: 'The trucks while their rings fill, then the raid on the ships coming in.',
+    succeeds: 'Most of the raid is shot down; a run that stops the trucks first keeps the island\'s legs whole.',
     notes: {
-      sites: 'The island\'s west silo and the silo over the fork (incendiaries), the north-west silo (drones, shells), the silo over the fork (guided missiles).',
-      target: 'The switch\'s branch mouth, twice (the incendiaries); the ships coming in (the raid).',
-      usesMap: 'A preview of the boss: fire closes branches and the raid comes at the ships bunched on the way in.',
+      sites: 'The signature\'s trucks (pop-up roads over the island\'s two legs), the north-west coast silo (shells), the north-middle silo (a guided missile), the west islet\'s silo (drones).',
+      target: 'The ships nearest the trucks (their salvos); the ships coming in (the raid).',
+      usesMap: 'A preview of the boss: fire along the whole river in turn, and the convoy strung out under it.',
     },
     beats: [
-      { at: 0.3, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
-      { at: 0.3, plus: 6, kind: 'cloud', count: 1, from: base(1), aim: 'switch' },
-      { at: 0.3, plus: 9, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
-      { at: 0.3, plus: 12, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.3, plus: 10, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 0.3, plus: 11, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
-      { at: 0.1, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.22, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.87, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(4), aim: 'near' },
+      { at: 0.3, plus: 3, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'rear' },
+      { at: 0.3, plus: 6, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.3, plus: 4, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
+      { at: 0.3, plus: 5, kind: 'ballistic', count: 1, from: base(0), aim: 'rear' },
+      { at: 0.1, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.22, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.75, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.87, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 14, guided: 6, extras: { cloud: 2 } },
+    replaces: { ballistic: 14, guided: 6 },
   },
   {
-    id: 'delta-burns',
+    id: 'delta-the-long-run',
     map: 'delta',
     waves: [10],
     role: 'climax',
-    name: 'The delta burns',
-    callout: 'The delta burns',
-    premise: 'Once the wave\'s own fire is spent, a breath, then incendiaries burst on two branch mouths while the north-west silo, the fork\'s silo and the island all fire at the ships coming in, and the north bank shells the lead ship.',
-    decision: 'Everything the delta has, at the fork: the map\'s question at its hardest.',
-    counters: 'The incendiaries far out, the raid on the ships coming in, the shells.',
+    name: 'The long run',
+    callout: 'Fire the whole length of the river',
+    premise: 'Once the wave\'s own fire is spent, a breath, then every silo on the river fires in turn, west to east, each at the ships nearest it: the coast, the island, the islets and the marsh, the whole length of the run.',
+    decision: 'Everything the delta has, down its whole length: the map\'s question at its hardest.',
+    counters: 'Each silo\'s fire as it comes, nearest first; the trucks on the banks.',
     succeeds: 'A close call in most runs; the climax is the hardest wave, not a wall.',
     notes: {
-      sites: 'The island\'s west silo and the north-west silo (incendiaries), the north-west silo (drones), the fork\'s silo (guided missiles), the island\'s west silo (a cluster, drones), the north bank\'s silo (shells), after the wave\'s own fire and a calm.',
-      target: 'The switch\'s branch mouth (the incendiaries); the ships coming in (the raid); the lead ship (the shells).',
-      usesMap: 'The map\'s problem at its hardest: fire on the branches and the raid at the fork; the climax may reach the safe end.',
+      sites: 'All eight silos in turn (the coast\'s three, the island\'s two, the islets\' two, the marsh), after the wave\'s own fire and a calm.',
+      target: 'The ship nearest each silo as it fires, the ships coming in (the north-west raid).',
+      usesMap: 'The map\'s problem at its hardest: the whole river under fire from end to end; the climax may reach the safe stretch.',
     },
     beats: [
-      { at: 1, plus: 1, kind: 'cloud', count: 1, from: base(3), aim: 'switch' },
-      { at: 1, plus: 5, kind: 'cloud', count: 1, from: base(0), aim: 'switch' },
-      { at: 1, plus: 4, kind: 'drone', count: 3, gap: 0.5, from: base(0), aim: 'rear' },
-      { at: 1, plus: 7, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 1, plus: 6, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
-      { at: 1, plus: 7, kind: 'cluster', count: 1, from: base(3), aim: 'rear' },
-      { at: 1, plus: 8, kind: 'drone', count: 3, gap: 0.5, from: base(3), aim: 'rear' },
-      { at: 1, plus: 11, kind: 'drone', count: 2, gap: 0.5, from: base(3) },
-      { at: 1, plus: 9, kind: 'ballistic', count: 2, gap: 0.8, from: base(2), aim: 'lead' },
-      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(3) },
-      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(0) },
-      { at: 0.62, kind: 'drone', count: 2, gap: 0.5, from: base(0) },
+      { at: 1, plus: 1, kind: 'ballistic', count: 2, gap: 0.8, from: base(0), aim: 'near' },
+      { at: 1, plus: 3, kind: 'guided', count: 1, from: base(1), aim: 'near' },
+      { at: 1, plus: 5, kind: 'ballistic', count: 2, gap: 0.8, from: base(2), aim: 'near' },
+      { at: 1, plus: 6, kind: 'cluster', count: 1, from: base(3), aim: 'near' },
+      { at: 1, plus: 8, kind: 'guided', count: 1, from: base(4), aim: 'near' },
+      { at: 1, plus: 9, kind: 'cluster', count: 1, from: base(5), aim: 'near' },
+      { at: 1, plus: 11, kind: 'guided', count: 1, from: base(6), aim: 'near' },
+      { at: 1, plus: 12, kind: 'guided', count: 1, from: base(7), aim: 'near' },
+      { at: 1, plus: 4, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'rear' },
+      { at: 1, plus: 8, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'near' },
+      { at: 0.2, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.32, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
+      { at: 0.62, kind: 'drone', count: 2, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 17, guided: 9, extras: { cluster: 1, cloud: 2 } },
+    replaces: { ballistic: 17, guided: 9, extras: { cluster: 1 } },
+    calm: 6,
   },
 ];
 
@@ -6840,11 +6850,11 @@ export const BUSY: Record<string, Beat[]> = Object.fromEntries([
   // The Delta (log v57): the island's west silo, the far one of its two
   // drone silos, waves 1-6 (the north-west one over the river is a short
   // flight from the ships coming in down it); wave 1 one late string.
-  ['delta-three-ways', [fill(0.7, 2, 3)]],
+  ['delta-long-river', [fill(0.7, 2, 6)]],
   // The Citadel (log v60): the far north-west silo, the map's only drone
   // launcher, a long flight to the lane, waves 1-6.
   ...busy(['citadel-under-the-guns', 'citadel-generators', 'citadel-narrows', 'citadel-dome', 'citadel-two-ends', 'citadel-periscope'], 4, 4),
-  ...busy(['delta-three-ways', 'delta-read-switch', 'delta-under-bank', 'delta-fire-branch', 'delta-both-ends', 'delta-island'], 3, 3, [1]),
+  ...busy(['delta-long-river', 'delta-round-the-bend', 'delta-island-guns', 'delta-truck-bank', 'delta-both-ends', 'delta-island'], 6, 6, [1]),
   // Dunmar Crossing (log v58): the north-west and north-east silos, the
   // map's two drone silos on the far (north) shore, waves 1-6.
   // Wave 1 one late string of two only, off the north-east silo (its
@@ -7080,7 +7090,7 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
  *  the climb sends a little less than the shared wave from wave 2 (within
  *  rule w-budget's ±15%). */
 const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9];
-const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.88, 0.88, 0.86, 0.86];
+const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.82, 0.8, 0.7, 0.66];
 /** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
@@ -7320,13 +7330,14 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // burns on the water), one for one, the Fire Fleet's own. Not the wave's
   // new enemies: chapter 4's four debut here on waves 2-5.
   coves: { from: 4, fireShips: [1, 1, 0, 1, 1, 1, 2] },
-  // The Delta (log v57, docs/design/v3-ch4-delta.md): "fire on the branch",
-  // from wave 4. The wave's new enemies come as Incendiary Missiles, chapter
-  // 4's own, each flying for the mouth of the branch the fork's switch is
-  // set to as it leaves (aim 'switch') and bursting there, its fireball
-  // burning on the water where the next ships will sail: shoot it far out,
-  // or throw the switch and send the ships round it.
-  delta: { from: 4, foe: 'cloud', foeShare: 1, clouds: 'switch' },
+  // The Delta (log v68, docs/design/v3-ch4-delta.md): "a truck on every
+  // bank", from wave 4 (log v57's "fire on the branch" went with the fork).
+  // The wave's new enemies come as Rocket Trucks, down the pop-up roads to
+  // the banks over every leg of the river (the north coast, both sides of
+  // the island, the islets, the south bank), each firing its salvos at the
+  // ship nearest it (`trucks: 'near'`): a river three times the usual
+  // length has a gun on every stretch of it.
+  delta: { from: 4, foe: 'rocketTruck', foeShare: 1, trucks: 'near' },
   // Dunmar Crossing (log v58, docs/design/v3-ch4-crossing.md): "spotters at
   // the crossing", from wave 4. Half the wave's new enemies (rounded up)
   // are Lure Beacons that rise between the lanes where the next two ships
@@ -7668,7 +7679,7 @@ export interface BossRound {
    *  launcher in `from` lights `warn` s before `at` s and then fires its
    *  `count` of `kind` (`gap` s apart) at the crowd, all at once. */
   ebb?: { at: number; low: number };
-  strikes?: { at: number; warn: number; from: { base: number; kind: ThreatKind; count: number; gap?: number }[] }[];
+  strikes?: { at: number; warn: number; from: { base: number; kind: ThreatKind; count: number; gap?: number; aim?: BeatAim }[] }[];
   /** Launches the round adds to its event, each from base `base` (its
    *  index; absent, the bases that fire the kind in turn), `at` s into the
    *  round, `count` of them `gap` s apart, aimed as an encounter's beat
@@ -7686,6 +7697,8 @@ export interface BossFire {
   gap?: number;
   base?: number;
   aim?: BeatAim;
+  /** The Coves (log v68): a gunboat or a rocket boat. */
+  boat?: 'gun' | 'rocket';
 }
 
 /** The Kesh Hook's Drone Storm rounds (log v29); before: 33 / 36 / 36
@@ -7988,68 +8001,77 @@ export const LANTERN_BOSS_ROUNDS: BossRound[] = [
  *  fire ships, one out of every cove listed at once, all at the ship
  *  nearest halfway along, the cove mouths lit first, with packs of fast
  *  boats and a missile: masses of burning boats converging on the
- *  clustered convoy. Rising: more coves (two, three, all four), more
+ *  clustered convoy. Log v68: the packs are the Coves' other boats too, a
+ *  gunboat on a ship, a rocket boat off the west cove (round 3),
+ *  among the fire. Rising: more coves (two, three, all four), more
  *  sorties, more boats. */
 export const COVES_BOSS_ROUNDS: BossRound[] = [
   {
     fleet: { coves: [5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 4, aim: 'mid' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
+    fire: [{ kind: 'fastboat', at: 5, count: 1, base: 4, aim: 'mid', boat: 'gun' }, { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
   },
   {
     fleet: { coves: [4, 5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'fastboat', at: 5, count: 2, gap: 0.6, base: 7, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
+    fire: [{ kind: 'fastboat', at: 5, count: 1, base: 7, aim: 'rear', boat: 'gun' }, { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
   },
   {
     fleet: { coves: [4, 5, 6, 7], first: 2, every: 11, sorties: 2, warn: 2 },
-    fire: [],
+    fire: [{ kind: 'fastboat', at: 6, count: 1, base: 7, aim: 'mid', boat: 'gun' }, { kind: 'fastboat', at: 9, count: 1, base: 4, aim: 'rear', boat: 'rocket' }],
   },
 ];
 
-/** The Delta's Burning Delta (log v57, docs/design/v3-ch4-delta.md), in
- *  place of the Escort Run (one heavy in three rings of Bodyguard drones:
- *  the Bodyguard Ring is a regular of chapter 4's waves, and the Delta's
- *  own debut). Burning oil closes branches of the fork, the switch's own
- *  first, so the convoy funnels into the one left open, and the raid comes
- *  off every silo at the ships bunched on the way in. Rising: one branch
- *  burning, then two, then two and the fire moving to the branch that was
- *  open. */
+/** The Delta's Long Gauntlet (log v68, docs/design/v3-ch4-delta.md), in
+ *  place of the Burning Delta (burning oil across the fork's branches: the
+ *  fork is gone) and the Escort Run before it (one heavy in three rings of
+ *  guards). The river is three times the usual length, so the boss is the
+ *  river's own length: the whole shore fires down it in order, silo after
+ *  silo, west to east along the run, each lit 2.5 s before it fires and
+ *  each at the ships nearest it (aim 'near'), so the fire runs the length
+ *  of the convoy like a fuse and every stretch has its moment. Rising: more
+ *  silos in a strike, a strike more, closer together, a raid at the ships
+ *  coming in. */
 export const DELTA_BOSS_ROUNDS: BossRound[] = [
   {
-    burn: [{ at: 3, n: 1, dur: 16 }],
+    strikes: [
+      { at: 3, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 3, kind: 'cluster', count: 1, aim: 'near' }] },
+      { at: 9, warn: 2.5, from: [{ base: 1, kind: 'guided', count: 1, aim: 'near' }, { base: 4, kind: 'guided', count: 1, aim: 'near' }] },
+      { at: 15, warn: 2.5, from: [{ base: 5, kind: 'drone', count: 3, gap: 0.35, aim: 'lead' }, { base: 6, kind: 'guided', count: 1, aim: 'near' }] },
+      { at: 21, warn: 2.5, from: [{ base: 7, kind: 'guided', count: 1, aim: 'near' }, { base: 2, kind: 'ballistic', count: 1, aim: 'near' }] },
+    ],
     fire: [
-      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
-      { kind: 'guided', at: 8, count: 1, base: 1, aim: 'rear' },
-      { kind: 'guided', at: 15, count: 1, base: 4, aim: 'switch' },
-      { kind: 'ballistic', at: 11, count: 1, base: 0, aim: 'rear' },
-      { kind: 'drone', at: 13, count: 4, gap: 0.3, base: 3, aim: 'rear' },
+      { kind: 'drone', at: 5, count: 4, gap: 0.3, base: 5, aim: 'lead' },
+      { kind: 'drone', at: 14, count: 4, gap: 0.3, base: 6, aim: 'mid' },
     ],
   },
   {
-    burn: [{ at: 3, n: 2, dur: 18 }],
+    strikes: [
+      { at: 3, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 1, kind: 'guided', count: 1, aim: 'near' }] },
+      { at: 8, warn: 2.5, from: [{ base: 2, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 3, kind: 'cluster', count: 1, aim: 'near' }, { base: 4, kind: 'guided', count: 1, aim: 'near' }] },
+      { at: 13, warn: 2.5, from: [{ base: 5, kind: 'cluster', count: 1, aim: 'near' }, { base: 6, kind: 'guided', count: 1, aim: 'near' }, { base: 6, kind: 'ballistic', count: 1, aim: 'near' }] },
+      { at: 18, warn: 2.5, from: [{ base: 7, kind: 'guided', count: 1, aim: 'near' }, { base: 7, kind: 'ballistic', count: 1, aim: 'near' }] },
+    ],
     fire: [
-      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 0, aim: 'rear' },
-      { kind: 'guided', at: 7, count: 1, base: 1, aim: 'rear' },
-      { kind: 'cluster', at: 9, count: 1, base: 3, aim: 'rear' },
-      { kind: 'ballistic', at: 11, count: 2, gap: 0.8, base: 0, aim: 'rear' },
-      { kind: 'drone', at: 14, count: 5, gap: 0.3, base: 3, aim: 'rear' },
+      { kind: 'drone', at: 4, count: 4, gap: 0.3, base: 5, aim: 'lead' },
+      { kind: 'guided', at: 10, count: 1, base: 1, aim: 'rear' },
+      { kind: 'drone', at: 12, count: 4, gap: 0.3, base: 6, aim: 'mid' },
     ],
   },
   {
-    burn: [
-      { at: 3, n: 2, dur: 12 },
-      { at: 14, n: 2, dur: 12 },
+    strikes: [
+      { at: 3, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 3, kind: 'cluster', count: 1, aim: 'near' }] },
+      { at: 8, warn: 2.5, from: [{ base: 2, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 4, kind: 'guided', count: 1, aim: 'near' }, { base: 1, kind: 'supersonic', count: 1, aim: 'near' }] },
+      { at: 13, warn: 2.5, from: [{ base: 5, kind: 'cluster', count: 1, aim: 'near' }, { base: 5, kind: 'ballistic', count: 1, aim: 'near' }, { base: 6, kind: 'guided', count: 1, aim: 'near' }] },
+      { at: 18, warn: 2.5, from: [{ base: 7, kind: 'guided', count: 1, aim: 'near' }, { base: 7, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 2, kind: 'cluster', count: 1, aim: 'near' }] },
+      { at: 23, warn: 2.5, from: [{ base: 3, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 7, kind: 'ballistic', count: 1, aim: 'near' }] },
     ],
     fire: [
-      { kind: 'drone', at: 4, count: 6, gap: 0.3, base: 0, aim: 'rear' },
-      { kind: 'guided', at: 6, count: 1, base: 1, aim: 'rear' },
-      { kind: 'cluster', at: 8, count: 1, base: 3, aim: 'rear' },
-      { kind: 'ballistic', at: 10, count: 2, gap: 0.8, base: 0, aim: 'rear' },
-      { kind: 'drone', at: 15, count: 5, gap: 0.3, base: 3, aim: 'rear' },
-      { kind: 'guided', at: 18, count: 1, base: 4, aim: 'switch' },
-      { kind: 'ballistic', at: 21, count: 1, base: 2, aim: 'rear' },
+      { kind: 'drone', at: 4, count: 5, gap: 0.3, base: 5, aim: 'lead' },
+      { kind: 'guided', at: 9, count: 1, base: 1, aim: 'rear' },
+      { kind: 'drone', at: 12, count: 4, gap: 0.3, base: 6, aim: 'mid' },
     ],
   },
 ];
+
 
 /** The Citadel's Last Stand (log v60, docs/design/v3-ch4-citadel.md), the
  *  game's last boss, in place of the Siege of Vey (before: a Repair Yard on
@@ -8174,7 +8196,7 @@ export const MAP_BOSS: Partial<Record<EncounterMap | RebuiltMap, BossTune>> = {
   lantern: { rounds: LANTERN_BOSS_ROUNDS },
   // Chapter 4 (COVES_BOSS_ROUNDS above).
   coves: { rounds: COVES_BOSS_ROUNDS, name: 'Fire Fleet' },
-  delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Burning Delta' },
+  delta: { rounds: DELTA_BOSS_ROUNDS, name: 'Long Gauntlet' },
   crossing: { rounds: CROSSING_BOSS_ROUNDS, name: 'Beacon Line' },
   tide: { rounds: TIDE_BOSS_ROUNDS, name: 'Low Water' },
   // The game's finale (CITADEL_BOSS_ROUNDS above).

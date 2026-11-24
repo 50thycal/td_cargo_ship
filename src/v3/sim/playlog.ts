@@ -533,11 +533,34 @@ import type { EncounterSetup } from '../data/encounters';
  *      whom and on which `wave`. Both sides' inputs are ordinary commands
  *      (the 'c' switches are UI only), so the log replays exactly. Nothing
  *      in the sim changed: a v64 log plays the same game; the version
- *      marks the logs that can carry the new fields. */
-export const LOG_VERSION = 65;
+ *      marks the logs that can carry the new fields.
+ *  68: the Coves' attack boats overhauled, the Delta rebuilt as one long
+ *      river, and the bot holds the Lance (the player's notes on the v65
+ *      logs; docs/design/v3-ch4-coves.md, v3-ch4-delta.md; lab, under the
+ *      encounter layer, and the campaign for the boats). The fast boat is
+ *      three boats now (data/config.ts BOATS, sim/boats.ts, ui/boats.ts):
+ *      the speedboat (it planes up out of its cove, weaves a little, and
+ *      goes up in a fireball where it rams), the gunboat (`boat: 'gun'`:
+ *      locks one ship, sails beside it and shells it until it sinks) and
+ *      the rocket boat (`boat: 'rocket'`: slow, six hits, red rockets from
+ *      far off, like a Rocket Truck's); Beat, Launch, Unit, BossFire and
+ *      Threat carry `boat`, the Coves' own boats come in the mix
+ *      BOAT_MIX, and the encounters and the Fire Fleet's packs use them.
+ *      The Delta is one channel about three times the usual length (no
+ *      fork, no switch, no buoy): a new map, new encounters (DELTA_R4), the
+ *      signature MAP_SIGNATURE.delta `foe: 'rocketTruck'` (a truck on
+ *      every bank), and a new boss, the Long Gauntlet (MAP_BOSS.delta
+ *      `strikes`, each with its own `aim`: the whole shore fires down the
+ *      river in order). The "you" persona plays a loaded Charge Lance the
+ *      way a person does, pressing and holding on its target until the
+ *      charge shows and letting go, and swipes a loaded Laser Cutter
+ *      (Persona `gestures`, BotIO press/move/release; BOT_REV 4). A
+ *      Coves or Delta log before v68 no longer replays to the same game; the
+ *      other maps play as they did. (66 and 67 are built alongside.) */
+export const LOG_VERSION = 68;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [65];
+export const LOG_REPLAYS: readonly number[] = [68];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

@@ -1876,6 +1876,40 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
   for (const f of g.fx) {
     const u = f.age / f.life;
     switch (f.kind) {
+      case 'fireball': {
+        // Log v68: a speedboat's end, a ball of fire that rolls up and out.
+        const r = f.r * (0.35 + 0.9 * Math.min(1, u * 1.5));
+        const a = 1 - u;
+        ctx.fillStyle = `rgba(255,96,24,${0.75 * a})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,190,70,${0.9 * a})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y - r * 0.12, r * 0.62, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,248,200,${a})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y - r * 0.2, r * 0.3 * (1 - u * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+        // Flames licking up, and smoke rising off it.
+        ctx.fillStyle = `rgba(255,130,30,${0.8 * a})`;
+        for (let k = 0; k < 5; k++) {
+          const ang = -Math.PI / 2 + (k - 2) * 0.5;
+          const l = r * (0.9 + 0.5 * Math.sin(k * 3.1 + u * 8)) * (0.6 + u * 0.8);
+          ctx.beginPath();
+          ctx.moveTo(f.x + Math.cos(ang - 0.25) * r * 0.5, f.y + Math.sin(ang - 0.25) * r * 0.5);
+          ctx.lineTo(f.x + Math.cos(ang) * (r * 0.5 + l * 0.6), f.y + Math.sin(ang) * (r * 0.5 + l * 0.6));
+          ctx.lineTo(f.x + Math.cos(ang + 0.25) * r * 0.5, f.y + Math.sin(ang + 0.25) * r * 0.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = `rgba(40,40,40,${0.4 * Math.max(0, u - 0.2)})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y - r * (0.6 + u * 1.2), r * (0.4 + u * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       case 'boom':
         ctx.fillStyle = `rgba(255,160,60,${0.8 * (1 - u)})`;
         ctx.beginPath();

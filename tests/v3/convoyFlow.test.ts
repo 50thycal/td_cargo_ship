@@ -13,12 +13,17 @@ import { describe, expect, it } from 'vitest';
 import { FLOW_STEPS } from '../../src/v3/data/config';
 import { MAPS, type MapId } from '../../src/v3/data/maps';
 import { createGame, pickUpgrade, setFlow, step } from '../../src/v3/sim/game';
+import { laneLength } from '../../src/v3/sim/lanes';
 
 const DT = 1 / 60;
 /** Seconds of wave sim per map and flow step. */
 const RUN = 150;
 const STALL = 60;
 const FIRST = 120;
+/** The first delivery's limit on a map: FIRST, and a lane longer than the
+ *  usual 1,700 px (the Delta's long river, log v68) the time its extra length takes
+ *  at the convoy's own speed. */
+const firstFor = (map: MapId): number => FIRST + Math.max(0, Math.max(...MAPS[map].channels.map(laneLength)) - 1700) / 40;
 
 interface FlowRun {
   delivered: number;
@@ -52,7 +57,7 @@ function flowRun(map: MapId, flow: number): FlowRun {
     if (first !== null) worst = Math.max(worst, t - last);
   }
   // Still nothing in by the end: the whole run is the stretch.
-  if (first === null && t > FIRST) worst = t;
+  if (first === null && t > firstFor(map)) worst = t;
   return { delivered, first, worst };
 }
 
@@ -62,7 +67,7 @@ describe('the convoy never stalls (every map, every flow step, no input)', () =>
       const runs = FLOW_STEPS.map((_, flow) => flowRun(map, flow));
       const bad = runs
         .map((r, flow) => ({ flow, ...r }))
-        .filter((r) => r.first === null || r.first > FIRST || r.worst > STALL)
+        .filter((r) => r.first === null || r.first > firstFor(map) || r.worst > STALL)
         .map((r) => `flow ${r.flow}: first delivery ${r.first === null ? 'never' : `${r.first.toFixed(0)} s`}, longest stall ${r.worst.toFixed(0)} s, ${r.delivered} delivered`);
       expect(bad).toEqual([]);
       // Every flow step delivers ships, and a faster flow never fewer.

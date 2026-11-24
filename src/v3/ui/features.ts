@@ -5,9 +5,9 @@
 // Like render.ts it reads the game and mutates nothing.
 
 import { THREATS } from '../data/config';
-import { FOE } from '../data/foes';
 import { FORK_RADIUS, tideGauge, lockCountdown, reticleVisible, shieldUp, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
+import { drawAttackBoat } from './boats';
 import { flatsBand, sandEdge } from '../sim/tide';
 
 const RED = '#ff5a3d';
@@ -374,7 +374,7 @@ export function drawNewThreat(ctx: CanvasRenderingContext2D, g: Game, th: Threat
       return true;
     }
     case 'fastboat':
-      drawBoat(ctx, th);
+      drawAttackBoat(ctx, g, th);
       return true;
     case 'rig':
       drawRig(ctx, g, th, g.t);
@@ -413,69 +413,6 @@ function drawMineShape(ctx: CanvasRenderingContext2D, x: number, y: number, k: n
   ctx.beginPath();
   ctx.arc(x, y, 4 * k, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function drawBoat(ctx: CanvasRenderingContext2D, th: Threat): void {
-  const h = Math.atan2(th.vy, th.vx) || th.heading;
-  ctx.save();
-  ctx.translate(th.x, th.y);
-  ctx.rotate(h);
-  // The white wake: the warning.
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.beginPath();
-  ctx.moveTo(-14, -6);
-  ctx.lineTo(-64, -18);
-  ctx.lineTo(-64, 18);
-  ctx.lineTo(-14, 6);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#3a3f46';
-  ctx.strokeStyle = '#ff8a7a';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(-16, -8);
-  ctx.lineTo(10, -8);
-  ctx.lineTo(22, 0);
-  ctx.lineTo(10, 8);
-  ctx.lineTo(-16, 8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#c9d2db';
-  ctx.fillRect(-8, -4, 8, 8);
-  // Log v53 (The Coves): a fire ship burns, its deck in flames and a ring
-  // of fire round it the size of the fireball it leaves where it goes
-  // down, so it reads as "sink it far out" on a phone.
-  if (th.fire) {
-    const t = th.age * 9;
-    ctx.fillStyle = '#ff7a1a';
-    for (let k = 0; k < 3; k++) {
-      const fx = -10 + k * 9;
-      const h = 14 + 5 * Math.sin(t + k * 2.1);
-      ctx.beginPath();
-      ctx.moveTo(fx - 5, 0);
-      ctx.quadraticCurveTo(fx - 3, -h * 0.6, fx - 6, -h);
-      ctx.quadraticCurveTo(fx + 4, -h * 0.5, fx + 5, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.fillStyle = '#ffd34a';
-    ctx.beginPath();
-    ctx.arc(-2, -2, 5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-  if (th.fire) {
-    ctx.strokeStyle = 'rgba(255,122,26,0.55)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([7, 6]);
-    ctx.beginPath();
-    ctx.arc(th.x, th.y, FOE.cloud.radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  const full = th.maxHp ?? THREATS.fastboat.hp;
-  if (th.hp < full) bar(ctx, th.x, th.y - 26, 30, th.hp / full, th.fire ? '#ff9a3a' : '#ff8a7a');
 }
 
 /** A tug for a relief rig's tow (round 15): a squat red hull with a white

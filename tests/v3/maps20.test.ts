@@ -345,15 +345,17 @@ describe('each new map\'s own system', () => {
     expect(createGame('dreadnought', 1, 2).threats.some((t) => t.kind === 'dreadnought')).toBe(false);
   });
 
-  it('the Sharra Delta: a tap on the buoy sends the next ships down the next branch', () => {
+  it('the Sharra Delta (log v68): one long river, no fork: every ship sails the one lane, round the bends, from the north leg to the south', () => {
     const g = quiet('delta');
-    const fork = g.map.fork!;
-    expect(g.forkLane).toBe(fork.start);
-    tap(g, fork.x, fork.y, 20);
-    expect(g.forkLane).toBe((fork.start + 1) % 3);
-    run(g, 20);
-    const lanes = new Set(g.ships.filter((s) => s.d < 600).map((s) => s.channel));
-    expect(lanes.has(fork.lanes[g.forkLane])).toBe(true);
+    expect(g.map.fork).toBeUndefined();
+    expect(g.map.channels.length).toBe(1);
+    run(g, 60);
+    expect(g.ships.length).toBeGreaterThan(2);
+    expect(new Set(g.ships.map((s) => s.channel))).toEqual(new Set([0]));
+    // The head of the convoy has rounded the first bend by now (60 s at 40 px/s is 2,400 px: the north leg is about 1,500).
+    const lead = g.ships.reduce((a, s) => (s.d > a.d ? s : a));
+    expect(lead.d).toBeGreaterThan(1800);
+    expect(lead.y).toBeGreaterThan(300);
   });
 
   it('Tidewater Flats: no ship enters the flats lane at low tide', () => {

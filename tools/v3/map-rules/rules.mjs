@@ -100,7 +100,7 @@ export const RULES = [
     rule: 'The carrier sits so every stretch is in gun reach, but the danger stretch is not the closest. Frigate stations keep clear water beside the convoy (round 13) and cover the danger stretch.',
     why: 'Frigates were sitting inside the convoy on 19 maps; round 13 fixed the stations, and the Delta lost frigate value because its river has no room.',
     check: 'The frigate overlap test (all maps). Frigate kills per threat within a few points of the average.',
-    now: 'Fixed in PR #155 except the Delta’s frigate value (67% vs 84% average).',
+    now: 'Fixed in PR #155. The Delta was rebuilt as one long river in log v68 (about 2.9 times the usual lane): in its first build 24 of the 36 ships sunk were 500–900 px from the carrier (an interceptor flies 520 px/s, so a drone off a silo 130 px from a far ship cannot be stopped), so reach is the rule on a long map: its drone silos are the two islets either side of the carrier’s bay, the far silos fire shells and missiles only, and its frigate stations come from the river’s first 2,600 px. Its frigate value is not measured on the new river.',
   },
   {
     id: 'm-convoy',

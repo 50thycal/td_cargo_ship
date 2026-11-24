@@ -3,7 +3,7 @@
 // (docs/design/v3-maps-plan/NN-id.svg); the unique system each one brings is
 // named in its comment. MAP_ORDER (maps.ts) sets where each sits.
 
-import { after, arc, bypass, closeBottom, closeTop, curve, islet, lens, offset, rev, rough, shore, smooth } from './geo';
+import { arc, bypass, closeBottom, closeTop, curve, islet, lens, rough, shore, smooth } from './geo';
 import type { BaseDef, MapDef, MapId } from './mapTypes';
 
 
@@ -536,44 +536,107 @@ const coves: MapDef = {
 };
 
 // ---------------------------------------------------------------------------
-// 17. The Sharra Delta — the river forks three ways; you pick.
-// Ships come up a broad estuary and the river splits round two marsh islands.
-// North branch: shortest, under the enemy bank. Middle: a broad channel where
-// the carrier anchors beside the lane (review: the carrier sits in real water,
-// not a pond). South: long and winding past friendly marsh. A buoy at the fork
-// switches which branch the next ships take (one tap). Too shallow for subs.
-const DN = smooth([{ x: 600, y: 400 }, { x: 760, y: 292 }, { x: 960, y: 172 }, { x: 1250, y: 132 }, { x: 1640, y: 130 }], 8);
-const DM = smooth([{ x: 600, y: 400 }, { x: 1000, y: 398 }, { x: 1640, y: 400 }], 8);
-const DS = smooth([{ x: 600, y: 400 }, { x: 770, y: 525 }, { x: 1000, y: 712 }, { x: 1260, y: 778 }, { x: 1640, y: 788 }], 8);
-const RIVER = [{ x: -40, y: 400 }, { x: 600, y: 400 }];
-const DHW = 58;
-const BANK = DHW + 14;
-const MID_BELOW = 175; // the broad middle channel's water below the lane
+// 17. The Sharra Delta — one very long river.
+// Log v68 (the player, on the fork: "I don't see the point of the switching
+// lanes ... drop that map design and let's make a map that is just really
+// long for the ships to traverse ... triple the distance of the normal
+// length"): the river is one channel that winds back on itself twice across
+// the battlefield, about three times the usual path (a normal lane is about
+// 1,700 px; this one is about 5,000). The ships come in on the north leg
+// heading east, turn at the east bend and sail the middle leg west past the
+// carrier's bay, turn at the west bend and sail the south leg east to the
+// delivery at its end. No switch, no choice of lane: the question is how
+// long they are under fire, and the silos, banks and islands along the way
+// give each stretch its own danger.
+const DL = 170; // the north leg's y (west to east)
+const DM = 470; // the middle leg (east to west)
+const DS = 770; // the south leg (west to east)
+const DR = (DM - DL) / 2; // the bends' radius: 150
+const DE = 1360; // the east bend's x (its centre)
+const DW = 240; // the west bend's x
+/** The lane's half-width (what the ships' files spread across) and the bank beyond it: the river is wider
+ *  than the files by 56 px a side, so a frigate has room to sail beside the convoy (the Frigate Escort's
+ *  tracks need the files' reach, a hull and a gap of clear water). */
+const DHW = 36;
+const BANK = DHW + 56;
+// Three legs that wander a little (a river, not a ruler) and two bends that are true arcs: the arcs are not
+// smoothed, whose rounded points would put a kink in a lane the ships and the planes steer by.
+const DELTA_PATH = [
+  ...smooth(
+    [
+      { x: -60, y: DL + 6 },
+      { x: 250, y: DL - 14 },
+      { x: 560, y: DL + 12 },
+      { x: 900, y: DL - 10 },
+      { x: 1140, y: DL + 8 },
+      { x: DE - 80, y: DL },
+      { x: DE, y: DL },
+    ],
+    8,
+  ),
+  ...arc(DE, (DL + DM) / 2, DR, -90, 90, 24).slice(1),
+  ...smooth(
+    [
+      { x: DE, y: DM },
+      { x: 1100, y: DM + 10 },
+      { x: 860, y: DM - 12 },
+      { x: 620, y: DM + 10 },
+      { x: 430, y: DM - 6 },
+      { x: DW + 80, y: DM },
+      { x: DW, y: DM },
+    ],
+    8,
+  ).slice(1),
+  ...arc(DW, (DM + DS) / 2, DR, -90, -270, 24).slice(1),
+  ...smooth(
+    [
+      { x: DW, y: DS },
+      { x: 540, y: DS + 12 },
+      { x: 800, y: DS - 12 },
+      { x: 1100, y: DS + 10 },
+      { x: 1400, y: DS - 8 },
+      { x: 1660, y: DS },
+    ],
+    8,
+  ).slice(1),
+];
 const DELTA_BASES: BaseDef[] = [
-  { x: 220, y: 150, kinds: ['drone', 'ballistic'] },
-  { x: 560, y: 175, kinds: ['guided', 'supersonic'] },
-  { x: 860, y: 82, kinds: ['heavy', 'ballistic'] },
-  { x: 1060, y: 285, kinds: ['cluster', 'drone'] },
-  { x: 1430, y: 272, kinds: ['guided', 'heavy', 'mothership'] },
+  // The north coast, over the first leg: far silos, long warnings, and no drones. A drone is the one threat a
+  // ship far from the carrier cannot be covered against (its guns reach the bay in under a second, the river's
+  // ends in two), so the drone silos are the two islets either side of the carrier's bay, and the drones fly out
+  // to the ships on the north leg and at the ends: a long flight, the carrier's own guns in reach.
+  { x: 330, y: 74, kinds: ['ballistic', 'guided'] },
+  { x: 700, y: 66, kinds: ['guided', 'supersonic'] },
+  { x: 1060, y: 70, kinds: ['heavy', 'ballistic'] },
+  // The island between the first and second legs: point-blank on both.
+  { x: 560, y: 330, kinds: ['cluster', 'ballistic'] },
+  { x: 960, y: 330, kinds: ['guided', 'heavy', 'mothership'] },
+  // The islets either side of the carrier's bay, between the second and third legs.
+  { x: 1300, y: 610, kinds: ['drone', 'cluster'] },
+  { x: 400, y: 610, kinds: ['drone', 'guided'] },
+  // The marsh at the south-east, behind the last stretch.
+  { x: 1400, y: 864, kinds: ['guided', 'ballistic', 'supersonic'] },
 ];
 const delta: MapDef = {
   id: 'delta',
   name: 'The Sharra Delta',
-  blurb: 'The river splits three ways round the marshes. Tap the buoy at the fork to send ships north (short, hot), middle (past your carrier), or south (long, safe).',
+  blurb: 'One river, three times the usual length, winding back on itself between marsh islands. The ships are under fire the whole way: every bend has a silo over it.',
   land: [
-    { side: 'enemy', points: [{ x: 0, y: 0 }, { x: 0, y: 262 }, { x: 520, y: 262 }, ...after(offset(DN, -BANK), 720), { x: 1600, y: 0 }] },
-    { side: 'enemy', hill: true, points: [...after(offset(DN, BANK), 880), ...rev(after(offset(DM, -BANK), 880))] },
-    { side: 'friendly', points: [...after(offset(DM, MID_BELOW), 1020), ...rev(after(offset(DS, -BANK), 1020))] },
-    { side: 'friendly', points: [{ x: 0, y: 900 }, { x: 0, y: 792 }, { x: 560, y: 792 }, ...after(offset(DS, BANK), 920), { x: 1600, y: 900 }] },
+    // The north coast.
+    { side: 'enemy', points: closeTop(rough(smooth([{ x: 0, y: DL - BANK - 2 }, { x: 400, y: DL - BANK - 6 }, { x: 800, y: DL - BANK + 2 }, { x: 1200, y: DL - BANK - 4 }, { x: 1600, y: DL - BANK }], 6), 3, 0.5)) },
+    // The island between the first and second legs, the east bend round its tip.
+    { side: 'enemy', hill: true, points: [{ x: 90, y: DL + BANK }, { x: DE, y: DL + BANK }, ...arc(DE, (DL + DM) / 2, DR - BANK, -90, 90, 12).slice(1), { x: 90, y: DM - BANK }] },
+    // The two islets either side of the carrier's bay (the west one rounded by the west bend).
+    { side: 'enemy', hill: true, points: [{ x: 1610, y: DM + BANK }, { x: 1150, y: DM + BANK }, ...arc(1150, (DM + DS) / 2, DR - BANK, -90, -270, 10).slice(1), { x: 1610, y: DS - BANK }] },
+    { side: 'enemy', hill: true, points: [{ x: DW, y: DM + BANK }, { x: 560, y: DM + BANK }, ...arc(560, (DM + DS) / 2, DR - BANK, -90, 90, 10).slice(1), { x: DW, y: DS - BANK }, ...arc(DW, (DM + DS) / 2, DR - BANK, 90, 270, 12).slice(1)] },
+    // The south bank: friendly marsh in the west, enemy in the south-east.
+    { side: 'friendly', points: [{ x: 0, y: 900 }, ...smooth([{ x: 0, y: DS + BANK + 6 }, { x: 300, y: DS + BANK + 10 }, { x: 700, y: DS + BANK + 4 }, { x: 1150, y: DS + BANK + 8 }], 6), { x: 1150, y: 900 }] },
+    { side: 'enemy', points: closeBottom(smooth([{ x: 1150, y: DS + BANK + 8 }, { x: 1300, y: DS + BANK + 4 }, { x: 1460, y: DS + BANK + 10 }, { x: 1600, y: DS + BANK + 4 }], 6)) },
   ],
   bases: DELTA_BASES,
-  carrier: { x: 1000, y: 522 },
-  frigate: { x: 1250, y: 528 },
-  channels: [
-    { y: 160, halfWidth: DHW, path: [...RIVER, ...DN.slice(1)] },
-    { y: 400, halfWidth: DHW, path: [...RIVER, ...DM.slice(1)] },
-    { y: 760, halfWidth: DHW, path: [...RIVER, ...DS.slice(1)] },
-  ],
+  carrier: { x: 840, y: 610 },
+  frigate: { x: 680, y: 610 },
+  channels: [{ y: DM, halfWidth: DHW, path: DELTA_PATH }],
   threatScale: 1.5,
   extras: [
     { kind: 'cluster', from: 3, count: 1, growth: 0.25 },
@@ -584,20 +647,27 @@ const delta: MapDef = {
   alerts: { x0: 20, x1: 560, y: 890, max: 1 },
   roads: {
     runners: [
-      // Inland of the north fork's shore all the way (east of x = 950 it ran
-      // along the waterline, half of each truck in the river).
-      bypass([{ x: -60, y: 200 }, { x: 450, y: 205 }, { x: 800, y: 150 }, { x: 1000, y: 62 }, { x: 1200, y: 40 }, { x: 1660, y: 30 }], DELTA_BASES.slice(0, 3), -1),
-      // The ridge road keeps to the island's north edge: down its middle it
-      // ran straight over both silos (map visual-check round).
-      smooth([{ x: 935, y: 288 }, { x: 1000, y: 256 }, { x: 1080, y: 238 }, { x: 1200, y: 226 }, { x: 1360, y: 219 }, { x: 1660, y: 219 }], 6),
+      // Along the north coast, inland of its silos.
+      bypass([{ x: -60, y: 28 }, { x: 800, y: 30 }, { x: 1660, y: 28 }], DELTA_BASES.slice(0, 3), -1),
+      // Along the island between the first two legs, over its middle.
+      smooth([{ x: 100, y: 296 }, { x: 400, y: 294 }, { x: 800, y: 298 }, { x: 1200, y: 295 }, { x: 1330, y: 297 }], 6),
     ],
-    popups: [{ from: { x: 1250, y: 250 }, to: { x: 1250, y: 318 } }],
+    // Pop-up roads to the bank over each stretch: both banks of the north
+    // leg, the island's south side over the middle leg, the islets over the
+    // south leg, the south bank under it.
+    popups: [
+      { from: { x: 880, y: 20 }, to: { x: 880, y: DL - BANK - 4 } },
+      { from: { x: 1200, y: 330 }, to: { x: 1200, y: DL + BANK + 6 } },
+      { from: { x: 760, y: 330 }, to: { x: 760, y: DM - BANK - 6 } },
+      { from: { x: 1450, y: 610 }, to: { x: 1450, y: DM + BANK + 8 } },
+      { from: { x: 500, y: 610 }, to: { x: 500, y: DS - BANK - 8 } },
+      { from: { x: 900, y: 892 }, to: { x: 900, y: DS + BANK + 10 } },
+    ],
   },
   subSpots: [],
-  bomberLines: [600],
+  bomberLines: [610],
   vectors: { trucks: 1, subs: 99, strafers: 3, bombers: 5 },
-  fork: { x: 560, y: 480, lanes: [0, 1, 2], start: 1 },
-  escortStations: [{ x: 1250, y: 470 }, { x: 300, y: 300 }, { x: 520, y: 470 }],
+  escortStations: [{ x: 700, y: 610 }, { x: 980, y: 610 }, { x: 560, y: 610 }],
 };
 
 // ---------------------------------------------------------------------------

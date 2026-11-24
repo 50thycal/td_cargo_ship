@@ -650,7 +650,7 @@ const ROUND13: Record<string, string[]> = {
   'map-kesh': ['Frigates round the Hook only through a gap in the convoy, and the south frigate holds station further west, in open water'],
   'map-island': ['The north lane\'s frigate holds station further west, where there is room beside the convoy'],
   'map-needle': ['Frigates keep to the open water before the Needle: they back out the way they came instead of going through the narrows with the convoy'],
-  'map-delta': ['Frigates keep to the open water before the fork and south of the middle channel: the river branches have no room beside the convoy'],
+  'map-delta': ['Frigates keep to the carrier\'s bay, the open water between the middle and south legs: the legs have no room beside the convoy'],
 };
 for (const id of MAP_ORDER) {
   const card = mapCardId(id);
@@ -712,12 +712,12 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'delta', log: 68, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },
+  { map: 'coves', log: 68, tag: 'Polished', note: 'Speedboats ram and burn, gunboats lock on one ship, rocket boats fire from afar.' },
   { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
   { map: 'tide', log: 61, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'citadel', log: 60, tag: 'New', note: 'The finale: the shield rises every wave; fire under the dome can\'t be shot. Break it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
-  { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
-  { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
   { map: 'sowers', log: 55, tag: 'Polished', note: 'Mines stay hidden till a ship is close; the big Hold button glows when to press it. Fair?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },

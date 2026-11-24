@@ -637,3 +637,13 @@ wave 7, 8 s before the note (39.2 s), so tapping had stopped before the note.
 
 In the browser, a note from the pause menu, then Resume, at 2× speed: 3 of 3
 taps fired.
+
+## Log v68: the sim bot did not hold the Lance or swipe the Laser (Battery, v65 sim run)
+
+**What the player said (the Watch run, "sim", lost on Battery wave 5 with a Charge Lance at level 3 and a Laser Cutter at level 1):** wave 3, "the bot does not use the lance properly, it needs to hold down to charge a bigger hit"; the review, "the bot does not use the laser weapon, it needs that".
+
+**Cause.** The headless sweep bot (`sim/bot.ts`) already played the Lance and the Cutter, but the "you" persona the sim and Watch mode use (`sim/mimic.ts`) only ever tapped: a loaded Lance was a plain shot, a loaded Cutter a tap. Its `BotIO` had no press, move or release.
+
+**Fixed.** `BotIO` gets `press` / `move` / `release` (the Recorder's, so the log carries them as `d` / `v` / `r` and replays exactly); a persona with `gestures` (the "you" persona and what it spreads to: 0.9; Novice 0) plays a held gesture weapon as a person does. The Lance: pressed on the toughest threat in the sky (else the line that holds three or more, else the urgent one) with time enough to charge, the finger following it, let go a beat after the charge it wanted shows (the full lance when the target can wait and little else is coming, the half when not; level 2-3 charge 1.33 times as fast), while the other thumb keeps tapping at the rest. The Cutter: a swipe through the urgent threat along the line that crosses the most others, aimed a little off as the thumb is. The older fits (`you-v1`, `you-p2`, `you-r12`) have no `gestures` and tap as they did. `BOT_REV` 4.
+
+**Verified.** Battery card, the kit of the lost run held from the start (Charge Lance 3, Laser Cutter 1), the latest Armory, 48 seeds, the same seeds: taps only **0 of 48 won** (lost waves 4-9, 6.0 ships a run), with gestures **15 of 48 won** (mean wave 11.1; 105 presses and 403 shots a run against 167 shots). `tools/v3/bot-lance/kit.ts`; `tests/v3/botGestures.test.ts`.

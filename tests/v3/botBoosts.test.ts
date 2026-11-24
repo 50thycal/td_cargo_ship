@@ -11,7 +11,8 @@ describe('the boosts round', () => {
     expect(YOU.boosts).toBeDefined();
     expect(YOU_P2.boosts).toBeUndefined();
     expect(PERSONAS['you-p2']).toBe(YOU_P2);
-    const { id: _a, label: _b, blurb: _c, boosts: _d, ...now } = YOU;
+    // (Log v68: and `gestures`, the Lance held and the Cutter swiped.)
+    const { id: _a, label: _b, blurb: _c, boosts: _d, gestures: _h, ...now } = YOU;
     const { id: _e, label: _f, blurb: _g, ...before } = YOU_P2;
     expect(now).toEqual(before);
     expect(BOT_REV).toBeGreaterThanOrEqual(2);
