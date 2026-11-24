@@ -533,11 +533,32 @@ import type { EncounterSetup } from '../data/encounters';
  *      whom and on which `wave`. Both sides' inputs are ordinary commands
  *      (the 'c' switches are UI only), so the log replays exactly. Nothing
  *      in the sim changed: a v64 log plays the same game; the version
- *      marks the logs that can carry the new fields. */
-export const LOG_VERSION = 65;
+ *      marks the logs that can carry the new fields.
+ *  67: the Black Strait and Blackout always dark, the Dreadnought's guns and
+ *      the Citadel destroyed once (the player: "there should not be a light
+ *      drop it should always be dark"; "the ship is lame, have it actually
+ *      use the targets where the shot artillery"; "it was down in wave 4, it
+ *      should really only be destroyed once, but it will come back for the
+ *      boss wave"). No Star Shell drops on the Black Strait or in Blackout
+ *      (game.ts dropPickup, events.ts eventDropWeights, no 'shell' step in
+ *      Blackout). Under the encounter layer the Dreadnought carries three
+ *      gun turrets (TURRET, Threat kind 'turret', game.ts updateTurret):
+ *      its artillery shells come off them, one turret at a time on its own
+ *      cycle, each shot out in 4 hits and silent after; the silo launches
+ *      the rest of a broadside (guided missiles, drones), its hatches
+ *      opening before it fires. A gun turret is a target (worthShooting)
+ *      and as urgent as its next shell is near (timeToImpact). On the
+ *      Citadel the shield still rises again every wave until the Citadel is
+ *      destroyed; destroyed (70 shots dealt over the waves, 14 before; two of a wave's launches a wave come off it under the dome, one before) it and
+ *      its generators stay down, its fire off the far silos, until the
+ *      boss's rise rebuilds them (game.ts citadelDown, raiseShield: a keep
+ *      still up for the boss is brought down to the round's numbers). Map-
+ *      lab logs before v67 no longer replay to the same game. (66 is built
+ *      alongside.) */
+export const LOG_VERSION = 67;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [65];
+export const LOG_REPLAYS: readonly number[] = [67];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

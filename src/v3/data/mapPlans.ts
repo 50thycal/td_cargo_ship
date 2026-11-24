@@ -340,7 +340,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch3-lantern.md
   lantern: {
-    problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
+    problem: 'Night: a threat is a faint glow until the lighthouse beam, the carrier\'s lamp lights it (it is always dark), and the beam sweeps the far shore and the lane but never the enemy\'s own bank in the south-east, right behind the ships as they deliver, so the shells, missiles and siege guns from there come out of the dark on the shortest flights on the map.',
     // The fire comes out of the dark bank behind the ships on the shortest
     // flights on the map (shells, missiles, clusters, swarms), with siege
     // guns rising there whose shells no interceptor can stop. The
@@ -389,7 +389,7 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch4-citadel.md (chapter 4's last map and the game's)
   citadel: {
-    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map; from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then more on the Citadel to silence it for the wave, or every shot on what is coming?',
+    problem: 'The Citadel of Vey stands over the harbour narrows where the ships deliver, its fire the shortest on the map, behind a shield that rises again every wave on three generators spread round the map until the Citadel itself is destroyed (once: it stays a ruin until the boss rebuilds it); from wave 4 it fires under its dome, where nothing can be shot while the shield stands: three generators, a few shots each, to open its fire to your guns, then the Citadel\'s seventy shots across the waves, or every shot on what is coming?',
     // The fire is the Citadel's, a breath from its keep over the narrows
     // and from wave 4 shielded under its dome, and drones on the long
     // flight off the far silo; the shield rises every wave, so the

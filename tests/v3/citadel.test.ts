@@ -9,7 +9,7 @@ import { CITADEL } from '../../src/v3/data/config';
 import { ENCOUNTER_REV, MAP_BOSS, MAP_SIGNATURE, encountersFor, signatureOf, shieldRisesOn, shotRigsOn, swapFoe } from '../../src/v3/data/encounters';
 import { eventName } from '../../src/v3/data/events';
 import { MAPS } from '../../src/v3/data/maps';
-import { applyEncounters, createGame, damageThreat, domed, pickUpgrade, rigStandIn, shieldUp, spawnThreat, step, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
+import { applyEncounters, createGame, damageThreat, domed, pickUpgrade, raiseShield, rigStandIn, shieldUp, spawnThreat, step, worthShooting, type Game, type Threat } from '../../src/v3/sim/game';
 import { PERSONAS, playMimic } from '../../src/v3/sim/mimic';
 
 const DT = 1 / 60;
@@ -72,24 +72,53 @@ describe('the Citadel (log v60): the shield and the Citadel under the layer', ()
     expect(gens(camp)[0].hp).toBe(7);
   });
 
-  it('the shield rises again at the next wave and a silenced Citadel is manned again; in the campaign they stay down', () => {
+  it('the shield rises again at the next wave until the Citadel falls; once destroyed it stays down for the waves (log v67); in the campaign they stay down', () => {
     const g = layer(1, 2);
+    // Generators down only: they stand again next wave, the Citadel keeps what it has.
+    for (const t of gens(g)) shootDown(g, t);
+    damageThreat(g, keep(g)!, 3, true, 'gun');
+    expect(keep(g)!.hp).toBe(CITADEL.citadel - 1);
+    nextWave(g);
+    expect(shieldUp(g)).toBe(true);
+    expect(gens(g).map((t) => t.hp)).toEqual([CITADEL.generator, CITADEL.generator, CITADEL.generator]);
+    expect(keep(g)?.hp).toBe(CITADEL.citadel - 1);
+    // Destroyed: it and its generators stay down for every wave after.
     for (const t of gens(g)) shootDown(g, t);
     shootDown(g, keep(g)!);
     expect(shieldUp(g)).toBe(false);
     expect(keep(g)).toBeUndefined();
     expect(g.baseDown[0]).toBe(true);
+    expect(g.cit.fellAt).toBeGreaterThanOrEqual(0);
     nextWave(g);
-    expect(shieldUp(g)).toBe(true);
-    expect(gens(g).map((t) => t.hp)).toEqual([CITADEL.generator, CITADEL.generator, CITADEL.generator]);
-    expect(keep(g)?.hp).toBe(CITADEL.citadel);
-    expect(g.baseDown.slice(0, 4)).toEqual([false, false, false, false]);
+    expect(shieldUp(g)).toBe(false);
+    expect(gens(g)).toEqual([]);
+    expect(keep(g)).toBeUndefined();
+    expect(g.baseDown.slice(0, 4)).toEqual([true, true, true, true]);
+    nextWave(g);
+    expect(keep(g)).toBeUndefined();
     const camp = tough(createGame('citadel', 1, 2));
     for (const t of gens(camp)) shootDown(camp, t);
     nextWave(camp);
     expect(shieldUp(camp)).toBe(false);
     expect(gens(camp)).toEqual([]);
-  }, 60_000);
+  }, 90_000);
+
+  it('the Citadel is rebuilt for the boss: the Last Stand raises the shield and mans a fallen Citadel again, with the round\'s numbers', () => {
+    const g = layer(1, 2);
+    for (const t of gens(g)) shootDown(g, t);
+    shootDown(g, keep(g)!);
+    expect(keep(g)).toBeUndefined();
+    raiseShield(g, 3, 12);
+    expect(g.cit.domeUpAt).toBe(g.t);
+    expect(shieldUp(g)).toBe(true);
+    expect(keep(g)?.hp).toBe(12);
+    // A keep still up is brought down to the round's numbers.
+    const h = layer(2, 2);
+    expect(keep(h)!.hp).toBe(CITADEL.citadel);
+    raiseShield(h, 4, 14);
+    expect(keep(h)!.hp).toBe(14);
+    expect(keep(h)!.maxHp).toBe(14);
+  });
 
   it('a silenced Citadel\'s fire comes off the far silos, not under the dome', () => {
     const g = layer(3, 4);
