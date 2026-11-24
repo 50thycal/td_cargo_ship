@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-23',
-  headline: 'All 20 maps are rebuilt. New in the Test Lab: Watch mode (the bot plays, you take over any time; the log knows who played), a Tools panel with the Armory inside, and only the new tests on the hub. Also in: Saltgate’s truck parade and the full-width battlefield. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.',
+  updated: '2026-11-24',
+  headline: 'Your play notes are in (21 logs). Three builds are running: A (log v66) the Tide moves as a whole and strands ships, Sowers hold themselves, the first-load sizing bug; B (v67) an always-dark Lantern and Blackout, a Dreadnought that uses its artillery, a Citadel that is destroyed once and returns for the boss; C (v68) the Coves boats overhauled, the Delta as one long route, the bot learns the Lance. Crossing and the Archipelago rated fun 5, boss 5. Builds start from your notes now. Still open: what comes after the maps (rollout, Air Strike pass, Armory).',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -167,6 +167,7 @@ export const STATUS = {
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-24', what: 'Your play notes read (21 logs since Nov 23, including Watch runs; your pause notes typed while the bot drove count as yours). Marks saved. Fun 5 on every rated run; Crossing and the Archipelago boss 5, Citadel boss 3, the Dreadnought lost its boss wave in a sim run. Building, three at once: A log v66 Tide (the whole water moves in and out, slower, longer phases, ships on the flats stuck until high tide), Sowers (hold is automatic, mines seen 1.5× farther, ships pause before a mine), first-load sizing (“I still have to rotate my screen”); B log v67 Lantern and the Blackout boss always dark (no light drop), better spotlight, the Dreadnought uses shootable artillery and looks like a battleship with a missile silo, the Citadel is destroyed once and returns for the boss; C log v68 Coves boats overhaul (a rushing fire speedboat, a locking cannon boat, a slow sturdy rocket boat), the Delta rebuilt as one route three times as long (no lane switch), the bot holds the Lance to charge. Also merged: #236 (Watch mode, log v65).' },
     { date: '2026-11-23', what: 'Merged #236 (log v65). Your Watch mode. Every Ready card has a gold Watch button and every map tile an eye key: the bot fitted to your play (it aims and grabs pickups like you, loses a bit more, finds boss rounds about twice as hard) plays that exact setup live. Speed it up (up to 10×) or pause; while it plays, your taps do nothing. Take over (the gold rail button, or from the pause menu or draft) plays from that tick; Let bot play hands it back, as often as you like. Pause notes say whether you or the bot was playing. The log records who played when, and labels the run full playtest, sim or mixed; the scorecard says e.g. “Mixed run · you played 42%, the bot 58%”. The bot fit and your stats skip the bot’s share, so it never counts as your play. A Watch run can’t be Continued later.' },
     { date: '2026-11-23', what: 'Merged #235. Your Test Lab notes built. The Armory is now one entry in Tools (the per-chapter buttons are gone). Tools opens as a panel instead of jumping down the page: Setup (Armory, Call-outs), Logs (session report, send logs, download the last log) and More (map analytics, feedback page). The old testing section is gone from the hub (75 old enemy, weapon, event and combo cards, the round tally, Next up and Play 5); the hub shows only Ready to test and the maps by chapter. Their direct links still work for the checks and bots. Also fixed: the touch keyboard could cover the note’s Save button in the checks; notes now always fit above the keyboard.' },
     { date: '2026-11-23', what: 'Merged #231. Your note: use the blank space on the left. The battlefield now starts at the screen’s left edge in every mode; the old left rail is gone. Its pieces (the golden bomb, power-up timers and the map’s command) sit in a small dock over the map’s lower-left corner; HOLD is smaller (76×64) and see-through until it matters. The map keeps its 16:9 shape, so on a wide phone the spare width (about 160 px) now goes to the right rail column with pause, speed and the power-up slots. View only: taps land where you aim (checked), old runs and Continue still work.' },
@@ -239,61 +240,6 @@ export const STATUS = {
 export const NEEDS = [
 
   {
-    id: 'r15-play-dreadnought',
-    kind: 'item',
-    title: 'Play the rebuilt Dreadnought, chapter 3’s finale (Test Lab → Ready to test)',
-    text: 'A battleship steams down the channel on waves 3, 6, 9 and 10 firing broadsides: sink it (50 hits) or shoot down each broadside. Spotter planes lay its guns from wave 4. The boss: it steams in, stops broadside-on and fires while spotters walk barrages at your ships; sink it and the barrage stops. Look for: is the boss different enough from the battleship in the waves? Does sinking it feel like a real choice?',
-  },
-  {
-    id: 'r15-play-lantern',
-    kind: 'item',
-    title: 'Play the rebuilt Black Strait (the Lantern), the night map (Test Lab → Ready to test)',
-    text: 'Threats are glows until the lighthouse beam or your lamp lights them; the enemy bank behind you as you deliver is never lit and fires from close. Siege batteries rise by the dark bank from wave 4; the boss, Bombardment, is a line of siege guns on the far shore plus guns in the dark. Look for: can you read the dark on your phone? Do the shells from behind feel fair?',
-  },
-  {
-    id: 'r16-play-notes',
-    kind: 'item',
-    title: 'Play the Sowers and the Rig Field again with your notes built in (Test Lab → Ready to test, v55)',
-    text: 'Sowers: mines stay hidden until about 2.5 s before a ship reaches them; the big Hold button bottom left glows NOW! when holding saves a ship. Rigs: each rig shows its shots left (32 standing); watch the new tug tow. Look for: is 2.5 s enough warning on your phone? Do the rigs feel sturdy but fair?',
-  },
-  {
-    id: 'r16-play-coves',
-    kind: 'item',
-    title: 'Play the rebuilt Coves, the first chapter 4 map (Test Lab → Ready to test, v56)',
-    text: 'Boats dash out of four coves; from wave 4 some are fire ships (burning, with an orange ring showing the fire they leave). Boss, Fire Fleet: fire ships from every cove at once. Look for: do the fire ships and their ring read on your phone (or is the ring clutter)? Does “stop it at the cove mouth” feel like the question? Air Strike + Flak is in most of the bot’s best kits: does it feel like the only answer?',
-  },
-  {
-    id: 'r16-play-delta',
-    kind: 'item',
-    title: 'Play the rebuilt Delta (Test Lab → Ready to test, v57)',
-    text: 'The enemy aims at the branch your switch is set to; from wave 4 firebombs burn at that branch’s mouth. Boss, Burning Delta: branches catch fire (ring + FIRE 2.5 s ahead). Look for: does the switch feel like a real choice (waves 2, 4, 7, 9)? Can you read the burning-branch warning on your phone?',
-  },
-  {
-    id: 'r16-play-crossing',
-    kind: 'item',
-    title: 'Play the rebuilt Dunmar Crossing (Test Lab → Ready to test, v58)',
-    text: 'Two convoys pass each other; from wave 4 spotter beacons rise between the lanes (four of your own taps each) and call shells on the ship nearest them. Boss, Beacon Line: rows of spotters at once. Look for: do you have time to tap the spotters down? Is wave 10 (the crossing) a proper climax, or flat? If the latest Armory feels like a wall, say so and I take one spotter off each round-2 line.',
-  },
-  {
-    id: 'r16-play-citadel',
-    kind: 'item',
-    title: 'Play the rebuilt Citadel of Vey, the finale (Test Lab → Ready to test, v60)',
-    text: 'Shoot the three generators (3 shots each) to drop the shield, then 14 more to silence the Citadel for the wave; while the shield stands its missiles can’t be shot (cyan ring). Boss, The Last Stand: grand salvos at the lead ship in the narrows. Look for: is opening the Citadel a real choice, or always right? Can you read the GRAND SALVO warning? Is it a finale?',
-  },
-  {
-    id: 'r16-citadel-tune',
-    kind: 'question',
-    title: 'The Citadel: the bot opens it almost every wave. Make it harder to silence?',
-    text: 'The bot drops the shield and silences the Citadel in 75–100% of waves, so the dome (the signature) rarely matters: 6% of hits, 31% in the boss. More shots to silence it (14 → 20–24) would make it a real cost and raise the signature, but cost win rate (now 49%, band 50–70%). My pick: play it first as it is.',
-    options: ['Play it as it is first', 'More shots to silence it (20–24)', 'Shield only every other wave', 'Something else (note)'],
-  },
-  {
-    id: 'r16-play-tide',
-    kind: 'item',
-    title: 'Play the rebuilt Tide (Test Lab → Ready to test, v61): does the tide work now?',
-    text: 'Your note: the tide didn’t animate well and ships didn’t leave the low-tide area. Now: “THE TIDE TURNS” warns 5 s ahead, the sand grows in behind a line of surf, and ships on the flats cross to the deep channel as it falls. Watch a ship leave the flats on waves 1 and 3. Is the crossing too fast or slow? Is the sand too strong? Boss, Low Water: strikes at the bunched convoy.',
-  },
-  {
     id: 'r17-after-maps',
     kind: 'question',
     title: 'All 20 maps are rebuilt. What comes next?',
@@ -342,6 +288,87 @@ export const NEEDS = [
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  {
+    id: 'r15-play-dreadnought',
+    kind: 'item',
+    verdict: 'change',
+    note: "Sim run on v65 lost the boss wave (boss rated 5). “The ship is lame. Have it actually use the targets where the shot artillery is and you can take out the targets. You can still have it launch missiles and drones too, just make the missile look like it has a silo for that.” And: “main comment is improve that dreadnought ship and improve the look and animation.” Building (log v67).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Dreadnought, chapter 3’s finale (Test Lab → Ready to test)',
+    text: '',
+  },
+  {
+    id: 'r15-play-lantern',
+    kind: 'item',
+    verdict: 'change',
+    note: "“There should not be a light drop, it should always be dark.” (wave 1) and “Improve the animation and look of the spot light” (wave 6). Sim run won, fun 5, boss 5. Building (log v67).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Black Strait (the Lantern), the night map (Test Lab → Ready to test)',
+    text: '',
+  },
+  {
+    id: 'r16-play-notes',
+    kind: 'item',
+    verdict: 'change',
+    note: "Sowers, v61: “Make the Hold command automatic: whenever a ship is right about to hit a mine, ... make mines spottable about 1.5 times the distance from what it is now ... right before the ship collides with the mine, about 1/3 of the spotting distance, the ship in the path will pause until that mine was added or is shot down.” Won fun 5, difficulty right. Mines caused 3 of 6 losses. Building (log v66). The Rig Field: no new notes.",
+    at: '2026-11-24',
+    title: 'Play the Sowers and the Rig Field again with your notes built in (Test Lab → Ready to test, v55)',
+    text: '',
+  },
+  {
+    id: 'r16-play-coves',
+    kind: 'item',
+    verdict: 'change',
+    note: "Sim run won, fun 5, boss 5. Attack boats: “Need to improve the animation and look of the attack boats”, “better wake and move more realistically”, and “overhaul the boats ... a speed boat that rushes the cargo ships and explodes with fire; one with a small cannon that locks on a cargo ship and sails with it until it sinks it; the last kind should shoot rockets like the rocket trucks but have a lot more health, more range and be slower.” Building (log v68).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Coves, the first chapter 4 map (Test Lab → Ready to test, v56)',
+    text: '',
+  },
+  {
+    id: 'r16-play-delta',
+    kind: 'item',
+    verdict: 'cut',
+    note: "Played to wave 4 (sim, mixed) and quit: “I don't see the point of the switching lanes. I say drop that map design and let's make a map that is just really long for the ships to traverse. It should be triple the distance of the normal length. Do some iterations to find the best design.” Rebuilding as one long route (log v68).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Delta (Test Lab → Ready to test, v57)',
+    text: '',
+  },
+  {
+    id: 'r16-play-crossing',
+    kind: 'item',
+    verdict: 'approve',
+    note: "Played (mixed, 14% you): won, fun 5, difficulty right, intensity 5, boss 5, “better” than the Battery. No notes on the map. Only issue: “I still have to rotate my screen when it initially loads as it is not sized right” (a first-load sizing bug, being fixed in log v66).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Dunmar Crossing (Test Lab → Ready to test, v58)',
+    text: '',
+  },
+  {
+    id: 'r16-play-citadel',
+    kind: 'item',
+    verdict: 'change',
+    note: "Sim run won, fun 5, intensity 5, boss only 3. “Make the citadel ... it was down in wave 4, it should really only be destroyed once, but it will come back for the boss wave. It should also look better and have more unique animations.” Building (log v67).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Citadel of Vey, the finale (Test Lab → Ready to test, v60)',
+    text: '',
+  },
+  {
+    id: 'r16-citadel-tune',
+    kind: 'question',
+    choice: 3,
+    note: "Something else: destroyed once for the whole run, back only for the boss wave (see the Citadel play note). Building (log v67).",
+    at: '2026-11-24',
+    title: 'The Citadel: the bot opens it almost every wave. Make it harder to silence?',
+    text: '',
+  },
+  {
+    id: 'r16-play-tide',
+    kind: 'item',
+    verdict: 'change',
+    note: "Tide, v64, three pause notes: “the tide still does not look right. The aircraft carrier still sits at the bottom and it still has a strip of water there too. The whole water should pull back, and I say the ships left in the low tide are just stuck until the next high tide.” “Tide times should last longer too.” “It should be the whole water moving in and out, and it should be slower too.” Building (log v66).",
+    at: '2026-11-24',
+    title: 'Play the rebuilt Tide (Test Lab → Ready to test, v61): does the tide work now?',
+    text: '',
+  },
   {
     id: 'r16-rail-leftovers',
     kind: 'question',
