@@ -307,8 +307,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   sowers: {
-    look: 'Mines stay hidden until about 3.75 s before a ship reaches them, and a ship stops by itself about 1.25 s short of one until it is shot or has drifted past. Is that enough time to shoot, and does the stopping feel fair, not too safe?',
+    look: 'A bomber now sows its mines 60-130 px ahead of a ship, then fires at the ships it stopped. Watch the stops under that fire: is the automatic pause still fair, and the bomber worth shooting first?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 70,
+        title: 'Back in its band: closer mines, bombers that shoot',
+        what: 'Still no Hold button; a ship still stops by itself for a mine you can see. A stealth bomber sows its mines closer and quicker, 60-130 px ahead of a ship, takes a seventh hit, and drops its three missiles on the ships its mines stopped. The chutes’ strings come tighter.',
+        why: 'With the pause automatic the bot won 85% (plating Armory 93%), above the 50-70% band, since a stopped ship never hit a mine. The fire moves to what you can shoot and to timing, not bigger waves.',
+      },
       {
         date: '2026-11-24',
         log: 68,

@@ -595,11 +595,21 @@ import type { EncounterSetup } from '../data/encounters';
  *      charge shows and letting go, and swipes a loaded Laser Cutter
  *      (Persona `gestures`, BotIO press/move/release; BOT_REV 4). A
  *      Coves or Delta log before v69 no longer replays to the same game; the
+ *      other maps play as they did.
+ *  70: Sowers' Reach back in its band with the automatic Hold (the bot won
+ *      85% with the usual Armory, 93% with the plating one; the Hold button
+ *      stays gone and the campaign is untouched). The mines are sown
+ *      closer and quicker (data/config.ts SOW: 60-130 px ahead of a ship,
+ *      one every 0.25 s), a signature bomber takes a seventh hit and drops
+ *      its three guided missiles on the ships its mines have halted
+ *      (SOW.armor, SOW.rack; game.ts sowMines, updatePlane), and the
+ *      chutes' strings come tighter (encounters.ts SOWERS_R4 mine gaps).
+ *      A Sowers log before v70 no longer replays to the same game; the
  *      other maps play as they did. */
-export const LOG_VERSION = 69;
+export const LOG_VERSION = 70;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [69];
+export const LOG_REPLAYS: readonly number[] = [70];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

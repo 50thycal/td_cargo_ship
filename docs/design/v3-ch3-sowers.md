@@ -277,6 +277,16 @@ From `sowers-player.md` (the usual Armory):
 - **The boss's name: Carpet Run (the event's own), or a name of its own like Saltgate's Gatecrashers ("The Sowing")?** Recommended: keep Carpet Run: it is literally a carpet of mines now.
 - **The Stealth Bomber's "New on Dark Water" card says "three missiles"; on Sowers it sows mines.** Recommended: a line of its own on this map's card ("sows mines ahead of your ships") in the next pass, if you meet it here first.
 
+## Log v70: back in the band with the automatic Hold
+
+PR #242 made the Hold automatic (a ship stops itself before a mine) and mines surface 1.5x earlier. The bot then won 85% with the usual Armory and 93% with the plating one (96 seeds, `python3 tools/v3/sowers/read.py --seeds=96 --armory=player|plating`), above the 50-70% band: a stopped ship never hits a mine, so the mines stopped being the danger. The Hold button stays gone, the waves stay no bigger (rule `w-budget`), and the campaign is untouched (all of it reads the encounter layer's signature). What changed, all on the shot-able and the timing:
+
+- **Sown closer and quicker** (`SOW`): a mine goes down 60-130 px ahead of a ship (was 110-340), one every 0.25 s (0.55). A ship stops with less time to spare, so a stop under fire costs; the 60 px floor keeps a mine from landing on a hull (a hit radius of 30 plus the ship's).
+- **A signature bomber shoots back** (`SOW.rack`, `SOW.armor`): with its mines down it drops its three guided missiles on the ships its mines stopped (one hit each, as before the signature took them), and it takes a seventh hit. The boss rounds' bombers keep their six and drop no missiles.
+- **Tighter strings** (`SOWERS_R4`): the chutes' mine beats come about 0.45x as far apart in time, so a string surfaces nearly together.
+
+Reads, 96 seeds (usual / plating Armory): won 85% / 93% before, 57% / 86% after. The boss rounds do not end a run (the loss limit is counted to wave 10), so they were left alone.
+
 ## Checks run
 
 `tsc`; `vitest --exclude '.claude/**'` (79 files, 1875 tests, all pass); `vite build`, then `vite preview` and the e2e scripts `v3.mjs`, `v3-map-cards.mjs`, `v3-encounters.mjs`, `v3-map-lab.mjs`, `v3-convoy.mjs` (all pass); the map-lab baseline replays exactly.

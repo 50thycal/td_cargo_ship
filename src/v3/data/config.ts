@@ -297,7 +297,7 @@ export const MINE = {
  *  the water the ship is about to sail through. Its own route runs `line` of
  *  the lane's half-width up-current of the lane's middle, so its mines drift
  *  across the whole lane. */
-export const SOW = { near: 110, far: 340, across: 190, every: 0.55, line: 0.6 } as const;
+export const SOW = { near: 60, far: 130, across: 190, every: 0.25, line: 0.6, rack: 3, armor: 1 } as const;
 
 /** Log v49 (The Rig Field, MAP_SIGNATURE `kind: 'rig'`, lab only): a
  *  relief rig towed in along the rig line from the edge nearer its station,
