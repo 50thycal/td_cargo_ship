@@ -605,17 +605,17 @@ const DELTA_BASES: BaseDef[] = [
   // ship far from the carrier cannot be covered against (its guns reach the bay in under a second, the river's
   // ends in two), so the drone silos are the two islets either side of the carrier's bay, and the drones fly out
   // to the ships on the north leg and at the ends: a long flight, the carrier's own guns in reach.
-  { x: 330, y: 74, kinds: ['ballistic', 'guided'] },
-  { x: 700, y: 66, kinds: ['guided', 'supersonic'] },
-  { x: 1060, y: 70, kinds: ['heavy', 'ballistic'] },
+  { x: 330, y: 60, kinds: ['ballistic', 'guided'] },
+  { x: 700, y: 56, kinds: ['guided', 'supersonic'] },
+  { x: 1060, y: 58, kinds: ['heavy', 'ballistic'] },
   // The island between the first and second legs: point-blank on both.
   { x: 560, y: 330, kinds: ['cluster', 'ballistic'] },
   { x: 960, y: 330, kinds: ['guided', 'heavy', 'mothership'] },
   // The islets either side of the carrier's bay, between the second and third legs.
-  { x: 1300, y: 610, kinds: ['drone', 'cluster'] },
-  { x: 400, y: 610, kinds: ['drone', 'guided'] },
+  { x: 1300, y: 610, kinds: ['drone', 'cluster', 'ballistic'] },
+  { x: 400, y: 610, kinds: ['drone', 'guided', 'ballistic'] },
   // The marsh at the south-east, behind the last stretch.
-  { x: 1400, y: 864, kinds: ['guided', 'ballistic', 'supersonic'] },
+  { x: 1400, y: 880, kinds: ['guided', 'ballistic', 'supersonic'] },
 ];
 const delta: MapDef = {
   id: 'delta',
@@ -648,7 +648,7 @@ const delta: MapDef = {
   roads: {
     runners: [
       // Along the north coast, inland of its silos.
-      bypass([{ x: -60, y: 28 }, { x: 800, y: 30 }, { x: 1660, y: 28 }], DELTA_BASES.slice(0, 3), -1),
+      bypass([{ x: -60, y: 12 }, { x: 800, y: 14 }, { x: 1660, y: 12 }], DELTA_BASES.slice(0, 3), -1),
       // Along the island between the first two legs, over its middle.
       smooth([{ x: 100, y: 296 }, { x: 400, y: 294 }, { x: 800, y: 298 }, { x: 1200, y: 295 }, { x: 1330, y: 297 }], 6),
     ],
@@ -659,8 +659,8 @@ const delta: MapDef = {
       { from: { x: 880, y: 20 }, to: { x: 880, y: DL - BANK - 4 } },
       { from: { x: 1200, y: 330 }, to: { x: 1200, y: DL + BANK + 6 } },
       { from: { x: 760, y: 330 }, to: { x: 760, y: DM - BANK - 6 } },
-      { from: { x: 1450, y: 610 }, to: { x: 1450, y: DM + BANK + 8 } },
-      { from: { x: 500, y: 610 }, to: { x: 500, y: DS - BANK - 8 } },
+      { from: { x: 1300, y: 610 }, to: { x: 1300, y: DM + BANK + 8 } },
+      { from: { x: 500, y: 610 }, to: { x: 500, y: DS - BANK - 2 } },
       { from: { x: 900, y: 892 }, to: { x: 900, y: DS + BANK + 10 } },
     ],
   },

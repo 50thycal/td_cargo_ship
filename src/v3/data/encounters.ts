@@ -5817,7 +5817,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.9, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
       { at: 1, kind: 'drone', count: 2, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 11, guided: 5, extras: { supersonic: 1 } },
+    replaces: { ballistic: 11, guided: 5, drones: 8, extras: { supersonic: 1 } },
   },
   {
     id: 'delta-every-leg',
@@ -5847,7 +5847,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       { at: 0.5, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
       { at: 0.62, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
     ],
-    replaces: { ballistic: 14, guided: 6, extras: { cluster: 1 } },
+    replaces: { ballistic: 14, guided: 6, drones: 6, extras: { cluster: 1 } },
   },
   {
     id: 'delta-trucks-and-raid',
@@ -5866,7 +5866,7 @@ const DELTA_R4: Omit<Encounter, 'version' | 'rev'>[] = [
       usesMap: 'A preview of the boss: fire along the whole river in turn, and the convoy strung out under it.',
     },
     beats: [
-      { at: 0.3, kind: 'ballistic', count: 1, from: base(4), aim: 'near' },
+      { at: 0.3, kind: 'ballistic', count: 1, from: base(3), aim: 'near' },
       { at: 0.3, plus: 3, kind: 'drone', count: 3, gap: 0.5, from: base(6), aim: 'rear' },
       { at: 0.3, plus: 6, kind: 'drone', count: 3, gap: 0.5, from: base(6) },
       { at: 0.3, plus: 4, kind: 'guided', count: 1, from: base(1), aim: 'rear' },
@@ -7090,7 +7090,7 @@ const COVES_CLIMB = [1, 0.92, 0.9, 1, 1.05, 0.88, 0.9, 0.95, 0.92, 1];
  *  the climb sends a little less than the shared wave from wave 2 (within
  *  rule w-budget's ±15%). */
 const CITADEL_CLIMB = [1, 0.9, 0.9, 0.88, 0.88, 0.86, 0.92, 0.86, 0.88, 0.9];
-const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.82, 0.8, 0.7, 0.66];
+const DELTA_CLIMB = [1, 0.88, 0.86, 0.86, 0.86, 0.86, 0.86, 0.86, 0.86, 0.86];
 /** Dunmar Crossing (log v58): its shared waves are heavy (threat scale
  *  1.65) on the map's own convoy, within ±15% of each wave and never more
  *  than the ten. */
@@ -8067,7 +8067,7 @@ export const DELTA_BOSS_ROUNDS: BossRound[] = [
       { at: 3, warn: 2.5, from: [{ base: 0, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 3, kind: 'cluster', count: 1, aim: 'near' }] },
       { at: 8, warn: 2.5, from: [{ base: 2, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 4, kind: 'guided', count: 1, aim: 'near' }, { base: 1, kind: 'supersonic', count: 1, aim: 'near' }] },
       { at: 13, warn: 2.5, from: [{ base: 5, kind: 'cluster', count: 1, aim: 'near' }, { base: 5, kind: 'ballistic', count: 1, aim: 'near' }, { base: 6, kind: 'guided', count: 1, aim: 'near' }] },
-      { at: 18, warn: 2.5, from: [{ base: 7, kind: 'guided', count: 1, aim: 'near' }, { base: 7, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 2, kind: 'cluster', count: 1, aim: 'near' }] },
+      { at: 18, warn: 2.5, from: [{ base: 7, kind: 'guided', count: 1, aim: 'near' }, { base: 7, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 3, kind: 'cluster', count: 1, aim: 'near' }] },
       { at: 23, warn: 2.5, from: [{ base: 3, kind: 'ballistic', count: 2, gap: 0.8, aim: 'near' }, { base: 7, kind: 'ballistic', count: 1, aim: 'near' }] },
     ],
     fire: [

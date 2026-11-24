@@ -5,7 +5,6 @@
 // Like render.ts it reads the game and mutates nothing.
 
 import { THREATS } from '../data/config';
-import { FOE } from '../data/foes';
 import { FORK_RADIUS, tideGauge, lockCountdown, shotRigs, tracked, type Game, type Threat } from '../sim/game';
 import { laneSamples } from '../sim/lanes';
 import { drawCitadelUnder, drawGenerator as drawCitadelGenerator, drawKeep } from './citadel';

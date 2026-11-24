@@ -22,7 +22,7 @@ The map's one mechanic is its length (rule `m-mechanic`): ships on the north leg
 
 ## The river
 
-Three legs and two bends (`DELTA_PATH`): the ships come in at the west on the north leg (y 190) heading east to the east bend (x 1,360), turn and sail the middle leg (y 450) west to the west bend (x 240), turn and sail the south leg (y 710) east off the screen. The legs wander a few pixels (a river, not a ruler); the bends are 130 px radius; the water is 56 px each side of the lane, a bank 14 px beyond. Between the legs lie an island (the east bend rounds its tip; it joins the west shore), then two islets with the carrier's bay between them (the west bend rounds the west islet's tip; the east islet joins the east shore). 4,811 px of lane: 2.86 times the other maps' 1,685. Ships spend about 2 minutes on it against 40 s.
+Three legs and two bends (`DELTA_PATH`): the ships come in at the west on the north leg (y 170) heading east to the east bend (x 1,360), turn and sail the middle leg (y 470) west to the west bend (x 240), turn and sail the south leg (y 770) east off the screen. The legs wander a few pixels (a river, not a ruler); the bends are 130 px radius; the water is 56 px each side of the lane, a bank 14 px beyond. Between the legs lie an island (the east bend rounds its tip; it joins the west shore), then two islets with the carrier's bay between them (the west bend rounds the west islet's tip; the east islet joins the east shore). 4,811 px of lane: 2.86 times the other maps' 1,685. Ships spend about 2 minutes on it against 40 s.
 
 ## Sites and their jobs
 
@@ -35,8 +35,8 @@ Bases are counted from 0 here (the encounter data's own count).
 | 2 North-east coast | over the north leg, east | heavies, shells | shells at the ship halfway along (w2) or nearest it (w6, w8) |
 | 3 Island, west silo | between the north and middle legs | clusters, shells | point-blank on both legs: the danger stretch (w3, w6, w8, w10) |
 | 4 Island, east silo | same island, east | guided, heavies, motherships | point-blank, and the guided missile at the nearest ship (w6, w10) |
-| 5 East islet | by the carrier's bay, east | drones, clusters | the drone silo: long flights out to the north leg and the ends (w1, w4, w5, w9) |
-| 6 West islet | by the carrier's bay, west | drones, guided | the other drone silo, and all the filler (the far drone silo) |
+| 5 East islet | by the carrier's bay, east | drones, clusters, shells | the drone silo: long flights out to the north leg and the ends (w1, w4, w5, w9) |
+| 6 West islet | by the carrier's bay, west | drones, guided, shells | the other drone silo, and all the filler (the far drone silo) |
 | 7 South-east marsh | behind the south leg's end | guided, shells, supersonics | missiles at the lead ship (w5, w8), the boss's last strikes |
 | Roads | pop-up roads to a bank over every leg (six) and two long roads along the coast and the island | Rocket Trucks | the signature: from wave 4 a truck on a bank over a leg |
 
@@ -94,18 +94,20 @@ The brief (the player's words, and the rules): about three times the usual lengt
 
 | # | Design | Won | Waves 1-10 lost | What it showed |
 | --- | --- | --- | --- | --- |
-| 1 | One serpentine, three legs (x -60 to 1,660, 2.90x), the old Spread at flow 3, ten encounters built on the island and coast silos, `near` aims, boss strikes of two to three silos | **0%** (48) | 5.81 | wave 1 lost 1.29 and the first boss round 3.25: every silo is within 130 px of a lane, so every `near` shot was a second and a half |
+| 1 | One serpentine, three legs (x -60 to 1,660, 2.92x), the old Spread at flow 3, ten encounters built on the island and coast silos, `near` aims, boss strikes of two to three silos | **0%** (48) | 5.81 | wave 1 lost 1.29 and the first boss round 3.25: every silo is within 130 px of a lane, so every `near` shot was a second and a half |
 | 2 | The same, encounter aims moved to the far ships (`lead`, `mid`), the boss lightened | 3% (32) | 4.84 | waves 1-5 fine, waves 6-10 and the boss still 0.6-1.4: 27 of the 36 ships sunk (`sunk.ts`) were sunk by drones |
 | 3 | Flow 1 in Pairs: fewer ships on the river (24 against 40) | 0% (24) | 5.33 | worse: the density was not it |
 | (diagnosis) | where the ships were sunk | | | 24 of 36 sunk ships were 500 to 900 px from the carrier: an interceptor flies 520 px/s, so a drone off a silo 130 px from a ship at the river's end can't be stopped |
-| 4 | Design B: the legs pulled in to x 240-1,360 (2.86x), the drone silos moved off the coast and the island's ends and the coast silos made shell and missile silos only | 38% (24) | 4.25 | waves 2-9 under 0.7; wave 1 still 0.38 and the third boss round 3.19 |
+| 4 | Design B: the legs pulled in to x 240-1,360 (2.92x), the drone silos moved off the coast and the island's ends and the coast silos made shell and missile silos only | 38% (24) | 4.25 | waves 2-9 under 0.7; wave 1 still 0.38 and the third boss round 3.19 |
 | 5 | Encounter aims at the far ships in waves 1-3 and 9, the climb eased from wave 7 (0.82 to 0.74), the boss rounds rebalanced (more in round 1, fewer in 3) | 59% (32) | 4.62 | in band; wave 1 0.25 and wave 10 1.20 (a cliff) |
 | 6 | The drone silos are the islets by the carrier's bay (460 px from the carrier, 400+ px from the north leg) and the filler with them; the island's and the coast's silos fire shells, clusters and missiles only | 44% (32) | 4.06 | waves 1-8 now 0.06-0.62 (wave 1 was 0.25); wave 9 1.03 and the boss rounds 1.15 / 1.75 / 1.80 too heavy |
 | 7 | Wave 9 one shell fewer, the climb eased again (waves 9-10 to 0.70 / 0.66), the boss rounds lighter (round 1: a string of drones in place of a shell pair, rounds 1-2 one shell less) | **59%** (32) | 3.62 | in band: 0.06 0.22 0.06 0.19 0.34 0.19 0.62 0.32 0.61 1.10 over waves 1-10; boss 1.31 / 1.38 / 1.58 |
+| 8 (final) | The bends widened (north leg y 170, south leg y 770, bend radius 150: a frigate leaving the inside of the east hairpin ran over a ship at 140), the coast silos moved to y 56-60, the islets also fire shells, the climb held to the rule's 85-100% (0.86 from wave 3), two encounters replace a few shared drones | **53%** (96) | 3.72 | in band: 0.01 0.19 0.04 0.16 0.23 0.38 0.24 0.31 0.57 1.64 over waves 1-10; boss 1.25 / 1.53 / 1.77 (rising); frigate overlap, routes and the wave budget rule pass. Wave 10 (1.64) is a step up from wave 9 |
+
 
 ## Bot results, before and after
 
-The rest of this table and the report are in the pull request (numbers move run to run: 32 seeds is plus or minus 9 points).
+Delta, the "you" bot with the usual Armory, 96 seeds: before (the fork) 73%, now 53% (waves 1-10 lost 3.72, boss 1.25 / 1.53 / 1.77). Battery, Charge Lance 3 + Laser Cutter 1 held from the start, 24 seeds: the bot that only tapped won 0 of 24 (mean wave 6.4); the bot that holds and releases the Lance and swipes the Cutter won 21 of 24, 88% (mean wave 12.6). Numbers move run to run.
 
 ## What is not satisfied, or uncertain
 
