@@ -49,7 +49,7 @@ function findHeadlessShell() {
 // The director's clock. Normally real time. In frames mode (see recordTake) it is the number of frames rendered so far
 // (exactly 1/60 s of game time each), so a 0.8 s hold is always 48 frames however slow the machine is.
 let VCLOCK = null;
-const nowMs = () => (VCLOCK ? (VCLOCK() * 1000) / 60 : nowMs());
+const nowMs = () => (VCLOCK ? (VCLOCK() * 1000) / 60 : Date.now());
 const sleep = (ms) =>
   VCLOCK
     ? (async () => {
@@ -162,15 +162,16 @@ async function installCounter(page) {
     }
     const seen = new Set();
     let prev = new Set();
-    window.__vc = { kills: 0, seen: 0, log: [], dt: [] };
+    window.__vc = { kills: 0, seen: 0, log: [], dt: [], frames: 0 };
     { let l = performance.now(); const f = (n) => { window.__vc.dt.push(n - l); l = n; requestAnimationFrame(f); }; requestAnimationFrame(f); }
     const tick = () => {
+      window.__vc.frames++;
       const gm = window.__v3?.game?.();
       if (gm) {
         // Scene filter (a clip opts in): only ammo and repair pickups stay on the water.
         if (window.__onlySupplies) for (let i = gm.pickups.length - 1; i >= 0; i--) if (gm.pickups[i].kind !== 'ammo' && gm.pickups[i].kind !== 'repair' && !(window.__allowWeapon && gm.pickups[i].kind === 'weapon')) gm.pickups.splice(i, 1);
-        const stamp = Date.now();
-        if (!window.__vc.last || stamp - window.__vc.last > 250) {
+        const stamp = window.__vc.frames;
+        if (!window.__vc.last || stamp - window.__vc.last >= 15) {
           window.__vc.last = stamp;
           window.__vc.log.push([stamp, [...new Set(gm.threats.filter((x) => !x.dead).map((x) => x.kind))]]);
         }
@@ -189,7 +190,8 @@ async function installCounter(page) {
   }, !page.__frames);
 }
 const kills = (page) => page.evaluate(() => ({ kills: window.__vc.kills, seen: window.__vc.seen }));
-/** Which enemy kinds were on the water between two wall-clock moments. */
+/** Which enemy kinds were on the water between two animation frames (counted by the page). */
+const pageFrames = (page) => page.evaluate(() => window.__vc.frames);
 const kindsBetween = (page, a, b) => page.evaluate(([a, b]) => [...new Set(window.__vc.log.filter(([ts]) => ts >= a && ts <= b).flatMap(([, k]) => k))], [a, b]);
 
 async function openMenu(page) {
@@ -208,6 +210,8 @@ async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequen
   );
   // The clips are silent, and the game's sound effects hitch the frame (about 270 ms the first time each plays): mute them.
   await page.evaluate(() => localStorage.setItem('straitwatch-v3-audio', JSON.stringify({ volume: 0, music: 0, muted: true })));
+  // The game's playtest notes (Note buttons, the "Rate wave" scorecard after each wave) are not part of the game a viewer sees.
+  await page.evaluate(() => localStorage.setItem('straitwatch.v3.notes', '0'));
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('[data-screen="menu"]');
   await sleep(600);
@@ -355,6 +359,108 @@ async function runTimeline(page, t, events, { limit = 60, tick = null } = {}) {
   }
 }
 
+// ------------------------------------------------------------ explain beats (for viewers with no context)
+// Reading a caption while watching action is hard when you do not know the game. So the key moments are "explain beats": the game
+// pauses, a ring and a short label are drawn ON the thing being explained (your carrier, a cargo ship, an incoming missile, the
+// new weapon), it holds long enough to read, then play carries on. The top captions stay short and sit in their own area.
+
+/** Pause or resume the game's clock (the game's own test hook; the scene stays drawn). */
+const freeze = (page, on) => g(page, (on) => window.__v3.freeze(on), on);
+
+/** Draw rings and labels over things in the game. Each spec: { what: 'carrier'|'ship'|'threat'|'pickup'|'card', kind?, idx?, head, sub? }. */
+const showLabels = (page, specs) =>
+  g(page, (specs) => {
+    document.getElementById('vc-labels')?.remove();
+    const gm = window.__v3.game();
+    const tc = (x, y) => window.__v3.toClient(x, y);
+    const root = document.createElement('div');
+    root.id = 'vc-labels';
+    root.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;font-family:Inter,system-ui,sans-serif';
+    const css = document.createElement('style');
+    css.textContent = '@keyframes vcpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.75}}';
+    root.append(css);
+    const W = innerWidth;
+    for (const sp of specs) {
+      let p = null;
+      let r = 44;
+      if (sp.what === 'carrier') { p = tc(gm.map.carrier.x, gm.map.carrier.y); r = 78; }
+      else if (sp.what === 'ship') { const sh = gm.ships.filter((q) => !q.sunk)[sp.idx ?? 0]; if (sh) { p = tc(sh.x, sh.y); r = 40; } }
+      else if (sp.what === 'threat') { const th = gm.threats.find((q) => !q.dead && q.kind === sp.kind); if (th) { p = tc(th.x, th.y); r = 44; } }
+      else if (sp.what === 'pickup') { const pk = gm.pickups.find((q) => q.kind === 'weapon') ?? gm.pickups[0]; if (pk) { p = tc(pk.x, pk.y); r = 48; } }
+      else if (sp.what === 'card') { const c = document.querySelectorAll('.v2-draft .v2-card')[sp.idx ?? 0]; if (c) { const b = c.getBoundingClientRect(); p = { x: b.left + b.width / 2, y: b.top + b.height / 2 }; r = Math.max(b.width, b.height) / 2 + 6; } }
+      if (!p) continue;
+      const x = Math.min(W - 100, Math.max(60, p.x));
+      const y = p.y;
+      const ring = document.createElement('div');
+      ring.style.cssText = `position:absolute;left:${x - r}px;top:${y - r}px;width:${2 * r}px;height:${2 * r}px;border:5px solid #8fe3ff;border-radius:50%;box-shadow:0 0 18px #8fe3ff,inset 0 0 12px rgba(143,227,255,.5);animation:vcpulse .9s ease-in-out infinite`;
+      const box = document.createElement('div');
+      box.style.cssText = 'position:absolute;background:rgba(8,18,28,.94);border:2px solid #8fe3ff;border-radius:12px;padding:8px 16px;text-align:center;white-space:nowrap';
+      box.innerHTML = `<div style="font:800 30px/1.15 Inter,system-ui,sans-serif;color:#fff;letter-spacing:.02em">${sp.head}</div>${sp.sub ? `<div style="font:700 21px/1.2 Inter,system-ui,sans-serif;color:#8fe3ff;margin-top:2px">${sp.sub}</div>` : ''}`;
+      root.append(ring, box);
+      // below the ring when there is room under it, else above
+      const below = y + r + 110 < innerHeight;
+      document.body.append(root);
+      const bw = box.offsetWidth;
+      const left = Math.min(W - 100 - bw, Math.max(8, x - bw / 2));
+      box.style.left = `${left}px`;
+      box.style.top = below ? `${y + r + 10}px` : `${Math.max(150, y - r - 10 - box.offsetHeight)}px`;
+    }
+    document.body.append(root);
+  }, specs);
+const hideLabels = (page) => g(page, () => document.getElementById('vc-labels')?.remove());
+
+/** An explain beat: pause the game, label things, hold, carry on. `ms` is game-free time (frames). */
+async function explain(page, specs, ms) {
+  await freeze(page, true);
+  await showLabels(page, specs);
+  await sleep(ms);
+  await hideLabels(page);
+  await freeze(page, false);
+}
+
+/** Wait (without shooting) until a live threat of this kind is out over the water, so a beat can point at it. */
+async function waitForThreat(page, kind, limitS = 5) {
+  const t0 = nowMs();
+  while ((nowMs() - t0) / 1000 < limitS) {
+    const ok = await g(page, (kind) => {
+      const gm = window.__v3.game();
+      const th = gm.threats.find((q) => !q.dead && q.kind === kind);
+      return !!th && window.__v3.toClient(th.x, th.y).y > 190;
+    }, kind);
+    if (ok) return true;
+    await sleep(60);
+  }
+  return false;
+}
+
+/** Play with the normal gun for a number of seconds. Returns false if the wave ended meanwhile. */
+async function playFor(page, secs) {
+  const end = nowMs() + secs * 1000;
+  while (nowMs() < end) {
+    await defend(page, 1);
+    await grabSupplies(page);
+    if ((await state(page))?.phase !== 'wave') return false;
+    await sleep(140);
+  }
+  return true;
+}
+
+/** Deal a chosen weapon card first, whenever the game next opens the upgrade draft (it deals, then sets the phase). */
+const studioDealOnDraft = (page, id) =>
+  g(page, (id) => {
+    const gm = window.__v3.game();
+    let ph = gm.phase;
+    Object.defineProperty(gm, 'phase', {
+      configurable: true,
+      enumerable: true,
+      get: () => ph,
+      set: (v) => {
+        if (v === 'draft' && ph !== 'draft') gm.offer = [id, ...gm.offer.filter((x) => x !== id)].slice(0, 3);
+        ph = v;
+      },
+    });
+  }, id);
+
 // ------------------------------------------------------------------- clips
 // `t` is the director: t.mark() = where the clip starts (all before is cut),
 // t.cue(head, sub, secs) = a caption from now, t.stop() = where it ends.
@@ -362,215 +468,125 @@ async function runTimeline(page, t, events, { limit = 60, tick = null } = {}) {
 
 const CLIPS = {
   // Menu -> Free Play wave 3 -> real intercepts with the normal gun.
-  // The launch clip, scripted to the post: wave 1 with the three enemy types, only ammo and
-  // repair drops, the upgrade pick, then the attack stepping up and the new weapon dropping.
+  // The launch clip, scripted for someone who has never seen the game (studio mode, frames mode). Storyboard:
+  //   1 Title, game paused: rings on YOUR CARRIER and the CARGO SHIPS. 2 Wave 1: protect the ships; the first missile and the first
+  //   supersonic missile are pointed at (pause, ring, label). 3 The upgrade draft, a card ringed. 4 Wave 2, harder: the new
+  //   weapon drops (ringed), is loaded, and the carrier is ringed for "hold, then let go". 5 Still in development.
+  // VIDEO_EXPLAIN=0 renders the captions-only version of the same footage (no pauses or rings) to compare.
   convoy: {
     title: 'Defend the convoy (studio)',
     studio: true,
     vertical: true,
     takes: 2,
-    capture: 'frames',
     viewport: { width: 1080, height: 608 },
     async play(page, t) {
-      t.maxSeconds = 75;
+      const EXPLAIN = process.env.VIDEO_EXPLAIN !== '0';
+      t.maxSeconds = 120;
       await startFreePlay(page, { wave: 1, weapons: [], frequentDrops: false });
-      await page.evaluate(() => (window.__onlySupplies = true));
-      await page.evaluate(() => (window.__allowWeapon = true));
-      await studioBegin(page);
-      if (!VCLOCK) {
-      // Rehearsal, off camera: the first time the game draws something new (each enemy type, the drops, the lance) the capture
-      // drops a quarter of a second of frames, which shows as a stutter. Playing each once first, in this same page, pays that
-      // cost before the clip starts. The rehearsal runs in wave 1 with the wave held open; nothing from it is in the clip.
-      await studioGive(page, 'lance');
-      let warmLoaded = false;
-      let warmShot = 0;
-      await runTimeline(page, t, [
-        { at: 0.2, spawn: ['drone', 3] },
-        { at: 2.5, spawn: ['ballistic', 2] },
-        { at: 4.0, drop: ['ammo', 760, 330] },
-        { at: 4.5, spawn: ['supersonic', 2] },
-        { at: 5.5, weaponDrop: [740, 320] },
-        { at: 7.0, drop: ['repair', 900, 320] },
-        { at: 8.0, spawn: ['drone', 4] },
-        { at: 10.0, spawn: ['ballistic', 2] },
-        { at: 11.5, spawn: ['supersonic', 2] },
-      ], {
-        limit: 17,
-        tick: async (sec) => {
-          const w = await weaponPickup(page);
-          if (!warmLoaded && w && sec >= 6.2) {
-            await page.mouse.click(w.x, w.y);
-            await sleep(120);
-            warmLoaded = (await state(page))?.weapon != null;
-            return;
-          }
-          const s = await state(page);
-          if (s?.weapon) {
-            if (s.ammo > 0 && nowMs() - warmShot > 1100 && (await fireAt(page, s.weapon, 1))) warmShot = nowMs();
-          } else await defend(page, 1);
-        },
+      await page.evaluate(() => {
+        window.__onlySupplies = true;
+        window.__allowWeapon = true;
       });
-      const c0 = nowMs();
-      while (sinceS(c0) < 10 && (await state(page))?.threats > 0) {
+      await studioBegin(page);
+      await studioDealOnDraft(page, 'lance'); // the draft deals the Charge Lance first (studio)
+      const k0 = (await kills(page)).kills;
+      t.start = t.now();
+      const cue = (head, sub, dur) => t.cue(head, sub, dur);
+      // A beat: with explain on, pause and point; with it off, the same words as a top caption over live play.
+      const beat = async (specs, secs, head, sub) => {
+        if (EXPLAIN) await explain(page, specs, secs * 1000);
+        else {
+          cue(head, sub, secs + 0.4);
+          await playFor(page, secs);
+        }
+      };
+
+      // 1. Title (paused): what you are looking at.
+      cue('Straitwatch', "a convoy defence game I'm building", 4.4);
+      await beat([{ what: 'carrier', head: 'YOUR CARRIER', sub: 'it defends the convoy' }, { what: 'ship', idx: 0, head: 'CARGO SHIPS', sub: 'keep them alive' }], 4.2, 'Your carrier', 'it defends the cargo ships');
+
+      // 2. Wave 1.
+      await studioSpawn(page, 'drone', 2);
+      cue('Protect the ships', 'survive every wave', 3.6);
+      await playFor(page, 3.2);
+      await studioSpawn(page, 'ballistic', 1);
+      await waitForThreat(page, 'ballistic', 5);
+      await beat([{ what: 'threat', kind: 'ballistic', head: 'ENEMY MISSILE', sub: 'tap it to shoot it down' }], 2.4, 'Enemy missiles', 'tap them to shoot them down');
+      cue('Tap to shoot them down', 'before they hit', 3.4);
+      await playFor(page, 4.5);
+      await studioSpawn(page, 'supersonic', 1);
+      await studioDrop(page, 'ammo', 760, 330);
+      await waitForThreat(page, 'supersonic', 5);
+      await beat([{ what: 'threat', kind: 'supersonic', head: 'SUPERSONIC MISSILE', sub: 'much faster' }], 1.6, 'Supersonic missiles', 'much faster');
+      await playFor(page, 3);
+      await studioSpawn(page, 'drone', 3);
+      await playFor(page, 2.5);
+      await studioSpawn(page, 'ballistic', 2);
+      await studioDrop(page, 'repair', 900, 320);
+      await playFor(page, 3);
+      await studioEnd(page);
+      for (const w0 = nowMs(); (await state(page))?.phase === 'wave' && nowMs() - w0 < 30000; ) {
         await defend(page, 1);
+        await grabSupplies(page);
         await sleep(140);
       }
-      await studioTake(page);
-      await studioBegin(page);
-      await sleep(7000); // the rehearsal's notices ("weapon drop" and so on) fade out before the clip starts
-      }
-      const k0 = (await kills(page)).kills;
-      t.start = t.now() + 0.4; // a short settle before the clip's first frame
-      const T = (x) => t.start + x;
-      t.cues.push(
-        { at: T(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
-        { at: T(5.2), head: 'Protect as many ships as you can', sub: 'as the enemy relentlessly attacks your convoy', dur: 5.4 },
-        { at: T(11.2), head: 'Tap enemy missiles to intercept them', sub: 'drones, ballistic and supersonic missiles', dur: 6 },
-      );
-      // Wave 1: three enemy types, easing in.
-      await runTimeline(page, t, [
-        { at: 0.5, spawn: ['drone', 3] },
-        { at: 4.5, spawn: ['ballistic', 1] },
-        { at: 6.5, drop: ['ammo', 760, 330] },
-        { at: 8.0, spawn: ['supersonic', 1] },
-        { at: 10.5, spawn: ['drone', 4] },
-        { at: 13.0, spawn: ['ballistic', 2] },
-        { at: 14.5, drop: ['repair', 900, 320] },
-        { at: 16.0, spawn: ['supersonic', 1] },
-        { at: 18.0, end: true },
-      ], { limit: 60 });
-      const phase = (await state(page))?.phase;
-      if (phase !== 'draft') throw new Error(`wave 1 ended in "${phase}", not a clear`);
-      // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
-      await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
-      const tRate = t.now();
-      await studioOffer(page, 'lance'); // the draft deals the Charge Lance first (studio)
-      await sleep(150);
-      await page.click('[data-rate-skip]');
+      if ((await state(page))?.phase !== 'draft') throw new Error('wave 1 did not clear');
+
+      // 3. The upgrade draft.
       await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
-      const tDraft = t.now();
-      t.cuts.push([tRate - 0.08, tDraft + 0.18]); // (the video lags the game's clock by a few frames) // the rating screen is a playtest-only panel: cut it out of the video
-      await sleep(2800);
-      // The card to pick: the first of the weapons that show best on camera, else the first card.
-      const cards = await page.$$eval('.v2-draft .v2-card', (cs) => cs.map((c) => ({ id: c.dataset.upgrade ?? '', name: c.querySelector('.v2-card-name')?.textContent?.trim() ?? c.textContent.slice(0, 20) })));
-      const LIKE = ['lance', 'railgun', 'thermo', 'airstrike', 'shrapnel', 'well', 'scatter', 'boomerang', 'flak', 'seeker', 'frigate'];
-      const pickIx = Math.max(0, LIKE.map((id) => cards.findIndex((c) => c.id === id)).find((i) => i >= 0) ?? 0);
-      const pickedName = cards[pickIx]?.name ?? 'New weapon';
-      const loadedHint = cards[pickIx]?.id === 'lance' ? 'hold to charge, let go to fire' : 'loaded for 15 seconds';
+      const cards = await page.$$eval('.v2-draft .v2-card', (cs) => cs.map((c) => ({ id: c.dataset.upgrade ?? '', name: c.querySelector('.v2-card-name')?.textContent?.trim() ?? '' })));
+      const pickIx = Math.max(0, cards.findIndex((c) => c.id === 'lance'));
+      const pickedName = cards[pickIx]?.name || 'New weapon';
+      cue('Upgrade your defences', 'the attacks intensify each wave', 5.2);
+      if (EXPLAIN) await showLabels(page, [{ what: 'card', idx: pickIx, head: 'PICK AN UPGRADE', sub: 'a new weapon each wave' }]);
+      await sleep(3600);
+      await hideLabels(page);
       await page.locator('.v2-draft .v2-card').nth(pickIx).click();
       await page.waitForFunction(() => window.__v3.game()?.wave === 2 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
       await studioBegin(page);
-      await page.evaluate(() => (window.__allowWeapon = true));
-      const tWave2 = t.now();
-      t.cues.push(
-        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave2 - tDraft + 5.5 },
-      );
-      // Wave 2: the same three types, a notch harder; the weapon you just picked drops and gets used.
-      let loaded = false;
-      let dropAt = null;
-      let lastShot = 0;
+
+      // 4. Wave 2: harder; the new weapon drops and is used.
+      await studioSpawn(page, 'drone', 4);
+      await playFor(page, 2.2);
+      await studioSpawn(page, 'ballistic', 2);
+      await studioSpawn(page, 'supersonic', 1);
+      await playFor(page, 2.6);
+      await studioDropWeapon(page, 740, 320);
+      await sleep(250);
+      await beat([{ what: 'pickup', head: 'NEW WEAPON', sub: 'tap it to load your gun' }], 2.2, 'New weapon drops', 'tap it to load your gun');
+      const wp = await weaponPickup(page);
+      if (!wp) throw new Error('the new weapon pickup was gone');
+      await page.mouse.click(wp.x, wp.y);
+      await sleep(200);
+      if ((await state(page))?.weapon == null) throw new Error('the weapon did not load');
+      await beat([{ what: 'carrier', head: pickedName.toUpperCase(), sub: 'hold to charge, then let go' }], 2.2, pickedName, 'hold to charge, then let go');
       let shots = 0;
-      await runTimeline(page, t, [
-        { at: 0.3, spawn: ['drone', 4] },
-        { at: 2.0, spawn: ['ballistic', 2] },
-        { at: 3.5, spawn: ['supersonic', 1] },
-        { at: 5.5, weaponDrop: [740, 320], cue: ['Your new weapon drops', 'tap it to load your main gun', 3.4] },
-        { at: 5.5, spawn: ['drone', 5] },
-        { at: 8.5, spawn: ['ballistic', 3] },
-        { at: 10.5, spawn: ['supersonic', 2] },
-        { at: 12.0, drop: ['ammo', 700, 340] },
-        { at: 12.5, spawn: ['drone', 5] },
-      ], {
-        limit: 17.5,
-        tick: async (sec) => {
-          if (sec >= 5.5 && dropAt === null) dropAt = sec;
-          const w = await weaponPickup(page);
-          if (!loaded && w && sec >= (dropAt ?? 99) + 2.4) {
-            await page.mouse.click(w.x, w.y);
-            await sleep(120);
-            loaded = (await state(page))?.weapon != null;
-            if (loaded) t.cue(pickedName, loadedHint, 4);
-            return;
+      let lastShot = 0;
+      const until = nowMs() + 12000;
+      let nextWave = nowMs();
+      while (nowMs() < until) {
+        if (nowMs() >= nextWave) {
+          await studioSpawn(page, 'drone', 4);
+          await studioSpawn(page, 'ballistic', 1);
+          nextWave = nowMs() + 3600;
+        }
+        const s = await state(page);
+        if (s?.weapon) {
+          if (s.ammo > 0 && nowMs() - lastShot > 1100 && (await fireAt(page, s.weapon, nowMs() - lastShot > 2600 ? 1 : 2))) {
+            lastShot = nowMs();
+            shots++;
           }
-          const s = await state(page);
-          if (s?.weapon) {
-            if (s.ammo > 0 && nowMs() - lastShot > (s.weapon === 'lance' ? 1100 : 950) && (await fireAt(page, s.weapon, s.weapon === 'lance' ? 2 : 1))) {
-              lastShot = nowMs();
-              shots++;
-            }
-          } else await defend(page, 1);
-        },
-      });
-      if (!loaded) throw new Error('the dropped weapon was never loaded');
-      t.cues.push({ at: tWave2 + 12.5, head: 'Still in development', sub: 'Free Play testing coming soon', dur: 5 });
-      t.stopAt = t.now() - 0.2;
+        } else await defend(page, 1);
+        await grabSupplies(page);
+        await sleep(140);
+      }
+
+      // 5. Close.
+      t.cues.push({ at: t.now() - 4.6, head: 'Still in development', sub: 'Free Play testing soon', dur: 4.8 });
+      t.stopAt = t.now() - 0.1;
       const k = (await kills(page)).kills - k0;
       t.score = k + shots * 3;
-      t.note(`studio scene: ${k} enemies shot down; the picked weapon (${pickedName}) fired ${shots} aimed shots; ammo/repair drops placed`);
-    },
-  },
-
-  // The launch clip: a real wave 7 (drones, ballistic and supersonic missiles together), only
-  // ammo and repair drops on the water, then the upgrade pick between waves and wave 8 starting.
-  'convoy-real': {
-    title: 'Defend the convoy (real wave)',
-    takes: 3,
-    capture: 'cdp',
-    async play(page, t) {
-      t.maxSeconds = 75;
-      await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
-      await page.evaluate(() => (window.__onlySupplies = true));
-      const wall0 = nowMs() - t.now() * 1000;
-      const tPlay = t.now();
-      const k0 = (await kills(page)).kills;
-      // Wave 7, played with the normal gun until it is cleared.
-      let phase = 'wave';
-      const w0 = nowMs();
-      while (sinceS(w0) < 120) {
-        await defend(page, 2);
-        await grabSupplies(page);
-        phase = (await state(page))?.phase;
-        if (phase !== 'wave') break;
-        await sleep(140);
-      }
-      if (phase !== 'draft') throw new Error(`wave 7 ended in "${phase}", not a clear`);
-      const tClear = t.now();
-      const k1 = (await kills(page)).kills;
-      // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
-      await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
-      await sleep(500);
-      await page.click('[data-rate-skip]');
-      await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
-      const tDraft = t.now();
-      await sleep(2600);
-      await page.click('.v2-draft .v2-card');
-      await page.waitForFunction(() => window.__v3.game()?.wave === 8 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
-      const tWave8 = t.now();
-      const w8 = nowMs();
-      while (sinceS(w8) < 15) {
-        await defend(page, 2);
-        await grabSupplies(page);
-        if ((await state(page))?.phase !== 'wave') break;
-        await sleep(140);
-      }
-      const tEnd = t.now();
-      // Retroactive start: the last stretch of wave 7, so the clip opens mid-attack.
-      t.start = Math.max(tPlay, tClear - 24);
-      const at = (x) => t.start + x;
-      t.cues.push(
-        { at: at(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
-        { at: at(5.2), head: 'Protect as many ships as you can', sub: 'as the enemy relentlessly attacks your convoy', dur: 5.4 },
-        { at: at(11.2), head: 'Tap enemy missiles to intercept them', sub: 'drones, ballistic and supersonic missiles', dur: 5.4 },
-        { at: tDraft, head: 'Upgrade your defences', sub: 'as the enemy attacks intensify', dur: tWave8 - tDraft + 5 },
-        { at: tWave8 + 5.6, head: 'Still in development', sub: 'Free Play testing coming soon', dur: Math.max(3, tEnd - tWave8 - 5.6) },
-      );
-      const seen = await kindsBetween(page, wall0 + t.start * 1000, wall0 + tClear * 1000);
-      const want = ['drone', 'ballistic', 'supersonic'];
-      const all3 = want.every((k) => seen.includes(k));
-      const k = k1 - k0;
-      t.score = (all3 ? 100 : 0) + k;
-      t.note(`wave 7 cleared in ${(tClear - tPlay).toFixed(0)}s; clip window shows ${seen.join(', ')} (${all3 ? 'all 3 wanted types' : 'MISSING a wanted type'}); ${k} threats shot down in wave 7`);
-      t.stopAt = tEnd;
+      t.note(`studio scene (${EXPLAIN ? 'explain beats' : 'captions only'}): ${k} enemies shot down; ${pickedName} fired ${shots} aimed shots; ammo/repair drops and the weapon pickup placed`);
     },
   },
 
@@ -585,18 +601,21 @@ const CLIPS = {
       // then starts ~5 s earlier (the footage is already recorded), so the lead-in is real play.
       let pk = null;
       let tCue = 0;
-      for (let attempt = 0; attempt < 8 && !pk; attempt++) {
-        await playUntil(page, async () => t.now() - tPlay > 5 && !!(await weaponPickup(page)), { limit: 40 });
+      for (let attempt = 0; attempt < 6 && !pk; attempt++) {
+        await playUntil(page, async () => t.now() - tPlay > 5 && !!(await weaponPickup(page)), { limit: 60 });
+        // The pickup floats for about 7 s: give a burst up to 2.5 s to come out over the water, then take it either way.
+        const w0 = nowMs();
+        while ((nowMs() - w0) / 1000 < 2.5 && (await fieldThreats(page)) < 2 && (await weaponPickup(page))) {
+          await defend(page, 1);
+          await sleep(140);
+        }
+        if (!(await weaponPickup(page))) continue; // it expired meanwhile: wait for the next drop
         tCue = t.now();
         t.cue('Weapons drop as pickups', 'tap one to grab it', 1.4);
         const c0 = nowMs();
         await playUntil(page, async () => sinceS(c0) > 1.2, { limit: 6 });
         pk = await weaponPickup(page);
-        // Only worth loading with a burst already out on the water; otherwise let it go and wait for the next drop.
-        if (!pk || (await fieldThreats(page)) < 2) {
-          t.cues.pop(); // this attempt's caption: not used
-          pk = null;
-        }
+        if (!pk) t.cues.pop(); // gone before it could be tapped: this attempt's caption is not used
       }
       if (!pk) throw new Error('no weapon pickup could be tapped in time');
       t.start = Math.max(tPlay, tCue - 3.6);
@@ -726,7 +745,7 @@ async function serve() {
  * A clip picks with `capture: 'cdp'`, or set VIDEO_CAPTURE=cdp for all.
  */
 async function recordTake(browser, name, clip, take) {
-  const mode = process.env.VIDEO_CAPTURE ?? clip.capture;
+  const mode = process.env.VIDEO_CAPTURE ?? clip.capture ?? 'frames';
   const cdpMode = mode === 'cdp';
   const framesMode = mode === 'frames';
   const dir = join(WORK, `${name}-${take}`);
@@ -975,7 +994,7 @@ function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
   const cuts = t.cuts.map(([a, b]) => [Math.max(a, start), Math.min(b, start + rawDur)]).filter(([a, b]) => b > a);
   const cutBefore = (x) => cuts.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(x, b) - a), 0);
   const m = (x) => x - cutBefore(x);
-  t.cues = t.cues.map((c) => ({ ...c, at: m(c.at), dur: m(c.at + c.dur) - m(c.at) }));
+  t.cues = t.cues.map((c) => ({ ...c, at: m(c.at), dur: Math.max(2.8, m(c.at + c.dur) - m(c.at)) })); // never on screen for less than 2.8 s
   const mStart = m(start);
   const dur = rawDur - cuts.reduce((x, [a, b]) => x + (b - a), 0);
   const tail = Math.max(0, dur - 0.6);
@@ -991,7 +1010,7 @@ function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
   if (!t.vertical) ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...cutFilter, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
 
   // 9:16: sharp game in the middle band over a blurred, zoomed copy of itself.
-  const vert = captionFilters(t.cues, mStart, { headSize: 54, subSize: 34, yHead: 'h*0.18', ySub: 'h*0.18+100', boxPad: 20 });
+  const vert = captionFilters(t.cues, mStart, { headSize: 62, subSize: 38, yHead: 'h*0.17', ySub: 'h*0.17+112', boxPad: 22 });
   const graph = [
     `[0:v]${[`fps=${fps}`, ...cutFilter].join(',')},split=2[a][b]`,
     `[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:4,eq=brightness=-0.12[bg]`,

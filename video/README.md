@@ -1,109 +1,82 @@
-# Promo clips (X / social)
+# Promo videos (X / social)
 
-One command makes short, captioned gameplay clips of Straitwatch, ready to post:
+One command makes short, captioned, smooth gameplay clips of Straitwatch, ready to post:
 
 ```bash
-npm run video              # every clip -> video/out/
-npm run video -- railgun   # one clip
+npm run video              # every clip  -> video/out/
+npm run video -- convoy    # one clip
 npm run video -- --list
 ```
 
-Needs `ffmpeg` and Chromium (Playwright's, at `/opt/pw-browsers`, or set `CHROMIUM_PATH`).
-It builds the game first if `dist/` is missing and serves it on port 4180 (`VIDEO_PORT`).
+Needs `ffmpeg` and Playwright's Chromium (including its **headless shell**, `chromium_headless_shell-*`, under
+`/opt/pw-browsers` or `PLAYWRIGHT_BROWSERS_PATH`). It builds the game first if `dist/` is missing and serves it on port 4180
+(`VIDEO_PORT`). A 40-60 s clip renders in about 3 minutes.
 
-## What it makes
+## What comes out
 
-Each clip comes out twice, H.264 + AAC (silent track, because X's uploader likes having one), 30 fps, +faststart:
+H.264 + AAC (a silent track, because X's uploader wants one), 60 fps, +faststart, well under X's limits (140 s, 512 MB):
 
-| file | size | use |
+| file | size | |
 |---|---|---|
-| `<clip>-16x9.mp4` | 1280x720 | default X timeline video |
-| `<clip>-9x16.mp4` | 1080x1920 | vertical: the game over a blurred copy of itself, caption on top |
+| `<clip>-9x16.mp4` | 1080x1920 | vertical: the game over a blurred copy of itself, captions on top |
+| `<clip>-16x9.mp4` | 1280x720 | landscape (skipped for clips marked `vertical: true`) |
+| `<clip>.captions.json` | | the caption timeline (seconds), what the take did, and `studio: true` when enemies were placed |
 
-Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
-
-| clip | what happens |
+| clip | what it is |
 |---|---|
-| `convoy` | studio scene for the launch post (vertical only, frames mode): wave 1 with drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then wave 2 and the picked weapon dropping and firing |
-| `convoy-real` | the same idea on a natural wave 7 and 8 (no placed enemies) |
-| `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
-| `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
+| `convoy` | the launch clip (studio, vertical only): what the game is, the first missile, an upgrade, a new weapon |
+| `railgun` | a natural wave: the game drops a Railgun pickup, tap it, beams through real threats |
+| `arsenal` | a natural wave: Thermobaric Shell, Air Strike and Gravity Well as the game drops them |
 
-Each clip also gets `<clip>.captions.json`: the caption timeline (seconds) and what the take did.
+## How it stays smooth: frames mode (the standard)
 
-## It is real play
-
-Nothing is spawned or placed by the script. It sets Free Play's own options (wave, weapons
-held, frequent drops), then taps only what the game puts on the water: threats with the normal
-gun, weapon pickups when they drop, and the loaded weapon aimed where it will hit
-(the railgun along the line with the most threats; shells and the Well at the densest cluster).
-It never fires into empty water.
-
-Waves are random, so each clip is recorded several times (`VIDEO_TAKES`, default 3-4) and the
-take with the most real hits and the least dead time is kept, the way you would pick from raw footage.
-The caption start is set after the fact, so the clip opens on a few seconds of ordinary play.
-
-## Studio mode (scripted scenes)
-
-A clip with `studio: true` is shot to a script instead of waiting for the right wave. The scene empties the wave's own
-launch list, then launches what the script asks for, when it asks (`runTimeline`: `spawn`, `drop`, `cue`, `end` events),
-and holds the wave open until the scene ends it. Everything else is the game: its enemies, its interceptors, its
-upgrade draft screens, and the director's real taps. Only ammo and repair drops are placed (`window.__onlySupplies`
-also hides nukes and other power-ups).
-
-Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave clips (`convoy-real`, `railgun`,
-`arsenal`) when a post should say "this is a natural wave".
-
-## Frames mode (the smooth one)
-
-Recording a browser in real time loses frames: Chromium's screen capture drops about a quarter of a second of frames now
-and then, and on a busy machine the game's own frame timing wobbles. So a clip with `capture: 'frames'` is not recorded in
-real time at all. It is rendered, one frame at a time:
+Recording a browser in real time loses frames. Chromium's screen capture drops about a quarter of a second of frames now and
+then, and a busy machine makes the game's own frame timing wobble. So **nothing is recorded in real time.** Every clip is
+rendered one frame at a time:
 
 - It runs in Playwright's chromium headless shell with begin-frame control: the browser draws a frame **only when asked**,
-  with an exact timestamp. Each frame is exactly 1/60 s of game time, so the game takes exactly one physics step per frame
-  and nothing is dropped, repeated or late, however slow the machine is. A slow moment just takes longer to render.
+  with an exact timestamp. Each frame is exactly 1/60 s of game time, so the game takes one physics step per frame and
+  nothing is dropped, repeated or late, however slow the machine is. A slow moment just takes longer to render.
 - The director's clock is the frame counter (`sleep(ms)` waits for frames, `nowMs()` reads them), so a 0.8 s hold on the
   Charge Lance is always 48 frames.
-- No rehearsal, hole filling or take-scoring on stalls is needed. A 40 s clip renders in about 2 minutes.
+- The game's playtest notes are switched off (no "Rate wave" scorecard, no Note buttons) and its sound is muted.
+- Measured on the launch clip: no freezes in play, no repeated frames, no one-frame holds. With real-time capture the same scene
+  had 20+ freezes and about 175 repeated-then-jump frames.
 
-Measured on the launch clip: no freezes inside gameplay, no repeated frames, versus 20+ freezes and 170+ repeated-then-jump
-frames with real-time capture. Use `capture: 'frames'` for every new clip.
+## Making a video for someone with no context
 
-The older real-time modes are still there (`capture: 'cdp'`, and Playwright's own recordVideo as the default) for clips not
-yet moved over. They have the stalls, so they carry the workarounds (rehearsal, interpolation of short holes, an even
-60 Hz game clock, and scoring takes on stalls).
+A caption does not work while the action moves: nobody can read and watch at once, least of all someone who has never seen
+the game. So the launch clip uses **explain beats**:
 
-## Cuts and trims
+- The key moment pauses the game, a ring and a short label are drawn **on the thing itself** (YOUR CARRIER, CARGO SHIPS, ENEMY
+  MISSILE, NEW WEAPON, PICK AN UPGRADE), it holds long enough to read, and play carries on.
+- Top captions stay short (a headline of five words or fewer, a short second line), sit in their own area above the game, and
+  never stay up for less than 2.8 s.
+- Open with a paused title beat that names what is on screen, then show, then explain only when something new appears.
 
-`t.cuts.push([from, to])` takes a stretch out of the video and moves later captions up to match (the convoy scene
-cuts the playtest-only "Rate wave" panel). A studio clip starts exactly at `t.start`, so setup screens before it
-never show. `studioOffer(page, id)` deals a chosen weapon card first in the upgrade draft.
+`VIDEO_EXPLAIN=0` renders the same footage with captions only, no pauses or rings. Compared side by side, captions-only left
+the viewer looking at empty sea while reading, so explain beats are the default.
 
-## Smooth capture
+## Writing a clip
 
-Playwright's built-in video is a fixed 25 fps screen grab, which looks steppy on fast scenes (about 18% exact
-repeat frames after conversion to 30 fps). A clip can set `capture: 'cdp'` (or run with `VIDEO_CAPTURE=cdp`) to
-record Chromium's own frame stream instead, at about 60 fps with real timestamps, and the clip is encoded at 60 fps
-(0% repeats). The game itself holds 60 fps headless; the stutter was only ever in the recorder.
-Chromium's capture stream also drops about 16 frames at a time every few seconds while the game is busy (not caused by
-the game, the bot, audio, CSS or browser flags; all tested). The kept take is rebuilt with those holes
-motion-interpolated, and only those (`VIDEO_FILL=0` to skip), so nothing else is touched. The recording is also
-muted and the bot taps calmly (rounds in the rack only, one tap at a time) to keep the machine's load down. `convoy` uses it.
+Add an entry to `CLIPS` in `make-clips.mjs`: an async `play(page, t)` that drives the game with real taps.
 
-## How it works
+- `t.start = t.now()` sets where the clip starts; `t.cue(head, sub, secs)` shows a caption from that moment;
+  `t.stopAt` ends it; `t.cuts.push([from, to])` takes a stretch out (later captions move up to match).
+- Set `vertical: true` for 9:16 only, `viewport` for the render size, `takes` to render several and keep the best `t.score`.
+- Natural waves: `startFreePlay` (wave, weapons held, frequent drops), `defend`, `playUntil`, `weaponPickup`, `fireAt`.
+- Studio mode (`studio: true`) shoots to a script instead of waiting for the right wave. It empties the wave's own launch list
+  (`studioBegin`), then launches what the script asks for when it asks (`studioSpawn`, `studioDrop`, `studioDropWeapon`) and
+  holds the wave open until `studioEnd`. `studioDealOnDraft(page, id)` deals a chosen weapon card first in the next upgrade
+  draft. Only ammo and repair drops (and the picked weapon) stay on the water (`window.__onlySupplies`, `__allowWeapon`).
+  Everything else is the game's own: its enemies, its interceptors, its draft screens. The clip's `.captions.json` says
+  `"studio": true`, so use natural-wave clips when a post should say "this was a natural wave".
+- Explain beats: `explain(page, [{ what: 'carrier'|'ship'|'threat'|'pickup'|'card', kind?, idx?, head, sub? }], ms)`.
+  `waitForThreat` waits for a kind to be out on the water so a beat can point at it; `playFor(page, secs)` plays with the normal gun.
 
-`make-clips.mjs` plays the real game in headless Chromium with real mouse clicks (the
-`window.__v3` hooks that `e2e/v3.mjs` uses), records the page with Playwright, then ffmpeg
-trims, burns in captions and encodes both sizes. Capture is real time, so a slow machine can
-look a little choppier.
+The bot plays calmly: it taps only with rounds in the rack, one tap at a time, and not while three interceptors are in the air.
 
-## Add a clip
+## Older real-time modes
 
-Add an entry to `CLIPS` in `make-clips.mjs`: an async `play(page, t)` that drives the game,
-sets `t.score` (higher is better, used to pick a take) and `takes`.
-`t.start = t.now()` sets where the clip starts (everything before is cut),
-`t.cue('Headline', 'sub line', seconds)` shows a caption from that moment, `t.stop()` ends it.
-Helpers: `startFreePlay`, `defend`, `weaponPickup`, `fireAt`, `fieldThreats`, `kills`.
-
-Output (`video/out/`) is git-ignored; clips are rebuilt on demand.
+`capture: 'cdp'` (Chromium's screen capture, with hole-filling) and Playwright's own `recordVideo` still exist in the code for
+reference. They stutter and are not used by any clip. Do not use them for new work.
