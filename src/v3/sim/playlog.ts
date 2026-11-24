@@ -533,11 +533,29 @@ import type { EncounterSetup } from '../data/encounters';
  *      whom and on which `wave`. Both sides' inputs are ordinary commands
  *      (the 'c' switches are UI only), so the log replays exactly. Nothing
  *      in the sim changed: a v64 log plays the same game; the version
- *      marks the logs that can carry the new fields. */
-export const LOG_VERSION = 65;
+ *      marks the logs that can carry the new fields.
+ *  66: the Tide moves as a whole and strands ships; Sowers' Hold is
+ *      automatic (the player: "the whole water should pull back and the
+ *      ships left in the low tide are just stuck until the next high tide",
+ *      "tide times should last longer", "just make [the Hold] automatic ...
+ *      make mines spottable about 1.5 from what it is now ... right before
+ *      the ships collided with the mine about 1/3 the spotting distance the
+ *      ship in the path will pause until that mine is shot down"). The tide
+ *      falls over 8 s and rises over 9 s (4 and 3), the campaign's clock is
+ *      55 s high and 30 s low (25 and 20) and the encounter layer's low
+ *      water lasts longer (data/encounters.ts TIDE_LOW); a ship on the
+ *      flats when the water drops runs aground and stays so until it is
+ *      back (game.ts aground; no crossing to the deep channel, Ship `cross`
+ *      is gone). Sowers' convoy has no Hold command but `autoHold`: a ship
+ *      whose course would put it on a mine within a third of the spotting
+ *      time stops by itself until the mine is gone (game.ts minePace); hidden
+ *      mines surface 3.75 s ahead (2.5 s before) and Sowers' waves send
+ *      about 10% more; CONVOY_REV 4. A Tide or Sowers log before v66 no
+ *      longer replays to the same game; the other maps play as they did. */
+export const LOG_VERSION = 66;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [65];
+export const LOG_REPLAYS: readonly number[] = [66];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

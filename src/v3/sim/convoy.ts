@@ -91,7 +91,7 @@ export function applyConvoy(g: Game, setup: ConvoySetup): void {
   const flow = Math.max(0, Math.min(FLOW_STEPS.length - 1, setup.flow ?? def.flow));
   g.convoy = {
     setup: { ...setup, rev: setup.rev ?? CONVOY_REV },
-    def: { ...def, flow },
+    def: { ...def, flow, ...(setup.tune?.hold ? { commands: ['hold' as CommandId], autoHold: false } : {}) },
     holding: false,
     holdT: 0,
     owed: 0,

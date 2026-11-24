@@ -244,6 +244,6 @@ describe('Test Lab round 11', () => {
     // The Citadel (docs/design/v3-ch4-citadel.md, log v60): the same.
     expect(mapProduction('citadel')).toEqual({ convoy: 'tactical', encounters: true });
     expect(productionText('strait')).toBe("The map's own convoy (no commands) · encounters v1 Original");
-    expect(productionText('sowers')).toBe('Commands: Hold · encounters v1 Original');
+    expect(productionText('sowers')).toBe("The map's own convoy (no commands; a ship stops by itself for a mine) · encounters v1 Original");
   });
 });

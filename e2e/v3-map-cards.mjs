@@ -229,7 +229,7 @@ try {
   // Chapter 3's Battery Point (docs/design/v3-ch3-battery.md): the same.
   check(hub.battery === enc1, `Battery Point says it opens with its encounters (${hub.battery})`);
   // Sowers' Reach (docs/design/v3-ch3-sowers.md, log v48): its Hold, and now its encounters.
-  check(hub.sowers === "Full map: waves 1–10 and 3 boss rounds · Commands: Hold · encounters v1 Original", `Sowers' Reach says it opens with Hold and its encounters (${hub.sowers})`);
+  check(hub.sowers === "Full map: waves 1–10 and 3 boss rounds · The map's own convoy (no commands; a ship stops by itself for a mine) · encounters v1 Original", `Sowers' Reach says it opens with the automatic Hold and its encounters (${hub.sowers})`);
   // The Rig Field (docs/design/v3-ch3-rigs.md, log v49): the same.
   check(hub.rigs === enc1, `the Rig Field says it opens with its encounters (${hub.rigs})`);
   // Dreadnought Pass, chapter 3's finale (docs/design/v3-ch3-dreadnought.md, log v51): its encounters, no command.
@@ -356,7 +356,7 @@ try {
   await page.tap('[data-lab-list]');
   await page.waitForSelector('[data-screen="lab"]');
   const saved = await savedRun(page, 'map-strait');
-  check(saved.v === 65 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
+  check(saved.v === 66 && JSON.stringify(saved.score) === JSON.stringify({ rev: 4, fun: 4, difficulty: 'bit-hard', intensity: 5, again: 'maybe', effort: 2, best: 1 }) && saved.variant === 'v1' && saved.labVariant === 'v1' && JSON.stringify(saved.entryScore) === JSON.stringify(saved.score), `the scorecard lands in the log (v${saved.v}, ${JSON.stringify(saved.score)}, variant ${saved.variant}) and on the device`);
 
   // ---- A lost run on wave 7: waves 1-7, no boss row; Skip saves none ----
   await page.goto(`${BASE_URL}/v3.html?lab=map-strait&seed=7`, { waitUntil: 'networkidle' });
@@ -492,13 +492,14 @@ try {
     const sk = await runState(page);
     check(sk.map === map && sk.wave === 1 && sk.plays === 'full' && sk.policy === 'tactical' && sk.cmds.length === 0 && sk.enc === 4 && sk.count === 'full map · wave 1 of 10' && sk.log.encounters === 4 && sk.log.lab?.config?.production === true, `the bare link v3.html?lab=map-${map} opens the full map with its encounters and no command (${JSON.stringify({ wave: sk.wave, policy: sk.policy, cmds: sk.cmds, enc: sk.enc, count: sk.count })})`);
   }
-  // Round 11: Hold is on Sowers' Reach, where mines drift across the lane.
+  // Round 11: Hold was on Sowers' Reach, where mines drift across the lane.
   await page.goto(`${BASE_URL}/v3.html?lab=map-sowers&seed=7`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.playing.lab-on');
-  await page.waitForFunction(() => document.querySelectorAll('.v3-command').length > 0, null, { timeout: 8000 });
+  // (Log v66: Sowers' Hold is automatic, so no button comes up.)
+  await page.waitForFunction(() => window.__v3.game()?.convoy?.setup.policy === 'tactical', null, { timeout: 8000 });
   const s6 = await runState(page);
   // Log v48 (docs/design/v3-ch3-sowers.md): and its encounters.
-  check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === 'hold' && s6.enc === 4, `the bare link v3.html?lab=map-sowers opens the full map with Hold and its encounters (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
+  check(s6.map === 'sowers' && s6.wave === 1 && s6.plays === 'full' && s6.policy === 'tactical' && s6.cmds.join() === '' && s6.enc === 4, `the bare link v3.html?lab=map-sowers opens the full map with no Hold button (it is automatic) and its encounters (${JSON.stringify({ wave: s6.wave, cmds: s6.cmds, enc: s6.enc, count: s6.count })})`);
   // Round 8: a map card always gives its own new enemies their debut card
   // ("New on The Narrows: …"), even on a device that has met them (say in the
   // Test Lab's enemy cards), at Call-outs: Essential too. Another map's card

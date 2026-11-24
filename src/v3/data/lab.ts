@@ -264,7 +264,8 @@ export function productionText(map: MapId, version: EncounterVersion = VERSION_D
   const p = mapProduction(map);
   if (p.convoy !== 'tactical') return "Today's convoy controls (no commands or encounters for this map yet)";
   const cmds = mapConvoy(map).commands.map((c) => COMMANDS[c].name).join(' and ');
-  return `${cmds ? `Commands: ${cmds}` : "The map's own convoy (no commands)"}${p.encounters ? ` · encounters ${versionLabel(map, version)}` : ''}`;
+  const own = mapConvoy(map).autoHold ? "The map's own convoy (no commands; a ship stops by itself for a mine)" : "The map's own convoy (no commands)";
+  return `${cmds ? `Commands: ${cmds}` : own}${p.encounters ? ` · encounters ${versionLabel(map, version)}` : ''}`;
 }
 
 /** What a map card plays, as its hub card and the review page say it.
@@ -712,13 +713,13 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'tide', log: 66, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
+  { map: 'sowers', log: 66, tag: 'Polished', note: 'No Hold button: ships stop by themselves for a mine; mines show 1.5× sooner. Better?' },
   { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
-  { map: 'tide', log: 61, tag: 'New', note: 'Once a wave the tide goes out: ships crowd the deep channel, the shore fires at the crowd.' },
   { map: 'citadel', log: 60, tag: 'New', note: 'The finale: the shield rises every wave; fire under the dome can\'t be shot. Break it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
   { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
   { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
-  { map: 'sowers', log: 55, tag: 'Polished', note: 'Mines stay hidden till a ship is close; the big Hold button glows when to press it. Fair?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'lantern', log: 52, tag: 'New', note: 'Night: fire from the dark bank behind your ships; siege guns rise there. Readable?' },
   { map: 'dreadnought', log: 51, tag: 'New', note: 'Sink the battleship or ride out its broadsides; the boss is the Dreadnought. Big enough?' },

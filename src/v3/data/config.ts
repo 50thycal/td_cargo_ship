@@ -242,10 +242,16 @@ export const MINE = {
   hitRadius: 30,
   wobble: 6,
   /** Log v55 (round 15, HIDDEN_MINES): a hidden mine surfaces once a ship
-   *  would sail onto it within this many seconds (about 90-110 px of a
-   *  ship's way and the mine's drift): a tight but fair moment for a shot
-   *  or a Hold. */
-  surface: 2.5,
+   *  would sail onto it within this many seconds. Log v66 (the player:
+   *  "make mines spottable about 1.5 from what it is now"): 3.75 s, from
+   *  2.5 s, about 150-170 px of a ship's way and the mine's drift. */
+  surface: 3.75,
+  /** Log v66 (the player: "right before the ships collided with the mine,
+   *  about 1/3 the spotting distance, the ship in the path will pause until
+   *  that mine is gone or shot down"): a ship whose course would put it on a
+   *  mine within this share of `surface` pauses by itself (game.ts
+   *  minePace, on the maps whose convoy has `autoHold`). */
+  holdShare: 1 / 3,
 } as const;
 
 /** Log v48 (Sowers' Reach, MAP_SIGNATURE `sow`, and its Carpet Run under the

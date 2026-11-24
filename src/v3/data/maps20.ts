@@ -698,7 +698,7 @@ const tide: MapDef = {
   subSpots: [{ x: 150, y: 392 }, { x: 1500, y: 392 }],
   bomberLines: [392, 742],
   vectors: { trucks: 2, subs: 3, strafers: 4, bombers: 5 },
-  tide: { high: 25, low: 20 },
+  tide: { high: 55, low: 30 },
 };
 
 // ---------------------------------------------------------------------------
