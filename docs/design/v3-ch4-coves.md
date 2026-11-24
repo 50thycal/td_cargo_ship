@@ -272,7 +272,7 @@ Open War starts here. Four smugglers' coves hide fast boats two seconds from you
 
 (This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)
 
-## Log v68: three attack boats (the player's notes on the v65 sim run)
+## Log v69: three attack boats (the player's notes on the v65 sim run)
 
 The player (wave 2: "need to improve the animation and look of the attack boats ... a better wake and manage more realistically"; wave 10: "need to overhaul the boats, different kinds more defined: a speed boat that rushes the cargo ships and explodes with fire; one with a small cannon that locks on a cargo ship and sails with it and continues until it sinks it; the last kind shoots rockets like the rocket trucks but has a lot more health, more range and is slower").
 

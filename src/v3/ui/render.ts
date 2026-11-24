@@ -1877,7 +1877,7 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
     const u = f.age / f.life;
     switch (f.kind) {
       case 'fireball': {
-        // Log v68: a speedboat's end, a ball of fire that rolls up and out.
+        // Log v69: a speedboat's end, a ball of fire that rolls up and out.
         const r = f.r * (0.35 + 0.9 * Math.min(1, u * 1.5));
         const a = 1 - u;
         ctx.fillStyle = `rgba(255,96,24,${0.75 * a})`;

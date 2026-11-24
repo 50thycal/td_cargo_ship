@@ -1,4 +1,4 @@
-// The "you" bot plays the gesture weapons like a person (log v68; the player
+// The "you" bot plays the gesture weapons like a person (log v69; the player
 // on the Battery watch run: "the bot does not use the lance properly, it
 // needs to hold down to charge a bigger hit" and "does not use the laser").
 
@@ -20,7 +20,7 @@ function play(gestures: number, seed: number, seconds: number) {
   return { run, presses: cmds.filter((c) => c[1] === 'd').length, releases: cmds.filter((c) => c[1] === 'r').length, moves: cmds.filter((c) => c[1] === 'v').length };
 }
 
-describe('the bot holds the Lance and swipes the Cutter (log v68)', () => {
+describe('the bot holds the Lance and swipes the Cutter (log v69)', () => {
   it('with gestures it presses, drags and lets go; taps only, it never does', () => {
     const on = play(0.9, 905, 150);
     expect(on.presses).toBeGreaterThan(10);

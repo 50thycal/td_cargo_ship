@@ -1,5 +1,5 @@
 // How long each map's lanes are (px along the path), to hold the Delta to
-// "about three times the usual length" (log v68).
+// "about three times the usual length" (log v69).
 //   npx vite-node tools/v3/delta/length.ts
 import { MAPS } from '../../../src/v3/data/maps';
 import { laneLength } from '../../../src/v3/sim/lanes';

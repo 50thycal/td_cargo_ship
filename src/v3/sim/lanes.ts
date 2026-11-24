@@ -37,7 +37,7 @@ const radii = new WeakMap<Channel, number>();
 
 /** The tightest turn of a lane's centre line (px of radius; Infinity for a
  *  straight one), read over 60 px of it: what an aircraft flying beside it
- *  must stay clear of (the Delta's hairpins, log v68). */
+ *  must stay clear of (the Delta's hairpins, log v69). */
 export function laneMinRadius(ch: Channel): number {
   let r = radii.get(ch);
   if (r !== undefined) return r;

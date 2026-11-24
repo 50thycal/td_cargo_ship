@@ -258,7 +258,7 @@ Fix the three reference maps to the rules first. Then rebuild the other maps one
 
 ## Status
 
-All 20 maps are rebuilt. New in the Test Lab: Watch mode (the bot plays, you take over any time; the log knows who played), a Tools panel with the Armory inside, and only the new tests on the hub. Also in: Saltgate’s truck parade and the full-width battlefield. Still to play: chapter 4, the Dreadnought, the Lantern, the Sowers and Rig Field notes.
+Your play notes are in (21 logs). Three builds are running: A (log v66) the Tide moves as a whole and strands ships, Sowers hold themselves, the first-load sizing bug; B (v67) an always-dark Lantern and Blackout, a Dreadnought that uses its artillery, a Citadel that is destroyed once and returns for the boss; C (v68) the Coves boats overhauled, the Delta as one long route, the bot learns the Lance. Crossing and the Archipelago rated fun 5, boss 5. Builds start from your notes now. Still open: what comes after the maps (rollout, Air Strike pass, Armory).
 
 - **Done: Map and wave rules.** 31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.
 - **Done: Bots that play like you.** Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.

@@ -11,7 +11,7 @@ describe('the boosts round', () => {
     expect(YOU.boosts).toBeDefined();
     expect(YOU_P2.boosts).toBeUndefined();
     expect(PERSONAS['you-p2']).toBe(YOU_P2);
-    // (Log v68: and `gestures`, the Lance held and the Cutter swiped.)
+    // (Log v69: and `gestures`, the Lance held and the Cutter swiped.)
     const { id: _a, label: _b, blurb: _c, boosts: _d, gestures: _h, ...now } = YOU;
     const { id: _e, label: _f, blurb: _g, ...before } = YOU_P2;
     expect(now).toEqual(before);

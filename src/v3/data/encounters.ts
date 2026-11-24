@@ -162,7 +162,7 @@ export interface Beat {
    *  (data/config.ts FIRESHIP): more hits, and where one is sunk or rams,
    *  its fireball burns on the water. */
   fire?: boolean;
-  /** The Coves (log v68): a fast boat that comes as a gunboat (a cannon, it
+  /** The Coves (log v69): a fast boat that comes as a gunboat (a cannon, it
    *  locks a ship and sails with it) or a rocket boat (slow, sturdy, long
    *  range, salvos of red rockets): data/config.ts BOATS. */
   boat?: 'gun' | 'rocket';
@@ -5097,7 +5097,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'teach',
     name: 'Smoke in the east',
     callout: 'A battleship',
-    premise: 'The Dreadnought shows itself in the east of the deep channel, fires two single shells at the lead ship and turns away; a few drones come off the west silo.',
+    premise: 'The Dreadnought shows itself in the east of the deep channel, its three gun turrets shell the lead ship (shoot a turret out and it is silent) and it turns away; a few drones come off the west silo.',
     decision: 'The first look at the map\'s problem: a battleship you cannot sink in one wave, and what it fires, which you can shoot down.',
     counters: 'The shells as they climb, then the drones; a few shots into the hull if there is time.',
     succeeds: 'Nothing is sunk on wave 1; both shells are shot down.',
@@ -5139,8 +5139,8 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     waves: [3],
     role: 'teach',
     name: 'The first pass',
-    callout: 'Battleship broadsides',
-    premise: 'The Dreadnought steams the whole deep channel from east to west, firing a broadside every few seconds, a shell at the lead ship and drones off its deck at the carrier; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
+    callout: 'Gun turrets and missiles',
+    premise: 'The Dreadnought steams the whole deep channel from east to west, its three gun turrets shelling the lead ship in turn (each takes four hits to shoot out) while drones come off its silo at the carrier; a periscope between the deep channel and the lane fires at the lead ship too, and a guided missile and a swarm come while it passes.',
     decision: 'Sink it (fifty hits) and silence its broadsides, or shoot each broadside down as it comes?',
     counters: 'Each broadside\'s shell as it climbs, its drones, the missile; any shots spare into the hull.',
     succeeds: 'A close call in the east as the broadsides open; a good player loses no ship.',
@@ -5289,7 +5289,7 @@ const DREAD_R4: Omit<Encounter, 'version' | 'rev'>[] = [
     role: 'escalate',
     name: 'The gunline',
     callout: 'Broadsides and spotters',
-    premise: 'The Dreadnought\'s third pass, firing a guided missile and a flight of drones off its deck at a time, while a spotter calls its guns on a ship, a guided missile comes off the east silo at the lead ship and swarms come at the rear and the middle.',
+    premise: 'The Dreadnought\'s third pass, its turrets shelling the ships while its silo opens for a guided missile and a flight of drones at a time, while a spotter calls its guns on a ship, a guided missile comes off the east silo at the lead ship and swarms come at the rear and the middle.',
     decision: 'Everything the battleship has: sink it this time, or ride it out?',
     counters: 'The spotter, each broadside, the missile; the hull while it is in reach.',
     succeeds: 'A close call in the east in most runs; the wave hurts but does not end the run.',
@@ -5621,7 +5621,7 @@ const COVES_R4: Omit<Encounter, 'version' | 'rev'>[] = [
   },
 ];
 
-/** Chapter 4's Delta (log v68, docs/design/v3-ch4-delta.md): one very long
+/** Chapter 4's Delta (log v69, docs/design/v3-ch4-delta.md): one very long
  *  river, about three times the usual lane. The ships come in on the north
  *  leg heading east, turn at the east bend, sail the middle leg west past
  *  the carrier's bay, turn at the west bend and sail the south leg east to
@@ -7111,11 +7111,11 @@ const REBUILT_VERSIONS: Record<RebuiltMap, Partial<Record<EncounterVersion, Vers
   // Chapter 3.
   battery: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two allied shore guns on the headland: they cover the ships about to deliver while they stand, and the enemy\'s shells and heavies go for them first; jets come in dark from wave 4.', callouts: false, scale: BATTERY_CLIMB } },
   rigs: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four enemy oil rigs in the sea just above the lane: each fires from point-blank and takes forty hits, and one brought down stays down; relief rigs are towed in to stand where one fell from wave 4.', callouts: false, scale: RIGS_CLIMB } },
-  lantern: { v1: { name: 'Original', idea: 'One encounter a wave, built on the night: a threat is a glow until the lighthouse beam, the carrier\'s lamp or a star shell lights it, and the enemy\'s own bank in the south-east, behind the ships as they deliver, is never in the beam; siege guns rise on that dark bank from wave 4.', callouts: false, scale: LANTERN_CLIMB } },
+  lantern: { v1: { name: 'Original', idea: 'One encounter a wave, built on the night: a threat is a glow until the lighthouse beam, the carrier\'s lamp lights it (it is always dark: no Star Shell), and the enemy\'s own bank in the south-east, behind the ships as they deliver, is never in the beam; siege guns rise on that dark bank from wave 4.', callouts: false, scale: LANTERN_CLIMB } },
   dreadnought: { v1: { name: 'Original', idea: 'One encounter a wave, built on the battleship that steams down the deep channel against the convoy firing broadsides: fifty hits sink it, or its broadsides can be shot down one by one; spotter planes lay its guns on a ship from wave 4.', callouts: false, scale: DREAD_CLIMB } },
   // Chapter 4.
   coves: { v1: { name: 'Original', idea: 'One encounter a wave, built on the four smugglers\' coves two seconds from the lane, three on the north shore and one on the south by the delivery end: their fast boats come at the ship passing each cove mouth; fire ships that burn where they are sunk from wave 4.', callouts: false, scale: COVES_CLIMB } },
-  citadel: { v1: { name: 'Original', idea: 'One encounter a wave, built on the Citadel over the narrows: its fire is the shortest on the map, its shield rises again every wave on three generators spread round the map, and from wave 4 it fires under its dome, where nothing can be shot until the shield is down.', callouts: false, scale: CITADEL_CLIMB } },
+  citadel: { v1: { name: 'Original', idea: 'One encounter a wave, built on the Citadel over the narrows: its fire is the shortest on the map, its shield rises again every wave on three generators spread round the map until it is destroyed (once, for good, till the boss), and from wave 4 it fires under its dome, where nothing can be shot until the shield is down.', callouts: false, scale: CITADEL_CLIMB } },
   delta: { v1: { name: 'Original', idea: 'One encounter a wave, built on the fork: the switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, and the enemy fires at the branch it is set to; incendiaries burst on that branch\'s mouth from wave 4.', callouts: false, scale: DELTA_CLIMB } },
   crossing: { v1: { name: 'Original', idea: 'One encounter a wave, built on the two convoys that pass each other in the middle of the strait, outbound east in the north lane under the north shore and inbound west in the south lane under the south shore: spotter beacons rise between the lanes where the next ships cross and call shells on both from wave 4.', callouts: false, scale: CROSSING_CLIMB } },
   tide: { v1: { name: 'Original', idea: 'One encounter a wave, built on the tide: the flats lane by the carrier floats only at high water, so when the tide goes out mid-wave every ship crowds into the deep channel under the guns, and the enemy saves its fire for the crowd; cluster missiles at the ebb from wave 4.', callouts: false, scale: TIDE_CLIMB } },
@@ -7330,7 +7330,7 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // burns on the water), one for one, the Fire Fleet's own. Not the wave's
   // new enemies: chapter 4's four debut here on waves 2-5.
   coves: { from: 4, fireShips: [1, 1, 0, 1, 1, 1, 2] },
-  // The Delta (log v68, docs/design/v3-ch4-delta.md): "a truck on every
+  // The Delta (log v69, docs/design/v3-ch4-delta.md): "a truck on every
   // bank", from wave 4 (log v57's "fire on the branch" went with the fork).
   // The wave's new enemies come as Rocket Trucks, down the pop-up roads to
   // the banks over every leg of the river (the north coast, both sides of
@@ -7355,8 +7355,10 @@ export const MAP_SIGNATURE: Partial<Record<EncounterMap | RebuiltMap, MapSignatu
   // Citadel itself: while the shield stands, each can't be shot until it
   // has left the dome, a breath from the narrows.
   // The shield rises again every wave (SHIELD_RISES), so the generators are
-  // the price of shooting the keep's fire early, every wave.
-  citadel: { from: 4, dome: [1, 1, 1, 1, 1, 1, 1] },
+  // the price of shooting the keep's fire early, every wave. Log v67: two of
+  // them a wave (one before), because the Citadel is destroyed once and the
+  // dome's fire is what the waves before it falls are about.
+  citadel: { from: 4, dome: [2, 2, 2, 2, 2, 2, 2] },
 };
 
 /** A map's new enemies that come as another (log v42, lab only, under the
@@ -7438,7 +7440,8 @@ export const SHOT_RIGS: readonly MapId[] = ['rigs', 'citadel'];
 
 /** Log v60 (The Citadel, lab only, under the encounter layer): the shield
  *  rises again at the start of every wave: a generator brought down stands
- *  again, and a silenced Citadel is manned again (data/config.ts CITADEL).
+ *  again, until the Citadel itself is destroyed; log v67: then it and the
+ *  generators stay down till the boss rebuilds them (data/config.ts CITADEL).
  *  On these maps the generators and the Citadel count shots too
  *  (SHOT_RIGS). A campaign run, a rev 3 log and the shared wave keep the
  *  campaign's: brought down, they stay down. */
@@ -7697,7 +7700,7 @@ export interface BossFire {
   gap?: number;
   base?: number;
   aim?: BeatAim;
-  /** The Coves (log v68): a gunboat or a rocket boat. */
+  /** The Coves (log v69): a gunboat or a rocket boat. */
   boat?: 'gun' | 'rocket';
 }
 
@@ -7950,7 +7953,10 @@ export interface DreadPass {
  *  campaign's and drones off its deck at the carrier in their place (game.ts
  *  updateBoss), so the wave sends what the campaign's does (rule w-budget:
  *  the broadsides are the bulk of a pass wave's launches) but the ships take
- *  fewer shells with a short flight. */
+ *  fewer shells with a short flight. Log v67: the 'ballistic' of a pass's
+ *  broadside is no longer launched from the hull: the battleship's three gun
+ *  turrets fire the artillery shells (config.ts TURRET, game.ts
+ *  updateTurret) and the silo launches the rest. */
 export const DREAD_PASSES: Record<number, DreadPass> = {
   1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
   3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
@@ -8001,7 +8007,7 @@ export const LANTERN_BOSS_ROUNDS: BossRound[] = [
  *  fire ships, one out of every cove listed at once, all at the ship
  *  nearest halfway along, the cove mouths lit first, with packs of fast
  *  boats and a missile: masses of burning boats converging on the
- *  clustered convoy. Log v68: the packs are the Coves' other boats too, a
+ *  clustered convoy. Log v69: the packs are the Coves' other boats too, a
  *  gunboat on a ship, a rocket boat off the west cove (round 3),
  *  among the fire. Rising: more coves (two, three, all four), more
  *  sorties, more boats. */
@@ -8020,7 +8026,7 @@ export const COVES_BOSS_ROUNDS: BossRound[] = [
   },
 ];
 
-/** The Delta's Long Gauntlet (log v68, docs/design/v3-ch4-delta.md), in
+/** The Delta's Long Gauntlet (log v69, docs/design/v3-ch4-delta.md), in
  *  place of the Burning Delta (burning oil across the fork's branches: the
  *  fork is gone) and the Escort Run before it (one heavy in three rings of
  *  guards). The river is three times the usual length, so the boss is the

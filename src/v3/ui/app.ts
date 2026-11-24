@@ -211,7 +211,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
   mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
   fastboat: 'Out of a cove, watch for the white wake. A speedboat rams and burns; a gunboat sails beside one ship and shells it until it sinks; a rocket boat hangs far off and fires red rockets.',
-  dreadnought: 'A battleship firing broadsides as it steams through. Fifty hits to sink it, or ride it out.',
+  dreadnought: 'A battleship shelling the convoy from three gun turrets (shoot them out), launching missiles and drones from its silo. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
@@ -258,13 +258,13 @@ const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   battery: ['SHORE BATTERY', 'Two allied guns fire on their own. A hit knocks one out for a while.'],
   sowers: ['MINES', 'Mines drift across the lane on the current. Clear them before a ship sails in.'],
   rigs: ['OIL RIGS', 'Rigs launch from the sea. Bring one down and it stays down.'],
-  lantern: ['NIGHT', 'Threats show only as a glow until the beam finds them. Grab Star Shells.'],
+  lantern: ['NIGHT', 'Threats show only as a glow until the beam or your lamp finds them. It stays dark.'],
   dreadnought: ['DREADNOUGHT PASS', 'On waves 3, 6, 9 and 10 a battleship steams through.'],
   coves: ['ATTACK BOATS', 'Speedboats ram, gunboats lock on a ship, rocket boats fire from afar. Watch the white wakes.'],
   delta: ['THE LONG RIVER', 'One river, three times as long: the ships are under fire every mile of it. Trucks on the banks.'],
   crossing: ['TWO-WAY TRAFFIC', 'Outbound east up top, inbound west below. Both edges are a front.'],
   tide: ['THE TIDE', 'The flats lane is open only at high tide. Push ships through while it lasts.'],
-  citadel: ['THE CITADEL', 'Destroy the three shield generators, then silence the Citadel.'],
+  citadel: ['THE CITADEL', 'Destroy the shield generators, then wear the Citadel down: destroyed once, it stays down until the boss.'],
 };
 
 /** Round 4: launchers that aren't targets — what they are, what to watch for. */
@@ -1944,7 +1944,7 @@ export class App {
           break;
         }
         case 'boss':
-          this.showBanner('DREADNOUGHT INBOUND', 'Broadsides every few seconds. Sink it, or keep the convoy alive till it passes.', WARN, null);
+          this.showBanner('DREADNOUGHT INBOUND', 'Shoot out its gun turrets, or sink it, or keep the convoy alive till it passes.', WARN, null);
           this.shake = Math.max(this.shake, 8);
           break;
         case 'fork':
@@ -5114,7 +5114,7 @@ const PICKUP_HINT: Partial<Record<PickupKind, [string, string]>> = {
   timewarp: ['PICKUP: Time Warp', 'Tap it: every threat slows to a crawl for a few seconds.'],
   shield: ['PICKUP: Shield', 'Tap it: the convoy and carrier shrug off every hit for a few seconds.'],
   steam: ['PICKUP: Full Steam', 'Tap it: the convoy races ahead for a few seconds.'],
-  starshell: ['PICKUP: Star Shell', 'Tap it: a flare lights the whole strait for a few seconds.'],
+  starshell: ['PICKUP: Star Shell', 'No longer dropped (the strait stays dark). A flare lit the whole strait for a few seconds.'],
   nuke: ['PICKUP: Nuke', 'Tap it: everything in the air and on the water is destroyed. Rare.'],
 };
 

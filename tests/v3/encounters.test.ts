@@ -250,7 +250,7 @@ describe('a campaign run has no encounter layer', () => {
       'coves-white-wake', 'coves-cove-by-cove', 'coves-south-cove', 'coves-fire-ship', 'coves-two-ends',
       'coves-periscope', 'coves-crossfire', 'coves-north-shore', 'coves-facing', 'coves-every-cove',
     ]);
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57; the long river, log v68): the same.
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57; the long river, log v69): the same.
     expect(arc('delta').map((a) => a.encounters.map((e) => e.id).join('+'))).toEqual([
       'delta-long-river', 'delta-round-the-bend', 'delta-island-guns', 'delta-truck-bank', 'delta-both-ends',
       'delta-island', 'delta-down-the-river', 'delta-every-leg', 'delta-trucks-and-raid', 'delta-the-long-run',
@@ -920,7 +920,7 @@ describe('chapter 1\'s Kesh and Marrow (rev 4): the aims they bring', () => {
     const fired = arc('coves').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.fire))).map((a) => a.wave);
     expect(fired).toEqual([4, 7, 8, 10]);
     for (const e of ENCOUNTERS) for (const b of e.beats.filter((x) => x.fire)) expect(e.map === 'coves' && b.kind === 'fastboat' && 'base' in b.from && MAPS.coves.bases[b.from.base].cove, e.id).toBe(true);
-    // The Delta (log v68): the river has no switch, so no beat aims at one,
+    // The Delta (log v69): the river has no switch, so no beat aims at one,
     // and its fire comes from every silo along the river in turn (all eight
     // are used, the north coast's, the island's, the islets' and the marsh's).
     expect(arc('delta').filter((a) => a.encounters.some((e) => e.beats.some((b) => b.aim === 'switch' || b.kind === 'cloud')))).toEqual([]);
@@ -1512,8 +1512,8 @@ describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the 
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   const fired = (r: { fire?: { kind: string; count?: number }[] }, kind: string) => (r.fire ?? []).filter((f) => f.kind === kind).reduce((a, f) => a + (f.count ?? 1), 0);
   it('more stealth strafers each round, closer together, with shells and heavies at the shore guns', () => {
-    const off = playMimic('battery', 218, opts);
-    const old = playMimic('battery', 218, { ...opts, encounters: { rev: 3, version: 'v1' } });
+    const off = playMimic('battery', 201, opts);
+    const old = playMimic('battery', 201, { ...opts, encounters: { rev: 3, version: 'v1' } });
     // Before the layer: the event's own 8 strafers and nothing else.
     expect(old.game.eventLog).toEqual(off.game.eventLog);
     expect(old.log.commands).toEqual(off.log.commands);
@@ -1522,7 +1522,7 @@ describe('Battery Point\'s boss rounds (log v45, MAP_BOSS): the Blackout at the 
       expect(e.sent.stealthJet).toBe(8);
       expect((e.sent.ballistic ?? 0) + (e.sent.heavy ?? 0)).toBe(0);
     }
-    const on = playMimic('battery', 218, { ...opts, encounters: VER('v1') });
+    const on = playMimic('battery', 201, { ...opts, encounters: VER('v1') });
     const rounds = MAP_BOSS.battery!.rounds!;
     expect(on.game.eventLog.map((e) => [e.id, e.run])).toEqual([['blackout', 1], ['blackout', 2], ['blackout', 3]]);
     const done = on.game.eventLog.filter((e) => e.outcome !== 'broken' || e.run! < 3);
@@ -1805,7 +1805,7 @@ describe('the Black Strait\'s boss rounds (log v52, MAP_BOSS): the Bombardment w
   });
 });
 
-describe('the Delta\'s boss rounds (log v68, MAP_BOSS): the Long Gauntlet rises; a rev 3 log and the campaign play the Escort Run as it was', () => {
+describe('the Delta\'s boss rounds (log v69, MAP_BOSS): the Long Gauntlet rises; a rev 3 log and the campaign play the Escort Run as it was', () => {
   const opts = { persona: PERSONAS.tryhard, armory: { warhead: 3 }, firstWave: 11 };
   it('the whole shore fires down the river in order (more of it each round) and a raid comes at the ships on the way in; no guarded heavy', () => {
     // (Seed DELTA_BOSS_SEED: the tryhard bot plays the rounds there;
@@ -2245,7 +2245,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(g.baseDown[st[1]]).toBe(true);
   });
 
-  it('the Delta (log v68): from wave 4 the wave\'s new enemies are Rocket Trucks on the banks, each at the ship nearest it; the campaign and the shared wave keep the planner\'s own', () => {
+  it('the Delta (log v69): from wave 4 the wave\'s new enemies are Rocket Trucks on the banks, each at the ship nearest it; the campaign and the shared wave keep the planner\'s own', () => {
     expect(MAP_SIGNATURE.delta).toMatchObject({ from: 4, foe: 'rocketTruck', foeShare: 1, trucks: 'near' });
     let trucks = 0;
     for (let w = 1; w <= 10; w++)
@@ -2268,7 +2268,7 @@ describe('a chapter 2 map\'s signature threat (log v33, round 9: MAP_SIGNATURE)'
     expect(signatureOf('delta', 4, { rev: 4, only: [] })).toBeUndefined();
   });
 
-  it('the Delta\'s river (log v68): one lane about three times the usual length, no fork, a pop-up road to a bank over every leg', () => {
+  it('the Delta\'s river (log v69): one lane about three times the usual length, no fork, a pop-up road to a bank over every leg', () => {
     const m = MAPS.delta;
     const world = createGame('delta', 1, 1);
     const onLandAt = (_m: unknown, x: number, y: number) => onLand(world, x, y);
@@ -2615,7 +2615,7 @@ describe('busier early waves (log v47): easy filler on top of waves 1-6', () => 
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('lantern', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // The Coves (log v53): waves 1-6, out of its one drone silo (the far north-west).
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('coves', w))).toEqual([1, 2, 3, 4, 5, 6]);
-    // The Delta (log v68): waves 1-6 out of the west islet's silo, one of
+    // The Delta (log v69): waves 1-6 out of the west islet's silo, one of
     // its two drone silos, in the carrier's bay; wave 1 one late string.
     expect([1, 2, 3, 4, 5, 6].filter((w) => busyOn('delta', w))).toEqual([1, 2, 3, 4, 5, 6]);
     // Tidewater Flats (log v61): waves 1-6, out of the west and east silos.

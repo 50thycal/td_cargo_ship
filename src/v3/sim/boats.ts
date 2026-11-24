@@ -1,4 +1,4 @@
-// The Coves' attack boats (log v68; data/config.ts BOATS). The speedboat is
+// The Coves' attack boats (log v69; data/config.ts BOATS). The speedboat is
 // the old fast boat (game.ts steers it onto a ship and rams); the other two
 // are driven here:
 //   gunboat   locks one cargo ship, runs to a station off its beam, sails

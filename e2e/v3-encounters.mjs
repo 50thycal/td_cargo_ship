@@ -408,7 +408,7 @@ try {
     await one.close();
   }
 
-  // ---- The Delta (log v57; one long river, log v68): chapter 4's second
+  // ---- The Delta (log v57; one long river, log v69): chapter 4's second
   // map, one lane about three times the usual length, a truck on every
   // bank, and the Long Gauntlet ----
   await open(page, 'lab=map-delta&seed=7');

@@ -638,7 +638,7 @@ wave 7, 8 s before the note (39.2 s), so tapping had stopped before the note.
 In the browser, a note from the pause menu, then Resume, at 2× speed: 3 of 3
 taps fired.
 
-## Log v68: the sim bot did not hold the Lance or swipe the Laser (Battery, v65 sim run)
+## Log v69: the sim bot did not hold the Lance or swipe the Laser (Battery, v65 sim run)
 
 **What the player said (the Watch run, "sim", lost on Battery wave 5 with a Charge Lance at level 3 and a Laser Cutter at level 1):** wave 3, "the bot does not use the lance properly, it needs to hold down to charge a bigger hit"; the review, "the bot does not use the laser weapon, it needs that".
 

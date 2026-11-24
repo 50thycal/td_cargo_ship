@@ -21,7 +21,7 @@ const RUN = 150;
 const STALL = 60;
 const FIRST = 120;
 /** The first delivery's limit on a map: FIRST, and a lane longer than the
- *  usual 1,700 px (the Delta's long river, log v68) the time its extra length takes
+ *  usual 1,700 px (the Delta's long river, log v69) the time its extra length takes
  *  at the convoy's own speed. */
 const firstFor = (map: MapId): number => FIRST + Math.max(0, Math.max(...MAPS[map].channels.map(laneLength)) - 1700) / 40;
 

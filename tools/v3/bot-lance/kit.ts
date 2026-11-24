@@ -1,4 +1,4 @@
-// The gesture weapons on a map card (log v68): the "you" persona with a
+// The gesture weapons on a map card (log v69): the "you" persona with a
 // fixed kit held from the start (default: Charge Lance 3 + Laser Cutter 1,
 // the kit the player's Battery watch run lost wave 5 with), the older
 // bot that only tapped (`gestures: 0`) against the one that holds the Lance

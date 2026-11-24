@@ -162,7 +162,7 @@ export const MAP_CONVOY: Partial<Record<MapId, MapConvoy>> = {
   // shooting them, not by sailing.
   rigs: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },
   // Chapter 4. The Delta (docs/design/v3-ch4-delta.md, log v57, rebuilt as
-  // one long river in log v68): the campaign's own schedule and no command:
+  // one long river in log v69): the campaign's own schedule and no command:
   // the river has no switch to steer by any more (the fork went), and the
   // ships sail it on their own, strung out along its whole length.
   delta: { flow: 1, formation: 'pairs', commands: [], dilemma: '' },

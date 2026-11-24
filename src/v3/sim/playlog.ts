@@ -534,7 +534,28 @@ import type { EncounterSetup } from '../data/encounters';
  *      (the 'c' switches are UI only), so the log replays exactly. Nothing
  *      in the sim changed: a v64 log plays the same game; the version
  *      marks the logs that can carry the new fields.
- *  68: the Coves' attack boats overhauled, the Delta rebuilt as one long
+ *  67: the Black Strait and Blackout always dark, the Dreadnought's guns and
+ *      the Citadel destroyed once (the player: "there should not be a light
+ *      drop it should always be dark"; "the ship is lame, have it actually
+ *      use the targets where the shot artillery"; "it was down in wave 4, it
+ *      should really only be destroyed once, but it will come back for the
+ *      boss wave"). No Star Shell drops on the Black Strait or in Blackout
+ *      (game.ts dropPickup, events.ts eventDropWeights, no 'shell' step in
+ *      Blackout). Under the encounter layer the Dreadnought carries three
+ *      gun turrets (TURRET, Threat kind 'turret', game.ts updateTurret):
+ *      its artillery shells come off them, one turret at a time on its own
+ *      cycle, each shot out in 4 hits and silent after; the silo launches
+ *      the rest of a broadside (guided missiles, drones), its hatches
+ *      opening before it fires. A gun turret is a target (worthShooting)
+ *      and as urgent as its next shell is near (timeToImpact). On the
+ *      Citadel the shield still rises again every wave until the Citadel is
+ *      destroyed; destroyed (70 shots dealt over the waves, 14 before; two of a wave's launches a wave come off it under the dome, one before) it and
+ *      its generators stay down, its fire off the far silos, until the
+ *      boss's rise rebuilds them (game.ts citadelDown, raiseShield: a keep
+ *      still up for the boss is brought down to the round's numbers). Map-
+ *      lab logs before v67 no longer replay to the same game. (66 is built
+ *      alongside.)
+ *  69: the Coves' attack boats overhauled, the Delta rebuilt as one long
  *      river, and the bot holds the Lance (the player's notes on the v65
  *      logs; docs/design/v3-ch4-coves.md, v3-ch4-delta.md; lab, under the
  *      encounter layer, and the campaign for the boats). The fast boat is
@@ -555,12 +576,12 @@ import type { EncounterSetup } from '../data/encounters';
  *      way a person does, pressing and holding on its target until the
  *      charge shows and letting go, and swipes a loaded Laser Cutter
  *      (Persona `gestures`, BotIO press/move/release; BOT_REV 4). A
- *      Coves or Delta log before v68 no longer replays to the same game; the
- *      other maps play as they did. (66 and 67 are built alongside.) */
-export const LOG_VERSION = 68;
+ *      Coves or Delta log before v69 no longer replays to the same game; the
+ *      other maps play as they did. (68 is built alongside.) */
+export const LOG_VERSION = 69;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [68];
+export const LOG_REPLAYS: readonly number[] = [69];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

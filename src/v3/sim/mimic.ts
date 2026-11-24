@@ -117,7 +117,7 @@ export interface Persona {
    *  a threat already covered only `cover`× as often (a spare shot costs
    *  nothing). */
   boosts?: { lull: AbilityId[]; calm: number; wait: number; rest: number; burst: number; cover: number };
-  /** Log v68 (the player: "the bot does not use the lance properly, it needs
+  /** Log v69 (the player: "the bot does not use the lance properly, it needs
    *  to hold down to charge a bigger hit" and "does not use the laser"): the
    *  share of times it plays a held gesture weapon the way a person does, the
    *  Charge Lance held on its target until the charge shows full (half when
@@ -254,7 +254,7 @@ export const YOU: Persona = {
 };
 
 /** Bumped whenever a fitted persona changes how it plays: tools that cache
- *  bot runs (the combo sweep) key their cache on it. 2: the boosts round; 3: only Overdrive waits for a lull; 4: the Lance is held to charge and the Cutter swiped (log v68). */
+ *  bot runs (the combo sweep) key their cache on it. 2: the boosts round; 3: only Overdrive waits for a lull; 4: the Lance is held to charge and the Cutter swiped (log v69). */
 export const BOT_REV = 4;
 
 /** What the bot can do: exactly what a player's touches can. */
@@ -311,7 +311,7 @@ export class Mimic {
   private nextLapse: number | null = null;
   /** `grab`: when each pickup on the water will have been noticed. */
   private pickupAt = new Map<number, number>();
-  /** Log v68: the Charge Lance held down on a threat (the finger follows it)
+  /** Log v69: the Charge Lance held down on a threat (the finger follows it)
    *  until `until`; the other thumb keeps tapping meanwhile. */
   private hold: { id: number; until: number; ox: number; oy: number; x: number; y: number } | null = null;
 
@@ -559,7 +559,7 @@ export class Mimic {
     this.act(g, io, drafts);
   }
 
-  /** Log v68: the held Charge Lance, kept down on its target and let go
+  /** Log v69: the held Charge Lance, kept down on its target and let go
    *  when the charge it wanted shows (or the target is gone). */
   private holdUpkeep(g: Game, io: BotIO): void {
     const h = this.hold;
@@ -583,7 +583,7 @@ export class Mimic {
     }
   }
 
-  /** Log v68: the weapon in hand is a gesture weapon and this persona plays
+  /** Log v69: the weapon in hand is a gesture weapon and this persona plays
    *  it as a person does (`gestures`): the Lance held on the toughest thing
    *  in the sky (or the line that holds the most) until the charge shows,
    *  the Cutter swiped through the urgent threat and what lines up with it.

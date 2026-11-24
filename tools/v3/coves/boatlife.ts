@@ -1,4 +1,4 @@
-// How long each Coves boat lives against the bot, by kind and wave (log v68):
+// How long each Coves boat lives against the bot, by kind and wave (log v69):
 // seconds from launch to its end, the share the bot sinks before the boat
 // has done its harm (a speedboat's ram, a gunboat's first shell, a rocket
 // boat's first salvo), and salvos fired.

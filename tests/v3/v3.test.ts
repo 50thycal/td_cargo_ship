@@ -945,7 +945,7 @@ describe('what each weapon does with a tap', () => {
       // follow its bends), between frigates on the same line of it.
       let closest = Infinity;
       // (A frigate sails off along the rest of the lane: the Delta's, three
-      // times the usual length, takes it longer: log v68.)
+      // times the usual length, takes it longer: log v69.)
       const sailOff = Math.max(0, laneLength(g.map.channels[0]) - 1700) / AB.frigate.speed;
       for (let t = 0; t < WEAPON.time + 10 + sailOff; t += 0.1) {
         run(g, 0.1);

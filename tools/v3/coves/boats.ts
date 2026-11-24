@@ -1,4 +1,4 @@
-// The Coves' win rate and ships lost by wave with its three boats (log v68):
+// The Coves' win rate and ships lost by wave with its three boats (log v69):
 // the bot report's runs on the map card (a shorter read than rigs/read.py).
 //   npx vite-node tools/v3/coves/boats.ts -- [--seeds=24] [--from=900] [--armory=player|latest|plating|none] [--tough]
 import { playReportRun } from '../../../src/v3/sim/mapReportPlay';

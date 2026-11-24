@@ -345,7 +345,7 @@ describe('each new map\'s own system', () => {
     expect(createGame('dreadnought', 1, 2).threats.some((t) => t.kind === 'dreadnought')).toBe(false);
   });
 
-  it('the Sharra Delta (log v68): one long river, no fork: every ship sails the one lane, round the bends, from the north leg to the south', () => {
+  it('the Sharra Delta (log v69): one long river, no fork: every ship sails the one lane, round the bends, from the north leg to the south', () => {
     const g = quiet('delta');
     expect(g.map.fork).toBeUndefined();
     expect(g.map.channels.length).toBe(1);

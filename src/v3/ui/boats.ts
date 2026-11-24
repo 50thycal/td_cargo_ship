@@ -1,4 +1,4 @@
-// The Coves' attack boats, drawn (log v68; data/config.ts BOATS): three
+// The Coves' attack boats, drawn (log v69; data/config.ts BOATS): three
 // hulls that read apart on a phone, each with a real wake.
 //   speedboat   a low red hull with a white stripe, bow up on the plane, a
 //               rooster tail behind it; a fire ship has flames on its deck.

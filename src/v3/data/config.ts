@@ -93,6 +93,9 @@ export type ThreatKind =
   | 'generator'
   | 'citadel'
   | 'dreadnought'
+  // Log v67 (Dreadnought Pass): one of the battleship's gun turrets, a
+  // target on its deck the player can shoot out.
+  | 'turret'
   // The enemy build (data/foes.ts): the new enemies, a chapter at a time,
   // and what some of them fire or carry.
   | 'sprinter' | 'hydra' | 'dart' | 'rocketTruck'
@@ -113,10 +116,10 @@ export const FOE_KINDS: ThreatKind[] = [
 
 /** Enemy structures: you can shoot them, they never strike anything
  *  themselves, and (bar the Dreadnought) a wave can end with them standing. */
-export const STRUCTURE_KINDS: ThreatKind[] = ['rig', 'generator', 'citadel', 'dreadnought'];
+export const STRUCTURE_KINDS: ThreatKind[] = ['rig', 'generator', 'citadel', 'dreadnought', 'turret'];
 
 export function isStructure(kind: ThreatKind): boolean {
-  return kind === 'rig' || kind === 'generator' || kind === 'citadel' || kind === 'dreadnought';
+  return kind === 'rig' || kind === 'generator' || kind === 'citadel' || kind === 'dreadnought' || kind === 'turret';
 }
 
 /** Threats a base launches (children excluded), in the order they debut. */
@@ -125,7 +128,7 @@ export const PRIMARY_KINDS: ThreatKind[] = ['drone', 'ballistic', 'guided', 'sup
 export function zeroCounts(): Record<ThreatKind, number> {
   const n = {
     drone: 0, ballistic: 0, guided: 0, supersonic: 0, heavy: 0, cluster: 0, mothership: 0, strafer: 0, bomber: 0, bomblet: 0, minidrone: 0,
-    mine: 0, fastboat: 0, rig: 0, generator: 0, citadel: 0, dreadnought: 0,
+    mine: 0, fastboat: 0, rig: 0, generator: 0, citadel: 0, dreadnought: 0, turret: 0,
   } as Record<ThreatKind, number>;
   for (const k of FOE_KINDS) n[k] = 0;
   return n;
@@ -168,6 +171,8 @@ export const THREATS: Record<
   generator: { speed: 0, hp: 10, damage: 0, dropChance: 1, label: 'Shield generator' },
   citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
   dreadnought: { speed: 24, hp: 50, damage: 0, dropChance: 1, label: 'Dreadnought' },
+  /** Log v67: a gun turret on the Dreadnought's deck (TURRET). */
+  turret: { speed: 0, hp: 4, damage: 0, dropChance: 0.6, label: 'Gun turret' },
   // The enemy build (data/foes.ts has their other numbers).
   sprinter: { speed: 70, hp: 1, damage: 1, dropChance: 0.1, label: 'Sprint drone' },
   // Round 7 ("about 25% slower before the split"): 150 → 112.5, 0.75×. The
@@ -237,7 +242,7 @@ export const POST = { radarSlow: 0.65, targetShare: 0.22, batteryGap: 1.3, batte
 /** Fast attack boats: how hard they turn onto a ship (rad/s). */
 export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 
-/** Log v68 (the player, on the Coves: "overhaul the boats ... a speed boat
+/** Log v69 (the player, on the Coves: "overhaul the boats ... a speed boat
  *  that rushes the cargo ships and explodes with fire; one with a small
  *  cannon that locks on a cargo ship and sails with it until it sinks it;
  *  the last kind shoots rockets like the rocket trucks but has a lot more
@@ -262,7 +267,7 @@ export const BOATS = {
   rocket: { hp: 6, speed: 46, range: 330, slack: 70, raise: 2.2, gap: 5, perSalvo: 3, spread: 18, rocketSpeed: 520, salvos: 3, ripple: 0.12, turn: 1.1 },
 } as const;
 
-/** Log v68: the mix of the Coves' own fast boats a wave sends (those that
+/** Log v69: the mix of the Coves' own fast boats a wave sends (those that
  *  are not an encounter's, a fire ship or the boss's): from `gunFrom` every
  *  `gunEvery`th is a gunboat, from `rocketFrom` every `rocketEvery`th a
  *  rocket boat. */
@@ -315,7 +320,15 @@ export const RIG_SHOTS = { rig: 32 } as const;
  *  can't be shot while it is inside the dome (`r` px round the Citadel) and
  *  the shield stands. Before (the campaign), 10 hits of damage a generator
  *  and 40 the Citadel, and brought down they stayed down. */
-export const CITADEL = { generator: 3, citadel: 14 } as const;
+export const CITADEL = { generator: 3, citadel: 70 } as const;
+/* Log v67 (the player: "it was down in wave 4, it should really only be
+ * destroyed once, but it will come back for the boss wave"): the Citadel is
+ * destroyed once. Until it falls the shield still rises again every wave
+ * (a generator brought down stands again), and the Citadel keeps what it has
+ * been dealt from wave to wave: `citadel` shots in all (14 before, a few
+ * waves' work for the bot at 70, so the dome's fire still matters in the
+ * waves before it falls). Once it has fallen it and its generators stay down,
+ * its fire comes off the far silos, and only the boss rebuilds it. */
 
 /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`, and its Fire Fleet; lab
  *  only): a fire ship is a fast boat set alight, `hp` hits, at `speed` × a
@@ -325,6 +338,31 @@ export const CITADEL = { generator: 3, citadel: 14 } as const;
  *  to each hull that sails through it); its own ram does `ram`, so it wants sinking far
  *  out, at the cove mouth, not on the lane. */
 export const FIRESHIP = { hp: 3, speed: 0.8, burn: 2.5, ram: 1 } as const;
+
+/** Log v67 (Dreadnought Pass, under the encounter layer; the player: "the ship
+ *  is lame, have it actually use the targets where the shot artillery and you
+ *  can take out the targets ... it can still launch missiles and drones too,
+ *  just make the missile look like it has a silo"): the battleship carries
+ *  three gun turrets on its centre line and fires its artillery shells from
+ *  them, one turret at a time, each on its own cycle, `slow` x the pass's
+ *  broadside cadence, the three staggered; a turret is shot out in `hp` hits
+ *  (its shells stop for the pass). Every other kind of a broadside (guided
+ *  missiles, drones...) launches from the silo aft, its hatches opening
+ *  `hatch` s before it fires. `slots` are the turrets' places along the hull
+ *  (px forward of the hull's middle), `silo` the silo's; `turn` how fast a
+ *  turret trains (rad/s); `len` and `beam` the hull's own. */
+export const TURRET = {
+  hp: 4,
+  slow: 1.2,
+  /** A boss round's battleship (it heaves to) fires this much faster. */
+  bossQuick: 0.75,
+  turn: 1.6,
+  hatch: 0.9,
+  slots: [104, 58, -122] as readonly number[],
+  silo: -66,
+  len: 340,
+  beam: 62,
+} as const;
 
 /** The Dreadnought: seconds between broadsides, and what each one fires. */
 export const BOSS = { firstShot: 6, every: 9, broadside: ['ballistic', 'ballistic', 'guided'] as ThreatKind[] } as const;
@@ -448,6 +486,7 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   generator: 'volley',
   citadel: 'volley',
   dreadnought: 'volley',
+  turret: 'volley',
   ballistic: 'barrage',
   heavy: 'barrage',
   cluster: 'barrage',
@@ -570,7 +609,7 @@ export const PICKUPS = {
    *  pick in the weapons review of 2026-11-06: "3 hits, not a kill"). */
   nukeFrom: 3,
   nukeStructure: 3,
-  /** A Star Shell's weight on a night map, and how long its light lasts. */
+  /** A Star Shell's weight on a night map, and how long its light lasts (log v67: never dropped, the sea stays dark). */
   starshellWeight: 16,
   starshellTime: 6,
   repairHp: 2,

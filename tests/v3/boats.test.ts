@@ -1,4 +1,4 @@
-// The Coves' three attack boats (log v68; data/config.ts BOATS, sim/boats.ts):
+// The Coves' three attack boats (log v69; data/config.ts BOATS, sim/boats.ts):
 // the speedboat rams and bursts into a ball of fire, the gunboat locks one
 // ship, sails with it and shells it until it sinks, the rocket boat holds
 // well off and fires salvos of red rockets that nothing stops.
@@ -32,7 +32,7 @@ const run = (g: Game, s: number) => {
   for (let i = 0; i < s / SIM_DT; i++) step(g, SIM_DT);
 };
 
-describe('the Coves\' attack boats (log v68)', () => {
+describe('the Coves\' attack boats (log v69)', () => {
   it('a gunboat has 3 hits and a rocket boat 6, a speedboat the 2 it had; the rocket boat is slow and sturdy', () => {
     const g = quiet();
     const gun = boat(g, 'gun', 7);

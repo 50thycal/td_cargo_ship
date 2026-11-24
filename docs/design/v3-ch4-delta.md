@@ -1,4 +1,4 @@
-# The Sharra Delta: map card (chapter 4, rebuilt as one long river in log v68)
+# The Sharra Delta: map card (chapter 4, rebuilt as one long river in log v69)
 
 **Date:** 2026-11-24. The Delta (`delta`, chapter 4 "Open War", the 17th map) was brought to the map and wave rules on 2026-11-22 (log v57) as a river that forked three ways with a switch buoy. The player's v65 run (quit on wave 4, nothing lost): *"I don't see the point of the switching lanes. Drop that map design and let's make a map that is just really long for the ships to traverse. It should be triple the distance of the normal length. Do some iterations to find the best design."* This card is the map that answers it. The fork, the switch, the buoy, the incendiaries at the branch mouths and the Burning Delta are gone.
 
@@ -113,7 +113,7 @@ The rest of this table and the report are in the pull request (numbers move run 
 - Wave 10 is a step up from wave 9 (the climax).
 - The drone silos in the bay mean a drone off the islets is point-blank on the middle and south legs; the carrier covers those.
 
-## The play log (v68)
+## The play log (v69)
 
 `LOG_VERSION` 68, `LOG_REPLAYS` `[68]`. A Delta card log before 68 no longer replays to the same game (a different river); the other maps play as they did.
 
