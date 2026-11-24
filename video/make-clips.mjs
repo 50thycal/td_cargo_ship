@@ -35,7 +35,28 @@ function findChromium() {
   return undefined; // let Playwright look for its own
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Playwright's chromium headless shell: the build that can draw a frame only when asked (frames mode). */
+function findHeadlessShell() {
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers';
+  for (const d of readdirSync(root)) {
+    if (!d.startsWith('chromium_headless_shell-')) continue;
+    const exe = `${root}/${d}/chrome-headless-shell-linux64/chrome-headless-shell`;
+    if (existsSync(exe)) return exe;
+  }
+  throw new Error(`frames mode needs Playwright's chromium headless shell (chromium_headless_shell-*) in ${root}`);
+}
+
+// The director's clock. Normally real time. In frames mode (see recordTake) it is the number of frames rendered so far
+// (exactly 1/60 s of game time each), so a 0.8 s hold is always 48 frames however slow the machine is.
+let VCLOCK = null;
+const nowMs = () => (VCLOCK ? (VCLOCK() * 1000) / 60 : nowMs());
+const sleep = (ms) =>
+  VCLOCK
+    ? (async () => {
+        const target = VCLOCK() + Math.ceil((ms * 60) / 1000);
+        while (VCLOCK() < target) await new Promise((r) => setTimeout(r, 2));
+      })()
+    : new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- game moves
 // Everything here plays the way a person does: taps on threats and pickups
@@ -70,7 +91,7 @@ let lastTap = 0;
  * constantly just drains the rack into the reload, which looks like spam.)
  */
 async function defend(page, max = 1, gap = 420) {
-  if (Date.now() - lastTap < gap) return;
+  if (nowMs() - lastTap < gap) return;
   const pts = await g(page, () => {
     const gm = window.__v3.game();
     if (!gm || gm.phase !== 'wave' || gm.ammo < 1 || gm.interceptors.length >= 3) return [];
@@ -82,7 +103,7 @@ async function defend(page, max = 1, gap = 420) {
   });
   for (const p of pts.slice(0, max)) {
     await page.mouse.click(p.x, p.y);
-    lastTap = Date.now();
+    lastTap = nowMs();
   }
 }
 
@@ -119,13 +140,13 @@ const state = (page) =>
 
 /** Counts real threats taken down (gone from play) so a clip can prove its shots hit. */
 async function installCounter(page) {
-  await page.addInitScript(() => {
+  await page.addInitScript((evenClock) => {
     // An even 60 Hz clock for the game. Its loop adds the time since the last frame to an accumulator and takes a fixed
     // 1/60 s step each time it passes one; on a real phone display that is one step per frame, but headless Chromium's
     // frame timestamps wobble by a fraction of a millisecond, and every wobble gives a frame with no step (everything
     // freezes) followed by one with two (everything jumps). Reporting exact 1/60 s frame times (a hair over, so float
     // rounding can never fall short) makes it one step per frame, like a real display.
-    {
+    if (evenClock) {
       const orig = window.requestAnimationFrame.bind(window);
       const STEP = 1000 / 60 + 0.003;
       let virt = 0;
@@ -165,7 +186,7 @@ async function installCounter(page) {
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-  });
+  }, !page.__frames);
 }
 const kills = (page) => page.evaluate(() => ({ kills: window.__vc.kills, seen: window.__vc.seen }));
 /** Which enemy kinds were on the water between two wall-clock moments. */
@@ -198,11 +219,11 @@ async function startFreePlay(page, { wave, weapons = [], map = 'strait', frequen
   for (let i = 0; i < speedClicks; i++) await page.click('.v3-speed');
 }
 
-const sinceS = (t0) => (Date.now() - t0) / 1000;
+const sinceS = (t0) => (nowMs() - t0) / 1000;
 
 /** Play the normal gun until `until()` says stop, with a hard timeout. */
 async function playUntil(page, until, { limit = 45, tapEvery = 140 } = {}) {
-  const t0 = Date.now();
+  const t0 = nowMs();
   for (;;) {
     if (sinceS(t0) > limit) throw new Error(`timed out after ${limit}s waiting for the moment`);
     await defend(page, 2);
@@ -316,7 +337,7 @@ const studioDrop = (page, kind, x, y) =>
  */
 async function runTimeline(page, t, events, { limit = 60, tick = null } = {}) {
   const todo = [...events].sort((a, b) => a.at - b.at);
-  const t0 = Date.now();
+  const t0 = nowMs();
   while (sinceS(t0) < limit) {
     while (todo.length && todo[0].at <= sinceS(t0)) {
       const e = todo.shift();
@@ -348,7 +369,7 @@ const CLIPS = {
     studio: true,
     vertical: true,
     takes: 2,
-    capture: 'cdp',
+    capture: 'frames',
     viewport: { width: 1080, height: 608 },
     async play(page, t) {
       t.maxSeconds = 75;
@@ -356,6 +377,7 @@ const CLIPS = {
       await page.evaluate(() => (window.__onlySupplies = true));
       await page.evaluate(() => (window.__allowWeapon = true));
       await studioBegin(page);
+      if (!VCLOCK) {
       // Rehearsal, off camera: the first time the game draws something new (each enemy type, the drops, the lance) the capture
       // drops a quarter of a second of frames, which shows as a stutter. Playing each once first, in this same page, pays that
       // cost before the clip starts. The rehearsal runs in wave 1 with the wave held open; nothing from it is in the clip.
@@ -384,11 +406,11 @@ const CLIPS = {
           }
           const s = await state(page);
           if (s?.weapon) {
-            if (s.ammo > 0 && Date.now() - warmShot > 1100 && (await fireAt(page, s.weapon, 1))) warmShot = Date.now();
+            if (s.ammo > 0 && nowMs() - warmShot > 1100 && (await fireAt(page, s.weapon, 1))) warmShot = nowMs();
           } else await defend(page, 1);
         },
       });
-      const c0 = Date.now();
+      const c0 = nowMs();
       while (sinceS(c0) < 10 && (await state(page))?.threats > 0) {
         await defend(page, 1);
         await sleep(140);
@@ -396,6 +418,7 @@ const CLIPS = {
       await studioTake(page);
       await studioBegin(page);
       await sleep(7000); // the rehearsal's notices ("weapon drop" and so on) fade out before the clip starts
+      }
       const k0 = (await kills(page)).kills;
       t.start = t.now() + 0.4; // a short settle before the clip's first frame
       const T = (x) => t.start + x;
@@ -471,8 +494,8 @@ const CLIPS = {
           }
           const s = await state(page);
           if (s?.weapon) {
-            if (s.ammo > 0 && Date.now() - lastShot > (s.weapon === 'lance' ? 1100 : 950) && (await fireAt(page, s.weapon, s.weapon === 'lance' ? 2 : 1))) {
-              lastShot = Date.now();
+            if (s.ammo > 0 && nowMs() - lastShot > (s.weapon === 'lance' ? 1100 : 950) && (await fireAt(page, s.weapon, s.weapon === 'lance' ? 2 : 1))) {
+              lastShot = nowMs();
               shots++;
             }
           } else await defend(page, 1);
@@ -497,12 +520,12 @@ const CLIPS = {
       t.maxSeconds = 75;
       await startFreePlay(page, { wave: 7, weapons: [], frequentDrops: false });
       await page.evaluate(() => (window.__onlySupplies = true));
-      const wall0 = Date.now() - t.now() * 1000;
+      const wall0 = nowMs() - t.now() * 1000;
       const tPlay = t.now();
       const k0 = (await kills(page)).kills;
       // Wave 7, played with the normal gun until it is cleared.
       let phase = 'wave';
-      const w0 = Date.now();
+      const w0 = nowMs();
       while (sinceS(w0) < 120) {
         await defend(page, 2);
         await grabSupplies(page);
@@ -523,7 +546,7 @@ const CLIPS = {
       await page.click('.v2-draft .v2-card');
       await page.waitForFunction(() => window.__v3.game()?.wave === 8 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
       const tWave8 = t.now();
-      const w8 = Date.now();
+      const w8 = nowMs();
       while (sinceS(w8) < 15) {
         await defend(page, 2);
         await grabSupplies(page);
@@ -566,7 +589,7 @@ const CLIPS = {
         await playUntil(page, async () => t.now() - tPlay > 5 && !!(await weaponPickup(page)), { limit: 40 });
         tCue = t.now();
         t.cue('Weapons drop as pickups', 'tap one to grab it', 1.4);
-        const c0 = Date.now();
+        const c0 = nowMs();
         await playUntil(page, async () => sinceS(c0) > 1.2, { limit: 6 });
         pk = await weaponPickup(page);
         // Only worth loading with a burst already out on the water; otherwise let it go and wait for the next drop.
@@ -587,8 +610,8 @@ const CLIPS = {
       let shots = 0;
       let hits = 0;
       const k0 = (await kills(page)).kills;
-      const l0 = Date.now();
-      let lastBeam = Date.now();
+      const l0 = nowMs();
+      let lastBeam = nowMs();
       let worstGap = 0;
       while (sinceS(l0) < 17) {
         const s = await state(page);
@@ -598,7 +621,7 @@ const CLIPS = {
         if (n) {
           shots++;
           hits += n;
-          lastBeam = Date.now();
+          lastBeam = nowMs();
         }
         await sleep(300);
       }
@@ -621,11 +644,11 @@ const CLIPS = {
       const k0 = (await kills(page)).kills;
       const seen = [];
       let tFirst = null;
-      let lastLoad = Date.now() - 2000;
+      let lastLoad = nowMs() - 2000;
       let shots = 0;
       let hits = 0;
       let lastShot = 0;
-      const m0 = Date.now();
+      const m0 = nowMs();
       // Normal gun, and whichever of the three weapons the game drops next. Load each on a real
       // threat count, then fire only where it will hit. Different weapons only.
       while (seen.length < 3 && sinceS(m0) < 70 && (tFirst === null || t.now() - tFirst < 17.5)) {
@@ -633,9 +656,9 @@ const CLIPS = {
         if (s?.phase !== 'wave') break;
         const field = await fieldThreats(page);
         if (s?.weapon) {
-          const n = s.ammo > 0 && Date.now() - lastShot > 1000 ? await fireAt(page, s.weapon, s.weapon === 'airstrike' ? 1 : 2) : 0;
+          const n = s.ammo > 0 && nowMs() - lastShot > 1000 ? await fireAt(page, s.weapon, s.weapon === 'airstrike' ? 1 : 2) : 0;
           if (n) {
-            lastShot = Date.now();
+            lastShot = nowMs();
             shots++;
             hits += n;
           }
@@ -643,7 +666,7 @@ const CLIPS = {
           await defend(page, 2);
         }
         await grabSupplies(page);
-        const pk = Date.now() - lastLoad > 3600 && field >= 2 && t.now() - tPlay > 5 ? await weaponPickup(page) : null;
+        const pk = nowMs() - lastLoad > 3600 && field >= 2 && t.now() - tPlay > 5 ? await weaponPickup(page) : null;
         if (pk && !seen.includes(pk.weapon)) {
           await page.mouse.click(pk.x, pk.y);
           await sleep(120);
@@ -651,7 +674,7 @@ const CLIPS = {
           if (w) {
             seen.push(w);
             if (tFirst === null) tFirst = t.now();
-            lastLoad = Date.now();
+            lastLoad = nowMs();
             lastShot = 0;
             const [head, sub] = NAMES[w] ?? [w, null];
             t.cue(head, sub, 3.2);
@@ -703,15 +726,53 @@ async function serve() {
  * A clip picks with `capture: 'cdp'`, or set VIDEO_CAPTURE=cdp for all.
  */
 async function recordTake(browser, name, clip, take) {
-  const cdpMode = (process.env.VIDEO_CAPTURE ?? clip.capture) === 'cdp';
+  const mode = process.env.VIDEO_CAPTURE ?? clip.capture;
+  const cdpMode = mode === 'cdp';
+  const framesMode = mode === 'frames';
   const dir = join(WORK, `${name}-${take}`);
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
   const vp = clip.viewport ?? { width: W, height: H };
-  const ctx = await browser.newContext({ viewport: vp, ...(cdpMode ? {} : { recordVideo: { dir, size: { width: W, height: H } } }) });
+  // Frames mode (the smooth one): the browser draws a frame only when told to, with an exact timestamp, so the game steps exactly
+  // 1/60 s per frame and nothing can be dropped, however slow the machine is. See the README.
+  const fbrowser = framesMode
+    ? await chromium.launch({ executablePath: findHeadlessShell(), args: ['--no-sandbox', '--enable-begin-frame-control', '--run-all-compositor-stages-before-draw', '--disable-new-content-rendering-timeout', '--disable-threaded-animation', '--disable-threaded-scrolling', '--disable-checker-imaging', '--disable-image-animation-resync'] })
+    : null;
+  const ctx = await (fbrowser ?? browser).newContext({ viewport: vp, ...(cdpMode || framesMode ? {} : { recordVideo: { dir, size: { width: W, height: H } } }) });
   const page = await ctx.newPage();
+  page.__frames = framesMode;
   const t0 = Date.now();
-  const now = () => (Date.now() - t0) / 1000;
+  let nframes = 0;
+  const now = framesMode ? () => nframes / 60 : () => (nowMs() - t0) / 1000;
+  const shots = [];
+  let firstShotAt = -1;
+  let pumping = false;
+  let pump = null;
+  if (framesMode) {
+    const fcdp = await ctx.newCDPSession(page);
+    await fcdp.send('HeadlessExperimental.enable');
+    await fcdp.send('Performance.enable');
+    const ticks0 = (await fcdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'Timestamp').value * 1000;
+    const FR = 1000 / 60;
+    let lastShot = null;
+    pumping = true;
+    VCLOCK = () => nframes;
+    pump = (async () => {
+      while (pumping) {
+        try {
+          const r = await fcdp.send('HeadlessExperimental.beginFrame', { frameTimeTicks: ticks0 + nframes * FR, interval: FR, screenshot: { format: 'jpeg', quality: 90 } });
+          if (r.screenshotData) lastShot = r.screenshotData; // a frame with nothing changed returns no image: it is the previous one
+          if (lastShot) {
+            if (firstShotAt < 0) firstShotAt = nframes;
+            shots.push(lastShot);
+          }
+          nframes++;
+        } catch {
+          await new Promise((r) => setTimeout(r, 20));
+        }
+      }
+    })();
+  }
   const t = { now, studio: !!clip.studio, vertical: !!clip.vertical, cuts: [], start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -740,7 +801,21 @@ async function recordTake(browser, name, clip, take) {
   let rebuild = null;
   let fps = 30;
   let offset = 0; // seconds between the director's clock and the first captured frame
-  if (cdpMode) {
+  if (framesMode) {
+    pumping = false;
+    await pump;
+    VCLOCK = null;
+    await ctx.close();
+    await fbrowser.close();
+    if (shots.length < 10) throw new Error('frames mode produced no frames');
+    mkdirSync(join(dir, 'f'), { recursive: true });
+    shots.forEach((d, i) => writeFileSync(join(dir, 'f', `${String(i).padStart(6, '0')}.jpg`), Buffer.from(d, 'base64')));
+    raw = join(dir, `${name}.mkv`);
+    ffmpeg(['-framerate', '60', '-i', join(dir, 'f', '%06d.jpg'), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
+    t.notes.push(`frames mode: ${shots.length} frames, every one exactly 1/60 s of game time (no dropped or repeated frames)`);
+    fps = 60;
+    offset = firstShotAt / 60;
+  } else if (cdpMode) {
     await cdp.send('Page.stopScreencast').catch(() => {});
     {
       const gaps = frames.slice(1).map((f, i) => (f.ts - frames[i].ts) * 1000);

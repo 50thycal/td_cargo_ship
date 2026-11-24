@@ -24,7 +24,7 @@ Clips are 13-22 s and about 1-2 MB, far under X's limits (140 s, 512 MB).
 
 | clip | what happens |
 |---|---|
-| `convoy` | studio scene for the launch post (vertical only): wave 1 with drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then wave 2 and the picked weapon dropping and firing |
+| `convoy` | studio scene for the launch post (vertical only, frames mode): wave 1 with drones, ballistic and supersonic missiles, ammo/repair drops, the upgrade pick, then wave 2 and the picked weapon dropping and firing |
 | `convoy-real` | the same idea on a natural wave 7 and 8 (no placed enemies) |
 | `railgun` | normal gun, then the game drops a Railgun pickup, tap it, beams through real incoming threats, back to the normal gun |
 | `arsenal` | Gravity Well, Air Strike and Thermobaric Shell as the game drops them, each aimed at real threats |
@@ -54,21 +54,25 @@ also hides nukes and other power-ups).
 Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave clips (`convoy-real`, `railgun`,
 `arsenal`) when a post should say "this is a natural wave".
 
-## Why some clips still hitch (and what helps)
+## Frames mode (the smooth one)
 
-Headless Chromium's frame capture drops about a quarter of a second of frames now and then. Measured: the game itself
-renders every frame; the stalls are in the capture. What the pipeline does about it, in order of effect:
+Recording a browser in real time loses frames: Chromium's screen capture drops about a quarter of a second of frames now
+and then, and on a busy machine the game's own frame timing wobbles. So a clip with `capture: 'frames'` is not recorded in
+real time at all. It is rendered, one frame at a time:
 
-1. A hidden rehearsal in the same page before the clip starts (studio scenes), so the first draw of each enemy type, drop
-   and weapon is paid off camera. This removed most of them.
-2. Frames go on an even 1/60 s grid (the capture's own timestamps jitter), and the game gets an even 60 Hz clock, so the
-   game takes one physics step per frame like a phone display.
-3. Short holes (under 100 ms) are filled by motion interpolation. Long ones are held: interpolation cannot span fast movement
-   and a wrong fill looks like an object jumping, which is worse than a short hold.
-4. Takes are scored on the stalls that land inside the finished clip, and the smoothest is kept.
+- It runs in Playwright's chromium headless shell with begin-frame control: the browser draws a frame **only when asked**,
+  with an exact timestamp. Each frame is exactly 1/60 s of game time, so the game takes exactly one physics step per frame
+  and nothing is dropped, repeated or late, however slow the machine is. A slow moment just takes longer to render.
+- The director's clock is the frame counter (`sleep(ms)` waits for frames, `nowMs()` reads them), so a 0.8 s hold on the
+  Charge Lance is always 48 frames.
+- No rehearsal, hole filling or take-scoring on stalls is needed. A 40 s clip renders in about 2 minutes.
 
-A few short freezes can remain in the busiest seconds. For a perfectly smooth result, screen-record the real game on an
-iPhone and use this tool's captions and cuts on that footage.
+Measured on the launch clip: no freezes inside gameplay, no repeated frames, versus 20+ freezes and 170+ repeated-then-jump
+frames with real-time capture. Use `capture: 'frames'` for every new clip.
+
+The older real-time modes are still there (`capture: 'cdp'`, and Playwright's own recordVideo as the default) for clips not
+yet moved over. They have the stalls, so they carry the workarounds (rehearsal, interpolation of short holes, an even
+60 Hz game clock, and scoring takes on stalls).
 
 ## Cuts and trims
 
