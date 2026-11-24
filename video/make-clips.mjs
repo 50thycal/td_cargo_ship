@@ -210,7 +210,7 @@ async function fireAt(page, weapon, minHits = 1) {
     if (!th.length) return null;
     const c = gm.map.carrier;
     let best = null;
-    if (weapon === 'railgun') {
+    if (weapon === 'railgun' || weapon === 'lance') {
       for (let a = -Math.PI * 0.98; a <= -Math.PI * 0.02; a += Math.PI / 180) {
         const ux = Math.cos(a), uy = Math.sin(a);
         let n = 0;
@@ -232,7 +232,13 @@ async function fireAt(page, weapon, minHits = 1) {
     return best && { n: best.n, ...window.__v3.toClient(best.x, best.y) };
   }, [weapon, SKIP]);
   if (!aim || aim.n < minHits) return 0;
-  await page.mouse.click(aim.x, aim.y);
+  if (weapon === 'lance') {
+    // Charge Lance: hold to charge (0.7 s is a full lance), let go to fire.
+    await page.mouse.move(aim.x, aim.y);
+    await page.mouse.down();
+    await sleep(800);
+    await page.mouse.up();
+  } else await page.mouse.click(aim.x, aim.y);
   return aim.n;
 }
 
@@ -263,6 +269,12 @@ const studioSpawn = (page, kind, n = 1) =>
     for (let i = 0; i < n; i++) gm.queue.push({ at: gm.waveT + 0.05 + i * 0.2, kind, base: i % bases });
     gm.queue.sort((a, b) => a.at - b.at); // the queue is read from the front; the placeholder stays last
   }, [kind, n]);
+/** Deal a chosen weapon card first in the upgrade draft (as the game's own Test Lab does for a weapon under test). */
+const studioOffer = (page, id) =>
+  g(page, (id) => {
+    const gm = window.__v3.game();
+    gm.offer = [id, ...gm.offer.filter((x) => x !== id)].slice(0, 3);
+  }, id);
 /** Drop a weapon pickup the player holds (as a kill would) at (x, y). */
 const studioDropWeapon = (page, x, y) =>
   g(page, ([x, y]) => {
@@ -322,7 +334,7 @@ const CLIPS = {
       await page.evaluate(() => (window.__onlySupplies = true));
       await studioBegin(page);
       const k0 = (await kills(page)).kills;
-      t.start = t.now();
+      t.start = t.now() + 0.4; // the setup screen fades out just before this
       const T = (x) => t.start + x;
       t.cues.push(
         { at: T(0.3), head: 'Straitwatch', sub: 'my convoy defence prototype|inspired by tower defense and roguelite games', dur: 4.6 },
@@ -345,16 +357,20 @@ const CLIPS = {
       if (phase !== 'draft') throw new Error(`wave 1 ended in "${phase}", not a clear`);
       // The rating panel is a playtest-only screen: skip it, then pick an upgrade like a player.
       await page.waitForSelector('[data-rate-skip]', { timeout: 8000 });
-      await sleep(400);
+      const tRate = t.now();
+      await studioOffer(page, 'lance'); // the draft deals the Charge Lance first (studio)
+      await sleep(150);
       await page.click('[data-rate-skip]');
       await page.waitForSelector('.v2-draft .v2-card', { timeout: 8000 });
       const tDraft = t.now();
+      t.cuts.push([tRate - 0.08, tDraft + 0.18]); // (the video lags the game's clock by a few frames) // the rating screen is a playtest-only panel: cut it out of the video
       await sleep(2800);
       // The card to pick: the first of the weapons that show best on camera, else the first card.
       const cards = await page.$$eval('.v2-draft .v2-card', (cs) => cs.map((c) => ({ id: c.dataset.upgrade ?? '', name: c.querySelector('.v2-card-name')?.textContent?.trim() ?? c.textContent.slice(0, 20) })));
-      const LIKE = ['railgun', 'thermo', 'airstrike', 'shrapnel', 'well', 'scatter', 'boomerang', 'flak', 'seeker', 'frigate'];
+      const LIKE = ['lance', 'railgun', 'thermo', 'airstrike', 'shrapnel', 'well', 'scatter', 'boomerang', 'flak', 'seeker', 'frigate'];
       const pickIx = Math.max(0, LIKE.map((id) => cards.findIndex((c) => c.id === id)).find((i) => i >= 0) ?? 0);
       const pickedName = cards[pickIx]?.name ?? 'New weapon';
+      const loadedHint = cards[pickIx]?.id === 'lance' ? 'hold to charge, let go to fire' : 'loaded for 15 seconds';
       await page.locator('.v2-draft .v2-card').nth(pickIx).click();
       await page.waitForFunction(() => window.__v3.game()?.wave === 2 && window.__v3.game()?.phase === 'wave', null, { timeout: 15000 });
       await studioBegin(page);
@@ -387,12 +403,12 @@ const CLIPS = {
             await page.mouse.click(w.x, w.y);
             await sleep(120);
             loaded = (await state(page))?.weapon != null;
-            if (loaded) t.cue(pickedName, 'loaded for 15 seconds', 4);
+            if (loaded) t.cue(pickedName, loadedHint, 4);
             return;
           }
           const s = await state(page);
           if (s?.weapon) {
-            if (s.ammo > 0 && Date.now() - lastShot > 950 && (await fireAt(page, s.weapon, 1))) {
+            if (s.ammo > 0 && Date.now() - lastShot > (s.weapon === 'lance' ? 1100 : 950) && (await fireAt(page, s.weapon, s.weapon === 'lance' ? 2 : 1))) {
               lastShot = Date.now();
               shots++;
             }
@@ -401,7 +417,7 @@ const CLIPS = {
       });
       if (!loaded) throw new Error('the dropped weapon was never loaded');
       t.cues.push({ at: tWave2 + 12.5, head: 'Still in development', sub: 'Free Play testing coming soon', dur: 5 });
-      t.stopAt = t.now();
+      t.stopAt = t.now() - 0.2;
       const k = (await kills(page)).kills - k0;
       t.score = k + shots * 3;
       t.note(`studio scene: ${k} enemies shot down; the picked weapon (${pickedName}) fired ${shots} aimed shots; ammo/repair drops placed`);
@@ -633,7 +649,7 @@ async function recordTake(browser, name, clip, take) {
   const page = await ctx.newPage();
   const t0 = Date.now();
   const now = () => (Date.now() - t0) / 1000;
-  const t = { now, studio: !!clip.studio, vertical: !!clip.vertical, start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
+  const t = { now, studio: !!clip.studio, vertical: !!clip.vertical, cuts: [], start: 0, stopAt: null, score: 0, notes: [], cues: [], mark: () => (t.start = now()), stop: () => (t.stopAt = now()), note: (n) => t.notes.push(n), cue: (head, sub, dur) => t.cues.push({ at: now(), head, sub, dur }) };
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
@@ -679,18 +695,43 @@ async function recordTake(browser, name, clip, take) {
       f.data = null;
     });
     // A constant 60 fps timeline: each frame is held until the next one arrives.
-    const list = frames.map((f, i) => `file '${f.file}'\nduration ${(((frames[i + 1]?.ts ?? f.ts + 1 / 60) - f.ts) || 1 / 60).toFixed(5)}`).join('\n') + `\nfile '${frames.at(-1).file}'\n`;
-    writeFileSync(join(dir, 'list.txt'), list);
+    const writeList = (arr) => {
+      const list = arr.map((f, i) => `file '${f.file}'\nduration ${(((arr[i + 1]?.ts ?? f.ts + 1 / 60) - f.ts) || 1 / 60).toFixed(5)}`).join('\n') + `\nfile '${arr.at(-1).file}'\n`;
+      writeFileSync(join(dir, 'list.txt'), list);
+    };
     raw = join(dir, `${name}.mkv`);
+    const build = () => ffmpeg(['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', 'fps=60', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
     // The capture stream drops a handful of frames at a time now and then (a Chromium headless quirk; the game keeps
-    // running at 60 fps through them). A cheap constant-60 fps version is made now (so takes can be judged); the
-    // kept take is rebuilt with the holes motion-interpolated, so nothing freezes (see record()).
-    const holes = frames.slice(1).filter((f, i) => (f.ts - frames[i].ts) * 1000 > 40).length;
-    t.notes.push(`capture holes over 40ms: ${holes}`);
-    raw = join(dir, `${name}.mkv`);
-    const build = (vf) => ffmpeg(['-f', 'concat', '-safe', '0', '-i', join(dir, 'list.txt'), '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '12', '-pix_fmt', 'yuv420p', raw]);
-    build('fps=60');
-    rebuild = holes > 0 && process.env.VIDEO_FILL !== '0' ? () => build('minterpolate=fps=60:mi_mode=mci:mc_mode=obmc:me_mode=bidir:me=hexbs:vsbmc=0') : null;
+    // running at 60 fps through them). A plain constant-60 fps version is made now, so takes can be judged. The kept take
+    // is rebuilt with ONLY those holes filled by motion interpolation (every other frame is untouched, so nothing else
+    // can smear or jump): see record().
+    const holeAt = frames.map((f, i) => (frames[i + 1] ? (frames[i + 1].ts - f.ts) * 1000 : 0)).map((ms, i) => (ms > 40 && ms < 1000 ? i : -1)).filter((i) => i >= 0);
+    t.notes.push(`capture holes over 40ms: ${holeAt.length}`);
+    t.score -= holeAt.length * 0.7; // between near-equal takes, prefer the smoother capture
+    writeList(frames);
+    build();
+    rebuild = holeAt.length && process.env.VIDEO_FILL !== '0'
+      ? () => {
+          const hd = join(dir, 'h');
+          mkdirSync(hd, { recursive: true });
+          const out = [];
+          frames.forEach((f, i) => {
+            out.push(f);
+            if (!holeAt.includes(i)) return;
+            const gap = frames[i + 1].ts - f.ts;
+            const n = Math.round(gap * 60) - 1; // in-between frames a 60 fps timeline needs here
+            const lst = join(hd, `${i}.txt`);
+            writeFileSync(lst, `file '${f.file}'\nduration ${gap.toFixed(5)}\nfile '${frames[i + 1].file}'\nduration 0.01667\nfile '${frames[i + 1].file}'\n`);
+            ffmpeg(['-f', 'concat', '-safe', '0', '-i', lst, '-vf', 'minterpolate=fps=60:mi_mode=mci:mc_mode=obmc:me_mode=bidir:me=hexbs:vsbmc=0', '-q:v', '2', join(hd, `${i}-%03d.jpg`)]);
+            for (let k = 1; k <= n; k++) {
+              const file = join(hd, `${i}-${String(k + 1).padStart(3, '0')}.jpg`); // output 1 is the frame itself
+              if (existsSync(file)) out.push({ file, ts: f.ts + k / 60 });
+            }
+          });
+          writeList(out);
+          build();
+        }
+      : null;
     fps = 60;
     offset = frames[0].ts - t0 / 1000;
   } else {
@@ -750,32 +791,40 @@ function ffmpeg(args) {
 }
 
 function encode(name, { raw, t, end, fps = 30, offset = 0 }) {
-  const start = Math.max(0, t.start - 0.1);
+  const start = Math.max(0, t.start - (t.studio ? 0 : 0.1));
   t.cues = t.cues.filter((c) => c.at >= start); // nothing from before the clip starts
-  const dur = Math.min(end - start + 0.6, t.maxSeconds ?? 25);
+  const rawDur = Math.min(end - start + (t.studio ? 0.3 : 0.6), (t.maxSeconds ?? 25) + t.cuts.reduce((x, [a, b]) => x + (b - a), 0));
+  // Cuts (seconds on the director's clock) are taken out of the video; later captions move up to match.
+  const cuts = t.cuts.map(([a, b]) => [Math.max(a, start), Math.min(b, start + rawDur)]).filter(([a, b]) => b > a);
+  const cutBefore = (x) => cuts.reduce((sum, [a, b]) => sum + Math.max(0, Math.min(x, b) - a), 0);
+  const m = (x) => x - cutBefore(x);
+  t.cues = t.cues.map((c) => ({ ...c, at: m(c.at), dur: m(c.at + c.dur) - m(c.at) }));
+  const mStart = m(start);
+  const dur = rawDur - cuts.reduce((x, [a, b]) => x + (b - a), 0);
   const tail = Math.max(0, dur - 0.6);
+  const cutFilter = cuts.length ? [`select='not(${cuts.map(([a, b]) => `between(t,${(a - start).toFixed(3)},${(b - start).toFixed(3)})`).join('+')})'`, `setpts=N/(${fps}*TB)`] : [];
   // Silent AAC track: X's uploader and some players reject video with no audio stream.
   const silent = ['-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100'];
   const enc = ['-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-r', String(fps), '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart'];
   const fadeOut = `fade=t=out:st=${tail.toFixed(2)}:d=0.6`;
-  const base = ['-ss', Math.max(0, start - offset).toFixed(3), '-t', dur.toFixed(2), '-i', raw];
+  const base = ['-ss', Math.max(0, start - offset).toFixed(3), '-t', rawDur.toFixed(2), '-i', raw];
 
   // 16:9
-  const land = captionFilters(t.cues, start, { headSize: 40, subSize: 24, yHead: 'h*0.80', ySub: 'h*0.80+62', boxPad: 14 });
-  if (!t.vertical) ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
+  const land = captionFilters(t.cues, mStart, { headSize: 40, subSize: 24, yHead: 'h*0.80', ySub: 'h*0.80+62', boxPad: 14 });
+  if (!t.vertical) ffmpeg([...base, ...silent, '-vf', [`fps=${fps}`, ...cutFilter, ...land, fadeOut].join(','), ...enc, join(OUT, `${name}-16x9.mp4`)]);
 
   // 9:16: sharp game in the middle band over a blurred, zoomed copy of itself.
-  const vert = captionFilters(t.cues, start, { headSize: 54, subSize: 34, yHead: 'h*0.18', ySub: 'h*0.18+100', boxPad: 20 });
+  const vert = captionFilters(t.cues, mStart, { headSize: 54, subSize: 34, yHead: 'h*0.18', ySub: 'h*0.18+100', boxPad: 20 });
   const graph = [
-    `[0:v]fps=${fps},split=2[a][b]`,
+    `[0:v]${[`fps=${fps}`, ...cutFilter].join(',')},split=2[a][b]`,
     `[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=28:4,eq=brightness=-0.12[bg]`,
     `[b]scale=1080:-2[fg]`,
     `[bg][fg]overlay=0:(H-h)/2[v0]`,
     `[v0]${[...vert, fadeOut].join(',')}[v]`,
   ].join(';');
   const timeline = t.cues.map((c, i) => {
-    const a = Math.max(0, c.at - start);
-    const next = t.cues[i + 1] ? Math.max(0, t.cues[i + 1].at - start) - 0.15 : Infinity;
+    const a = Math.max(0, c.at - mStart);
+    const next = t.cues[i + 1] ? Math.max(0, t.cues[i + 1].at - mStart) - 0.15 : Infinity;
     return { from: +a.toFixed(1), to: +Math.min(a + c.dur, next, dur).toFixed(1), headline: c.head, sub: c.sub ?? null };
   });
   writeFileSync(join(OUT, `${name}.captions.json`), JSON.stringify({ seconds: +dur.toFixed(1), studio: !!t.studio, notes: t.notes, captions: timeline }, null, 2));

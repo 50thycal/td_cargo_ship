@@ -54,6 +54,12 @@ also hides nukes and other power-ups).
 Studio clips say so: `<clip>.captions.json` has `"studio": true`. Use real-wave clips (`convoy-real`, `railgun`,
 `arsenal`) when a post should say "this is a natural wave".
 
+## Cuts and trims
+
+`t.cuts.push([from, to])` takes a stretch out of the video and moves later captions up to match (the convoy scene
+cuts the playtest-only "Rate wave" panel). A studio clip starts exactly at `t.start`, so setup screens before it
+never show. `studioOffer(page, id)` deals a chosen weapon card first in the upgrade draft.
+
 ## Smooth capture
 
 Playwright's built-in video is a fixed 25 fps screen grab, which looks steppy on fast scenes (about 18% exact
@@ -62,7 +68,7 @@ record Chromium's own frame stream instead, at about 60 fps with real timestamps
 (0% repeats). The game itself holds 60 fps headless; the stutter was only ever in the recorder.
 Chromium's capture stream also drops about 16 frames at a time every few seconds while the game is busy (not caused by
 the game, the bot, audio, CSS or browser flags; all tested). The kept take is rebuilt with those holes
-motion-interpolated (`VIDEO_FILL=0` to skip; this is the slow step, about 8 minutes per clip). The recording is also
+motion-interpolated, and only those (`VIDEO_FILL=0` to skip), so nothing else is touched. The recording is also
 muted and the bot taps calmly (rounds in the rack only, one tap at a time) to keep the machine's load down. `convoy` uses it.
 
 ## How it works
