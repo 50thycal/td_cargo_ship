@@ -651,7 +651,7 @@ const ROUND13: Record<string, string[]> = {
   'map-kesh': ['Frigates round the Hook only through a gap in the convoy, and the south frigate holds station further west, in open water'],
   'map-island': ['The north lane\'s frigate holds station further west, where there is room beside the convoy'],
   'map-needle': ['Frigates keep to the open water before the Needle: they back out the way they came instead of going through the narrows with the convoy'],
-  'map-delta': ['Frigates keep to the open water before the fork and south of the middle channel: the river branches have no room beside the convoy'],
+  'map-delta': ['Frigates keep to the carrier\'s bay, the open water between the middle and south legs: the legs have no room beside the convoy'],
 };
 for (const id of MAP_ORDER) {
   const card = mapCardId(id);
@@ -713,6 +713,8 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'delta', log: 69, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },
+  { map: 'coves', log: 69, tag: 'Polished', note: 'Speedboats ram and burn, gunboats lock on one ship, rocket boats fire from afar.' },
   { map: 'tide', log: 68, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
   { map: 'sowers', log: 68, tag: 'Polished', note: 'No Hold button: ships stop by themselves for a mine; mines show 1.5× sooner. Better?' },
   { map: 'citadel', log: 67, tag: 'Polished', note: 'Destroyed once (~70 shots), a ruin till the boss rebuilds it; new look. Better?' },
@@ -721,8 +723,6 @@ export const READY_TO_TEST: ReadyToTest[] = [
   { map: 'battery', log: 67, tag: 'Polished', note: 'The Blackout boss is always dark now (no star shell). Can you still read it?' },
   { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
-  { map: 'delta', log: 57, tag: 'New', note: 'The enemy fires where the switch sends your ships; firebombs burn the branch. Throw it?' },
-  { map: 'coves', log: 56, tag: 'New', note: 'Open War: boats from four coves; fire ships burn where sunk. Stop them at the cove mouth?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },
   { map: 'needle', log: 35, tag: 'New', note: 'The convoy queues single file at the mouth; armored drone walls from wave 4. Fair?' },

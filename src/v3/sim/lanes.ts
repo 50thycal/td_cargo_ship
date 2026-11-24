@@ -33,6 +33,26 @@ export function laneLength(ch: Channel): number {
   return geo(ch).length;
 }
 
+const radii = new WeakMap<Channel, number>();
+
+/** The tightest turn of a lane's centre line (px of radius; Infinity for a
+ *  straight one), read over 60 px of it: what an aircraft flying beside it
+ *  must stay clear of (the Delta's hairpins, log v69). */
+export function laneMinRadius(ch: Channel): number {
+  let r = radii.get(ch);
+  if (r !== undefined) return r;
+  r = Infinity;
+  const L = geo(ch).length;
+  for (let d = 0; d + 60 <= L; d += 20) {
+    const a = lanePoint(ch, d);
+    const b = lanePoint(ch, d + 60);
+    const turn = Math.abs(Math.atan2(a.tx * b.ty - a.ty * b.tx, a.tx * b.tx + a.ty * b.ty));
+    if (turn > 1e-3) r = Math.min(r, 60 / turn);
+  }
+  radii.set(ch, r);
+  return r;
+}
+
 export interface LanePose {
   x: number;
   y: number;

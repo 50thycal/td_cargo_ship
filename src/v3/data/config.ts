@@ -242,6 +242,37 @@ export const POST = { radarSlow: 0.65, targetShare: 0.22, batteryGap: 1.3, batte
 /** Fast attack boats: how hard they turn onto a ship (rad/s). */
 export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
 
+/** Log v69 (the player, on the Coves: "overhaul the boats ... a speed boat
+ *  that rushes the cargo ships and explodes with fire; one with a small
+ *  cannon that locks on a cargo ship and sails with it until it sinks it;
+ *  the last kind shoots rockets like the rocket trucks but has a lot more
+ *  health, more range, and is slower"): the Coves' three attack boats. All
+ *  three are `fastboat` threats (THREATS.fastboat); `boat` tells which.
+ *
+ *  Speedboat (no `boat`): planes up out of its cove (`from` of its pace,
+ *  full at `plane` s), swings a little side to side while it is far, rams
+ *  for 2 and bursts into a `blast` px fireball (a picture; a fire ship's
+ *  burn is the one that stays on the water).
+ *  Gunboat (`gun`): runs to a station `stand` px beside the ship it has
+ *  locked, sails with it, and from `first` s alongside fires a `damage` shell
+ *  every `every` s until the ship is sunk (then it locks the next).
+ *  Rocket boat (`rocket`): `hp` hits, `speed` px/s, keeps `range` px from
+ *  its ship (a Rocket Truck's fire from the road is about 200), raises its
+ *  launcher `raise` s, then `perSalvo` red rockets (as a truck's: they
+ *  can't be shot, one hit a salvo), `salvos` of them `gap` s apart, then it
+ *  turns for home. */
+export const BOATS = {
+  speed: { from: 0.55, plane: 1.1, weave: 0.2, weaveHz: 2.6, blast: 54 },
+  gun: { hp: 3, speed: 108, stand: 66, first: 1.6, every: 2.4, damage: 1, close: 80, turn: 3.2 },
+  rocket: { hp: 6, speed: 46, range: 330, slack: 70, raise: 2.2, gap: 5, perSalvo: 3, spread: 18, rocketSpeed: 520, salvos: 3, ripple: 0.12, turn: 1.1 },
+} as const;
+
+/** Log v69: the mix of the Coves' own fast boats a wave sends (those that
+ *  are not an encounter's, a fire ship or the boss's): from `gunFrom` every
+ *  `gunEvery`th is a gunboat, from `rocketFrom` every `rocketEvery`th a
+ *  rocket boat. */
+export const BOAT_MIX = { gunFrom: 3, gunEvery: 3, rocketFrom: 6, rocketEvery: 4 } as const;
+
 /** Mines: how near a hull sets one off, and their wobble on the current. */
 export const MINE = {
   hitRadius: 30,

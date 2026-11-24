@@ -415,28 +415,27 @@ export const MAP_PLANS: Partial<Record<MapId, MapPlan>> = {
   },
   // docs/design/v3-ch4-delta.md
   delta: {
-    problem: 'The river forks three ways at the buoy and its switch sends the next ships north under the enemy bank, middle past the carrier, or south out of reach, but the enemy reads the switch: it fires at the branch the switch is set to, and from wave 4 its incendiaries burst on that branch\'s mouth, so the safe branch is only safe until you send ships down it.',
-    // The fire is threats at single ships, one after another: drones down
-    // the river and at the fork, short flights off the north bank and the
-    // island, incendiaries at the switch's branch and, in the boss, a raid
-    // off every silo. The ships sail in a Spread, one at a time across the
-    // river, so they are seldom bunched for an area weapon to cover: what
-    // pays is picking each threat off far out, the Seeker Pod homing on the
-    // slow incendiaries before they reach a branch, the Thermobaric Shell's
-    // burst on a string as it closes, the Cadence Gun's steady shots. The
-    // area weapons (Gravity Well, Tesla Arc, Point Defense at the carrier)
-    // wait for bunches the convoy rarely makes. Chosen on the bots' kit
-    // runs (the bot's taste set to the kit, 32 seeds, the usual Armory:
-    // won 84% against 66%), not the forced singles, which rank the area
-    // weapons higher (Gravity Well 6.4, Tesla 6.4, Point Defense 6.8
-    // against Seeker 7.7, Thermobaric 8.1, Cadence 8.6; docs/design/
-    // v3-ch4-delta.md, The counters). Every weapon is in chapter 4's draft.
+    problem: 'The river is one channel three times the usual length, winding back on itself twice between marsh islands, so the ships are under fire from the day they enter until they deliver and no stretch is quiet: a silo over every bend, the island between the first two legs point-blank on both, and from wave 4 a Rocket Truck on the banks over every leg.',
+    // The fire is threats at single ships all along the run, each silo
+    // firing at the ships nearest it: shells off the north coast and the
+    // islets, drones and clusters off the island, guided missiles and
+    // supersonics down the whole river from the coast and the marsh, and
+    // trucks on the banks. The ships sail in a Spread, one at a time across
+    // the river, strung along five thousand pixels, so they are never bunched for an
+    // area weapon to cover: what pays is picking each threat off far out,
+    // the Seeker Pod homing on missiles before they land, the Thermobaric
+    // Shell's burst on a string as it closes, the Cadence Gun's steady
+    // shots. The area weapons (Gravity Well, Tesla Arc, Point Defense at
+    // the carrier) wait for bunches the convoy rarely makes, and the
+    // carrier's guns reach only the bay it sits in. (The counters are the
+    // old fork's, kept: the bot's kit runs on the long river, in
+    // docs/design/v3-ch4-delta.md.) Every weapon is in chapter 4's draft.
     counters: ['seeker', 'thermo', 'cadence'],
     offCounter: ['well', 'tesla', 'aegis'],
-    convoy: 'The map\'s own convoy, no commands: heavy river traffic (flow step 3) in a Spread, one ship at a time across the river (the player\'s own habit in the campaign), down to the fork, where the switch (a tap on its buoy) sends the next ships down one of three branches; the ships bunch in the river and at the fork, and spread out across the branches.',
+    convoy: 'The map\'s own convoy, no commands: heavy river traffic (flow step 3) in a Spread, one ship at a time across the river (the player\'s own habit in the campaign), strung out along the whole of the long river: on the first leg east, the middle leg west past the carrier\'s bay, the last leg east to the delivery.',
     stretches: { danger: 'middle', safe: 'late' },
     boss: {
-      plan: 'The Burning Delta (in place of the Escort Run: the Bodyguard Ring is a regular of chapter 4\'s waves, and the Delta\'s own debut): burning oil closes branches of the fork, the one the switch is set to first, its mouth lit 2.5 s before, so the convoy funnels into the branch left open, while a raid off every silo comes at the ships bunched on the way in. Round 1: one branch burns; round 2: two; round 3: two, then the fire moves to the branch that was open. Encounters rev 4, MAP_BOSS; lab only: the campaign plays the Escort Run.',
+      plan: 'The Long Gauntlet (in place of the Burning Delta and the Escort Run before it): the whole shore fires down the river, silo after silo, west to east along the run, each lit 2.5 s before and each at the ships nearest it, so the fire runs the length of the convoy like a fuse and every stretch has its moment, with a raid off the north-west and the island at the ships coming in. Round 1: four strikes of two silos; round 2: four of three; round 3: five of three and four, a guided missile in with the raid. Encounters rev 4, MAP_BOSS; lab only: the campaign plays the Escort Run.',
       botTarget: 2,
     },
   },

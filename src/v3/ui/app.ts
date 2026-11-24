@@ -210,7 +210,7 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   strafer: 'Strafes the convoy along its line: a tight block takes it all. Three hits.',
   bomber: 'Drops guided missiles on the convoy. Shoot it down before it gets over them.',
   mine: 'Drifts on the current. A ship that touches one takes 3. One shot clears it.',
-  fastboat: 'Out of a cove, watch for the white wake. It rams a ship. Two hits.',
+  fastboat: 'Out of a cove, watch for the white wake. A speedboat rams and burns; a gunboat sails beside one ship and shells it until it sinks; a rocket boat hangs far off and fires red rockets.',
   dreadnought: 'A battleship shelling the convoy from three gun turrets (shoot them out), launching missiles and drones from its silo. Fifty hits to sink it, or ride it out.',
   // The enemy build.
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
@@ -260,8 +260,8 @@ const MAP_HINT: Partial<Record<MapId, [string, string]>> = {
   rigs: ['OIL RIGS', 'Rigs launch from the sea. Bring one down and it stays down.'],
   lantern: ['NIGHT', 'Threats show only as a glow until the beam or your lamp finds them. It stays dark.'],
   dreadnought: ['DREADNOUGHT PASS', 'On waves 3, 6, 9 and 10 a battleship steams through.'],
-  coves: ['FAST BOATS', 'Boats burst out of the coves to ram the convoy.'],
-  delta: ['THE FORK', 'Tap the buoy to send the next ships north, middle or south.'],
+  coves: ['ATTACK BOATS', 'Speedboats ram, gunboats lock on a ship, rocket boats fire from afar. Watch the white wakes.'],
+  delta: ['THE LONG RIVER', 'One river, three times as long: the ships are under fire every mile of it. Trucks on the banks.'],
   crossing: ['TWO-WAY TRAFFIC', 'Outbound east up top, inbound west below. Both edges are a front.'],
   tide: ['THE TIDE', 'The flats lane is open only at high tide. Push ships through while it lasts.'],
   citadel: ['THE CITADEL', 'Destroy the shield generators, then wear the Citadel down: destroyed once, it stays down until the boss.'],
@@ -438,6 +438,12 @@ export class App {
     formation: (id) => this.rec?.formation(id),
     pace: (v) => this.rec?.pace(v),
     goldBomb: () => !!this.rec?.goldBomb(),
+    press: (x, y, r) => {
+      this.rec?.press(x, y, r);
+      this.ripples.push({ x, y, age: 0, bot: true, dry: false });
+    },
+    move: (x, y) => this.rec?.move(x, y),
+    release: (x, y, r) => this.rec?.release(x, y, r) ?? null,
   };
   private speed: number = SPEED_STEPS[DEFAULT_SPEED];
   private paused = false;
@@ -5176,7 +5182,7 @@ const SUNK_BY: Partial<Record<ThreatKind, string>> = {
   strafer: 'Strafing runs did the most damage: Air Strike the jet; frigates shoot jets down too.',
   bomber: 'Bomber missiles did the most damage: shoot bombers down before they reach the convoy (Air Strike).',
   mine: 'Mines did the most damage: one shot clears a mine; Flak or Shrapnel clear a drift of them.',
-  fastboat: 'Fast boats did the most damage: watch the coves for a white wake; Scattergun and Air Strike stop them short.',
+  fastboat: 'The Coves\' boats did the most damage: watch the coves for a white wake; sink a gunboat before it is alongside; the rocket boat itself, not its rockets, is what can be stopped.',
   sprinter: 'Sprint drones did the most damage: hit them before the booster flares; Flak or the Laser Cutter take a swarm.',
   hydra: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',
   dart: 'Hydra darts did the most damage: kill the Hydra far out, or with Flak or Tesla to catch both darts.',

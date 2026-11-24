@@ -44,6 +44,8 @@ import {
   BOSS,
   TURRET,
   FASTBOAT,
+  BOATS,
+  BOAT_MIX,
   LOCK,
   MINE,
   RIG_SHOTS,
@@ -57,7 +59,7 @@ import {
 } from '../data/config';
 import { FORMATIONS, type FormationId } from '../data/formations';
 import { LANE_FLOOR, MAPS, channelCycle, halfWidthAt, slotOffset, type Channel, type MapDef, type MapId, type Point } from '../data/maps';
-import { flightAt, laneAt, laneDAtX, laneHalfWidth, laneLength, lanePoint } from './lanes';
+import { flightAt, laneAt, laneDAtX, laneHalfWidth, laneLength, laneMinRadius, lanePoint } from './lanes';
 import {
   AB,
   ABILITY_MAX,
@@ -87,6 +89,7 @@ import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDo
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { floatPace, tideAt, type TideNow } from './tide';
+import { armBoat, boatEta, updateBoat, type BoatState } from './boats';
 import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
@@ -321,6 +324,11 @@ export interface Threat {
   holdT?: number;
   /** The enemy build: a new enemy's own state (sim/foes.ts). */
   foe?: FoeData;
+  /** Log v69 (The Coves' boats, data/config.ts BOATS): which fast boat this
+   *  is, a gunboat or a rocket boat (none: a speedboat), and its own state
+   *  (sim/boats.ts). */
+  boat?: 'gun' | 'rocket';
+  bs?: BoatState;
   /** Its full hull when a special event made it tougher than its kind
    *  (THREATS[kind].hp otherwise): what a Repair Tender mends it up to. */
   maxHp?: number;
@@ -377,7 +385,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
+export type FxKind = 'fireball' | 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
   // The weapons plan, phase 0–1.
   | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat'
   // Phase 2.
@@ -496,6 +504,8 @@ export interface Launch {
   tow?: boolean;
   /** Log v53 (The Coves): a fast boat that comes as a fire ship. */
   fire?: boolean;
+  /** Log v69 (The Coves): a fast boat that comes as a gunboat or a rocket boat. */
+  boat?: 'gun' | 'rocket';
   /** Log v60 (The Citadel): a launch off the Citadel under its dome. */
   dome?: boolean;
   /** Log v58 (Dunmar Crossing): a Lure Beacon that rises at the crossing
@@ -512,6 +522,8 @@ interface Unit {
   size: number;
   /** Log v53 (The Coves, MAP_SIGNATURE `fireShips`): a fire ship. */
   fire?: boolean;
+  /** Log v69 (The Coves): a gunboat or a rocket boat. */
+  boat?: 'gun' | 'rocket';
 }
 
 /** Launch platforms that are not targets (round 4): a submarine surfacing in
@@ -1408,6 +1420,18 @@ function startWave(g: Game): void {
         fireShips++;
       }
   }
+  // The Coves (log v69): the wave's own fast boats out of the coves are not
+  // all speedboats: from wave 3 every third is a gunboat, from wave 6 every
+  // fourth (from its third) a rocket boat (BOAT_MIX).
+  if (g.map.bases.some((b) => b.cove)) {
+    let k = 0;
+    for (const u of units)
+      if (u.kind === 'fastboat' && !u.fire) {
+        if (g.wave >= BOAT_MIX.rocketFrom && k % BOAT_MIX.rocketEvery === 2) u.boat = 'rocket';
+        else if (g.wave >= BOAT_MIX.gunFrom && k % BOAT_MIX.gunEvery === 1) u.boat = 'gun';
+        k++;
+      }
+  }
   // Tidewater Flats (log v61, MAP_SIGNATURE `ebb`): so many of the wave's
   // own clusters, then its shells, are held for the ebb and come as cluster
   // missiles at the crowd, one for one (rule w-budget).
@@ -1491,7 +1515,7 @@ function startWave(g: Game): void {
       // The Delta (log v57, MAP_SIGNATURE `clouds`): the wave's
       // Incendiary Missiles burst on the switch's branch.
       const aim = u.kind === 'heavy' && sig?.heavies ? { aim: sig.heavies } : u.kind === 'cluster' && sig?.clusters ? { aim: sig.clusters } : u.kind === 'cloud' && sig?.clouds ? { aim: sig.clouds } : {};
-      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim, ...(u.fire ? { fire: true } : {}) });
+      for (let d = 0; d < u.size; d++) queue.push({ at: at + d * 0.35, kind: u.kind, base, ...aim, ...(u.fire ? { fire: true } : {}), ...(u.boat ? { boat: u.boat } : {}) });
     }
   });
   if (hidden) raids.forEach((raid, r) => (raid.quiet = raidUnits[r].length > 0 && raidUnits[r].every((u) => u.kind === 'mine')));
@@ -1682,7 +1706,7 @@ function planEncounters(g: Game, list: Encounter[], queue: Launch[], lead: numbe
         // comes from the far shore instead (rigStandIn), lit there.
         // (Log v52: a siege gun beside the base fires the beat's salvos.)
         const from = b.filler ? b.from.base : rigStandIn(g, b.from.base);
-        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.fire ? { fire: true } : {}), ...(b.dome ? { dome: true } : {}) });
+        for (let k = 0; k < b.count; k++) queue.push({ at: at + k * gap, kind: b.kind, base: from, enc: e.id, ...aim, ...(b.filler ? { filler: true } : {}), ...(b.salvos !== undefined ? { salvos: b.salvos } : {}), ...(b.fire ? { fire: true } : {}), ...(b.boat ? { boat: b.boat } : {}), ...(b.dome ? { dome: true } : {}) });
         // Log v55 (HIDDEN_MINES): a chute's hidden mines just come, unwarned.
         if (b.kind === 'mine' && hiddenMines(g)) {
           start = Math.min(start, at);
@@ -3132,7 +3156,15 @@ function sailBerthed(g: Game, e: Escort, dt: number): void {
 
 /** A station keeps this clear of the carrier, and frigates on one edge of a
  *  lane this far apart along it. */
+/** The tightest lane turn (px of radius) a bomber flies beside, off its edge. */
+const BOMBER_MIN_TURN = 250;
 const ESCORT_CARRIER_CLEAR = 200;
+/** Log v69 (the Delta's long river): how far along the lane a frigate's
+ *  station may be at most (px; 10 s at its speed): on a lane longer than
+ *  this the stations come in from the first stretch of it (the Delta's
+ *  north leg, the one furthest from its carrier), so they are on station in
+ *  time. A usual lane (1,680 px) is unchanged. */
+const ESCORT_REACH = 2600;
 const ESCORT_GAP = 280;
 const ESCORT_GAP_MIN = 180;
 /** How fast a frigate turns (rad/s): smoothly round a bend at its speed. */
@@ -3498,7 +3530,7 @@ function escortStations(g: Game, n: number): { lane: number; d: number; lat: num
         d1 = L;
       }
       // A short stretch: spread out to its ends.
-      const want = (d1 - d0 < 600 && n >= 3 ? [0.96, 0.5, 0.04] : fracs)[i % fracs.length];
+      const want = (d1 - d0 < 600 && n >= 3 ? [0.96, 0.5, 0.04] : fracs)[i % fracs.length] * Math.min(1, ESCORT_REACH / Math.max(1, d1 - d0));
       if (lane === own) {
         const d = d0 + (d1 - d0) * want;
         fall = { lane, d, lat: trackAt(escortTrack(g, lane, side), d).lat };
@@ -5956,6 +5988,7 @@ function launch(g: Game, l: Launch): void {
     if (l.filler) th.filler = true;
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
+    else if (l.boat && l.kind === 'fastboat') armBoat(th, l.boat);
     if (l.aim === 'crowd') th.ebb = true;
     // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
     // first wave everything the Citadel fires leaves under its dome.
@@ -6073,7 +6106,9 @@ export function vipRoute(g: Game): { y: number; lane?: number; lat?: number } | 
 function planeRoute(g: Game, kind: ThreatKind, rng: RNG): { y: number; lane?: number; lat?: number } {
   const chans = g.map.channels;
   if (isBomberKind(kind)) {
-    const bent = chans.map((c, i) => i).filter((i) => laneBends(chans[i]) && !chans[i].tide);
+    // (Log v69: not a lane that turns tighter than a bomber can fly beside it,
+    // the Delta's hairpins: its bombers fly the map's own lines across it.)
+    const bent = chans.map((c, i) => i).filter((i) => laneBends(chans[i]) && !chans[i].tide && laneMinRadius(chans[i]) > BOMBER_MIN_TURN);
     if (!bent.length) return { y: rng.pick(g.map.bomberLines) };
     const lane = rng.pick(bent);
     // Off whichever edge keeps it on screen more (at the Kesh Hook, the inside
@@ -6358,7 +6393,7 @@ function arcTop(th: Threat, apex: number): number {
   return top;
 }
 
-function targetPos(g: Game, th: Threat): Point {
+export function targetPos(g: Game, th: Threat): Point {
   if (isPostTarget(th.target)) {
     const p = g.map.posts?.[postIndex(th.target)];
     if (p) return p;
@@ -6370,7 +6405,7 @@ function targetPos(g: Game, th: Threat): Point {
 }
 
 /** Drones and guided missiles find a new ship when theirs is gone. */
-function ensureTarget(g: Game, th: Threat): void {
+export function ensureTarget(g: Game, th: Threat): void {
   if (th.target === CARRIER_TARGET || th.target === NO_TARGET) return;
   if (isPostTarget(th.target) ? postUp(g, postIndex(th.target)) : g.ships.some((s) => s.id === th.target)) return;
   // Log v43 (Battery Point, lab only under the encounter layer): a launch
@@ -6458,6 +6493,9 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
     th.x = th.sx + (th.ix - th.sx) * p;
     th.y = th.sy + (th.iy - th.sy) * p - 4 * th.apex * p * (1 - p);
     if (p >= 1) impactBallistic(g, th);
+  } else if (th.kind === 'fastboat' && th.boat) {
+    // Log v69 (The Coves): a gunboat or a rocket boat sails itself (sim/boats.ts).
+    updateBoat(g, th, dt);
   } else if (th.kind === 'supersonic' && th.age < SUPERSONIC.rail) {
     // On the rail with its lock line showing: aim, don't move yet.
     ensureTarget(g, th);
@@ -6481,12 +6519,17 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
       // round 1: "the missile for the enemy helicopter also needs to be
       // fixed"); the rest keep their own turn.
       const turn = (th.kind === 'heliRocket' ? homingTurn(base, th.speed, d) : base + (th.kind === 'guided' ? GUIDED.terminalTurn * close : 0)) * dt;
-      th.heading += clamp(angleDiff(want, th.heading), -turn, turn);
+      // Log v69: and a speedboat swings a little side to side while it is far, as a boat flat out does.
+      const wob = th.kind === 'fastboat' && d > 160 ? BOATS.speed.weave * Math.sin(th.age * BOATS.speed.weaveHz + th.phase) : 0;
+      th.heading += clamp(angleDiff(want + wob, th.heading), -turn, turn);
     }
     // Off the rail slowly (a guided missile from its launch; a supersonic
     // from the end of its rail, log v27).
+    // Log v69 (The Coves' speedboat): it planes up out of its cove.
     const boost =
-      th.kind === 'guided' && th.age < GUIDED.boost
+      th.kind === 'fastboat'
+        ? BOATS.speed.from + (1 - BOATS.speed.from) * Math.min(1, th.age / BOATS.speed.plane)
+        : th.kind === 'guided' && th.age < GUIDED.boost
         ? GUIDED.boostFrom + (1 - GUIDED.boostFrom) * (th.age / GUIDED.boost)
         : th.kind === 'supersonic'
           ? supersonicPace(th.age)
@@ -6756,6 +6799,9 @@ export function checkImpact(g: Game, th: Threat): void {
   // its fire), and leaves the fire on the lane.
   damageShip(g, s, heavy ? (s.vip ? VIP.heavyHit : HEAVY_SINKS) : th.fire ? FIRESHIP.ram : dmg, blame, true, imp);
   if (th.fire) burstCloud(g, th, FIRESHIP.burn);
+  // Log v69: a speedboat goes up in a ball of fire where it rams (a picture:
+  // the fire that stays on the water is the fire ship's).
+  else if (th.kind === 'fastboat') addFx(g, 'fireball', th.x, th.y, { life: 0.9, r: BOATS.speed.blast });
 }
 
 /** Log v53 (The Coves): a fast boat set alight, a fire ship (FIRESHIP):
@@ -8460,6 +8506,7 @@ export function timeToImpact(g: Game, th: Threat): number {
 function rawTti(g: Game, th: Threat): number {
   if (th.kind === 'mine') return mineEta(g, th);
   if (th.kind === 'ballistic') return Math.max(0, th.dur - th.age);
+  if (th.kind === 'fastboat' && th.boat) return boatEta(g, th);
   if (isFoe(th.kind)) {
     const eta = foeEta(g, th);
     if (eta !== null) return eta;

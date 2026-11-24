@@ -74,11 +74,10 @@ describe('a campaign run has no convoy layer', () => {
     expect(mapConvoy('rigs')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
     // The Coves (docs/design/v3-ch4-coves.md, log v53): the same.
     expect(mapConvoy('coves')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs' });
-    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57): heavy river
-    // traffic, spread across the river (flow step 3, the Spread: the player's
-    // own habit in the campaign), and no command (the fork's switch is the
-    // map's own).
-    expect(mapConvoy('delta')).toMatchObject({ flow: 3, formation: 'spread', commands: [] });
+    // Chapter 4's Delta (docs/design/v3-ch4-delta.md, log v57; the long
+    // river, log v69): the campaign's own schedule in Pairs (about 24 ships
+    // on a river three times the usual length), and no command.
+    expect(mapConvoy('delta')).toMatchObject({ flow: DEFAULT_FLOW, formation: 'pairs', commands: [] });
     // Dunmar Crossing (docs/design/v3-ch4-crossing.md, log v58): heavy
     // two-way traffic, a ship every step-3 gap in a Spread.
     expect(mapConvoy('crossing')).toMatchObject({ flow: 3, formation: 'spread', commands: [] });

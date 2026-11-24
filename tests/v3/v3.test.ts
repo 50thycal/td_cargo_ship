@@ -3,6 +3,7 @@
 // tests pin both systems down.
 
 import { describe, expect, it } from 'vitest';
+import { laneLength } from '../../src/v3/sim/lanes';
 import { AB, ABILITIES, ABILITY_MAX, ABILITY_ORDER, MAX_SLOTS, WEAPON, abilityName, type AbilityId } from '../../src/v3/data/abilities';
 import { ARMORY, ARMORY_MAX, ARMORY_ORDER, BAY_ORDER, BAYS, CARD_DROPS, LEVEL_COST, armoryStats, bayItems, cardsFor, findCards, levelCost, scrapFor, scrapTally, spendScrap } from '../../src/v3/data/armory';
 import { CARRIER, INTERCEPTOR, PICKUPS, PICKUP_KINDS, SHIP, VIEW } from '../../src/v3/data/config';
@@ -943,7 +944,10 @@ describe('what each weapon does with a tap', () => {
       // Measured along the lane they sail (map visual-check round: they
       // follow its bends), between frigates on the same line of it.
       let closest = Infinity;
-      for (let t = 0; t < WEAPON.time + 10; t += 0.1) {
+      // (A frigate sails off along the rest of the lane: the Delta's, three
+      // times the usual length, takes it longer: log v69.)
+      const sailOff = Math.max(0, laneLength(g.map.channels[0]) - 1700) / AB.frigate.speed;
+      for (let t = 0; t < WEAPON.time + 10 + sailOff; t += 0.1) {
         run(g, 0.1);
         for (const a of g.escorts)
           for (const b of g.escorts) if (a !== b && a.lane === b.lane && Math.abs(a.lat - b.lat) < 40) closest = Math.min(closest, Math.abs(a.d - b.d));

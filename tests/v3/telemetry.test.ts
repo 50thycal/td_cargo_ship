@@ -12,7 +12,7 @@ import { LAB_CARDS, LAB_START_WAVE, labCard } from '../../src/v3/data/lab';
 import { MAP_ORDER } from '../../src/v3/data/maps';
 import { ABILITY_ORDER, type AbilityId } from '../../src/v3/data/abilities';
 import { Bot, SKILLS } from '../../src/v3/sim/bot';
-import { addPickup, applyFreePlay, applyLab, checkImpact, createGame, damageCarrier, damageShip, setFlow, setFormation, spawnThreat, step, tap, throwSwitch, type Game, type Ship } from '../../src/v3/sim/game';
+import { addPickup, applyFreePlay, applyLab, checkImpact, createGame, damageCarrier, damageShip, setFlow, setFormation, spawnThreat, step, tap, type Game, type Ship } from '../../src/v3/sim/game';
 import { lockstep, lockstepLive, stateHash } from '../../src/v3/sim/mapLab';
 import { BotRun, PERSONAS, playMimic } from '../../src/v3/sim/mimic';
 import { LOG_VERSION, logTelemetry, replay } from '../../src/v3/sim/playlog';
@@ -206,13 +206,6 @@ describe('the player\'s hand and the convoy commands', () => {
     // A ship that sails after says which flow and formation it sailed under.
     for (let i = 0; i < 60 * 6; i++) step(g, DT);
     expect(of(g, 'ship+').at(-1)).toMatchObject({ flow: 4, form: 'spread' });
-  });
-
-  it('the Delta\'s switch is a command', () => {
-    const g = quiet('delta', 1);
-    const was = g.forkLane;
-    throwSwitch(g);
-    expect(of(g, 'cmd').at(-1)).toMatchObject({ what: 'fork', was, req: g.forkLane, ok: 1 });
   });
 });
 

@@ -49,6 +49,9 @@ function watchRun(map: 'strait' | 'gauntlet', seed: number, watch = true): { g: 
     reroll: () => rec.reroll(),
     freeLevel: (id) => rec.freeLevel(id),
     goldBomb: () => rec.goldBomb(),
+    press: (x, y, r) => rec.press(x, y, r),
+    move: (x, y) => rec.move(x, y),
+    release: (x, y, r) => rec.release(x, y, r),
   };
   return { g, rec, bot, io };
 }

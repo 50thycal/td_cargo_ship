@@ -15,7 +15,7 @@ import { applyConvoy } from './convoy';
 import { ConvoyPilot, type PilotSkill } from './convoyPilot';
 import type { ConvoySetup } from '../data/convoy';
 import type { EncounterSetup } from '../data/encounters';
-import { ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, isSpecialCard, loadout, type AbilityId, type CardId } from '../data/abilities';
+import { AB, ABILITIES, ABILITY_ORDER, MAX_SLOTS, canTake, isSpecialCard, loadout, type AbilityId, type CardId } from '../data/abilities';
 import type { ArmoryLevels } from '../data/armory';
 import type { FormationId } from '../data/formations';
 import type { MapId } from '../data/maps';
@@ -117,6 +117,14 @@ export interface Persona {
    *  a threat already covered only `cover`× as often (a spare shot costs
    *  nothing). */
   boosts?: { lull: AbilityId[]; calm: number; wait: number; rest: number; burst: number; cover: number };
+  /** Log v69 (the player: "the bot does not use the lance properly, it needs
+   *  to hold down to charge a bigger hit" and "does not use the laser"): the
+   *  share of times it plays a held gesture weapon the way a person does, the
+   *  Charge Lance held on its target until the charge shows full (half when
+   *  the sky is busy) and let go, the Laser Cutter swiped through the line
+   *  that cuts the most, in place of the plain taps it played before. Absent
+   *  = 0: the older fits tap every weapon. */
+  gestures?: number;
   /** Flow step it turns the ships up to early in wave 1, with the odds of each. */
   flow: { step: number; weight: number }[];
   /** One formation change, in waves `from`–`to` (none when `to` < `from`). */
@@ -242,11 +250,12 @@ export const YOU: Persona = {
   label: 'You',
   blurb: 'Fitted to your own logs: your rhythm, aim and habits, noise included. Plays at 1× and now and then rushes a wave; grabs pickups fast, faster when it counts; takes a boost in a lull and fires freely under Overdrive.',
   boosts: { lull: ['overdrive'], calm: 2, wait: 3, rest: 0.45, burst: 1, cover: 0.3 },
+  gestures: 0.9,
 };
 
 /** Bumped whenever a fitted persona changes how it plays: tools that cache
- *  bot runs (the combo sweep) key their cache on it. 2: the boosts round; 3: only Overdrive waits for a lull. */
-export const BOT_REV = 3;
+ *  bot runs (the combo sweep) key their cache on it. 2: the boosts round; 3: only Overdrive waits for a lull; 4: the Lance is held to charge and the Cutter swiped (log v69). */
+export const BOT_REV = 4;
 
 /** What the bot can do: exactly what a player's touches can. */
 export interface BotIO {
@@ -262,6 +271,11 @@ export interface BotIO {
   freeLevel?(id: AbilityId): boolean;
   /** Quartermaster 3+: set off the golden bomb. */
   goldBomb?(): boolean;
+  /** A finger down, moved and lifted: the gesture weapons (Charge Lance,
+   *  Laser Cutter). A caller without them leaves the bot tapping. */
+  press?(x: number, y: number, radius: number): void;
+  move?(x: number, y: number): void;
+  release?(x: number, y: number, radius: number): TapResult | null;
 }
 
 /** Quartermaster: the bot re-rolls a hand with nothing it wants (no weapon
@@ -297,6 +311,9 @@ export class Mimic {
   private nextLapse: number | null = null;
   /** `grab`: when each pickup on the water will have been noticed. */
   private pickupAt = new Map<number, number>();
+  /** Log v69: the Charge Lance held down on a threat (the finger follows it)
+   *  until `until`; the other thumb keeps tapping meanwhile. */
+  private hold: { id: number; until: number; ox: number; oy: number; x: number; y: number } | null = null;
 
   /** `dice` > 0 rolls a different (but repeatable) game of the same seed:
    *  the fitting tools want several bot games per player run. */
@@ -380,6 +397,7 @@ export class Mimic {
         const from = t < this.lapseUntil ? this.lapseUntil : t;
         this.noticeAt.set(th.id, from + this.scale(r));
       }
+    this.holdUpkeep(g, io);
     if (t < this.lapseUntil) return;
     // Quartermaster 3+: the golden bomb, into a crowd near the ships.
     if (io.goldBomb && goldBombWorth(g) && io.goldBomb()) return;
@@ -418,7 +436,7 @@ export class Mimic {
       if (!fresh && !rested) return;
     }
     // Structures (rigs, the Citadel...) only get a look when nothing else is up.
-    const seen = worthShooting(g, g.threats).filter((th) => (this.noticeAt.get(th.id) ?? Infinity) <= t);
+    const seen = worthShooting(g, g.threats).filter((th) => (this.noticeAt.get(th.id) ?? Infinity) <= t && th.id !== this.hold?.id);
     // The Delta: a glance at the fork now and then, and a tap on the buoy if
     // another branch is clearly quieter.
     const fork = g.map.fork;
@@ -522,6 +540,7 @@ export class Mimic {
     // near the finger likelier.
     const panic = timeToImpact(g, urgent) < p.panic && (p.panicShare === undefined || this.rng.chance(p.panicShare));
     const pick = panic || this.rng.chance(p.urgent) ? urgent : this.glance(pool);
+    if (this.startGesture(g, io, seen, pick, t)) return;
     this.target = pick.id;
     this.tapsLeft = 1 + weightedIndex(this.rng, p.burst) + (free ? p.boosts!.burst : 0);
     this.second = null;
@@ -538,6 +557,106 @@ export class Mimic {
     }
     this.nextTap = t;
     this.act(g, io, drafts);
+  }
+
+  /** Log v69: the held Charge Lance, kept down on its target and let go
+   *  when the charge it wanted shows (or the target is gone). */
+  private holdUpkeep(g: Game, io: BotIO): void {
+    const h = this.hold;
+    if (!h) return;
+    const press = g.press;
+    if (g.phase !== 'wave' || !press || g.weapon?.id !== 'lance') {
+      if (press && g.phase === 'wave' && io.release) io.release(h.x, h.y, BOT_TAP_RADIUS);
+      this.hold = null;
+      return;
+    }
+    const aim = g.threats.find((th) => th.id === h.id && !th.dead);
+    if (aim && io.move) {
+      h.x = clamp(aim.x + h.ox, 0, 1600);
+      h.y = clamp(aim.y + h.oy, 0, 900);
+      io.move(h.x, h.y);
+    }
+    if (g.t >= h.until || (!aim && g.t - press.t0 >= AB.lance.half / AB.lance.rate[g.weapon.level - 1])) {
+      io.release?.(h.x, h.y, BOT_TAP_RADIUS);
+      this.hold = null;
+      this.pausedAt = g.t;
+    }
+  }
+
+  /** Log v69: the weapon in hand is a gesture weapon and this persona plays
+   *  it as a person does (`gestures`): the Lance held on the toughest thing
+   *  in the sky (or the line that holds the most) until the charge shows,
+   *  the Cutter swiped through the urgent threat and what lines up with it.
+   *  True when it did, in place of a tap. */
+  private startGesture(g: Game, io: BotIO, seen: Threat[], pick: Threat, t: number): boolean {
+    const p = this.persona;
+    const w = g.weapon;
+    if (!p.gestures || !w || !io.press || this.hold || g.press) return false;
+    if (w.id !== 'lance' && w.id !== 'cutter') return false;
+    if (!canFire(g) || !this.rng.chance(p.gestures)) return false;
+    const [ex, ey] = gauss2(this.rng, p.aim.near);
+    if (w.id === 'lance') {
+      const rate = AB.lance.rate[w.level - 1];
+      const minRoom = AB.lance.half / rate + 0.3;
+      const c = g.map.carrier;
+      const onLine = (th: Threat) => {
+        const d = Math.hypot(th.x - c.x, th.y - c.y) || 1;
+        const ux = (th.x - c.x) / d;
+        const uy = (th.y - c.y) / d;
+        return seen.filter((o) => (o.x - c.x) * ux + (o.y - c.y) * uy > 0 && Math.abs((o.x - c.x) * uy - (o.y - c.y) * ux) <= AB.lance.width).length;
+      };
+      const aim =
+        seen.filter((th) => th.hp >= 3 && timeToImpact(g, th) > minRoom).sort((a, b) => b.hp - a.hp)[0] ??
+        seen.filter((th) => timeToImpact(g, th) > minRoom && onLine(th) >= 3).sort((a, b) => onLine(b) - onLine(a))[0] ??
+        (timeToImpact(g, pick) > minRoom ? pick : undefined);
+      if (!aim) return false;
+      const others = seen.filter((o) => o !== aim && timeToImpact(g, o) < 2.5).length;
+      const room = timeToImpact(g, aim) - 0.3;
+      const want = room > AB.lance.full / rate && others <= 2 ? AB.lance.full : AB.lance.half;
+      // A person lets go a beat after the charge shows.
+      const until = g.t + Math.min(want / rate + this.rng.range(0.02, 0.12), Math.max(room, AB.lance.half / rate));
+      const x = clamp(aim.x + ex, 0, 1600);
+      const y = clamp(aim.y + ey, 0, 900);
+      io.press(x, y, BOT_TAP_RADIUS);
+      if (!g.press) return false;
+      this.hold = { id: aim.id, until, ox: ex, oy: ey, x, y };
+      this.finger = { x, y };
+      // The other thumb is free at once.
+      this.nextTap = t + this.scale(this.rng.range(...p.burstGap), false);
+      return true;
+    }
+    // The Laser Cutter: the stretch through the urgent threat that cuts the most.
+    const L = AB.cutter.length[w.level - 1] * 0.95;
+    let from = { x: pick.x - L / 2, y: pick.y };
+    let to = { x: pick.x + L / 2, y: pick.y };
+    let most = 0;
+    for (const o of seen) {
+      if (o === pick) continue;
+      const d = Math.hypot(o.x - pick.x, o.y - pick.y);
+      if (d < 1 || d > L) continue;
+      const ux = (o.x - pick.x) / d;
+      const uy = (o.y - pick.y) / d;
+      const n = seen.filter((th) => {
+        const along = (th.x - pick.x) * ux + (th.y - pick.y) * uy;
+        return along >= -L / 2 && along <= L / 2 && Math.abs((th.x - pick.x) * uy - (th.y - pick.y) * ux) <= AB.cutter.width;
+      }).length;
+      if (n > most) {
+        most = n;
+        from = { x: pick.x - (ux * L) / 2, y: pick.y - (uy * L) / 2 };
+        to = { x: pick.x + (ux * L) / 2, y: pick.y + (uy * L) / 2 };
+      }
+    }
+    // Aimed a little off, as the thumb is (an error across the line, not along it).
+    from = { x: clamp(from.x + ex * 0.5, 0, 1600), y: clamp(from.y + ey * 0.5, 0, 900) };
+    to = { x: clamp(to.x + ex * 0.5, 0, 1600), y: clamp(to.y + ey * 0.5, 0, 900) };
+    io.press(from.x, from.y, BOT_TAP_RADIUS);
+    if (!g.press) return false;
+    for (let k = 1; k <= 8; k++) io.move?.(from.x + ((to.x - from.x) * k) / 8, from.y + ((to.y - from.y) * k) / 8);
+    io.release?.(to.x, to.y, BOT_TAP_RADIUS);
+    this.finger = to;
+    this.pausedAt = t;
+    this.nextTap = t + this.rest(g);
+    return true;
   }
 
   /** Shots are free (Overdrive running) and this persona plays boosts
@@ -784,6 +903,9 @@ export class BotRun {
       reroll: () => rec.reroll(),
       freeLevel: (id) => rec.freeLevel(id),
       goldBomb: () => rec.goldBomb(),
+      press: (x, y, r) => rec.press(x, y, r),
+      move: (x, y) => rec.move(x, y),
+      release: (x, y, r) => rec.release(x, y, r),
     };
   }
 

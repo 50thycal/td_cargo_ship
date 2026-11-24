@@ -390,8 +390,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   coves: {
-    look: 'Do the fire ships and their burning ring read on your phone, or is the ring clutter? Does “stop it at the cove mouth” feel like the question? Is Air Strike + Flak the only answer?',
+    look: 'Do the three boats read apart on your phone: the speedboat (red, a fireball when it rams), the gunboat (grey, a red ring on the ship it has locked), the rocket boat (olive and big, a red line while its rockets rise)? Is the white wake a real warning? Does the gunboat feel like a ship to save, and the rocket boat like a target to focus?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 69,
+        title: 'Three kinds of attack boat',
+        what: 'The boats are redrawn with a proper wake (a foam trail, a bow wave, a long V and a churn at the stern), bank into turns and plane up out of the cove. Speedboat: rushes a ship and goes up in a ball of fire. Gunboat (from wave 3): locks one cargo ship, sails beside it and shells it every 2.4 s until it sinks, then locks the next; 3 hits. Rocket boat (from wave 6, and in the Fire Fleet’s last round): slow, 6 hits, keeps well back and fires salvos of red rockets that cannot be stopped, three salvos, then leaves. Fire ships stay and so does the Fire Fleet; its packs now carry a gunboat and a rocket boat.',
+        why: 'The player (wave 2 and 10 notes): “improve the animation and look of the attack boats ... a better wake and move more realistically ... different kinds, more defined: a speed boat that rushes and explodes with fire, one with a small cannon that locks onto a cargo ship and sails with it until it sinks it, and one that shoots rockets like the rocket trucks with a lot more health, more range and slower.”',
+      },
       {
         date: '2026-11-22',
         log: 56,
@@ -402,8 +409,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   delta: {
-    look: 'Does the switch feel like a real choice (waves 2, 4, 7, 9)? Can you read the burning-branch warning on your phone?',
+    look: 'Is the long river worth it: do the ships feel exposed all the way, with something to watch on every leg? Do the Rocket Trucks on the banks read from the lane? Is the island, point-blank on two legs, the danger and the south leg the rest? Does the Long Gauntlet read as fire running down the river?',
     history: [
+      {
+        date: '2026-11-24',
+        log: 69,
+        title: 'One long river, no switch',
+        what: 'The fork and its switch are gone. The river is one channel about 2.9 times the usual length (the legs at y 170, 470 and 770) that winds back on itself twice between marsh islands: the ships come in on the north leg heading east, turn at the east bend, sail the middle leg west past the carrier’s bay, turn at the west bend and sail the south leg east to the delivery. Eight silos along it (the coast, the island, the islets, the marsh; the drone silos in the middle, so a drone has a long flight to the ships at the river’s ends). From wave 4 the new enemies are Rocket Trucks on the banks, a truck over every leg. Boss, the Long Gauntlet: the whole shore fires down the river silo by silo, each lit 2.5 s before, at the ships nearest it.',
+        why: 'The player (v65 run, quit wave 4): “I don’t see the point of the switching lanes. Drop that map design and let’s make a map that is just really long for the ships to traverse ... triple the distance of the normal length. Do some iterations to find the best design.”',
+      },
       {
         date: '2026-11-22',
         log: 57,

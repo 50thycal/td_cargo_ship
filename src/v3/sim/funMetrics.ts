@@ -49,6 +49,9 @@ import type { AbilityId } from '../data/abilities';
 import {
   lossLimit,
   pickUpgrade,
+  press,
+  pressMove,
+  release,
   setFlow,
   setFormation,
   step,
@@ -640,6 +643,9 @@ function botIO(g: Game): BotIO {
     pick: (id, rep) => pickUpgrade(g, id, rep),
     flow: (v) => setFlow(g, v),
     formation: (id) => setFormation(g, id),
+    press: (x, y, r) => press(g, x, y, r),
+    move: (x, y) => pressMove(g, x, y),
+    release: (x, y, r) => release(g, x, y, r),
   };
 }
 
