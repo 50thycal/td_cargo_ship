@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-24',
-  headline: 'Your play notes are in (21 logs). Three builds are running: A (log v66) the Tide moves as a whole and strands ships, Sowers hold themselves, the first-load sizing bug; B (v67) an always-dark Lantern and Blackout, a Dreadnought that uses its artillery, a Citadel that is destroyed once and returns for the boss; C (v68) the Coves boats overhauled, the Delta as one long route, the bot learns the Lance. Crossing and the Archipelago rated fun 5, boss 5. Builds start from your notes now. Still open: what comes after the maps (rollout, Air Strike pass, Armory).',
+  headline: 'Your play notes are built and merged: #242 (log v68) the Tide moves as a whole and strands ships, Sowers hold themselves, first-load sizing hardened; #241 (v67) an always-dark Lantern and Blackout, a battleship Dreadnought with shootable turrets, a Citadel destroyed once that returns for the boss; #243 (v69) three Coves boats, the Delta as one long river, the bot holds the Lance. Ready to play in the Test Lab. Two things I will fix next: Sowers now reads too easy for the bot (80%), and the sizing bug needs your iPhone to confirm. Still open: what comes after the maps (rollout, Air Strike pass, Armory).',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -164,9 +164,14 @@ export const STATUS = {
     { n: 231, title: 'Battlefield uses the full width', state: 'merged' },
     { n: 235, title: 'Test Lab: Tools panel, Armory as one setting, old tests removed', state: 'merged' },
     { n: 236, title: 'Test Lab Watch mode: the bot plays, you take over (log v65)', state: 'merged' },
+    { n: 240, title: 'Hub: your play notes of 2026-11-24 triaged', state: 'merged' },
+    { n: 241, title: 'Always-dark Lantern and Blackout, Dreadnought artillery, Citadel returns for the boss (log v67)', state: 'merged' },
+    { n: 242, title: 'Tide moves as a whole and strands ships; Sowers auto-hold; first-load sizing fix (log v68)', state: 'merged' },
+    { n: 243, title: 'Coves boats overhaul, Delta as one long route, bot uses the Lance (log v69)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-24', what: 'Merged #241, #242 and #243 (logs v67, v68, v69): all your notes from the last playtest are built, in the Test Lab. Tide: the whole sea pulls back into the deep channel and floods back, slower (8 s out, 9 s in), and ships on the flats run aground until high water; bot 56% (usual Armory). Sowers: hold is automatic, mines seen 1.5× farther, no Hold button; the bot now wins 80%, too easy, so I will tune it. First-load sizing: I could not reproduce it, so it is hardened (a third size check, measuring for 6 s) and needs your iPhone to confirm. Lantern and Blackout: always dark, no light drops, a new lighthouse and lamp (bot 57% and 60%). Dreadnought: a real battleship, three shootable turrets fire the artillery, missiles come from a silo (bot 61%). Citadel: destroyed once (70 shots), a ruin until the boss rebuilds it (bot 60%); the shot count is a lever if it feels grindy. Coves: a speedboat that rams and burns, a gunboat that locks a ship and shells it, a slow rocket boat (bot 61%). Delta: one river 2.92 times the usual length with a Rocket Truck on every bank and the Long Gauntlet boss (bot 53%). The bot now holds and releases the Lance and swipes the Cutter: your Battery kit goes from 0/48 to 15/48 wins.' },
     { date: '2026-11-24', what: 'Your play notes read (21 logs since Nov 23, including Watch runs; your pause notes typed while the bot drove count as yours). Marks saved. Fun 5 on every rated run; Crossing and the Archipelago boss 5, Citadel boss 3, the Dreadnought lost its boss wave in a sim run. Building, three at once: A log v66 Tide (the whole water moves in and out, slower, longer phases, ships on the flats stuck until high tide), Sowers (hold is automatic, mines seen 1.5× farther, ships pause before a mine), first-load sizing (“I still have to rotate my screen”); B log v67 Lantern and the Blackout boss always dark (no light drop), better spotlight, the Dreadnought uses shootable artillery and looks like a battleship with a missile silo, the Citadel is destroyed once and returns for the boss; C log v68 Coves boats overhaul (a rushing fire speedboat, a locking cannon boat, a slow sturdy rocket boat), the Delta rebuilt as one route three times as long (no lane switch), the bot holds the Lance to charge. Also merged: #236 (Watch mode, log v65).' },
     { date: '2026-11-23', what: 'Merged #236 (log v65). Your Watch mode. Every Ready card has a gold Watch button and every map tile an eye key: the bot fitted to your play (it aims and grabs pickups like you, loses a bit more, finds boss rounds about twice as hard) plays that exact setup live. Speed it up (up to 10×) or pause; while it plays, your taps do nothing. Take over (the gold rail button, or from the pause menu or draft) plays from that tick; Let bot play hands it back, as often as you like. Pause notes say whether you or the bot was playing. The log records who played when, and labels the run full playtest, sim or mixed; the scorecard says e.g. “Mixed run · you played 42%, the bot 58%”. The bot fit and your stats skip the bot’s share, so it never counts as your play. A Watch run can’t be Continued later.' },
     { date: '2026-11-23', what: 'Merged #235. Your Test Lab notes built. The Armory is now one entry in Tools (the per-chapter buttons are gone). Tools opens as a panel instead of jumping down the page: Setup (Armory, Call-outs), Logs (session report, send logs, download the last log) and More (map analytics, feedback page). The old testing section is gone from the hub (75 old enemy, weapon, event and combo cards, the round tally, Next up and Play 5); the hub shows only Ready to test and the maps by chapter. Their direct links still work for the checks and bots. Also fixed: the touch keyboard could cover the note’s Save button in the checks; notes now always fit above the keyboard.' },
@@ -238,6 +243,18 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
+  {
+    id: 'r18-play-round',
+    kind: 'item',
+    title: 'Play the rebuilt maps: Tide, Sowers, Lantern, Blackout, Dreadnought, Citadel, Coves, Delta (Test Lab → Ready to test)',
+    text: 'Each Ready card says what changed and what to look for. Tide: does the whole sea move, and do ships get stuck at low water? Sowers: does the ship pause by itself before a mine? Lantern and Blackout: is it dark all the time, and does the new lamp read? Dreadnought: do the turrets read as the artillery? Citadel: is 70 shots too grindy? Coves: do the three boats read apart? Delta: is the long river fun, or just long? Watch mode works for all of them; your pause notes count.',
+  },
+  {
+    id: 'r18-sizing',
+    kind: 'item',
+    title: 'Check the first-load screen size on your iPhone',
+    text: 'I could not make the “rotate my screen” bug happen here, so the fix is a hardening: a third size check and measuring for 6 s after launch. Open the game from a fresh load in landscape (and from portrait, then turn). Does it fit the first time?',
+  },
 
   {
     id: 'r17-after-maps',
