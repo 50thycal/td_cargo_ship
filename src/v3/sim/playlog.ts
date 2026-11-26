@@ -605,11 +605,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      (SOW.armor, SOW.rack; game.ts sowMines, updatePlane), and the
  *      chutes' strings come tighter (encounters.ts SOWERS_R4 mine gaps).
  *      A Sowers log before v70 no longer replays to the same game; the
- *      other maps play as they did. */
-export const LOG_VERSION = 70;
+ *      other maps play as they did.
+ *  71: Saltgate Canal's parade with the ordinary Missile Truck (the player,
+ *      after playing v62: "a bit too hard ... use the normal truck that you
+ *      cannot attack and not these custom vehicles"). The parade's trucks
+ *      are the ordinary Missile Truck raiders (Raider kind `parade`,
+ *      sim/foes.ts updateParadeTruck; the old boss-only enemy
+ *      `missileTruck`, its 4 hits and its drawing are gone), which no shot,
+ *      blast or helper hits, so the counter is the missile in the air; a
+ *      truck's launches, patterns and the road are as they were. Eased: the
+ *      bot's loss in the three rounds, usual Armory, goes from 0.9 / 1.4 /
+ *      2.0 to 0.5 / 1.0 / 1.4 (ripples of 5 at 0.4 s in round 1, a denser
+ *      round 2, one stray in round 3; encounters.ts SALTGATE_BOSS_ROUNDS). A Saltgate log before v71 no
+ *      longer replays to the same game; the other maps play as they did. */
+export const LOG_VERSION = 71;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [70];
+export const LOG_REPLAYS: readonly number[] = [71];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

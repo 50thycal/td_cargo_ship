@@ -1,4 +1,5 @@
-// Saltgate Canal's Gatecrashers, the Missile Truck parade (log v62,
+// Saltgate Canal's Gatecrashers, the Missile Truck parade (log v62; v71: the
+// ordinary truck, a raider no shot hits,
 // docs/design/v3-ch2-saltgate.md): phone-size shots mid-boss in round 1
 // (ripples) and round 3 (the dense parade and its rolling barrage). The run
 // can't be lost (every hull kept afloat) and nothing is shot, so the whole
@@ -81,9 +82,9 @@ async function until(wave, cond, max = 90) {
   return false;
 }
 
-const onRoad = "g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead && t.x > 30 && t.x < 1570).length";
+const onRoad = "g.raiders.filter((t) => t.kind === 'parade' && t.x > 30 && t.x < 1570).length";
 const lobs = "g.threats.filter((t) => t.kind === 'ballistic' && !t.dead).length";
-const raising = "g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead && t.foe?.state === 1).length";
+const raising = "g.raiders.filter((t) => t.kind === 'parade' && t.state === 'raise').length";
 
 const r1 = await until(11, `${onRoad} >= 5 && ${lobs} >= 2 && ${raising} >= 2`);
 check(r1, 'round 1: five or more trucks on the road, missiles in the air and rings filling');

@@ -166,7 +166,6 @@ const BIG_KILL_LABEL: Partial<Record<ThreatKind, string>> = {
   strafer: 'JET DOWN',
   bomber: 'BOMBER DOWN',
   rocketTruck: 'TRUCK DOWN',
-  missileTruck: 'LAUNCHER DOWN',
   attackHeli: 'HELI DOWN',
   armored: 'ARMOR DOWN',
   stealthJet: 'STEALTH DOWN',
@@ -216,7 +215,6 @@ const DEBUT_HINT: Partial<Record<ThreatKind, string>> = {
   sprinter: 'A swarm that flares a booster near its ship, then sprints in. Get them before the flare.',
   hydra: 'Kill it and it splits into two darts. Kill it far out, or catch both with a blast.',
   rocketTruck: 'Its red rockets can\'t be stopped. Kill the truck while the red ring fills (four hits).',
-  missileTruck: 'A parade of them drives the road, raising ballistic missiles on the move. Kill a truck while its red ring fills (four hits), or shoot the missile in the air.',
   attackHeli: 'Fires missile pairs on sight, hovers, moves. Five hits, or shoot its missiles.',
   torpedoSub: 'Under water, out of reach. It fires two torpedoes, each at a ship, now and then a fast amber one, then dives. Shoot the torpedoes, or get off the dashed lines.',
   armored: 'The plate takes shots from the front. Hit it as it banks (the yellow ring), or use a blast.',
@@ -272,6 +270,7 @@ const VECTOR_HINT: Record<RaiderKind, [string, string]> = {
   sub: ['NEW: Submarine', 'Watch for the periscope: it surfaces and fires a salvo.'],
   popup: ['NEW: Missile truck', 'Drives to the shore, raises its launcher, fires, backs off.'],
   runner: ['NEW: Shore runner', 'Drives the whole coast road, stopping to fire.'],
+  parade: ['NEW: Missile truck', 'Drives the road without stopping, raising a missile as it goes. Shoot the missile.'],
 };
 
 function el<K extends keyof HTMLElementTagNameMap>(
