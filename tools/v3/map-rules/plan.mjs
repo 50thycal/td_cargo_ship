@@ -69,8 +69,8 @@ export const SETTLED = [
 
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
-  updated: '2026-11-24',
-  headline: 'Your play notes are built and merged: #242 (log v68) the Tide moves as a whole and strands ships, Sowers hold themselves, first-load sizing hardened; #241 (v67) an always-dark Lantern and Blackout, a battleship Dreadnought with shootable turrets, a Citadel destroyed once that returns for the boss; #243 (v69) three Coves boats, the Delta as one long river, the bot holds the Lance; #245 (v70) Sowers back in its band. Ready to play in the Test Lab. Still open: your iPhone check of the first-load sizing, and what comes after the maps (rollout, Air Strike pass, Armory).',
+  updated: '2026-11-26',
+  headline: 'Your play notes are built and merged: #242 (log v68) the Tide moves as a whole and strands ships, Sowers hold themselves, first-load sizing hardened; #241 (v67) an always-dark Lantern and Blackout, a battleship Dreadnought with shootable turrets, a Citadel destroyed once that returns for the boss; #243 (v69) three Coves boats, the Delta as one long river, the bot holds the Lance; #245 (v70) Sowers back in its band. Ready to play in the Test Lab. Your Saltgate note is built (PR 247, log v71: the ordinary truck you cannot attack, easier boss), waiting on CI. You chose rollout first. Still open: the Saltgate difficulty band, the rollout order, your iPhone check, and playing the rebuilt maps.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -247,6 +247,20 @@ export const STATUS = {
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
   {
+    id: 'r19-saltgate-band',
+    kind: 'question',
+    title: 'Saltgate boss is easier now, so the map is too easy for the bot (80% won, target 50–70%). Which way?',
+    text: 'The trucks are now the ordinary one you cannot attack (PR 247, log v71) and the boss rounds lose about 0.5 / 1.0 / 1.4 ships. The bot now wins the map 80%. Either raise the boss a little (back toward 0.7 / 1.3 / 2.0, about 58%), or make waves 6–9 a bit heavier. Also: with nothing to shoot but the missiles, is the boss too little to do?',
+    options: ['Raise the boss a little', 'Heavier waves 6–9', 'Leave it, I will play it first'],
+  },
+  {
+    id: 'r19-rollout-chapter',
+    kind: 'question',
+    title: 'Rollout: start with chapter 1, then in order?',
+    text: 'You picked rollout first. I plan to move the rebuilt maps into the campaign one chapter at a time (the old waves and bosses are replaced), chapter 1 first, and wait for your OK before the next.',
+    options: ['Yes, chapter 1 first', 'Different order (note)'],
+  },
+  {
     id: 'r18-play-round',
     kind: 'item',
     title: 'Play the rebuilt maps: Tide, Sowers, Lantern, Blackout, Dreadnought, Citadel, Coves, Delta (Test Lab → Ready to test)',
@@ -260,31 +274,6 @@ export const NEEDS = [
   },
 
   {
-    id: 'r17-after-maps',
-    kind: 'question',
-    title: 'All 20 maps are rebuilt. What comes next?',
-    text: 'The rebuilt maps run only in the Test Lab. The plan after the maps, in my order: (1) Rollout: move the rebuilt maps into the campaign chapter by chapter as you OK them (they replace the old waves and bosses). (2) An OP-combo pass: Air Strike (+ Flak) leads the bot’s best kits on most maps; give it real counters. (3) Armory balance: the latest Armory wins 8–15% on the chapter 4 maps against 50%+ for your usual one. (4) Boss tuning: most bosses sit under the target loss a round. (5) Leftovers: re-sweep the kits on the Tide and the Citadel, your open play notes. Which first?',
-    options: ['Rollout first (in that order)', 'Air Strike / OP combos first', 'Armory balance first', 'Wait for my play of chapter 4 first'],
-  },
-  {
-    id: 'r17-rail-check',
-    kind: 'item',
-    title: 'Check the cleaned-up rail (slider and formation button gone)',
-    text: 'Play a campaign map and a lab map. The left rail is now empty on most maps (only Sowers shows HOLD). Is a bare strip fine, or should it shrink or show something? Note: the campaign’s old Sowers has no Hold; it comes with the rollout.',
-  },
-  {
-    id: 'r17-play-parade',
-    kind: 'item',
-    title: 'Play Saltgate’s new boss: the Missile Truck parade (Test Lab → Ready to test, v62)',
-    text: 'Retry → Skip to boss. Trucks roll left to right every 1–3 s and fire on the move in patterns (ripples, pairs, then a rolling barrage in round 3). Look for: is this the parade you pictured? It holds 8–11 trucks a round (5–9 on screen), because each round is kept to about 30 s; if you want a longer, denser parade, say so and the rounds get longer. Does the ammo hold up?',
-  },
-  {
-    id: 'r17-play-lab-armory',
-    kind: 'item',
-    title: 'Try the Test Lab Armory editor, unlocked cards and map notes',
-    text: 'On the Test Lab hub: each chapter row has “⚓ Armory · Lv x–y”; tap it to set levels. Each map’s i key opens its notes (latest change, what to look for, history). Look for: are the chapter ranges right (Auto = chapter + 1)? Is one upgrade per bay what you wanted, or should every upgrade be on at once? Are the notes useful?',
-  },
-  {
     id: 'r17-full-width',
     kind: 'question',
     title: 'The map now starts at the left edge. Is the leftover width on the right OK?',
@@ -297,17 +286,16 @@ export const NEEDS = [
     title: 'Check the cleaned-up Test Lab and its Tools panel',
     text: 'Only Ready to test and the maps by chapter are left on the hub; Tools (top right) holds the Armory, Call-outs and the logs. Anything from the old testing section you miss? Is there a setting you want in Tools?',
   },
-  {
-    id: 'r17-play-watch',
-    kind: 'item',
-    title: 'Try Watch mode: let the bot play a map, take over when you want',
-    text: 'Test Lab → a Ready card → Watch (or the eye key on a map tile). Speed it up, take over at a moment you want to test, hand it back, leave notes. Look for: does the bot play like you? Is Take over easy to hit? Does the end screen read the run right?',
-  },
 ];
 
 // ---- Answered after round 1 (out of NEEDS; the marks are in
 // review-2026-11-17-r2.json). The archive shows each with the player's call.
 export const ANSWERED = [
+  { id: 'r17-after-maps', kind: 'question', choice: 0, note: 'Rollout first (in that order).', at: '2026-11-24', title: 'All 20 maps are rebuilt. What comes next?', text: '' },
+  { id: 'r17-rail-check', kind: 'item', verdict: 'approve', note: '', at: '2026-11-24', title: 'Check the cleaned-up rail (slider and formation button gone)', text: '' },
+  { id: 'r17-play-parade', kind: 'item', verdict: 'change', note: 'A bit too hard. “We should also use the normal truck that you cannot attack and not these custom vehicles you made.” Built (log v71, PR 247).', at: '2026-11-24', title: 'Play Saltgate’s new boss: the Missile Truck parade', text: '' },
+  { id: 'r17-play-lab-armory', kind: 'item', verdict: 'approve', note: '', at: '2026-11-24', title: 'Try the Test Lab Armory editor, unlocked cards and map notes', text: '' },
+  { id: 'r17-play-watch', kind: 'item', verdict: 'approve', note: '“This is a great addition and helps me play test quicker.”', at: '2026-11-24', title: 'Try Watch mode', text: '' },
   {
     id: 'r15-play-dreadnought',
     kind: 'item',

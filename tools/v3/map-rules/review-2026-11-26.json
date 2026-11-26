@@ -1,0 +1,27 @@
+{
+  "r17-after-maps": {
+    "at": "2026-11-24T10:28:33.504Z",
+    "choice": 0,
+    "note": ""
+  },
+  "r17-rail-check": {
+    "at": "2026-11-24T10:27:47.200Z",
+    "note": "",
+    "verdict": "approve"
+  },
+  "r17-play-parade": {
+    "at": "2026-11-24T10:29:38.201Z",
+    "note": "I played it and it is a bit too hard \n\nI think we should also use the normal truck that you cannot attack and not these custom vehicles you made ",
+    "verdict": "change"
+  },
+  "r17-play-lab-armory": {
+    "at": "2026-11-24T10:29:43.234Z",
+    "note": "",
+    "verdict": "approve"
+  },
+  "r17-play-watch": {
+    "at": "2026-11-24T10:31:13.156Z",
+    "note": "Th is a great addition and helps me play test quicker ",
+    "verdict": "approve"
+  }
+}
