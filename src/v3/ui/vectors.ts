@@ -9,6 +9,9 @@
 // The only state kept here is cosmetic (dust puffs), keyed by raider id.
 
 import { PLANE, SUB, TRUCK, VIEW } from '../data/config';
+import { FOE } from '../data/foes';
+import { paradeShip } from '../sim/foes';
+import { drawMarkLine, drawRaiseRing } from './foes';
 import { planeEntry, routePose, type Ally, type Game, type Launch, type Raider, type Threat } from '../sim/game';
 import { laneAt, laneLength } from '../sim/lanes';
 
@@ -588,7 +591,17 @@ function drawTruck(ctx: CanvasRenderingContext2D, g: Game, r: Raider): void {
   }
   // Launcher elevation 0..1 through raise / fire / lower.
   let elev = 0;
-  if (r.state === 'raise') elev = easeOut(Math.min(1, r.t / TRUCK.raise));
+  if (r.kind === 'parade') {
+    // Log v71: a parade truck raises its missile on the move (the ring
+    // filling and the dashed line to its ship), then the rail comes down.
+    const lift = r.lift ?? TRUCK.raise;
+    if (r.state === 'raise') {
+      elev = easeOut(Math.min(1, r.t / lift));
+      const marked = paradeShip(g, r);
+      if (marked) drawMarkLine(ctx, g, r, marked);
+      drawRaiseRing(ctx, g, r, Math.min(1, r.t / lift), 44);
+    } else if (r.state === 'lower') elev = 1 - easeIn(Math.min(1, r.t / FOE.parade.lower));
+  } else if (r.state === 'raise') elev = easeOut(Math.min(1, r.t / TRUCK.raise));
   else if (r.state === 'fire') elev = 1;
   else if (r.state === 'lower') elev = 1 - easeIn(Math.min(1, r.t / TRUCK.lower));
   // Out of a tunnel it fades up from the dark; into one, it fades away.

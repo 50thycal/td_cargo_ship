@@ -83,7 +83,7 @@ import { FOE, FOES, HEAVY_FOES, SUB_FROM, type FoeSetting } from '../data/foes';
 import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
-import { absorbs, burstCloud, crossingPair, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
+import { absorbs, burstCloud, crossingPair, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateParadeTruck, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
@@ -531,7 +531,7 @@ interface Unit {
 /** Launch platforms that are not targets (round 4): a submarine surfacing in
  *  open water, a truck that drives to the shore and back, a truck that runs
  *  the whole shore road. */
-export type RaiderKind = 'sub' | 'popup' | 'runner';
+export type RaiderKind = 'sub' | 'popup' | 'runner' | 'parade';
 export type RaiderState = 'warn' | 'surface' | 'fire' | 'dive' | 'drive' | 'raise' | 'lower' | 'reverse';
 
 export interface Raider {
@@ -558,6 +558,15 @@ export interface Raider {
   /** An authored encounter's launcher: its id and its aim. */
   enc?: string;
   aim?: BeatAim;
+  /** A parade truck (log v71, Saltgate Canal's Gatecrashers): the launches
+   *  it has coming (wave seconds, and the lock its ship is held at, -1
+   *  any), the missiles it carries, the seconds it raises each, how fast
+   *  it drives (px/s) and the ship its launch is marked on. */
+  fires?: { at: number; lock: number }[];
+  left?: number;
+  lift?: number;
+  speed?: number;
+  mark?: number;
 }
 
 export interface RaiderSpawn {
@@ -567,6 +576,8 @@ export interface RaiderSpawn {
   units: Unit[];
   enc?: string;
   aim?: BeatAim;
+  /** A parade truck: its missiles, raise seconds and speed (see Raider). */
+  parade?: { missiles: number; lift: number; speed: number };
 }
 
 /** Where each launch came from (the analyzer reads this). */
@@ -2381,7 +2392,7 @@ function atStation(th: Threat): boolean {
   const f = th.foe;
   if (!f) return true;
   if (th.kind === 'tender') return f.n === 1;
-  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'missileTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
+  if (th.kind === 'spotter' || th.kind === 'rocketTruck' || th.kind === 'attackHeli' || th.kind === 'lure') return f.state >= 1;
   return true;
 }
 
@@ -5927,7 +5938,6 @@ const WAVE_SPEED_SHARE: Record<ThreatKind, number> = {
   hydra: GUIDED.waveSpeedShare,
   dart: 0.5,
   rocketTruck: 0,
-  missileTruck: 0,
   attackHeli: 0.3,
   heliRocket: 0.5,
   torpedoSub: 0,
@@ -7187,7 +7197,8 @@ function updateInterceptors(g: Game, dt: number): void {
 // Raiders: submarines and missile trucks
 
 function spawnRaider(g: Game, sp: RaiderSpawn): void {
-  if (!g.seenVectors.has(sp.kind)) {
+  // (A parade truck is the ordinary truck: no debut of its own.)
+  if (sp.kind !== 'parade' && !g.seenVectors.has(sp.kind)) {
     g.seenVectors.add(sp.kind);
     g.events.push({ kind: 'vector', vector: sp.kind });
     cue(g, 'debut.sting', sp.path[0].x, sp.path[0].y);
@@ -7216,6 +7227,7 @@ function spawnRaider(g: Game, sp: RaiderSpawn): void {
     fireT: 0,
     ...(sp.enc ? { enc: sp.enc } : {}),
     ...(sp.aim ? { aim: sp.aim } : {}),
+    ...(sp.parade ? { fires: [], left: sp.parade.missiles, lift: sp.parade.lift, speed: sp.parade.speed } : {}),
   });
 }
 
@@ -7277,6 +7289,10 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
       r.state = 'reverse';
       r.dist = 0; // gone
     }
+    return;
+  }
+  if (r.kind === 'parade') {
+    updateParadeTruck(g, r, dt);
     return;
   }
   const speed = r.kind === 'runner' ? TRUCK.runnerSpeed : TRUCK.speed;
@@ -7404,6 +7420,8 @@ function updateFields(g: Game, dt: number): void {
 
 /** Is this sub or truck up and able to fire (what a strike knocks out)? */
 function raiderUp(r: Raider): boolean {
+  // (A parade truck can't be hit: its missiles are what you shoot.)
+  if (r.kind === 'parade') return false;
   return r.kind === 'sub' ? r.state !== 'warn' && r.state !== 'dive' && r.state !== 'reverse' : r.state !== 'reverse' && r.dist > 0;
 }
 
@@ -8389,7 +8407,6 @@ export const KILL_CUE: Record<ThreatKind, CueId> = {
   hydra: 'kill.missile',
   dart: 'kill.small',
   rocketTruck: 'truck.destroyed',
-  missileTruck: 'truck.destroyed',
   attackHeli: 'kill.big',
   heliRocket: 'kill.small',
   torpedoSub: 'sub.destroyed',
@@ -8439,7 +8456,6 @@ export const LAUNCH_CUE: Partial<Record<ThreatKind, CueId>> = {
   hydra: 'missile.launch',
   dart: 'cluster.split',
   rocketTruck: 'truck.raise',
-  missileTruck: 'truck.raise',
   attackHeli: 'foe.rotor',
   heliRocket: 'missile.launch',
   torpedoSub: 'sub.surface',

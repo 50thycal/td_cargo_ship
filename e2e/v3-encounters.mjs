@@ -183,7 +183,8 @@ try {
   await page.screenshot({ path: `${OUT_DIR}/saltgate-script.png` });
   // Log v62: Skip to boss. The Gatecrashers are a parade of Missile Trucks
   // (no Rocket Truck) along the road behind the silos, west to east, never
-  // stopping, lobbing ballistic missiles at the locks on the move.
+  // stopping, lobbing ballistic missiles at the locks on the move. Log
+  // v71: the ordinary Missile Truck, a raider no shot hits.
   await page.evaluate(() => document.querySelector('.v2-pause-panel [data-lab-skip]').click());
   await page.waitForFunction(() => window.__v3.game()?.wave === 11 && !document.querySelector('.v2-overlay.open'), null, { timeout: 10000 });
   let parade = { trucks: 0, rockets: 0, lobs: 0, raised: 0 };
@@ -194,18 +195,18 @@ try {
     await page.waitForTimeout(20);
     parade = await page.evaluate(() => {
       const g = window.__v3.game();
-      const tr = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead);
+      const tr = g.raiders.filter((t) => t.kind === 'parade');
       const ids = new Set(tr.map((t) => t.id));
       return {
         trucks: tr.length,
         rockets: g.threats.filter((t) => t.kind === 'rocketTruck').length,
-        lobs: g.threats.filter((t) => t.kind === 'ballistic' && !t.dead && (ids.has(t.from) || (g.event?.sent.missileTruck ?? 0) > 0)).length,
-        raised: tr.filter((t) => t.foe?.state === 1).length,
+        lobs: g.threats.filter((t) => t.kind === 'ballistic' && !t.dead && (ids.has(t.from) || (g.event?.sent.ballistic ?? 0) > 0)).length,
+        raised: tr.filter((t) => t.state === 'raise').length,
       };
     });
   }
-  check(parade.trucks > 0 && parade.rockets === 0 && parade.lobs > 0, `the Gatecrashers' parade: Missile Trucks on the road lobbing ballistic missiles, no Rocket Truck (${JSON.stringify(parade)})`);
-  const along = () => page.evaluate(() => Object.fromEntries(window.__v3.game().threats.filter((t) => t.kind === 'missileTruck' && !t.dead).map((t) => [t.id, { a: t.foe?.along ?? 0, y: t.y }])));
+  check(parade.trucks > 0 && parade.rockets === 0 && parade.lobs > 0, `the Gatecrashers' parade: ordinary Missile Trucks on the road (raiders, not threats) lobbing ballistic missiles, no Rocket Truck (${JSON.stringify(parade)})`);
+  const along = () => page.evaluate(() => Object.fromEntries(window.__v3.game().raiders.filter((t) => t.kind === 'parade' && t.state !== 'reverse').map((t) => [t.id, { a: t.dist, y: t.y }])));
   const a0 = await along();
   await page.evaluate(() => window.__v3.advance(0.25));
   const a1 = await along();

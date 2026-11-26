@@ -713,6 +713,7 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'saltgate', log: 71, tag: 'Polished', note: 'Boss parade of normal trucks (no shooting them, shoot the missiles), and easier. Better?' },
   { map: 'sowers', log: 70, tag: 'Polished', note: 'Still automatic, but sown mines land closer and bombers shoot back. Stops cost. Fair?' },
   { map: 'delta', log: 69, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },
   { map: 'coves', log: 69, tag: 'Polished', note: 'Speedboats ram and burn, gunboats lock on one ship, rocket boats fire from afar.' },
@@ -721,7 +722,6 @@ export const READY_TO_TEST: ReadyToTest[] = [
   { map: 'dreadnought', log: 67, tag: 'Polished', note: 'Three gun turrets fire the artillery: shoot them out. Silo for missiles. Less lame?' },
   { map: 'lantern', log: 67, tag: 'Polished', note: 'Always dark, no star shells; a new lighthouse, beam and lamp. Readable on a phone?' },
   { map: 'battery', log: 67, tag: 'Polished', note: 'The Blackout boss is always dark now (no star shell). Can you still read it?' },
-  { map: 'saltgate', log: 62, tag: 'Polished', note: 'New boss: missile trucks parade along the road, firing on the move in patterns. Better?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },
   { map: 'rigs', log: 55, tag: 'Polished', note: 'Rigs now take shots, not damage (the count is on each); a better tow. Sturdy enough?' },
   { map: 'archipelago', log: 37, tag: 'New', note: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Fair?' },

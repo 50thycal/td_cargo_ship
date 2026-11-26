@@ -1514,12 +1514,7 @@ function paradeTruck(g: Game, ev: EventRun): void {
   const R = bossRound(g, ev)?.parade;
   if (!T || !R || !ev.parade) return;
   const path = ev.parade.road;
-  const th = spawnThreat(g, 'missileTruck', path[0].x, path[0].y, 'truck');
-  th.target = CARRIER_TARGET;
-  th.heading = Math.atan2(path[1].y - path[0].y, path[1].x - path[0].x);
-  th.hp = th.maxHp = R.hp ?? T.hp;
-  th.foe = foeData({ path, along: 0, n: R.missiles, full: R.missiles, drive: T.drive, lift: T.lift, aim: 'lock', fires: [] });
-  sent(ev, 'missileTruck');
+  g.raiderQueue.push({ at: g.waveT, kind: 'parade', path, units: [], parade: { missiles: R.missiles, lift: T.lift, speed: T.speed } });
 }
 
 /** Call `k` of the parade: its pattern laid on the trucks driving now. */
@@ -1529,14 +1524,14 @@ function paradeBeat(g: Game, ev: EventRun, k: number): void {
   const P = ev.parade;
   if (!T || !R || !P) return;
   const call = P.calls[k];
-  const trucks = g.threats.filter((t) => t.kind === 'missileTruck' && !t.dead && t.foe?.fires);
-  const slots = trucks.map((t) => ({ id: t.id, along: t.foe!.along ?? 0, fires: t.foe!.fires!.map((f) => f.at), left: t.foe!.n - t.foe!.fires!.length }));
-  const speed = THREATS.missileTruck.speed * T.drive;
-  const shots = layBeat(call.beat >= 0 ? paradeBeats(R)[call.beat] : undefined, g.waveT, slots, { on: P.on, off: P.off, speed }, T.lift, paradeSpacing(T.lift, FOE.missileTruck.lower), paradeRng(g, ev, `call${k}`));
+  const trucks = g.raiders.filter((t) => t.kind === 'parade' && t.state !== 'reverse' && t.fires);
+  const slots = trucks.map((t) => ({ id: t.id, along: t.dist, fires: t.fires!.map((f) => f.at), left: (t.left ?? 0) - t.fires!.length }));
+  const speed = T.speed;
+  const shots = layBeat(call.beat >= 0 ? paradeBeats(R)[call.beat] : undefined, g.waveT, slots, { on: P.on, off: P.off, speed }, T.lift, paradeSpacing(T.lift, FOE.parade.lower), paradeRng(g, ev, `call${k}`));
   for (const s of shots) {
-    const f = trucks.find((t) => t.id === s.id)!.foe!;
-    f.fires!.push({ at: s.at, lock: s.lock });
-    f.fires!.sort((a, b) => a.at - b.at);
+    const r = trucks.find((t) => t.id === s.id)!;
+    r.fires!.push({ at: s.at, lock: s.lock });
+    r.fires!.sort((a, b) => a.at - b.at);
     P.shots.push({ at: s.at, id: s.id, lock: s.lock, beat: call.beat });
   }
 }

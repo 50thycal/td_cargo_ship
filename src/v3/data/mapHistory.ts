@@ -246,8 +246,15 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   saltgate: {
-    look: 'Skip to boss: is the parade the one you pictured, trucks rolling left to right and firing on the move in patterns? Does your ammo hold through round 3’s rolling barrage?',
+    look: 'Skip to boss: the parade is ordinary Missile Trucks now, and nothing can shoot a truck, only its missiles. Is it easier, and is it clear what to shoot?',
     history: [
+      {
+        date: '2026-11-26',
+        log: 71,
+        title: 'The boss: the normal truck, and easier',
+        what: 'The parade’s trucks are the ordinary Missile Truck now (the one the waves use), not the custom 4-hit truck: nothing hits them, so the counter is shooting each missile in the air. Same column, same patterns. Easier: round 1 ripples of 5, a lighter round 3. Bot, your usual Armory, 96 seeds: boss rounds lose 0.5 / 1.0 / 1.4 ships (0.9 / 1.4 / 2.0 before).',
+        why: 'Your note after playing it: “a bit too hard … use the normal truck that you cannot attack and not these custom vehicles”.',
+      },
       {
         date: '2026-11-23',
         log: 62,

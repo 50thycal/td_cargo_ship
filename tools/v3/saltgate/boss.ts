@@ -1,6 +1,6 @@
 // Saltgate Canal's Gatecrashers, round by round, as the report's bot plays
-// the map card (docs/design/v3-ch2-saltgate.md). Log v62, the parade: trucks
-// sent, killed before they fired at all, missiles fired and shot down in
+// the map card (docs/design/v3-ch2-saltgate.md). Log v62, the parade (v71:
+// ordinary trucks no shot hits): trucks sent, missiles fired and shot down in
 // the air, the most in the air at once, ships lost, the round's seconds, and
 // the ammo: shots fired, seconds with an empty rack, and the rack's lowest.
 // Also the trucks of waves 1-10 (`--waves`).
@@ -80,21 +80,18 @@ for (let seed = from; seed < from + n; seed++) {
       if (g.ammo < 1) dry += DT;
       low = Math.min(low, Math.floor(g.ammo));
     }
-    for (const th of g.threats) {
-      if ((th.kind !== 'rocketTruck' && th.kind !== 'missileTruck') || seen.has(th.id)) continue;
-      seen.set(th.id, { wave: g.wave, full: th.foe?.full ?? th.foe?.n ?? 0, fired: 0, gone: false, killed: false });
+    // Log v71: the parade's trucks are raiders no shot can hit; count the
+    // trucks sent and the missiles they fire (a missile gone before its
+    // flight was up was shot down).
+    for (const r of g.raiders) {
+      if (r.kind !== 'parade' || seen.has(r.id)) continue;
+      seen.set(r.id, { wave: g.wave, full: r.left ?? 0, fired: 0, gone: false, killed: false });
       row(g.wave).trucks += 1;
     }
     for (const [id, s] of seen) {
-      const th = g.threats.find((o) => o.id === id);
-      if (!th || !th.foe) {
-        // Gone: shot, or off the road's far end.
-        if (!s.gone) s.killed = (s as { along?: number }).along !== undefined && (s as { along?: number }).along! < (s as { len?: number }).len! - 20;
-        s.gone = true;
-        continue;
-      }
-      Object.assign(s, { along: th.foe.along ?? 0, len: th.foe.path ? th.foe.path.reduce((d, p, i, a) => d + (i ? Math.hypot(p.x - a[i - 1].x, p.y - a[i - 1].y) : 0), 0) : 0 });
-      const fired = s.full - th.foe.n;
+      const r = g.raiders.find((o) => o.id === id);
+      if (!r) continue;
+      const fired = s.full - (r.left ?? 0);
       if (fired > s.fired) {
         row(s.wave).salvos += fired - s.fired;
         s.fired = fired;

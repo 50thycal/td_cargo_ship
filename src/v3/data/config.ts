@@ -101,9 +101,7 @@ export type ThreatKind =
   | 'sprinter' | 'hydra' | 'dart' | 'rocketTruck'
   | 'attackHeli' | 'heliRocket' | 'torpedoSub' | 'torpedo' | 'armored' | 'scavenger'
   | 'stealthJet' | 'stealthBomber' | 'diveBomber' | 'siege' | 'spotter'
-  | 'tender' | 'guard' | 'lure' | 'cloud'
-  // Log v46 (Saltgate Canal's boss): a boss-only enemy, the Missile Truck.
-  | 'missileTruck';
+  | 'tender' | 'guard' | 'lure' | 'cloud';
 
 /** The new enemies' kinds, as one list. */
 export const FOE_KINDS: ThreatKind[] = [
@@ -111,7 +109,6 @@ export const FOE_KINDS: ThreatKind[] = [
   'attackHeli', 'heliRocket', 'torpedoSub', 'torpedo', 'armored', 'scavenger',
   'stealthJet', 'stealthBomber', 'diveBomber', 'siege', 'spotter',
   'tender', 'guard', 'lure', 'cloud',
-  'missileTruck',
 ];
 
 /** Enemy structures: you can shoot them, they never strike anything
@@ -183,10 +180,6 @@ export const THREATS: Record<
   hydra: { speed: 100, hp: 2, damage: 2, dropChance: 0.3, label: 'Hydra missile' },
   dart: { speed: 255, hp: 1, damage: 1, dropChance: 0.03, label: 'Hydra dart' },
   rocketTruck: { speed: 75, hp: 4, damage: 0, dropChance: 0.7, label: 'Rocket truck' },
-  // Log v46 (Saltgate Canal's boss, the Gatecrashers): a missile launcher
-  // truck (a TEL) that raises one long ballistic missile on its erector and
-  // fires it. Boss only (data/foes.ts BOSS_FOES).
-  missileTruck: { speed: 70, hp: 4, damage: 0, dropChance: 0.7, label: 'Missile truck' },
   attackHeli: { speed: 160, hp: 5, damage: 0, dropChance: 0.8, label: 'Attack helicopter' },
   heliRocket: { speed: 200, hp: 1, damage: 1, dropChance: 0.05, label: 'Helicopter missile' },
   torpedoSub: { speed: 0, hp: 3, damage: 0, dropChance: 0.5, label: 'Torpedo sub' },
@@ -505,7 +498,6 @@ export const RAID_THEME: Record<ThreatKind, RaidTheme> = {
   hydra: 'volley',
   dart: 'volley',
   rocketTruck: 'barrage',
-  missileTruck: 'barrage',
   attackHeli: 'strike',
   heliRocket: 'strike',
   torpedoSub: 'barrage',
