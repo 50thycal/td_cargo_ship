@@ -1718,6 +1718,11 @@ export class App {
     this.root.style.setProperty('--map-bottom', `${h - this.offY - mapH}px`);
     this.root.style.setProperty('--safe-l', `${sa.l}px`);
     this.root.style.setProperty('--safe-r', `${sa.r}px`);
+    // The note keyboard sits on the page, outside the game's root: it keeps its
+    // keys out from under the island by these same measured insets (iOS reports
+    // the island's inset on both sides sideways; only one side has it).
+    document.documentElement.style.setProperty('--kb-safe-left', `${sa.l}px`);
+    document.documentElement.style.setProperty('--kb-safe-right', `${sa.r}px`);
     this.placeBanner();
   }
 
