@@ -19,7 +19,20 @@ stands in for `keys.ts`).
   keyboard's `--kb-h`).
 - Desktop keeps its real keyboard. `?keys=always` forces the in-app one on a
   desktop; `?keys=off` turns it off.
-- Test: `npm run dev -- --port 5173` then `BASE_URL=http://localhost:5173 npm run e2e:v3:keys`.
+- **🎤 dictation** hands the box to the phone's own keyboard, so its mic key works
+  (a web app can't reach Apple's dictation any other way: the browser's speech
+  recognition isn't available in home-screen web apps). It fires the instant the
+  key is touched, because iOS only opens its keyboard for code-driven focus
+  during a touch. If the phone keyboard didn't open, a hint says to tap the box
+  and then the mic. Dictation must be on in iOS Settings → General → Keyboard.
+- **Camera cut-out:** the keyboard's keys and the typing dialog keep clear of the
+  island, upright and sideways. The game measures the real insets (iOS reports
+  the island's inset on both sides sideways; only one has it) and hands them to
+  the keyboard as `--kb-safe-left/right` (`app.ts` `resize`); the dialog's top
+  padding uses `--sa-t` (`style.css`, "Typing in a dialog").
+- Test: `npm run dev -- --port 5173` then `BASE_URL=http://localhost:5173 npm run e2e:v3:keys`
+  (typing, hotkeys and Fix; then the safe-area layout with iPhone 16 Pro insets,
+  upright and sideways, island on either side).
 
 ## Built from the player's own notes
 
