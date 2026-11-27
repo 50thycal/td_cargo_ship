@@ -33,7 +33,7 @@
     "dev:v3": "vite --open /v3.html",
     "v3:sweep": "vite-node tools/v3/sweep.ts --",
     "e2e:v3": "node e2e/v3.mjs && node e2e/v3-audio.mjs",
-    "e2e:v3:keys": "node e2e/v3-keys.mjs",
+    "e2e:v3:keys": "node e2e/v3-keys.mjs && node e2e/v3-keys-safe-area.mjs",
     "keys:sync": "node tools/sync-keys.mjs",
     "v3:map-lab": "vite-node tools/v3/map-lab/run.ts --",
     "v3:map-report": "vite-node tools/v3/map-report/report.ts --",
