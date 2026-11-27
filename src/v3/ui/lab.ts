@@ -1427,10 +1427,6 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const list = button('Save · back to the list', 'v2-btn', () => save('list'));
   list.dataset.labList = '1';
   acts.append(again, list);
-  if (h.markDone) {
-    const md = labMarkDoneButton(h.markDone, 'v2-btn v3-lab-markdone');
-    acts.append(md);
-  }
   if (next) {
     const n = button('', 'v2-btn primary', () => save('next'));
     n.dataset.labSaveNext = '1';
@@ -1438,6 +1434,13 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
     acts.append(n);
   }
   sheet.append(labSec, acts);
+  // Log v74: Done testing this map, with no verdict, on a row of its own (it
+  // folds away with the rest while the note is typed).
+  if (h.markDone) {
+    const row = el('div', 'v3-lab-markdone-row typing-hide');
+    row.append(labMarkDoneButton(h.markDone, 'v2-btn v3-lab-markdone'));
+    sheet.append(row);
+  }
   return sheet;
 }
 

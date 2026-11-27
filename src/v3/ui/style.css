@@ -8463,3 +8463,9 @@ html:root[data-theme='dark'] {
   border-color: var(--ok);
   color: var(--ok);
 }
+
+.v3-lab-markdone-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
