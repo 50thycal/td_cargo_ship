@@ -89,7 +89,7 @@ import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDo
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
 import type { HurtSrc, TelImpact, Telemetry } from './telemetry';
 import { floatPace, tideAt, type TideNow } from './tide';
-import { armBoat, boatEta, updateBoat, type BoatState } from './boats';
+import { armBoat, boatEta, enterCove, keepWet, leaveCove, settle, updateBoat, type BoatState } from './boats';
 import { calloutsOn, calmBefore, dreadPasses, encountersFor, firstBeatAt, hiddenMinesOn, setupVersion, shieldRisesOn, shotRigsOn, signatureOf, swapFoe, tideClock, waveFire, waveScale, type BeaconCall, type BeatAim, type DreadPass, type Encounter, type EncounterSetup } from '../data/encounters';
 import { commandState, convoyWaveEnd, flowLocked, formationLocked, formationNow, groupSailed, holdPace, updateConvoy, type ConvoyState } from './convoy';
 import type { CommandId } from '../data/convoy';
@@ -331,6 +331,11 @@ export interface Threat {
    *  (sim/boats.ts). */
   boat?: 'gun' | 'rocket';
   bs?: BoatState;
+  /** Log v72: it came out of a cove (the picture rises out of the water),
+   *  and the open water at the cove's mouth it is still sailing out to
+   *  (cleared once it is there; sim/boats.ts enterCove). */
+  cove?: boolean;
+  mouth?: Point;
   /** Its full hull when a special event made it tougher than its kind
    *  (THREATS[kind].hp otherwise): what a Repair Tender mends it up to. */
   maxHp?: number;
@@ -1939,7 +1944,10 @@ function planVectors(g: Game, raids: Raid[], raidUnits: Unit[][], rng: RNG): Rai
   const surfaceKind = (u: Unit) => u.kind === 'ballistic' || u.kind === 'drone';
   // (Log v55: never a structure: a relief rig a truck took was fired off
   // its rail at a ship, a rig flying over the far shore.)
-  const truckKind = (u: Unit) => u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind) && !isStructure(u.kind);
+  // (Log v72, the player: "boats should not be launched from a truck, they
+  // come from a cave": on the Coves a fast boat never goes to a truck.)
+  const coveMap = g.map.bases.some((b) => b.cove);
+  const truckKind = (u: Unit) => !(coveMap && u.kind === 'fastboat') && u.kind !== 'strafer' && u.kind !== 'bomber' && u.kind !== 'mothership' && !isFoe(u.kind) && !isStructure(u.kind);
   // Submarines: a salvo of ballistics back to back, or a drone swarm.
   const spots = rng.shuffle([...g.map.subSpots]);
   for (let k = 0; k < cut(vectorCount(g.wave, vp.subs, 2, 3), g.tempo.waveLen) && spots.length; k++) {
@@ -6001,6 +6009,7 @@ function launch(g: Game, l: Launch): void {
     if (l.tow) th.rack = true;
     if (l.fire && l.kind === 'fastboat') lightFireShip(th);
     else if (l.boat && l.kind === 'fastboat') armBoat(th, l.boat);
+    if (base.cove && l.kind === 'fastboat') enterCove(th, base);
     if (l.aim === 'crowd') th.ebb = true;
     // The Citadel (log v60, MAP_SIGNATURE `dome`): from the signature's
     // first wave everything the Citadel fires leaves under its dome.
@@ -6481,6 +6490,9 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
         th.ix += mx;
         th.iy += my;
       } else th.age += dt;
+      // Log v72: a well drags a cove's boat along the water, not over the
+      // shore, and a gunboat or rocket boat not onto a hull.
+      if (th.cove) settle(g, th, px, py);
       th.vx = (th.x - px) / dt;
       th.vy = (th.y - py) / dt;
       return;
@@ -6513,6 +6525,10 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
   } else if (th.kind === 'fastboat' && th.boat) {
     // Log v69 (The Coves): a gunboat or a rocket boat sails itself (sim/boats.ts).
     updateBoat(g, th, dt);
+  } else if (th.kind === 'fastboat' && th.mouth) {
+    // Log v72: a speedboat or a fire ship sails out of its cove first.
+    leaveCove(th, dt);
+    keepWet(g, th, px, py);
   } else if (th.kind === 'supersonic' && th.age < SUPERSONIC.rail) {
     // On the rail with its lock line showing: aim, don't move yet.
     ensureTarget(g, th);
@@ -6555,6 +6571,8 @@ function updateThreat(g: Game, th: Threat, dt: number): void {
             : 1;
     th.x += Math.cos(th.heading) * th.speed * boost * dt;
     th.y += Math.sin(th.heading) * th.speed * boost * dt;
+    // Log v72: a cove's speedboat is never on land.
+    if (th.cove) keepWet(g, th, px, py);
     if (th.kind === 'mothership') spawnChildren(g, th, dt);
     if (th.kind === 'cluster' && th.target !== CARRIER_TARGET) {
       // Round 12: armed only after its climb (CLUSTER.armAfter); until then

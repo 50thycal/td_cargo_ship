@@ -247,17 +247,26 @@ export const FASTBOAT = { turnRate: 2.2, hitRadius: 26 } as const;
  *  for 2 and bursts into a `blast` px fireball (a picture; a fire ship's
  *  burn is the one that stays on the water).
  *  Gunboat (`gun`): runs to a station `stand` px beside the ship it has
- *  locked, sails with it, and from `first` s alongside fires a `damage` shell
- *  every `every` s until the ship is sunk (then it locks the next).
+ *  locked (66 before log v72, 150 now: "increase the range of the enemy ship
+ *  with guns"), sails with it, and from `first` s alongside fires a `damage`
+ *  shell every `every` s until the ship is sunk (then it locks the next). No
+ *  boat but the speedboat comes within `keep` px of a hull (v72).
  *  Rocket boat (`rocket`): `hp` hits, `speed` px/s, keeps `range` px from
- *  its ship (a Rocket Truck's fire from the road is about 200), raises its
+ *  its ship (330 before log v72; a Rocket Truck's fire from the road is about 200), raises its
  *  launcher `raise` s, then `perSalvo` red rockets (as a truck's: they
  *  can't be shot, one hit a salvo), `salvos` of them `gap` s apart, then it
  *  turns for home. */
 export const BOATS = {
   speed: { from: 0.55, plane: 1.1, weave: 0.2, weaveHz: 2.6, blast: 54 },
-  gun: { hp: 3, speed: 108, stand: 66, first: 1.6, every: 2.4, damage: 1, close: 80, turn: 3.2 },
-  rocket: { hp: 6, speed: 46, range: 330, slack: 70, raise: 2.2, gap: 5, perSalvo: 3, spread: 18, rocketSpeed: 520, salvos: 3, ripple: 0.12, turn: 1.1 },
+  gun: { hp: 3, speed: 108, stand: 150, hold: 60, keep: 62, first: 1.6, every: 2.4, damage: 1, close: 80, turn: 3.2 },
+  rocket: { hp: 6, speed: 46, range: 440, slack: 70, keep: 84, raise: 2.2, gap: 5, perSalvo: 3, spread: 18, rocketSpeed: 520, salvos: 3, ripple: 0.12, turn: 1.1 },
+  /** Log v72 (the player: "boats come outta a cave ... clean up the entry
+   *  animation ... boats slightly go over land"): a boat surfaces at the
+   *  inner end of its cove's inlet over `emerge` s (the picture rises out of
+   *  the water in a ring of foam), sails out through the mouth at `out` of
+   *  its pace, and only then turns for its ship. `margin` px: how far
+   *  clear of the shore a hull's middle is kept (every boat, always). */
+  cove: { emerge: 1.1, out: 0.7, margin: 8 },
 } as const;
 
 /** Log v69: the mix of the Coves' own fast boats a wave sends (those that

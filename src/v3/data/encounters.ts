@@ -8020,16 +8020,40 @@ export const LANTERN_BOSS_ROUNDS: BossRound[] = [
  *  sorties, more boats. */
 export const COVES_BOSS_ROUNDS: BossRound[] = [
   {
-    fleet: { coves: [5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'fastboat', at: 5, count: 1, base: 4, aim: 'mid', boat: 'gun' }, { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'lead' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
+    fleet: { coves: [5, 6], first: 2, every: 12, sorties: 2, warn: 1.5 },
+    fire: [
+      { kind: 'fastboat', at: 5, count: 1, base: 4, aim: 'mid', boat: 'gun' },
+      { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'lead' },
+      { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' },
+      { kind: 'fastboat', at: 11, count: 1, base: 7, aim: 'lead', boat: 'gun' },
+      { kind: 'ballistic', at: 13, count: 1, base: 0, aim: 'mid' },
+      { kind: 'fastboat', at: 15, count: 3, gap: 0.6, base: 4, aim: 'lead' },
+      { kind: 'fastboat', at: 14.5, count: 1, base: 7, aim: 'rear', boat: 'gun' },
+      { kind: 'guided', at: 19, count: 1, base: 3, aim: 'mid' },
+    ],
   },
   {
-    fleet: { coves: [4, 5, 6], first: 2, every: 7, sorties: 2, warn: 1.5 },
-    fire: [{ kind: 'fastboat', at: 5, count: 1, base: 7, aim: 'rear', boat: 'gun' }, { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'rear' }, { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' }],
+    fleet: { coves: [4, 5, 6], first: 2, every: 12, sorties: 2, warn: 1.5 },
+    fire: [
+      { kind: 'fastboat', at: 5, count: 1, base: 7, aim: 'rear', boat: 'gun' },
+      { kind: 'fastboat', at: 6, count: 1, base: 4, aim: 'rear' },
+      { kind: 'guided', at: 9, count: 1, base: 3, aim: 'lead' },
+      { kind: 'fastboat', at: 11, count: 1, base: 4, aim: 'mid', boat: 'gun' },
+      { kind: 'fastboat', at: 13, count: 1, base: 5, aim: 'near' },
+      { kind: 'fastboat', at: 17, count: 1, base: 6, aim: 'lead' },
+      { kind: 'fastboat', at: 19, count: 1, base: 7, aim: 'near', boat: 'gun' },
+      { kind: 'guided', at: 22, count: 1, base: 3, aim: 'mid' },
+    ],
   },
   {
-    fleet: { coves: [4, 5, 6, 7], first: 2, every: 11, sorties: 2, warn: 2 },
-    fire: [{ kind: 'fastboat', at: 6, count: 1, base: 7, aim: 'mid', boat: 'gun' }, { kind: 'fastboat', at: 9, count: 1, base: 4, aim: 'rear', boat: 'rocket' }],
+    fleet: { coves: [4, 5, 6, 7], first: 2, every: 12, sorties: 2, warn: 2 },
+    fire: [
+      { kind: 'fastboat', at: 6, count: 1, base: 7, aim: 'mid', boat: 'gun' },
+      { kind: 'fastboat', at: 9, count: 1, base: 4, aim: 'rear', boat: 'rocket' },
+      { kind: 'fastboat', at: 18, count: 1, base: 5, aim: 'lead', boat: 'gun' },
+      { kind: 'fastboat', at: 20, count: 1, base: 6, aim: 'near' },
+      { kind: 'guided', at: 21, count: 1, base: 3, aim: 'mid' },
+    ],
   },
 ];
 

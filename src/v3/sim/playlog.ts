@@ -617,11 +617,29 @@ import type { EncounterSetup } from '../data/encounters';
  *      bot's loss in the three rounds, usual Armory, goes from 0.9 / 1.4 /
  *      2.0 to 0.5 / 1.0 / 1.4 (ripples of 5 at 0.4 s in round 1, a denser
  *      round 2, one stray in round 3; encounters.ts SALTGATE_BOSS_ROUNDS). A Saltgate log before v71 no
- *      longer replays to the same game; the other maps play as they did. */
-export const LOG_VERSION = 71;
+ *      longer replays to the same game; the other maps play as they did.
+ *  72: the Coves' boats (the player's Watch run: "boats come outta a cave
+ *      and clean up the entry animation ... boats slightly go over land ...
+ *      not launched from a truck ... overlap on the cargo ship ... increase
+ *      the range ... the boss was much too easy, need increase intensity as
+ *      well as make them longer"). Every fast boat of a cove surfaces at the
+ *      inner end of its inlet and sails out of the mouth before it turns for
+ *      its ship (BaseDef inner / mouth, sim/boats.ts enterCove, leaveCove);
+ *      no boat is ever on land (keepWet) and the wave's own fast boats never
+ *      go to a truck on the Coves; a gunboat or rocket boat is held off every
+ *      hull (BOATS.gun.keep 62, rocket.keep 84) and fires from further: the
+ *      gunboat's station 150 px off its ship's beam (66), the rocket boat's
+ *      range 440 (330). The Fire Fleet is longer, 26-28 s a round instead of
+ *      18-22 (two sorties 12 s apart, packs of boats, gunboats and missiles
+ *      spread over the round; encounters.ts COVES_BOSS_ROUNDS), the bot's
+ *      loss 0.8 / 1.1 / 2.2 a round (0.6 / 1.4 / 2.3), map win 65% (61%). A
+ *      Coves log before v72 no longer replays to the same game; the other
+ *      maps play as they did.
+ */
+export const LOG_VERSION = 72;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [71];
+export const LOG_REPLAYS: readonly number[] = [72];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

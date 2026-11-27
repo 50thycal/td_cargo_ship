@@ -493,10 +493,12 @@ const COVES_BASES: BaseDef[] = [
   { x: 1150, y: 100, kinds: ['heavy', 'cluster'] },
   { x: 1480, y: 810, kinds: ['guided', 'ballistic', 'mothership'] },
   // The coves: fast boats come out of them.
-  { x: 381, y: 150, kinds: ['fastboat'], cove: true },
-  { x: 911, y: 150, kinds: ['fastboat'], cove: true },
-  { x: 1401, y: 150, kinds: ['fastboat'], cove: true },
-  { x: 1238, y: 820, kinds: ['fastboat'], cove: true },
+  // Log v72: a boat surfaces at the inner end of its inlet (`inner`) and sails
+  // out through the mouth (`mouth`, open water) before it turns for its ship.
+  { x: 381, y: 150, kinds: ['fastboat'], cove: true, inner: { x: 381, y: 112 }, mouth: { x: 381, y: 208 } },
+  { x: 911, y: 150, kinds: ['fastboat'], cove: true, inner: { x: 911, y: 112 }, mouth: { x: 911, y: 208 } },
+  { x: 1401, y: 150, kinds: ['fastboat'], cove: true, inner: { x: 1401, y: 112 }, mouth: { x: 1401, y: 208 } },
+  { x: 1238, y: 820, kinds: ['fastboat'], cove: true, inner: { x: 1238, y: 846 }, mouth: { x: 1238, y: 730 } },
 ];
 const covesNorth = smooth([
   { x: 0, y: 165 }, { x: 200, y: 172 }, { x: 330, y: 170 }, { x: 352, y: 98 }, { x: 410, y: 86 }, { x: 432, y: 170 },

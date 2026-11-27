@@ -9,6 +9,15 @@
 // Both are `fastboat` threats with `boat` set, so every weapon, helper and
 // bot that shoots a fast boat shoots them; nothing here draws a random
 // number except the rocket scatter (the foes stream, as a truck's).
+//
+// Log v72 (the player's Watch run: "boats come outta a cave ... they go
+// slightly over land ... they overlap on the cargo ship ... increase the
+// range of the enemy ship with guns and rockets"): every boat of a cove
+// surfaces at the inner end of its inlet and sails out through the mouth
+// before it turns for its ship (enterCove / leaveCove); no boat's hull is
+// ever on land (keepWet); a gunboat or a rocket boat is held BOATS.*.keep px
+// off every hull (clearShips) and fires from further off (BOATS.gun.stand,
+// BOATS.rocket.range). Only the speedboat rams.
 
 import { BOATS, THREATS, VIEW } from '../data/config';
 import type { Point } from '../data/maps';
@@ -52,6 +61,101 @@ export function armBoat(th: Threat, kind: BoatKind): void {
   th.bs = { mode: 'run', ship: -1, side: 0, t: 0, clock: 0, n: 0, left: 0, salvo: 0, sx: th.x, sy: th.y, look: 0, flash: -9 };
 }
 
+/** Log v72: a fast boat launched from a cove surfaces at the inner end of
+ *  its inlet, bow to the mouth it will sail out through (th.mouth, cleared
+ *  once it is there); the picture rises out of the water meanwhile
+ *  (ui/boats.ts, th.cove, th.age). */
+export function enterCove(th: Threat, base: { x: number; y: number; inner?: Point; mouth?: Point }): void {
+  th.cove = true;
+  if (!base.inner || !base.mouth) return;
+  th.x = th.sx = base.inner.x;
+  th.y = th.sy = base.inner.y;
+  th.mouth = { x: base.mouth.x, y: base.mouth.y };
+  th.heading = Math.atan2(base.mouth.y - base.inner.y, base.mouth.x - base.inner.x);
+}
+
+/** One step of a boat sailing out of its cove: straight down the inlet to
+ *  the mouth at BOATS.cove.out of its pace (slower still while it is
+ *  surfacing). True while it is still in the inlet. */
+export function leaveCove(th: Threat, dt: number): boolean {
+  const m = th.mouth;
+  if (!m) return false;
+  const rise = Math.min(1, th.age / BOATS.cove.emerge);
+  const pace = th.speed * BOATS.cove.out * (0.45 + 0.55 * rise);
+  const want = Math.atan2(m.y - th.y, m.x - th.x);
+  th.heading += clamp(angleDiff(want, th.heading), -6 * dt, 6 * dt);
+  const step = Math.min(pace * dt, dist(th.x, th.y, m.x, m.y));
+  th.x += Math.cos(th.heading) * step;
+  th.y += Math.sin(th.heading) * step;
+  if (dist(th.x, th.y, m.x, m.y) < 6) th.mouth = undefined;
+  return !!th.mouth;
+}
+
+/** Is the water under a hull's middle clear of the shore all round
+ *  (BOATS.cove.margin px each way)? */
+export function wetAt(g: Game, x: number, y: number): boolean {
+  const m = BOATS.cove.margin;
+  return !onLand(g, x, y) && !onLand(g, x + m, y) && !onLand(g, x - m, y) && !onLand(g, x, y + m) && !onLand(g, x, y - m);
+}
+
+/** After a boat has moved from (px, py): never on land. A step onto the
+ *  shore slides along it (one axis), else is undone and the boat turned to
+ *  open water, so no boat of any kind is ever drawn or hit on land. */
+export function keepWet(g: Game, th: Threat, px: number, py: number): void {
+  if (wetAt(g, th.x, th.y)) return;
+  if (wetAt(g, th.x, py)) {
+    th.y = py;
+    return;
+  }
+  if (wetAt(g, px, th.y)) {
+    th.x = px;
+    return;
+  }
+  th.x = px;
+  th.y = py;
+  // Stuck against a shore: bear away toward the nearest open water ahead.
+  let best = th.heading;
+  let bd = Infinity;
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2;
+    if (!wetAt(g, th.x + Math.cos(a) * 28, th.y + Math.sin(a) * 28)) continue;
+    const d = Math.abs(angleDiff(a, th.heading));
+    if (d < bd) {
+      bd = d;
+      best = a;
+    }
+  }
+  th.heading = best;
+}
+
+/** `p` pushed out of every cargo ship's `keep` radius (a few passes: the
+ *  push off one hull may be onto the next). */
+function clearPoint(g: Game, p: Point, keep: number): Point {
+  let x = p.x;
+  let y = p.y;
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const s of g.ships) {
+      const d = dist(x, y, s.x, s.y);
+      if (d >= keep) continue;
+      const a = d > 0.01 ? Math.atan2(y - s.y, x - s.x) : Math.PI / 2;
+      x = s.x + Math.cos(a) * keep;
+      y = s.y + Math.sin(a) * keep;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  return { x, y };
+}
+
+/** Hold a gunboat or a rocket boat off every cargo ship's hull: pushed out
+ *  to `keep` px if it would be nearer (it never sits on a ship). */
+function clearShips(g: Game, th: Threat, keep: number): void {
+  const p = clearPoint(g, th, keep);
+  th.x = p.x;
+  th.y = p.y;
+}
+
 function pickShip(g: Game, th: Threat): Ship | undefined {
   let best: Ship | undefined;
   let bd = Infinity;
@@ -93,9 +197,24 @@ function leave(g: Game, th: Threat, dt: number): void {
 export function updateBoat(g: Game, th: Threat, dt: number): void {
   const bs = th.bs;
   if (!bs) return;
+  const px = th.x;
+  const py = th.y;
+  // Out of its cove first (nothing else until it is through the mouth).
+  if (leaveCove(th, dt)) {
+    keepWet(g, th, px, py);
+    return;
+  }
   bs.t += dt;
   if (th.boat === 'gun') gunBoat(g, th, bs, dt);
   else rocketBoat(g, th, bs, dt);
+  settle(g, th, px, py);
+}
+
+/** Off the hulls (a gunboat or a rocket boat), and on the water: after
+ *  whatever moved the boat, its own sailing or a Gravity Well's drag. */
+export function settle(g: Game, th: Threat, px: number, py: number): void {
+  if (th.boat && th.bs?.mode !== 'leave') clearShips(g, th, th.boat === 'gun' ? BOATS.gun.keep : BOATS.rocket.keep);
+  keepWet(g, th, px, py);
 }
 
 function gunBoat(g: Game, th: Threat, bs: BoatState, dt: number): void {
@@ -122,10 +241,17 @@ function gunBoat(g: Game, th: Threat, bs: BoatState, dt: number): void {
   if (!bs.side) bs.side = (th.x - s.x) * nx + (th.y - s.y) * ny >= 0 ? 1 : -1;
   let sx = s.x + nx * bs.side * B.stand;
   let sy = s.y + ny * bs.side * B.stand;
-  if (onLand(g, sx, sy)) {
+  if (!wetAt(g, sx, sy)) {
     bs.side = -bs.side;
     sx = s.x + nx * bs.side * B.stand;
     sy = s.y + ny * bs.side * B.stand;
+  }
+  // A station is clear of every hull (the convoy may sail two abreast): out
+  // past the others on its side, not between them.
+  const cl = clearPoint(g, { x: sx, y: sy }, B.keep + 8);
+  if (wetAt(g, cl.x, cl.y)) {
+    sx = cl.x;
+    sy = cl.y;
   }
   const v = shipVel(g, s);
   const d = dist(th.x, th.y, sx, sy);
@@ -157,7 +283,7 @@ function gunBoat(g: Game, th: Threat, bs: BoatState, dt: number): void {
   // The bow comes round to the ship's own course, as it sails with it.
   turn(th, m > 14 ? Math.atan2(vy, vx) : s.heading, B.turn, dt);
   bs.clock += dt;
-  if (d < B.stand * 0.9 && bs.clock >= B.every) {
+  if (d < B.hold && bs.clock >= B.every) {
     bs.clock = 0;
     bs.flash = g.t;
     addFx(g, 'tracer', th.x, th.y, { life: 0.2, x2: s.x, y2: s.y });
@@ -178,8 +304,8 @@ function rocketStation(g: Game, th: Threat, s: Ship): Point | null {
   for (const off of [0, 0.35, -0.35, 0.7, -0.7, 1.1, -1.1, 1.6, -1.6]) {
     const a = base + off;
     const q = { x: p.x + Math.cos(a) * R.range, y: p.y + Math.sin(a) * R.range };
-    if (q.x < 70 || q.x > VIEW.width - 70 || q.y < 60 || q.y > VIEW.height - 70 || onLand(g, q.x, q.y)) continue;
-    if (wetRun(g, th, q)) return q;
+    if (q.x < 70 || q.x > VIEW.width - 70 || q.y < 60 || q.y > VIEW.height - 70 || !wetAt(g, q.x, q.y)) continue;
+    if (wetRun(g, th, q)) return clearPoint(g, q, R.keep + 8);
   }
   return null;
 }
