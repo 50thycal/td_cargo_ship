@@ -8420,3 +8420,52 @@ html:root[data-theme='dark'] {
   font-size: 12.5px;
   font-weight: 700;
 }
+
+/* Log v74 (the player: "When I abandon the map it shows it as complete in
+   the test lab"): a Ready to test card is new, played (won, lost or
+   abandoned) but not done, or done (Done checked, or a verdict saved). */
+.v3-ready.st-played {
+  border-color: rgb(245 197 66 / 0.4);
+}
+
+.v3-ready-flag {
+  margin: 0;
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.v3-ready-tick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  background: rgb(245 197 66 / 0.12);
+  color: var(--gold);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.v3-ready-foot .v2-btn.v3-ready-play {
+  min-height: 44px;
+}
+
+/* Done testing this map: on the pause menu and the end screen, a 44px key. */
+.v2-btn.v3-lab-markdone {
+  min-height: 44px;
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.v3-lab-markdone-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}

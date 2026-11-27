@@ -1709,7 +1709,8 @@ describe('Dreadnought Pass\'s boss (log v51, MAP_BOSS): the Dreadnought itself o
       const d = g.threats.find((t) => t.kind === 'dreadnought' && !t.dead);
       // Sink it as soon as it is on the map, before its spotter comes.
       if (d && !sunk && d.x < VIEW.width - 20) {
-        damageThreat(g, d, d.hp, false, 'gun');
+        // (Log v74: it counts shots, one at a time.)
+        while (!d.dead) damageThreat(g, d, 1, false, 'gun');
         sunk = true;
       }
       for (const m of g.foe.marks) {

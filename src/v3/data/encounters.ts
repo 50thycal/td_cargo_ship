@@ -7436,8 +7436,11 @@ export const HIDDEN_MINES: readonly MapId[] = ['sowers'];
 /** Log v55 (round 15, the player on the Rig Field: "it has to consume X
  *  amount of your ammo to be destroyed"): on these maps, under the
  *  encounter layer, a rig's hits count the player's shots, not their
- *  damage (sim/game.ts `rigShot`). */
-export const SHOT_RIGS: readonly MapId[] = ['rigs', 'citadel'];
+ *  damage (sim/game.ts `rigShot`). Log v74 (the player on the Dreadnought:
+ *  "make it the same as the Oil rigs, where it needs x amount of ammo to
+ *  take it out"): the battleship's hull and its gun turrets count shots
+ *  too (DREAD_PASSES `hp`, config.ts TURRET.hp are shots). */
+export const SHOT_RIGS: readonly MapId[] = ['rigs', 'citadel', 'dreadnought'];
 
 /** Log v60 (The Citadel, lab only, under the encounter layer): the shield
  *  rises again at the start of every wave: a generator brought down stands
@@ -7940,6 +7943,8 @@ export const RIGS_BOSS_ROUNDS: BossRound[] = [
  *  goes on west at `dash` × its speed. */
 export interface DreadPass {
   hp: number;
+  /** Shots a gun turret takes on this pass (absent: config.ts TURRET.hp). */
+  turretHp?: number;
   at?: number;
   plus?: number;
   speed?: number;
@@ -7965,7 +7970,7 @@ export interface DreadPass {
  *  turrets fire the artillery shells (config.ts TURRET, game.ts
  *  updateTurret) and the silo launches the rest. */
 export const DREAD_PASSES: Record<number, DreadPass> = {
-  1: { hp: 50, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
+  1: { hp: 15, turretHp: 3, at: 0.15, speed: 60, first: 3, every: 6, broadside: ['ballistic'], aim: 'lead', turn: 1150 },
   3: { hp: 40, at: 0, speed: 30, first: 6, every: 9, broadside: ['drone', 'ballistic', 'drone', 'drone'], aim: 'lead' },
   6: { hp: 45, at: 0, speed: 30, first: 5, every: 8.5, broadside: ['drone', 'ballistic', 'drone', 'drone'] },
   9: { hp: 50, at: 0, speed: 30, first: 5, every: 9, broadside: ['drone', 'drone', 'guided', 'drone', 'drone', 'drone'] },
@@ -7989,9 +7994,9 @@ export function dreadPasses(map: MapId, setup: Pick<EncounterSetup, 'rev' | 'onl
  *  Rising: a tougher hull each round, longer on station, faster
  *  broadsides, more spotters and swarms. */
 export const DREAD_BOSS_ROUNDS: BossRound[] = [
-  { dread: { hp: 40, speed: 60, first: 4, every: 8, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1150, 3], dash: 2 }, spotters: 1, turns: 1, spotAt: 4, spotEvery: 8, swarms: 2, size: 5, swarmAt: 3, swarmGap: 8 },
-  { dread: { hp: 50, speed: 60, first: 4, every: 6.5, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1050, 4], dash: 2 }, spotters: 1, turns: 2, spotAt: 3, spotEvery: 8, swarms: 3, size: 5, swarmAt: 3, swarmGap: 6 },
-  { dread: { hp: 60, speed: 60, first: 4, every: 7, broadside: ['ballistic', 'ballistic'], aim: 'lead', hold: [950, 5], dash: 2 }, spotters: 2, turns: 1, spotAt: 3, spotEvery: 6, swarms: 4, size: 6, swarmAt: 3, swarmGap: 5 },
+  { dread: { hp: 40, speed: 60, first: 4, every: 9, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [1150, 3], dash: 2 }, spotters: 1, turns: 1, spotAt: 4, spotEvery: 8, swarms: 2, size: 5, swarmAt: 3, swarmGap: 8 },
+  { dread: { hp: 45, speed: 60, first: 4, every: 8, broadside: ['ballistic'], aim: 'lead', hold: [1050, 4], dash: 2 }, spotters: 1, turns: 2, spotAt: 3, spotEvery: 8, swarms: 3, size: 5, swarmAt: 3, swarmGap: 6 },
+  { dread: { hp: 70, speed: 60, first: 4, every: 7, broadside: ['ballistic', 'guided'], aim: 'lead', hold: [950, 5], dash: 2 }, spotters: 2, turns: 1, spotAt: 3, spotEvery: 6, swarms: 4, size: 6, swarmAt: 3, swarmGap: 5 },
 ];
 
 /** The Black Strait's Bombardment (log v52, docs/design/v3-ch3-lantern.md):

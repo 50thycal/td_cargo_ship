@@ -618,7 +618,23 @@ import type { EncounterSetup } from '../data/encounters';
  *      2.0 to 0.5 / 1.0 / 1.4 (ripples of 5 at 0.4 s in round 1, a denser
  *      round 2, one stray in round 3; encounters.ts SALTGATE_BOSS_ROUNDS). A Saltgate log before v71 no
  *      longer replays to the same game; the other maps play as they did.
- *  72: the Coves' boats (the player's Watch run: "boats come outta a cave
+ *  74: the player's notes on the Dreadnought and the Test Lab (after 71;
+ *      72 and 73 are the Coves' boats and the overlap audit, built
+ *      alongside). The Dreadnought counts shots, not damage (SHOT_RIGS now
+ *      has 'dreadnought': the hull and each gun turret take one per shot,
+ *      as the Rig Field's rigs; a pass's `hp` is shots, TURRET.hp 5, was
+ *      4 hits; the turrets fire at 1.5 x the broadside gap, was 1.2), and
+ *      its boss rounds are re-tuned to climb (hull 40 / 45 / 70, round 2
+ *      without the guided missile and every 8 s, round 1 every 9 s, round 3
+ *      adds a guided missile): bot, usual Armory, 96 seeds from 900, wins
+      59% (72% before), boss rounds 0.95 / 1.13 / 2.21 ships. A sunk
+ *      Dreadnought leaves a 'wreck' effect (ui/sinking.ts; outside replay).
+ *      The Test Lab: a map is done only when the player checks Done (the
+ *      pause menu, the end screen) or saves a verdict, so an abandoned
+ *      run reads 'played, not done' (`labDone` on the log, outside replay).
+ *      A Dreadnought card log before v74 no longer replays to the same
+ *      game; the other maps play as they did.
+ *  75: the Coves' boats (built as v72; the player's Watch run: "boats come outta a cave
  *      and clean up the entry animation ... boats slightly go over land ...
  *      not launched from a truck ... overlap on the cargo ship ... increase
  *      the range ... the boss was much too easy, need increase intensity as
@@ -633,13 +649,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      18-22 (two sorties 12 s apart, packs of boats, gunboats and missiles
  *      spread over the round; encounters.ts COVES_BOSS_ROUNDS), the bot's
  *      loss 0.8 / 1.1 / 2.2 a round (0.6 / 1.4 / 2.3), map win 65% (61%). A
- *      Coves log before v72 no longer replays to the same game; the other
+ *      Coves log before v75 no longer replays to the same game; the other
  *      maps play as they did.
  */
-export const LOG_VERSION = 72;
+export const LOG_VERSION = 75;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [72];
+export const LOG_REPLAYS: readonly number[] = [75];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {
@@ -801,6 +817,8 @@ export interface PlayLog {
   /** The verdict the player gave after a Test Lab run, and the evidence
    *  the game counted (none of it touches replay). */
   labResult?: LabResult;
+  /** Log v74: the player checked the map Done (no verdict): outside replay. */
+  labDone?: boolean;
   /** Dev ghost check: the watch-mode bot's run on this same seed and tempo. */
   ghost?: GhostResult;
   device: { w: number; h: number; dpr: number; touch: boolean; ua: string };
