@@ -11,6 +11,7 @@ import { isBoost } from '../data/roster';
 import { drawAlly, drawRoads, drawTunnels, drawPlane, drawPlaneWarnings, drawRaiders } from './vectors';
 import { drawAground, drawMapUnder, drawNewThreat, drawNight, drawPosts, drawTideSea, drawTracked } from './features';
 import { drawEventOver, drawEventUnder } from './events';
+import { drawSinking } from './sinking';
 import { drawFoe, drawFoeAir, drawFoeGround, drawFoeShots, drawLockedPickup, drawWarningMarks, isFoeAircraft } from './foes';
 import { pickupLocked } from '../sim/foes';
 import { laneSamples } from '../sim/lanes';
@@ -1949,6 +1950,9 @@ function drawFx(ctx: CanvasRenderingContext2D, g: Game): void {
         ctx.beginPath();
         ctx.arc(f.x, f.y, f.r * 0.5 * (1 - u), 0, Math.PI * 2);
         ctx.fill();
+        break;
+      case 'wreck':
+        drawSinking(ctx, f);
         break;
       case 'launch':
         ctx.fillStyle = `rgba(255,77,61,${0.7 * (1 - u)})`;

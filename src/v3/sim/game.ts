@@ -387,7 +387,7 @@ export interface Pickup {
   age: number;
 }
 
-export type FxKind = 'fireball' | 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
+export type FxKind = 'fireball' | 'boom' | 'splash' | 'tracer' | 'launch' | 'burst' | 'text' | 'sink' | 'wreck' | 'spout' | 'spray' | 'flak' | 'block' | 'beam' | 'arc' | 'emp' | 'frag' | 'thermo'
   // The weapons plan, phase 0–1.
   | 'nuke' | 'lance' | 'cut' | 'chain' | 'beat'
   // Phase 2.
@@ -407,6 +407,10 @@ export interface Fx {
   text?: string;
   /** Drawn for Hyper Overdrive's second shot (a beam, a cut, a blast). */
   twin?: boolean;
+  /** Log v74 ('wreck', a big ship sinking): its heading and its size, as a
+   *  share of the Dreadnought's. */
+  rot?: number;
+  size?: number;
 }
 
 export type GameEvent =
@@ -6976,7 +6980,8 @@ export function damageThreat(g: Game, th: Threat, amount: number, drops = true, 
   }
   // Log v55 (round 15, SHOT_RIGS): a rig counts shots, not damage.
   // (Log v60: the Citadel's generators and the Citadel itself too.)
-  if ((th.kind === 'rig' || th.kind === 'generator' || th.kind === 'citadel') && shotRigs(g)) {
+  // (Log v74: the Dreadnought's hull and its turrets too.)
+  if ((th.kind === 'rig' || th.kind === 'generator' || th.kind === 'citadel' || th.kind === 'dreadnought' || th.kind === 'turret') && shotRigs(g)) {
     amount = rigShot(g, th, amount, by);
     if (amount <= 0) return;
   }
@@ -7729,6 +7734,9 @@ export function raiseShield(g: Game, gen: number, core: number): boolean {
   return rose;
 }
 
+/** Seconds a sinking battleship takes (log v74). */
+export const WRECK_LIFE = 3.4;
+
 const STRUCTURE_DOWN: Partial<Record<ThreatKind, string>> = {
   rig: 'RIG DESTROYED',
   generator: 'GENERATOR DOWN',
@@ -7744,7 +7752,11 @@ function structureDown(g: Game, th: Threat): void {
   // A missile still arming on it goes up with it (round 13).
   scrubRacked(g, (m) => m.from === th.id || (th.base !== undefined && dist(m.x, m.y, th.x, th.y) < 2));
   addFx(g, 'boom', th.x, th.y, { life: 1.2, r: 70 });
-  addFx(g, th.kind === 'dreadnought' ? 'sink' : 'burst', th.x, th.y, { life: 1.4, r: 60 });
+  // Log v74 (the player: "an animation of the ship sinking so it is more
+  // satisfying"): the battleship lists, burns, breaks in two and slips under
+  // (ui/sinking.ts).
+  if (th.kind === 'dreadnought') addFx(g, 'wreck', th.x, th.y, { life: WRECK_LIFE, rot: th.heading, size: 1 });
+  else addFx(g, 'burst', th.x, th.y, { life: 1.4, r: 60 });
   const shieldFalls = th.kind === 'generator' && !shieldUp(g) && !!g.map.shield;
   if (shieldFalls) g.cit.domeDownAt = g.t;
   if (th.kind === 'citadel') g.cit.fellAt = g.t;
@@ -7766,7 +7778,7 @@ export function launchBoss(g: Game, pass?: DreadPass): Threat {
   th.fireT = pass?.first ?? BOSS.firstShot;
   if (pass) {
     th.dread = pass;
-    th.maxHp = pass.hp;
+    th.maxHp = th.hp;
     if (pass.speed) th.speed = pass.speed;
   }
   if (!g.seen.has('dreadnought')) {
@@ -7780,7 +7792,8 @@ export function launchBoss(g: Game, pass?: DreadPass): Threat {
   if (pass) {
     const every = turretEvery(pass);
     TURRET.slots.forEach((_, i) => {
-      const t = structure(g, 'turret', th.x, th.y, TURRET.hp);
+      const t = structure(g, 'turret', th.x, th.y, pass.turretHp ?? TURRET.hp);
+      t.maxHp = t.hp;
       t.from = th.id;
       t.slot = i;
       t.rot = Math.PI;
@@ -7857,10 +7870,10 @@ function updateBoss(g: Game, th: Threat, dt: number): void {
 }
 
 /** Seconds between one turret's shells on a pass (TURRET.slow x its broadside
- *  cadence; a glimpse, the first wave's teaching pass, three times slower; a
+ *  cadence; a glimpse, the first wave's teaching pass, 4.5 times slower (log v74, was 3); a
  *  boss round's battleship, heaving to on station, TURRET.bossQuick x faster). */
 function turretEvery(P: DreadPass | undefined): number {
-  return (P?.every ?? BOSS.every) * TURRET.slow * (P?.turn !== undefined ? 3 : 1) * (P?.hold ? TURRET.bossQuick : 1);
+  return (P?.every ?? BOSS.every) * TURRET.slow * (P?.turn !== undefined ? 4.5 : 1) * (P?.hold ? TURRET.bossQuick : 1);
 }
 
 /** Log v67 (Dreadnought Pass, TURRET): a gun turret rides its ship's deck,
@@ -8492,13 +8505,13 @@ export function addFx(
   kind: FxKind,
   x: number,
   y: number,
-  o: { life: number; r?: number; x2?: number; y2?: number; text?: string },
+  o: { life: number; r?: number; x2?: number; y2?: number; text?: string; rot?: number; size?: number },
 ): void {
   // Words never print on top of each other (playthrough round: "JET DOWN"
   // and "REPAIRED" landed on one spot): a new one steps up above any still
   // fresh nearby.
   if (kind === 'text') for (let k = 0; k < 4 && g.fx.some((f) => f.kind === 'text' && f.age < f.life * 0.7 && Math.abs(f.x - x) < 70 && Math.abs(f.y - y) < 20); k++) y -= 24;
-  g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text, ...(twinSide ? { twin: true } : {}) });
+  g.fx.push({ kind, x, y, x2: o.x2 ?? x, y2: o.y2 ?? y, r: o.r ?? 0, age: 0, life: o.life, text: o.text, ...(o.rot !== undefined ? { rot: o.rot } : {}), ...(o.size !== undefined ? { size: o.size } : {}), ...(twinSide ? { twin: true } : {}) });
 }
 
 export function dist(ax: number, ay: number, bx: number, by: number): number {

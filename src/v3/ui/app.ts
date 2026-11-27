@@ -85,6 +85,7 @@ import {
   newVerdictDraft,
   type VerdictDraft,
   loadLabProgress,
+  markLabDone,
   nextCards,
   saveLabProgress,
   type LabRunSetup,
@@ -1172,6 +1173,7 @@ export class App {
             note: () => this.openNote('pause'),
             setup: () => this.openLabSetup(),
             done: () => this.showLabVerdict('done'),
+            markDone: () => this.markLabDone(),
           },
           lab.waves,
           labWaves(lab),
@@ -3194,6 +3196,7 @@ export class App {
       : undefined;
     this.showOverlay('v3-lab-verdict', [
       labVerdictSheet(run.card, stats, waves, ended, p, next, {
+        markDone: () => this.markLabDone(ended),
         save: (r, then) => {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
@@ -3247,6 +3250,33 @@ export class App {
       const panel = this.overlay.querySelector<HTMLElement>('.v2-panel');
       if (panel) panel.scrollTop = scroll;
     }
+  }
+
+  /** Log v74 (the player: "make me check 'done' when I finish the run or
+   *  when I am in the pause menu"): check the test's map Done and go back to
+   *  the list. No verdict is saved (that is Save's); the card is done at its
+   *  version, and the run's log says so (`labDone`). The run ends as won if
+   *  the map was cleared, as lost if the convoy was, else as a quit. */
+  private markLabDone(ended: 'done' | 'length' | 'lost' = 'done'): void {
+    const run = this.labRun;
+    const g = this.game;
+    if (!run || !g) return;
+    const p = this.labProgress;
+    markLabDone(p, run.card.id);
+    if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
+    p.queue = p.queue.filter((id) => id !== run.card.id);
+    saveLabProgress(p);
+    this.paused = false;
+    this.pauseBtn.textContent = 'II';
+    if (this.rec) {
+      this.rec.log.labDone = true;
+      clearRun(this.rec.log.id);
+    }
+    const log = this.endRun(g.phase === 'won' ? 'won' : ended === 'lost' ? 'lost' : 'quit');
+    this.rec = null;
+    if (log) keepLabLog(run.card.id, log);
+    this.labDraft = null;
+    this.showLab();
   }
 
   /** A note on a moment of a test's run, from its end screen: it goes into

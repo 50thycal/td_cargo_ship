@@ -14,7 +14,7 @@ import { CALLOUT_LEVELS, type CalloutLevel } from './alerts';
 import { loadLabArmory } from './labArmory';
 import { campaignWaves } from '../data/events';
 import { evidenceLines, labCountText, type LabPlays, type LabSetup, type LabStats } from '../sim/lab';
-import type { LabResult, PlayControl, PlayLog } from '../sim/playlog';
+import { LOG_VERSION, type LabResult, type PlayControl, type PlayLog } from '../sim/playlog';
 import { kv } from '../platform/store';
 import { MAP_VARIANT_DEFAULT, SCORECARD_REV, answerText, cleanScorecard, scoreCategory, scoreRows, suggestWaves, waveChips, waveLabel, waveScoreText, type ScoreCategory, type Scorecard, type WaveScore } from '../data/scorecard';
 import { RUN_RATING_AXES, type MomentKind, type Rating } from '../sim/feedback';
@@ -58,9 +58,21 @@ export interface LabEntry extends LabResult {
   build?: string;
 }
 
+/** A map the player has checked Done on, with or without a verdict (log
+ *  v74): when, the card's version and the log version it was played on. */
+export interface LabDoneMark {
+  at: string;
+  rev: number;
+  v: number;
+}
+
 export interface LabProgress {
   /** Every verdict for each card, oldest first (a new one is appended). */
   results: Record<string, LabEntry[]>;
+  /** Log v74 (the player: "make me check 'done' when I finish the run or
+   *  when I am in the pause menu"): the cards checked Done, newest mark
+   *  each. A card is done once it has this or a saved verdict. */
+  done: Record<string, LabDoneMark>;
   length: LabLength;
   mix: LabMix;
   /** "Play 5": the cards still queued. */
@@ -93,13 +105,26 @@ function migrateResults(raw: unknown): Record<string, LabEntry[]> {
   return out;
 }
 
+/** The saved Done marks: only well-formed ones, for cards that exist. */
+function migrateDone(raw: unknown): Record<string, LabDoneMark> {
+  const out: Record<string, LabDoneMark> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [id, m] of Object.entries(raw as Record<string, unknown>)) {
+    const e = m as Partial<LabDoneMark> | null;
+    if (!e || typeof e !== 'object' || typeof e.at !== 'string' || typeof e.rev !== 'number' || typeof e.v !== 'number') continue;
+    out[id] = { at: e.at, rev: e.rev, v: e.v };
+  }
+  return out;
+}
+
 /** The saved progress (parsed JSON), made current. */
 export function parseLabProgress(raw: unknown): LabProgress {
-  const base: LabProgress = { results: {}, length: 'full', mix: 'normal', queue: [], session: { day: today(), ids: [] } };
+  const base: LabProgress = { results: {}, done: {}, length: 'full', mix: 'normal', queue: [], session: { day: today(), ids: [] } };
   if (!raw || typeof raw !== 'object') return base;
   const r = raw as Partial<Record<keyof LabProgress, unknown>> & { session?: { day?: string; ids?: string[] } };
   return {
     results: migrateResults(r.results),
+    done: migrateDone((r as { done?: unknown }).done),
     length: r.length === 'quick' ? 'quick' : 'full',
     mix: r.mix === 'light' || r.mix === 'heavy' ? r.mix : 'normal',
     queue: (Array.isArray(r.queue) ? (r.queue as string[]) : []).filter((id) => !!labCard(id)),
@@ -132,12 +157,25 @@ export function olderEntries(p: LabProgress, id: string): LabEntry[] {
   return (p.results[id] ?? []).filter((e) => e.rev < rev).reverse();
 }
 
+/** Is the card done at its current version: a verdict saved, or Done
+ *  checked (log v74)? A run that was only played, or quit, is not. */
+export function labCardDone(p: LabProgress, id: string): boolean {
+  if (currentEntry(p, id)) return true;
+  const m = p.done[id];
+  return !!m && m.rev >= cardRev(id);
+}
+
+/** Check a card Done, as it is now (the log version it was played on). */
+export function markLabDone(p: LabProgress, id: string, v: number = LOG_VERSION): void {
+  p.done[id] = { at: new Date().toISOString(), rev: cardRev(id), v };
+}
+
 /** Tested at its current version, changed since its last test, or never
  *  tested. */
 export type LabStatus = 'tested' | 'changed' | 'untested';
 
 export function labStatus(p: LabProgress, id: string): LabStatus {
-  if (currentEntry(p, id)) return 'tested';
+  if (labCardDone(p, id)) return 'tested';
   return (p.results[id] ?? []).length ? 'changed' : 'untested';
 }
 
@@ -319,13 +357,30 @@ export interface HubHandlers {
   notes: (map: MapId) => void;
 }
 
-/** Ready to test: has the player played this build? A finished run (won,
- *  lost or quit, or one with a Test Lab verdict) of the map at the entry's
- *  log version or later, from the logs on the device, or a tick remembered
- *  from before (the device keeps only the last few logs). */
-export function readyPlayed(r: ReadyToTest, logs: readonly Pick<PlayLog, 'v' | 'map' | 'end' | 'labResult'>[], remembered: ReadonlySet<string> = new Set()): boolean {
-  if (remembered.has(readyKey(r))) return true;
-  return logs.some((l) => l.map === r.map && l.v >= r.log && (!!l.end || !!l.labResult));
+/** Where a Ready to test card stands (log v74, the player: "when I abandon
+ *  the map it shows it as complete in the test lab"): `new` (no run of the
+ *  map at that log version or later), `played` (a run that was won, lost or
+ *  quit, but not checked Done and no verdict saved: abandoning a map is not
+ *  finishing it) or `done` (checked Done, or a Test Lab verdict saved). */
+export type ReadyState = 'new' | 'played' | 'done';
+
+type ReadyLog = Pick<PlayLog, 'v' | 'map' | 'end' | 'labResult'> & { labDone?: boolean };
+
+/** What a card's state is, from the logs on the device, the Done marks
+ *  (LabProgress.done: a mark at this log version or later counts) and the
+ *  ticks remembered from before (the device keeps only the last few logs). */
+export function readyState(r: ReadyToTest, logs: readonly ReadyLog[], done: Readonly<Record<string, Pick<LabDoneMark, 'v'>>> = {}, remembered: ReadonlySet<string> = new Set()): ReadyState {
+  if (remembered.has(readyKey(r))) return 'done';
+  const mark = done[mapCardId(r.map)];
+  if (mark && mark.v >= r.log) return 'done';
+  const mine = logs.filter((l) => l.map === r.map && l.v >= r.log);
+  if (mine.some((l) => !!l.labResult || l.labDone)) return 'done';
+  return mine.some((l) => !!l.end) ? 'played' : 'new';
+}
+
+/** Done: the card is checked off (see readyState). */
+export function readyDone(r: ReadyToTest, logs: readonly ReadyLog[], done: Readonly<Record<string, Pick<LabDoneMark, 'v'>>> = {}, remembered: ReadonlySet<string> = new Set()): boolean {
+  return readyState(r, logs, done, remembered) === 'done';
 }
 
 const READY_KEY = 'straitwatch.v3.lab.ready';
@@ -358,47 +413,67 @@ function rememberReady(keys: Set<string>): void {
 export function labHub(p: LabProgress, h: HubHandlers, logs: readonly PlayLog[] = []): HTMLElement {
   const body = el('div', 'v3-lab-hub');
   const status = new Map(LAB_CARDS.filter((c) => c.kind === 'map').map((c) => [c.id, labStatus(p, c.id)]));
-  body.append(readyPanel(h, logs), mapGrid(p, status, h));
+  body.append(readyPanel(p, h, logs), mapGrid(p, status, h));
   return body;
 }
 
 /** Ready to test: the newest builds, unplayed first, each with its line,
  *  its notes and a big Play. */
-function readyPanel(h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
+function readyPanel(p: LabProgress, h: HubHandlers, logs: readonly PlayLog[]): HTMLElement {
   const box = el('section', 'v3-lab-ready v3-cic-panel');
   box.dataset.labReady = '1';
   const remembered = readyRemembered();
   const before = remembered.size;
   const items = READY_TO_TEST.map((r, i) => {
-    const played = readyPlayed(r, logs, remembered);
-    if (played) remembered.add(readyKey(r));
-    return { r, i, played };
+    const state = readyState(r, logs, p.done, remembered);
+    if (state === 'done') remembered.add(readyKey(r));
+    return { r, i, state };
   });
   if (remembered.size !== before) rememberReady(remembered);
-  const left = items.filter((x) => !x.played).length;
+  const left = items.filter((x) => x.state !== 'done').length;
   const head = el('header', 'v3-cic-head');
-  head.append(el('i', `v3-led${left ? ' live' : ' ok'}`), el('b', '', 'Ready to test'), el('span', 'v3-cic-meta', left ? `${left} new to play` : 'All played · pick any map below'));
+  head.append(el('i', `v3-led${left ? ' live' : ' ok'}`), el('b', '', 'Ready to test'), el('span', 'v3-cic-meta', left ? `${left} not done` : 'All done · pick any map below'));
   const list = el('div', 'v3-ready-list');
-  // Unplayed first, each group in the list's own order (newest first).
-  for (const { r, played } of [...items].sort((a, b) => Number(a.played) - Number(b.played) || a.i - b.i)) {
-    const card = el('article', `v3-ready${played ? ' played' : ''}`);
+  // Not done first (new before played), each group in the list's own order
+  // (newest first).
+  const rank = { new: 0, played: 1, done: 2 } as const;
+  for (const { r, state } of [...items].sort((a, b) => rank[a.state] - rank[b.state] || a.i - b.i)) {
+    const played = state === 'done';
+    const card = el('article', `v3-ready st-${state}${played ? ' played' : ''}`);
     card.dataset.ready = r.map;
+    card.dataset.state = state;
     card.dataset.played = played ? '1' : '0';
     const top = el('div', 'v3-ready-top');
     // The tag sits on the card's top edge, a label on the panel.
     top.append(el('strong', 'v3-ready-name', MAPS[r.map].name), el('span', `v3-ready-tag ${r.tag.toLowerCase()}`, `${r.tag} · v${r.log}`));
     const play = button('', `v2-btn${played ? '' : ' primary'} v3-ready-play`, () => h.start(mapCardId(r.map)));
     play.dataset.readyPlay = r.map;
-    play.innerHTML = played ? '<span aria-hidden="true">✓</span> Played · again' : '<span aria-hidden="true">▶</span> Play';
-    play.setAttribute('aria-label', `${played ? 'Play again' : 'Play'}: ${MAPS[r.map].name}`);
+    play.innerHTML = played ? '<span aria-hidden="true">✓</span> Done · again' : state === 'played' ? '<span aria-hidden="true">▶</span> Again' : '<span aria-hidden="true">▶</span> Play';
+    play.setAttribute('aria-label', `${played || state === 'played' ? 'Play again' : 'Play'}: ${MAPS[r.map].name}`);
     // The map's notes (what changed, its history) beside Play. The Armory
     // it plays is a setting in Tools (the Tools round).
     const notes = button('Notes', 'v3-ready-notes', () => h.notes(r.map));
     notes.dataset.readyNotes = r.map;
     notes.setAttribute('aria-label', `Notes: ${MAPS[r.map].name}, what changed and why`);
     const foot = el('div', 'v3-ready-foot');
-    foot.append(notes, play);
-    card.append(top, el('p', 'v3-ready-note', r.note), foot);
+    foot.append(notes);
+    // Played (won, lost or abandoned) but not checked Done: say so, and let
+    // the player check it off from here.
+    if (state === 'played') {
+      const tick = button('', 'v3-ready-tick', () => {
+        markLabDone(p, mapCardId(r.map));
+        saveLabProgress(p);
+        box.replaceWith(readyPanel(p, h, logs));
+      });
+      tick.innerHTML = '<span aria-hidden="true">✓</span>';
+      tick.title = 'Mark done';
+      tick.dataset.readyTick = r.map;
+      tick.setAttribute('aria-label', `Mark done: ${MAPS[r.map].name}`);
+      foot.append(tick);
+    }
+    foot.append(play);
+    const flag = state === 'played' ? [el('p', 'v3-ready-flag', 'Played, not done')] : [];
+    card.append(top, el('p', 'v3-ready-note', r.note), ...flag, foot);
     // Watch: the same run, the bot at the controls until you take over.
     if (h.watch) card.append(watchButton(h.watch, mapCardId(r.map), MAPS[r.map].name, 'v2-btn v3-ready-watch', 'Watch'));
     list.append(card);
@@ -627,6 +702,8 @@ export interface LabPauseHandlers {
   note: () => void;
   setup: () => void;
   done: () => void;
+  /** Log v74: check the map Done and go back to the list. */
+  markDone?: () => void;
 }
 
 /** The pause menu's commands for a card: Bring one (Drop it, Run it again)
@@ -669,7 +746,20 @@ export function labPauseActions(card: LabCard, h: LabPauseHandlers, waves: numbe
   const setup = button('Setup', 'v2-btn v3-lab-act', h.setup);
   setup.dataset.labSetup = '1';
   out.push(note, setup, labDoneButton(h.done, waves, length));
+  if (h.markDone) out.push(labMarkDoneButton(h.markDone, 'v2-btn v3-lab-act v3-lab-markdone'));
   return out;
+}
+
+/** Log v74 (the player: "make me check 'done' when I finish the run or when
+ *  I am in the pause menu"): checks the map Done, without a verdict, and
+ *  goes back to the list. On the pause menu and on the run's end screen. A
+ *  map that was only played or abandoned is not done until this (or a saved
+ *  verdict). */
+export function labMarkDoneButton(markDone: () => void, cls: string): HTMLButtonElement {
+  const b = button('', cls, markDone);
+  b.innerHTML = '<span aria-hidden="true">✓</span> Done testing this map';
+  b.dataset.labMarkdone = '1';
+  return b;
 }
 
 /** Done: ends the test and opens the verdict sheet (on the pause menu, and
@@ -811,6 +901,8 @@ export function labSetupSheet(card: LabCard, setup: LabRunSetup, apply: (s: LabR
 // under it), then the Test Lab's verdict, tags and note.
 
 export interface VerdictHandlers {
+  /** Log v74: check the map Done with no verdict, back to the list. */
+  markDone?: () => void;
   save: (r: Pick<LabResult, 'verdict' | 'tags' | 'note' | 'score'>, then: 'next' | 'again' | 'list') => void;
 }
 
@@ -1335,6 +1427,10 @@ export function labVerdictSheet(card: LabCard, s: LabStats, waves: number, ended
   const list = button('Save · back to the list', 'v2-btn', () => save('list'));
   list.dataset.labList = '1';
   acts.append(again, list);
+  if (h.markDone) {
+    const md = labMarkDoneButton(h.markDone, 'v2-btn v3-lab-markdone');
+    acts.append(md);
+  }
   if (next) {
     const n = button('', 'v2-btn primary', () => save('next'));
     n.dataset.labSaveNext = '1';
