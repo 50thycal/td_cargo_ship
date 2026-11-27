@@ -33,10 +33,10 @@ export interface MapNotes {
 }
 
 /** Trucks keep off each other, and the call-outs off the launchers (log
- *  v75): on every map. */
+ *  v76): on every map. */
 const NO_OVERLAP: MapIteration = {
   date: '2026-11-27',
-  log: 75,
+  log: 76,
   title: 'Trucks keep clear of each other',
   what: 'A truck is never put down on another: a wave’s pop-up whose road is taken comes in by another road, and a truck about to sink into one on the road takes the lane beside it or waits a moment. The call-out cards rise (or move to the other corner) off any silo, rig, truck or siege gun they would cover.',
   why: 'Your Coves Watch run: “Trucks should not overlap each other… the rocket truck and ballistic missile truck were just on top of each other,” and “make sure [the notices] do not go in a place that is on top of enemy launchers so it isn’t hidden.”',
@@ -436,9 +436,16 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   coves: {
-    look: 'Do the three boats read apart on your phone: the speedboat (red, a fireball when it rams), the gunboat (grey, a red ring on the ship it has locked), the rocket boat (olive and big, a red line while its rockets rise)? Is the white wake a real warning? Does the gunboat feel like a ship to save, and the rocket boat like a target to focus? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
+    look: 'Do the boats come out of the caves cleanly (a ring of foam, the hull rising, then out through the mouth) and stay on the water? Do the gunboat and rocket boat stand off the cargo ships and shell from afar, never on top of one? Does the Fire Fleet last long enough (about 26 s a round) and keep you busy with sorties, gunboats, a rocket boat and missiles? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
       NO_OVERLAP,
+      {
+        date: '2026-11-27',
+        log: 75,
+        title: 'Boats come out of the caves and keep off the ships',
+        what: 'Every boat surfaces at the inner end of its cove (foam rings, the hull rising out of the water) and sails out of the mouth before it turns for a ship; none is launched from a truck any more, and none goes over land. The gunboat shells from 150 px off its ship (was 66) and the rocket boat fires from 440 px (was 330); neither sits on a hull, only the speedboat rams. The Fire Fleet is longer, about 26 s a round (was 18-22 s): two sorties 12 s apart, packs of boats, gunboats and missiles spread over the round, a rocket boat in round 3.',
+        why: 'Your notes: “boats come outta a cave and clean up the entry animation ... boats slightly go over land ... should not be launched from a truck ... they overlap on the cargo ship ... increase the range of the enemy ship with guns and rockets ... the boss was much too easy, need increase intensity as well as make them longer.”',
+      },
       {
         date: '2026-11-24',
         log: 69,

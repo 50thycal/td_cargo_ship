@@ -634,8 +634,25 @@ import type { EncounterSetup } from '../data/encounters';
  *      run reads 'played, not done' (`labDone` on the log, outside replay).
  *      A Dreadnought card log before v74 no longer replays to the same
  *      game; the other maps play as they did.
- *  75: trucks keep off each other, and the call-outs keep off the enemy's
- *      launchers (the player, on The Coves; built as 73 and numbered 75 once 74 had merged: "Trucks should not overlap each
+ *  75: the Coves' boats (built as v72; the player's Watch run: "boats come outta a cave
+ *      and clean up the entry animation ... boats slightly go over land ...
+ *      not launched from a truck ... overlap on the cargo ship ... increase
+ *      the range ... the boss was much too easy, need increase intensity as
+ *      well as make them longer"). Every fast boat of a cove surfaces at the
+ *      inner end of its inlet and sails out of the mouth before it turns for
+ *      its ship (BaseDef inner / mouth, sim/boats.ts enterCove, leaveCove);
+ *      no boat is ever on land (keepWet) and the wave's own fast boats never
+ *      go to a truck on the Coves; a gunboat or rocket boat is held off every
+ *      hull (BOATS.gun.keep 62, rocket.keep 84) and fires from further: the
+ *      gunboat's station 150 px off its ship's beam (66), the rocket boat's
+ *      range 440 (330). The Fire Fleet is longer, 26-28 s a round instead of
+ *      18-22 (two sorties 12 s apart, packs of boats, gunboats and missiles
+ *      spread over the round; encounters.ts COVES_BOSS_ROUNDS), the bot's
+ *      loss 0.8 / 1.1 / 2.2 a round (0.6 / 1.4 / 2.3), map win 65% (61%). A
+ *      Coves log before v75 no longer replays to the same game; the other
+ *      maps play as they did.
+ *  76: trucks keep off each other, and the call-outs keep off the enemy's
+ *      launchers (the player, on The Coves; built as 73 and numbered 76 once 74 and 75 had merged: "Trucks should not overlap each
  *      other ... the rocket truck and ballistic missile truck were just on
  *      top of each other ... the other truck [can] come in from a different
  *      way"; "make sure [the notifications] do not go in a place that is on
@@ -646,13 +663,13 @@ import type { EncounterSetup } from '../data/encounters';
  *      another road, any truck waits at the start until its road is clear,
  *      and a truck about to sink into another one on the road takes the
  *      lane beside it or waits (sim/trucks.ts driveStep; sim/overlap.ts
- *      measures it). Every map has trucks, so a log before v75 no longer
+ *      measures it). Every map has trucks, so a log before v76 no longer
  *      replays to the same game. (The call-outs' place is the screen's, not
  *      the game's: ui/alerts.ts.) */
-export const LOG_VERSION = 75;
+export const LOG_VERSION = 76;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [75];
+export const LOG_REPLAYS: readonly number[] = [76];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

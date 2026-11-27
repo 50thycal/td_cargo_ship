@@ -158,16 +158,54 @@ function hpBar(ctx: CanvasRenderingContext2D, th: Threat, y: number, w: number, 
   }
 }
 
+/** Log v72 (the player: "clean up the entry animation coming in as it just
+ *  appears"): a boat out of a cove surfaces: rings of foam spread from where
+ *  it comes up, a dark swell lifts and spray flies, the hull rising out of
+ *  the water over BOATS.cove.emerge s as it begins to sail out. `born` is
+ *  0 (under) to 1 (up). Drawn under the hull. */
+function surfacing(ctx: CanvasRenderingContext2D, th: Threat, born: number): void {
+  const x = th.sx;
+  const y = th.sy;
+  const k = th.boat === 'rocket' ? 1.5 : th.boat === 'gun' ? 1.15 : 1;
+  // The swell: a dark patch that grows and clears.
+  ctx.fillStyle = `rgba(8,34,52,${0.5 * (1 - born)})`;
+  ctx.beginPath();
+  ctx.ellipse(x, y, (20 + 26 * born) * k, (13 + 16 * born) * k, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Three rings of foam, one after another.
+  for (let i = 0; i < 3; i++) {
+    const p = Math.max(0, Math.min(1, born * 1.35 - i * 0.22));
+    if (p <= 0 || p >= 1) continue;
+    ctx.strokeStyle = `rgba(255,255,255,${0.8 * (1 - p)})`;
+    ctx.lineWidth = 3 - 1.4 * p;
+    ctx.beginPath();
+    ctx.ellipse(x, y, (12 + 44 * p) * k, (8 + 28 * p) * k, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Spray thrown up as the bow breaks the surface.
+  ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - born)})`;
+  for (let i = 0; i < 9; i++) {
+    const a = th.phase + (i / 9) * Math.PI * 2;
+    const r = (10 + 30 * born) * k * (0.6 + 0.4 * ((i * 5) % 3) / 2);
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 16 * born * (1 - born) * 4, 2.6 * (1 - born) + 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 export function drawAttackBoat(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
   sweep();
+  const born = th.cove ? Math.min(1, th.age / BOATS.cove.emerge) : 1;
+  const rise = born * born * (3 - 2 * born);
   const sp = Math.hypot(th.vx, th.vy);
   const h = sp > 6 ? Math.atan2(th.vy, th.vx) : th.heading;
   const tr = trailOf(th, h);
   const t = g.t + th.phase;
   const kind = th.boat ?? 'speed';
   const planing = Math.max(0, Math.min(1, sp / 120));
-  // The wake first, under everything.
-  ribbon(ctx, tr, th, kind === 'rocket' ? 19 : kind === 'gun' ? 14 : 12, kind === 'rocket' ? 0.5 : 0.62);
+  // The wake first, under everything (and the surfacing, under the hull).
+  if (born < 1) surfacing(ctx, th, born);
+  ribbon(ctx, tr, th, kind === 'rocket' ? 19 : kind === 'gun' ? 14 : 12, (kind === 'rocket' ? 0.5 : 0.62) * rise);
   // Lock lines first too, under the hull.
   const ship = th.bs && th.bs.ship >= 0 ? g.ships.find((s) => s.id === th.bs!.ship) : undefined;
   if (kind === 'gun' && ship && th.bs!.mode === 'side') {
@@ -204,6 +242,12 @@ export function drawAttackBoat(ctx: CanvasRenderingContext2D, g: Game, th: Threa
   ctx.save();
   ctx.translate(th.x, th.y + Math.sin(t * 6.3) * (kind === 'rocket' ? 0.8 : 1.4));
   ctx.rotate(h);
+  // Rising: faint and low in the water at first, then up to full size.
+  if (born < 1) {
+    ctx.globalAlpha = 0.15 + 0.85 * rise;
+    const sc = 0.72 + 0.28 * rise;
+    ctx.scale(sc, sc);
+  }
   if (kind === 'speed') drawSpeedboat(ctx, th, tr, planing, t);
   else if (kind === 'gun') drawGunboat(ctx, g, th, tr, planing, t, ship);
   else drawRocketBoat(ctx, th, tr, planing, t);
@@ -218,6 +262,7 @@ export function drawAttackBoat(ctx: CanvasRenderingContext2D, g: Game, th: Threa
     ctx.stroke();
     ctx.setLineDash([]);
   }
+  if (born < 1) return;
   if (kind === 'rocket') hpBar(ctx, th, -44, 46, '#e8c35a', true);
   else if (kind === 'gun') hpBar(ctx, th, -30, 34, '#9ec7ff');
   else hpBar(ctx, th, -26, 30, th.fire ? '#ff9a3a' : '#ff8a7a');

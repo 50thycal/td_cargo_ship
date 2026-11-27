@@ -160,7 +160,7 @@ export function drawRaiders(ctx: CanvasRenderingContext2D, g: Game): void {
   }
 }
 
-/** Log v75 (the player: a notice must not "go in a place that is on top of
+/** Log v76 (the player: a notice must not "go in a place that is on top of
  *  enemy launchers so it isn't hidden"): where a text label of `w` x 22 px
  *  (centred on x, baseline y) stands clear of every shore pad, rig, truck
  *  and siege gun: its own place if that is clear, else the nearest of a

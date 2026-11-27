@@ -147,7 +147,7 @@ export interface FoeData {
   link: number;
   /** A truck's road and how far along it. */
   path?: Point[];
-  /** Log v75: out in the lane beside the road (px), and the seconds it has
+  /** Log v76: out in the lane beside the road (px), and the seconds it has
    *  waited for the way to clear (sim/trucks.ts). */
   lat?: number;
   held?: number;
@@ -373,7 +373,7 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       // Log v42 (Saltgate Canal): an encounter's truck takes its own road,
       // its own salvos and its aim.
       let road = l.road !== undefined ? roads[l.road % roads.length] : rng.pick(roads);
-      // Log v75: not on top of another truck: by another road if a wave's
+      // Log v76: not on top of another truck: by another road if a wave's
       // truck finds its own taken at the start, or a moment later.
       if (!startClear(g, [road.from, road.to], true)) {
         const other = l.road !== undefined || l.enc ? undefined : roads.find((r) => startClear(g, [r.from, r.to], true));

@@ -64,6 +64,11 @@ export interface BaseDef {
   /** A cove (Smugglers' Coves): fast boats come out of it; drawn as an inlet,
    *  not a silo. */
   cove?: boolean;
+  /** Log v72 (a cove's boats come out of it, on water all the way): where in
+   *  the inlet a boat surfaces (its inner end), and the open water at its
+   *  mouth it sails out to before it turns for its ship. */
+  inner?: { x: number; y: number };
+  mouth?: { x: number; y: number };
   /** A mine chute (Sowers' Reach): drawn as a ramp on the shore. */
   chute?: boolean;
 }

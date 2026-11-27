@@ -949,7 +949,7 @@ export class App {
       },
       control: () => this.control,
       // The call-out stack's rise off the launchers, off or on (the overlap
-      // audit reads the corner as it was before log v75 with it off).
+      // audit reads the corner as it was before log v76 with it off).
       dodge: (on: boolean) => {
         this.dodging = on;
       },
@@ -2290,7 +2290,7 @@ export class App {
   }
 
   /** The enemy's launchers on the screen, as boxes (screen px) the call-out
-   *  cards keep off (log v75): every shore pad, rig and cove, the ground
+   *  cards keep off (log v76): every shore pad, rig and cove, the ground
    *  trucks and siege guns, the submarines on the surface, and the carrier. */
   private dodging = true;
 

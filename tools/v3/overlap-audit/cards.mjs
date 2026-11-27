@@ -1,4 +1,4 @@
-// Overlap audit, the notification half (log v75, docs/design/v3-playtest-fixes.md,
+// Overlap audit, the notification half (log v76, docs/design/v3-playtest-fixes.md,
 // "Trucks that overlap"): on every map the watch bot plays a busy wave (wave 6,
 // the "you" bot, as e2e/v3.mjs's call-out check does) in a phone-sized browser,
 // and every 120 ms the call-out cards on screen (.v2-alert, the corner stack)
@@ -22,7 +22,7 @@ const maps = opt('maps', ORDER.join(',')).split(',');
 const [W, H] = opt('size', '874x402').split('x').map(Number);
 const SAMPLES = Number(opt('samples', 70));
 const shots = opt('shots', '');
-/** --off: the corner stack as it was before log v75 (it does not rise off launchers). */
+/** --off: the corner stack as it was before log v76 (it does not rise off launchers). */
 const OFF = args.includes('--off');
 if (shots) mkdirSync(shots, { recursive: true });
 

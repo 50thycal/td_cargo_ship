@@ -61,7 +61,7 @@ export function standHits(cards: Box[], avoid: Box[], st: Stand, across: number)
   return n;
 }
 
-/** Where the stack stands so that no card is over a launcher (log v75; the
+/** Where the stack stands so that no card is over a launcher (log v76; the
  *  player: "make sure they do not go in a place that is on top of enemy
  *  launchers so it isn't hidden"). `cards` are the boxes the cards would
  *  fill in the corner, `avoid` the launchers (and the carrier), `cur` where
@@ -340,7 +340,7 @@ export class Alerts {
   private cornerClear = 0;
   private movedAt = -9;
 
-  /** Log v75: keep every card off the enemy's launchers. `avoid` are the
+  /** Log v76: keep every card off the enemy's launchers. `avoid` are the
    *  launchers' boxes (screen px), `top` the highest the stack may go and
    *  `left` the field's left edge. Per frame, with real seconds elapsed. */
   dodge(avoid: Box[], top: number, left: number, real: number): void {

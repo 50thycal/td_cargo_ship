@@ -669,7 +669,7 @@ taps fired.
 **Test Lab bug.** Cause: Ready to test ticked a card "Played" for any run that ended, `quit` included (`readyPlayed`), and remembered the tick for good. Now a card is `new`, `played` (a run ended, none checked Done: "Played, not done", gold flag) or `done` (Done checked, or a verdict saved; `readyState`). The check is stored in the Test Lab's progress (`LabProgress.done`, by card, with the log version) and on the run's log (`labDone`), beside the verdicts; the All maps grid counts a done card as tested. A "Done testing this map" key (44 px) is on the pause menu of a Test Lab run and on the run's end screen (verdict sheet); it checks the map and goes back to the list, with no verdict needed. A played card also has a check key to mark it done from the list. Tests: `tests/v3/readyToTest.test.ts` (a quit log is played, not done; the Done mark and a verdict make it done; the mark survives save and load).
 
 **Not done.** The existing pause-menu "Done" (opens the rating sheet) is unchanged, so the pause menu has both "Done" (rate) and "Done testing this map" (check off).
-## Log v75: trucks that overlap, and call-outs over launchers (The Coves, Watch run)
+## Log v76: trucks that overlap, and call-outs over launchers (The Coves, Watch run)
 
 **What the player said:**
 
@@ -765,6 +765,6 @@ The ships lost a run, which is steadier, moved 0.4 at the most (behemoth 5.24 to
 
 **Not done.** (1) Trucks over fixed pads: the Sharra Delta's two islet pop-up roads start at the silo (the truck comes out of it) and its Rocket Trucks stand on it, and runners graze the pads' corners on a few maps (10 px or so): left as drawn. Three siege-gun spots on Battery Point and Lantern Light sit on a runner road. (2) The Coves bot runs show no truck pile-up in 8 seeds (the player's was a hand-held Watch run); the rule is general, and Coves is in the test. (3) The call-out stack still shares the screen with the ships: it is clear of launchers and the carrier, not of the lanes. In 4 to 5% of samples on kesh, needle and delta a card is over a launcher for a few frames while it moves off one that has just come under it.
 
-**Numbering and merge.** Built as log 73; log 74 (the Dreadnought) merged first, so it ships as 75. The tables above are this build against the base at 71; after the merge the Dreadnought card's bot win rate is 57% (96 seeds from 900; its own note says 59%).
+**Numbering and merge.** Built as log 73; log 74 (the Dreadnought) merged first, so it shipped as 75 and, once the Coves (75) merged too, ships as 76. The tables above are this build against the base at 71; after the merge the Dreadnought card's bot win rate is 57% (96 seeds from 900; its own note says 59%).
 
 **Tests.** `tests/v3/overlap.test.ts`: the body geometry; the card placement; every map's bot run (and the seeds that piled up most) with no sustained truck-on-truck overlap; with `LANES.on` off five maps' runs do pile up (it fails without the fix). `e2e/v3.mjs`'s call-out check follows the stack to where it rises and adds "no card over a launcher in more than 10% of samples". `tests/v3/fixtures/map-lab` rewritten with `--write`: every baseline run differs now (the log version, and trucks that wait or take another lane change the whole run from there), and each replays to itself exactly with telemetry on and off.
