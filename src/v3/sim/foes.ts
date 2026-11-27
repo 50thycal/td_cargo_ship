@@ -41,6 +41,8 @@ import {
   atLock,
   lobBallistic,
 } from './game';
+import { ROCKET_SCALE } from './overlap';
+import { TRUCK_RETRY, driveStep, roadPose, startClear } from './trucks';
 
 /** Something a foe fires that no interceptor can stop (en-unstoppable: the
  *  source always has a tell and can always be shot). It flies from (sx, sy)
@@ -145,6 +147,10 @@ export interface FoeData {
   link: number;
   /** A truck's road and how far along it. */
   path?: Point[];
+  /** Log v76: out in the lane beside the road (px), and the seconds it has
+   *  waited for the way to clear (sim/trucks.ts). */
+  lat?: number;
+  held?: number;
   along?: number;
   /** Its own velocity (the helicopter's flight). */
   vx?: number;
@@ -366,7 +372,18 @@ export function launchFoe(g: Game, l: Launch, at?: Point): void {
       if (!roads.length) return;
       // Log v42 (Saltgate Canal): an encounter's truck takes its own road,
       // its own salvos and its aim.
-      const road = l.road !== undefined ? roads[l.road % roads.length] : rng.pick(roads);
+      let road = l.road !== undefined ? roads[l.road % roads.length] : rng.pick(roads);
+      // Log v76: not on top of another truck: by another road if a wave's
+      // truck finds its own taken at the start, or a moment later.
+      if (!startClear(g, [road.from, road.to], true)) {
+        const other = l.road !== undefined || l.enc ? undefined : roads.find((r) => startClear(g, [r.from, r.to], true));
+        if (!other) {
+          g.queue.push({ ...l, at: g.waveT + TRUCK_RETRY });
+          g.queue.sort((a, b) => a.at - b.at);
+          return;
+        }
+        road = other;
+      }
       const th = spawnThreat(g, 'rocketTruck', road.from.x, road.from.y, 'truck');
       th.target = CARRIER_TARGET;
       if (l.enc) th.enc = l.enc;
@@ -1986,7 +2003,7 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   if (f.state === 0) {
     // A Rocket Convoy truck stands while the wreck ahead blocks the road.
     if ((f.stall ?? 0) > 0) f.stall = Math.max(0, f.stall! - dt);
-    else f.along = Math.min(end, (f.along ?? 0) + th.speed * (f.drive ?? 1) * dt);
+    else f.along = driveStep(g, th.id, 'rocketTruck', path, f.along ?? 0, Math.min(end, (f.along ?? 0) + th.speed * (f.drive ?? 1) * dt), f, ROCKET_SCALE, dt);
     if (f.along! >= end) {
       f.state = 1;
       f.t = 0;
@@ -2052,11 +2069,11 @@ function updateTruck(g: Game, th: Threat, f: FoeData, dt: number): void {
   } else {
     // Done: it drives off at its own speed (round 12's fixes: an event's
     // trucks drive in faster, but leave at the speed any truck drives).
-    f.along = Math.max(0, (f.along ?? 0) - th.speed * R.leave * dt);
+    f.along = driveStep(g, th.id, 'rocketTruck', path, f.along ?? 0, Math.max(0, (f.along ?? 0) - th.speed * R.leave * dt), f, ROCKET_SCALE, dt);
     // Back off the shore and gone (not a kill).
     if (f.along <= 0) th.dead = true;
   }
-  const p = alongPath(path, f.along ?? 0);
+  const p = roadPose(path, f.along ?? 0, f.lat ?? 0);
   th.x = p.x;
   th.y = p.y;
   th.heading = p.heading + (f.state === 4 ? Math.PI : 0);

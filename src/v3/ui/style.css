@@ -253,7 +253,9 @@ body {
    left of the right rail and above the Test Lab's bar when it shows. At most
    a third of the field wide: every map's carrier but The Delta's ends left
    of 65% of the field, so the stack never covers it (on The Delta it keeps
-   to one card: Alerts.place). */
+   to one card: Alerts.place). Where a launcher (a shore pad, a rig, a truck,
+   a siege gun) stands under it, it rises in steps until no card is over one
+   (Alerts.dodge, log v76). */
 .v2-alerts {
   position: absolute;
   z-index: 3;
@@ -265,6 +267,8 @@ body {
   align-items: flex-end;
   gap: 4px;
   pointer-events: none;
+  /* Log v76: raised off an enemy launcher it would cover (Alerts.dodge). */
+  transition: transform 0.18s ease-out;
 }
 
 /* One fixed column for the icon, one for the words: they never meet. A tap

@@ -713,6 +713,8 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'harbor', log: 76, tag: 'Polished', note: 'Trucks never pile up now (another road or lane); call-outs rise off the silos. Clean?' },
+  { map: 'gauntlet', log: 76, tag: 'Polished', note: 'The Rocket Convoy backs out in its own lane, not through the column. Any overlaps left?' },
   { map: 'coves', log: 75, tag: 'Polished', note: 'Boats surface from the caves, keep off the ships and fire from afar. Longer boss. Better?' },
   { map: 'dreadnought', log: 74, tag: 'Polished', note: 'Takes shots like the rigs (count on it), tougher turrets, and a long sinking. Hard enough?' },
   { map: 'saltgate', log: 71, tag: 'Polished', note: 'Boss parade of normal trucks (no shooting them, shoot the missiles), and easier. Better?' },

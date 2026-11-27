@@ -51,7 +51,7 @@ import {
   type Phase,
   type RaiderKind,
 } from '../sim/game';
-import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type CalloutIcon, type CalloutKind, type CalloutLevel } from './alerts';
+import { Alerts, CALLOUT_LEVELS, calloutKind, calloutLook, saveCalloutLevel, type AlertOpts, type Box, type CalloutIcon, type CalloutKind, type CalloutLevel } from './alerts';
 import { BotRun, Mimic, PERSONAS, PERSONA_ORDER, YOU, lostByWave, type BotIO } from '../sim/mimic';
 import { LOG_GAME, LOG_VERSION, Playback, Recorder, logTelemetry, playControl, playKind, replay, replayTo, type Controller, type PlayLog } from '../sim/playlog';
 import { Restorer, printDiff, runPrint, samePrint } from '../sim/resume';
@@ -948,6 +948,11 @@ export class App {
         this.paused = on;
       },
       control: () => this.control,
+      // The call-out stack's rise off the launchers, off or on (the overlap
+      // audit reads the corner as it was before log v76 with it off).
+      dodge: (on: boolean) => {
+        this.dodging = on;
+      },
       // Run the sim on by `seconds` at once, no inputs (screenshots of a
       // special event in progress).
       advance: (seconds: number) => {
@@ -1802,6 +1807,7 @@ export class App {
     this.shake = Math.max(0, this.shake - real * 40);
     this.alerts.speed = this.speed;
     this.alerts.update(real);
+    this.alerts.dodge(g && this.dodging ? this.launcherBoxes(g) : [], this.offY + 8, this.offX, real);
     if (g) this.raidAlert(g);
     if (g) this.radarHint(g);
     if (g) this.tickBossIntro(g);
@@ -2281,6 +2287,31 @@ export class App {
         return chip;
       }),
     );
+  }
+
+  /** The enemy's launchers on the screen, as boxes (screen px) the call-out
+   *  cards keep off (log v76): every shore pad, rig and cove, the ground
+   *  trucks and siege guns, the submarines on the surface, and the carrier. */
+  private dodging = true;
+
+  private launcherBoxes(g: Game): Box[] {
+    const out: Box[] = [];
+    const add = (x: number, y: number, hx: number, hy: number) =>
+      out.push({ x0: this.offX + (x - hx) * this.scale, y0: this.offY + (y - hy) * this.scale, x1: this.offX + (x + hx) * this.scale, y1: this.offY + (y + hy) * this.scale });
+    for (const b of g.map.bases) if (!b.generator) add(b.x, b.y, b.rig || b.core ? 44 : 34, b.rig || b.core ? 44 : 29);
+    for (const r of g.raiders) {
+      if (r.kind === 'sub') {
+        if (r.state === 'surface' || r.state === 'fire') add(r.x, r.y, 36, 20);
+      } else add(r.x, r.y, 38, 38);
+    }
+    for (const t of g.threats) {
+      if (t.dead) continue;
+      if (t.kind === 'rocketTruck') add(t.x, t.y, 38, 38);
+      else if (t.kind === 'siege') add(t.x, t.y, 32, 27);
+    }
+    const c = g.map.carrier;
+    add(c.x, c.y, CARRIER.halfLength + 6, CARRIER.halfBeam + 22);
+    return out;
   }
 
   /** The call-out stack sits in the corner by CSS; here, one card at a time

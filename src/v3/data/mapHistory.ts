@@ -32,6 +32,16 @@ export interface MapNotes {
   history: MapIteration[];
 }
 
+/** Trucks keep off each other, and the call-outs off the launchers (log
+ *  v76): on every map. */
+const NO_OVERLAP: MapIteration = {
+  date: '2026-11-27',
+  log: 76,
+  title: 'Trucks keep clear of each other',
+  what: 'A truck is never put down on another: a wave’s pop-up whose road is taken comes in by another road, and a truck about to sink into one on the road takes the lane beside it or waits a moment. The call-out cards rise (or move to the other corner) off any silo, rig, truck or siege gun they would cover.',
+  why: 'Your Coves Watch run: “Trucks should not overlap each other… the rocket truck and ballistic missile truck were just on top of each other,” and “make sure [the notices] do not go in a place that is on top of enemy launchers so it isn’t hidden.”',
+};
+
 /** Busier early waves (log v47): on every map rebuilt before it. */
 const BUSY: MapIteration = {
   date: '2026-11-21',
@@ -52,8 +62,9 @@ const ROUND12 = (what: string): MapIteration => ({
 
 export const MAP_HISTORY: Record<MapId, MapNotes> = {
   strait: {
-    look: 'Does the quiet first third read as a warm-up, not dead time? Is each Afterburner Rush round bigger than the last, and is wave 10 the top of a climb?',
+    look: 'Does the quiet first third read as a warm-up, not dead time? Is each Afterburner Rush round bigger than the last, and is wave 10 the top of a climb? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-17',
         log: 26,
@@ -64,8 +75,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   kesh: {
-    look: 'Does it climb now, with real pressure by wave 3 and wave 10 as the top? Your last run broke in boss round 3 (5 ships): is that a spike or a fair finale?',
+    look: 'Does it climb now, with real pressure by wave 3 and wave 10 as the top? Your last run broke in boss round 3 (5 ships): is that a spike or a fair finale? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       BUSY,
       {
         date: '2026-11-19',
@@ -91,8 +103,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   marrow: {
-    look: 'Does the radar tower last into the late waves now? Are losses spread over waves 4–8, with no cliff at the end?',
+    look: 'Does the radar tower last into the late waves now? Are losses spread over waves 4–8, with no cliff at the end? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       BUSY,
       {
         date: '2026-11-20',
@@ -125,8 +138,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   gauntlet: {
-    look: 'Whichever shore you turn to, the other fires at the ships coming in: does it still feel that way? Does the Rocket Convoy build up round by round?',
+    look: 'Whichever shore you turn to, the other fires at the ships coming in: does it still feel that way? Does the Rocket Convoy build up round by round? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-17',
         log: 26,
@@ -137,8 +151,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   harbor: {
-    look: 'Is the Breakout’s round 2 now the tense one, with round 3 no longer a wall? Can you shoot a supersonic as soon as it leaves the truck?',
+    look: 'Is the Breakout’s round 2 now the tense one, with round 3 no longer a wall? Can you shoot a supersonic as soon as it leaves the truck? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-18',
         log: 27,
@@ -156,8 +171,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   island: {
-    look: 'Attack helicopters off the island from wave 6, as in the boss: does the map feel like its own? Your last run lost in boss round 2.',
+    look: 'Attack helicopters off the island from wave 6, as in the boss: does the map feel like its own? Your last run lost in boss round 2. Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       BUSY,
       ROUND12('Torpedo subs surface only on clear water with a torpedo line to a lane. Your Gunship Pair’s helicopters fly 270 px apart.'),
       {
@@ -191,8 +207,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   behemoth: {
-    look: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike the Shield can’t stop. Do the early waves still hit you harder than they should?',
+    look: 'Jets and heavies go for the tanker from wave 4; the boss is a jet strike the Shield can’t stop. Do the early waves still hit you harder than they should? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       BUSY,
       ROUND12('Cluster missiles can’t split for their first 1.3 s, so one fired next to the ships can be shot. The Shield bubble fits the supertanker.'),
       {
@@ -219,8 +236,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   needle: {
-    look: 'The convoy queues single file at the mouth; walls of armored drones from wave 4. Is the Shield Wall boss fair? Your last run reached the boss.',
+    look: 'The convoy queues single file at the mouth; walls of armored drones from wave 4. Is the Shield Wall boss fair? Your last run reached the boss. Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       BUSY,
       ROUND12('The east torpedo sub spot moved so a sub surfaces on clear water with a line to the lane.'),
       {
@@ -233,8 +251,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   archipelago: {
-    look: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Your last run was lost on wave 7 to a “bad setup”: does a better kit fix it?',
+    look: 'Fire from the islets, the gaps and behind; drone motherships from wave 4. Your last run was lost on wave 7 to a “bad setup”: does a better kit fix it? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       BUSY,
       {
         date: '2026-11-20',
@@ -246,8 +265,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   saltgate: {
-    look: 'Skip to boss: the parade is ordinary Missile Trucks now, and nothing can shoot a truck, only its missiles. Is it easier, and is it clear what to shoot?',
+    look: 'Skip to boss: the parade is ordinary Missile Trucks now, and nothing can shoot a truck, only its missiles. Is it easier, and is it clear what to shoot? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-26',
         log: 71,
@@ -294,8 +314,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   battery: {
-    look: 'The Blackout boss is always dark now (no star shell at 6 s). Can you still read the jets and the shore guns in the dark on your phone?',
+    look: 'The Blackout boss is always dark now (no star shell at 6 s). Can you still read the jets and the shore guns in the dark on your phone? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 67,
@@ -314,8 +335,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   sowers: {
-    look: 'A bomber now sows its mines 60-130 px ahead of a ship, then fires at the ships it stopped. Watch the stops under that fire: is the automatic pause still fair, and the bomber worth shooting first?',
+    look: 'A bomber now sows its mines 60-130 px ahead of a ship, then fires at the ships it stopped. Watch the stops under that fire: is the automatic pause still fair, and the bomber worth shooting first? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 70,
@@ -347,8 +369,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   rigs: {
-    look: 'Each rig shows its shots left (32 standing); watch the new tug tow. Do the rigs feel sturdy but fair, and are waves 1–3 busy enough?',
+    look: 'Each rig shows its shots left (32 standing); watch the new tug tow. Do the rigs feel sturdy but fair, and are waves 1–3 busy enough? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-22',
         log: 55,
@@ -366,8 +389,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   lantern: {
-    look: 'Always dark now: does the lighthouse (a tower, a soft beam, a turning lamp) read on your phone? Does a threat the beam finds ping? Do the shells from the dark bank behind you still feel fair without a star shell?',
+    look: 'Always dark now: does the lighthouse (a tower, a soft beam, a turning lamp) read on your phone? Does a threat the beam finds ping? Do the shells from the dark bank behind you still feel fair without a star shell? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 67,
@@ -385,8 +409,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   dreadnought: {
-    look: 'Does the Dreadnought now take a real amount of ammo (the number over it counts down, 40-70 shots; each turret 5)? Are the turrets still worth shooting out? And when it dies: does the sinking (listing, fire and smoke, breaking in two, slipping under in a splash, about 3 s) feel like the payoff?',
+    look: 'Does the Dreadnought now take a real amount of ammo (the number over it counts down, 40-70 shots; each turret 5)? Are the turrets still worth shooting out? And when it dies: does the sinking (listing, fire and smoke, breaking in two, slipping under in a splash, about 3 s) feel like the payoff? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-27',
         log: 74,
@@ -411,8 +436,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   coves: {
-    look: 'Do the boats come out of the caves cleanly (a ring of foam, the hull rising, then out through the mouth) and stay on the water? Do the gunboat and rocket boat stand off the cargo ships and shell from afar, never on top of one? Does the Fire Fleet last long enough (about 26 s a round) and keep you busy with sorties, gunboats, a rocket boat and missiles?',
+    look: 'Do the boats come out of the caves cleanly (a ring of foam, the hull rising, then out through the mouth) and stay on the water? Do the gunboat and rocket boat stand off the cargo ships and shell from afar, never on top of one? Does the Fire Fleet last long enough (about 26 s a round) and keep you busy with sorties, gunboats, a rocket boat and missiles? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-27',
         log: 75,
@@ -437,8 +463,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   delta: {
-    look: 'Is the long river worth it: do the ships feel exposed all the way, with something to watch on every leg? Do the Rocket Trucks on the banks read from the lane? Is the island, point-blank on two legs, the danger and the south leg the rest? Does the Long Gauntlet read as fire running down the river?',
+    look: 'Is the long river worth it: do the ships feel exposed all the way, with something to watch on every leg? Do the Rocket Trucks on the banks read from the lane? Is the island, point-blank on two legs, the danger and the south leg the rest? Does the Long Gauntlet read as fire running down the river? Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 69,
@@ -456,8 +483,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   crossing: {
-    look: 'Do you have time to tap the spotter beacons down (4 taps each)? Is wave 10, the crossing, a proper climax? If the latest Armory feels like a wall, say so.',
+    look: 'Do you have time to tap the spotter beacons down (4 taps each)? Is wave 10, the crossing, a proper climax? If the latest Armory feels like a wall, say so. Trucks keep off each other now: do any still pile up? Do the call-out cards stay off the silos?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-22',
         log: 58,
@@ -468,8 +496,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   tide: {
-    look: 'Does the whole sea pull back and come in slowly enough, with the carrier left on dry sand? Are ships caught on the flats stuck till high tide, and does “THE TIDE TURNS” (8 s ahead) warn you in time?',
+    look: 'Does the whole sea pull back and come in slowly enough, with the carrier left on dry sand? Are ships caught on the flats stuck till high tide, and does “THE TIDE TURNS” (8 s ahead) warn you in time? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 68,
@@ -487,8 +516,9 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   citadel: {
-    look: 'Is the Citadel destroyed once (about 70 shots over the waves, the shield rising each wave until it falls) and a ruin after? Does THE CITADEL RETURNS read at the boss, and is the Last Stand a finale (grand salvo lock-on, final collapse)? Does the dome still matter before it falls?',
+    look: 'Is the Citadel destroyed once (about 70 shots over the waves, the shield rising each wave until it falls) and a ruin after? Does THE CITADEL RETURNS read at the boss, and is the Last Stand a finale (grand salvo lock-on, final collapse)? Does the dome still matter before it falls? Trucks keep off each other now: do any still pile up?',
     history: [
+      NO_OVERLAP,
       {
         date: '2026-11-24',
         log: 67,

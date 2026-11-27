@@ -160,6 +160,24 @@ export function drawRaiders(ctx: CanvasRenderingContext2D, g: Game): void {
   }
 }
 
+/** Log v76 (the player: a notice must not "go in a place that is on top of
+ *  enemy launchers so it isn't hidden"): where a text label of `w` x 22 px
+ *  (centred on x, baseline y) stands clear of every shore pad, rig, truck
+ *  and siege gun: its own place if that is clear, else the nearest of a
+ *  few steps up or down the screen. */
+export function labelSpot(g: Game, x: number, y: number, w: number): { x: number; y: number } {
+  const pads: { x: number; y: number; hx: number; hy: number }[] = [];
+  for (const b of g.map.bases) if (!b.generator) pads.push({ x: b.x, y: b.y, hx: b.rig || b.core ? 44 : 30, hy: b.rig || b.core ? 44 : 25 });
+  for (const r of g.raiders) if (r.kind !== 'sub') pads.push({ x: r.x, y: r.y, hx: 36, hy: 36 });
+  for (const t of g.threats) if (!t.dead && (t.kind === 'rocketTruck' || t.kind === 'siege')) pads.push({ x: t.x, y: t.y, hx: 36, hy: 30 });
+  const hit = (cx: number, cy: number) => pads.some((p) => Math.abs(p.x - cx) < p.hx + w / 2 + 4 && Math.abs(p.y - (cy - 8)) < p.hy + 15);
+  for (const dy of [0, 34, -34, 68, -68, 102, -102]) {
+    const ny = Math.max(28, Math.min(VIEW.height - 12, y + dy));
+    if (!hit(x, ny)) return { x, y: ny };
+  }
+  return { x, y };
+}
+
 /** Arrows at the entry edge and the dashed flight line, while an aircraft is
  *  on its way (PLANE.warn seconds ahead). */
 export function drawPlaneWarnings(ctx: CanvasRenderingContext2D, g: Game): void {
@@ -223,7 +241,8 @@ export function drawPlaneWarnings(ctx: CanvasRenderingContext2D, g: Game): void 
     ctx.font = '800 18px system-ui, sans-serif';
     ctx.textAlign = side > 0 ? 'left' : 'right';
     ctx.fillStyle = `rgba(${col},${0.6 + 0.4 * flash})`;
-    ctx.fillText(l.kind === 'strafer' ? '✈ STRAFING RUN' : '✈ BOMBER', side > 0 ? 78 : VIEW.width - 78, l.y - 24);
+    const spot = labelSpot(g, side > 0 ? 78 + 75 : VIEW.width - 78 - 75, l.y - 24, 150);
+    ctx.fillText(l.kind === 'strafer' ? '✈ STRAFING RUN' : '✈ BOMBER', spot.x + (side > 0 ? -75 : 75), spot.y);
     ctx.restore();
   }
 }
@@ -308,7 +327,8 @@ function routeWarning(ctx: CanvasRenderingContext2D, g: Game, l: Launch, p: numb
   const ly = Math.max(28, Math.min(VIEW.height - 12, cy + pose.ty * 70 + pose.tx * 34));
   ctx.textAlign = 'center';
   ctx.fillStyle = `rgba(${col},${0.6 + 0.4 * flash})`;
-  ctx.fillText(strafer ? '✈ STRAFING RUN' : '✈ BOMBER', lx, ly);
+  const spot = labelSpot(g, lx, ly, 160);
+  ctx.fillText(strafer ? '✈ STRAFING RUN' : '✈ BOMBER', spot.x, spot.y);
   ctx.restore();
 }
 
