@@ -85,6 +85,7 @@ import {
   newVerdictDraft,
   type VerdictDraft,
   loadLabProgress,
+  markLabDone,
   nextCards,
   saveLabProgress,
   type LabRunSetup,
@@ -948,7 +949,7 @@ export class App {
       },
       control: () => this.control,
       // The call-out stack's rise off the launchers, off or on (the overlap
-      // audit reads the corner as it was before log v73 with it off).
+      // audit reads the corner as it was before log v75 with it off).
       dodge: (on: boolean) => {
         this.dodging = on;
       },
@@ -1177,6 +1178,7 @@ export class App {
             note: () => this.openNote('pause'),
             setup: () => this.openLabSetup(),
             done: () => this.showLabVerdict('done'),
+            markDone: () => this.markLabDone(),
           },
           lab.waves,
           labWaves(lab),
@@ -1723,6 +1725,11 @@ export class App {
     this.root.style.setProperty('--map-bottom', `${h - this.offY - mapH}px`);
     this.root.style.setProperty('--safe-l', `${sa.l}px`);
     this.root.style.setProperty('--safe-r', `${sa.r}px`);
+    // The note keyboard sits on the page, outside the game's root: it keeps its
+    // keys out from under the island by these same measured insets (iOS reports
+    // the island's inset on both sides sideways; only one side has it).
+    document.documentElement.style.setProperty('--kb-safe-left', `${sa.l}px`);
+    document.documentElement.style.setProperty('--kb-safe-right', `${sa.r}px`);
     this.placeBanner();
   }
 
@@ -2283,7 +2290,7 @@ export class App {
   }
 
   /** The enemy's launchers on the screen, as boxes (screen px) the call-out
-   *  cards keep off (log v73): every shore pad, rig and cove, the ground
+   *  cards keep off (log v75): every shore pad, rig and cove, the ground
    *  trucks and siege guns, the submarines on the surface, and the carrier. */
   private dodging = true;
 
@@ -3225,6 +3232,7 @@ export class App {
       : undefined;
     this.showOverlay('v3-lab-verdict', [
       labVerdictSheet(run.card, stats, waves, ended, p, next, {
+        markDone: () => this.markLabDone(ended),
         save: (r, then) => {
           // The verdict is for this version of the card, in this round; it
           // joins the card's history (older versions' verdicts stay).
@@ -3278,6 +3286,33 @@ export class App {
       const panel = this.overlay.querySelector<HTMLElement>('.v2-panel');
       if (panel) panel.scrollTop = scroll;
     }
+  }
+
+  /** Log v74 (the player: "make me check 'done' when I finish the run or
+   *  when I am in the pause menu"): check the test's map Done and go back to
+   *  the list. No verdict is saved (that is Save's); the card is done at its
+   *  version, and the run's log says so (`labDone`). The run ends as won if
+   *  the map was cleared, as lost if the convoy was, else as a quit. */
+  private markLabDone(ended: 'done' | 'length' | 'lost' = 'done'): void {
+    const run = this.labRun;
+    const g = this.game;
+    if (!run || !g) return;
+    const p = this.labProgress;
+    markLabDone(p, run.card.id);
+    if (!p.session.ids.includes(run.card.id)) p.session.ids.push(run.card.id);
+    p.queue = p.queue.filter((id) => id !== run.card.id);
+    saveLabProgress(p);
+    this.paused = false;
+    this.pauseBtn.textContent = 'II';
+    if (this.rec) {
+      this.rec.log.labDone = true;
+      clearRun(this.rec.log.id);
+    }
+    const log = this.endRun(g.phase === 'won' ? 'won' : ended === 'lost' ? 'lost' : 'quit');
+    this.rec = null;
+    if (log) keepLabLog(run.card.id, log);
+    this.labDraft = null;
+    this.showLab();
   }
 
   /** A note on a moment of a test's run, from its end screen: it goes into

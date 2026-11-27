@@ -1,4 +1,4 @@
-// Overlap audit (log v73, docs/design/v3-playtest-fixes.md, "Trucks that
+// Overlap audit (log v75, docs/design/v3-playtest-fixes.md, "Trucks that
 // overlap"): the bot plays every map (the map's Test Lab card on its
 // production setup, the "you" bot, the player's Armory, as the bot report
 // does) and every sim step records which pairs of ground launchers are drawn
@@ -11,7 +11,7 @@
 //
 //   npx vite-node tools/v3/overlap-audit/audit.ts -- [--seeds=8] [--from=900] [--maps=coves,delta]
 //        [--json=out.json] [--list] [--off]
-//   (--off plays the game without the trucks' lanes, as before log v73;
+//   (--off plays the game without the trucks' lanes, as before log v75;
 //   --list prints every sustained event: map, seed, wave, the two trucks, where, how long)
 //
 // The warning-card half of the audit (a notification on top of an enemy

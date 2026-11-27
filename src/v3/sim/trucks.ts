@@ -1,4 +1,4 @@
-// Trucks keep off each other (log v73; docs/design/v3-playtest-fixes.md,
+// Trucks keep off each other (log v75; docs/design/v3-playtest-fixes.md,
 // "Trucks that overlap"). Every truck that drives a road (a pop-up, a
 // runner, a Rocket Truck, in a wave or an event) moves through `driveStep`:
 // where the body it would have next step would sink into another truck, it
@@ -28,7 +28,7 @@ import { RAIDER_SCALE, ROCKET_SCALE, TRUCK_BODY, TRUCK_GAP, groundBodies, onScre
 import type { Point } from '../data/mapTypes';
 
 export const LANES = {
-  /** Trucks keep off each other (log v73). The tests turn it off. */
+  /** Trucks keep off each other (log v75). The tests turn it off. */
   on: true,
   /** px/s a truck slides across to the lane beside its road. */
   speed: 90,

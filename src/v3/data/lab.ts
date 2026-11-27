@@ -713,15 +713,15 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
-  { map: 'harbor', log: 73, tag: 'Polished', note: 'Trucks never pile up now (another road or lane); call-outs rise off the silos. Clean?' },
-  { map: 'gauntlet', log: 73, tag: 'Polished', note: 'The Rocket Convoy backs out in its own lane, not through the column. Any overlaps left?' },
+  { map: 'harbor', log: 75, tag: 'Polished', note: 'Trucks never pile up now (another road or lane); call-outs rise off the silos. Clean?' },
+  { map: 'gauntlet', log: 75, tag: 'Polished', note: 'The Rocket Convoy backs out in its own lane, not through the column. Any overlaps left?' },
+  { map: 'dreadnought', log: 74, tag: 'Polished', note: 'Takes shots like the rigs (count on it), tougher turrets, and a long sinking. Hard enough?' },
   { map: 'saltgate', log: 71, tag: 'Polished', note: 'Boss parade of normal trucks (no shooting them, shoot the missiles), and easier. Better?' },
   { map: 'sowers', log: 70, tag: 'Polished', note: 'Still automatic, but sown mines land closer and bombers shoot back. Stops cost. Fair?' },
   { map: 'delta', log: 69, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },
   { map: 'coves', log: 69, tag: 'Polished', note: 'Speedboats ram and burn, gunboats lock on one ship, rocket boats fire from afar.' },
   { map: 'tide', log: 68, tag: 'Polished', note: 'The whole sea pulls back, slowly; ships left on the flats stay stuck till high tide.' },
   { map: 'citadel', log: 67, tag: 'Polished', note: 'Destroyed once (~70 shots), a ruin till the boss rebuilds it; new look. Better?' },
-  { map: 'dreadnought', log: 67, tag: 'Polished', note: 'Three gun turrets fire the artillery: shoot them out. Silo for missiles. Less lame?' },
   { map: 'lantern', log: 67, tag: 'Polished', note: 'Always dark, no star shells; a new lighthouse, beam and lamp. Readable on a phone?' },
   { map: 'battery', log: 67, tag: 'Polished', note: 'The Blackout boss is always dark now (no star shell). Can you still read it?' },
   { map: 'crossing', log: 58, tag: 'New', note: 'Two convoys pass; beacons rise between the lanes and call shells on both. Tap them first?' },

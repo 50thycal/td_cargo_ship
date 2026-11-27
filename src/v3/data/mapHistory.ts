@@ -33,10 +33,10 @@ export interface MapNotes {
 }
 
 /** Trucks keep off each other, and the call-outs off the launchers (log
- *  v73): on every map. */
+ *  v75): on every map. */
 const NO_OVERLAP: MapIteration = {
   date: '2026-11-27',
-  log: 73,
+  log: 75,
   title: 'Trucks keep clear of each other',
   what: 'A truck is never put down on another: a wave’s pop-up whose road is taken comes in by another road, and a truck about to sink into one on the road takes the lane beside it or waits a moment. The call-out cards rise (or move to the other corner) off any silo, rig, truck or siege gun they would cover.',
   why: 'Your Coves Watch run: “Trucks should not overlap each other… the rocket truck and ballistic missile truck were just on top of each other,” and “make sure [the notices] do not go in a place that is on top of enemy launchers so it isn’t hidden.”',
@@ -409,9 +409,16 @@ export const MAP_HISTORY: Record<MapId, MapNotes> = {
     ],
   },
   dreadnought: {
-    look: 'Do the three gun turrets read as targets, and is shooting them out (4 hits each) worth the ammo against the shells they fire? Does the silo opening before a missile or drone launch read? Does the battleship look and move like a real one now? Trucks keep off each other now: do any still pile up?',
+    look: 'Does the Dreadnought now take a real amount of ammo (the number over it counts down, 40-70 shots; each turret 5)? Are the turrets still worth shooting out? And when it dies: does the sinking (listing, fire and smoke, breaking in two, slipping under in a splash, about 3 s) feel like the payoff? Trucks keep off each other now: do any still pile up?',
     history: [
       NO_OVERLAP,
+      {
+        date: '2026-11-27',
+        log: 74,
+        title: 'It takes shots, not damage, and it sinks',
+        what: 'The battleship counts your shots, as the Rig Field\'s rigs do: a power-up or a blast no longer shreds it, and the number of shots left is over it. Its hull takes 40 / 45 / 70 shots in the three boss rounds (40-50 on its waves), each gun turret 5 (4 hits before) and the turrets fire a little slower (1.5 x the broadside gap, was 1.2). The boss rounds are re-tuned so they climb: round 2 has no guided missile and fires slower, round 3 adds a guided missile to its artillery and a tougher hull. When it is sunk it no longer just vanishes: explosions run down the hull, it lists and burns under black smoke, breaks in two at the waist, the stern goes under and then the bow, in a splash with foam, bubbles and an oil slick (about 3 s). Bot, your usual Armory, 96 seeds from 900: wins 59% (72% before), waves 1-5 0.48 ships, boss rounds 0.95 / 1.13 / 2.21 (0.79 / 1.74 / 1.08 before).',
+        why: 'Your notes after winning boss 4 (\"a bit easy\"): \"The Dreadnought was a bit too easy, I think we should make it the same as the Oil rigs, where it needs x amount of ammo to take it out. Turrets are a bit too easy to kill as well. Also can you make an animation of the ship sinking so it is more satisfying for the player.\"',
+      },
       {
         date: '2026-11-24',
         log: 67,

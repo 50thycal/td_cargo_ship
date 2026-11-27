@@ -1,4 +1,4 @@
-// Trucks keep off each other, and the call-outs off the launchers (log v73;
+// Trucks keep off each other, and the call-outs off the launchers (log v75;
 // docs/design/v3-playtest-fixes.md, "Trucks that overlap"). The player, from
 // a Watch run on The Coves: "Trucks should not overlap each other as well,
 // the rocket truck and ballistic missile truck were just on top of each
@@ -85,7 +85,7 @@ describe('the call-outs keep off the launchers', () => {
 
 describe('trucks on the roads of every map', () => {
   // Every map's bot run (usual Armory, seed 900) and the seeds that piled trucks up
-  // most before log v73 (the audit's list): no two trucks stay on top of each other.
+  // most before log v75 (the audit's list): no two trucks stay on top of each other.
   const runs: [MapId, number][] = [...MAP_ORDER.map((m): [MapId, number] => [m, 900]), ['gauntlet', 904], ['harbor', 905], ['kesh', 904], ['marrow', 905], ['battery', 902], ['crossing', 905], ['needle', 902]];
 
   it('no sustained truck-on-truck overlap on any map', { timeout: 900_000 }, () => {
@@ -100,7 +100,7 @@ describe('trucks on the roads of every map', () => {
     expect(bad).toEqual([]);
   });
 
-  it('with the lanes off (the game before log v73) the same runs do pile up', { timeout: 900_000 }, () => {
+  it('with the lanes off (the game before log v75) the same runs do pile up', { timeout: 900_000 }, () => {
     LANES.on = false;
     try {
       let piled = 0;

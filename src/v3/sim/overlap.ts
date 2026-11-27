@@ -1,4 +1,4 @@
-// Truck-on-truck overlap (log v73; docs/design/v3-playtest-fixes.md, "Trucks
+// Truck-on-truck overlap (log v75; docs/design/v3-playtest-fixes.md, "Trucks
 // that overlap"). The player, from a Watch run on The Coves: "Trucks should
 // not overlap each other as well, the rocket truck and ballistic missile
 // truck were just on top of each other. We should audit all maps too ...
