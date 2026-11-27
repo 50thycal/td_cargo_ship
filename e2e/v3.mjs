@@ -286,7 +286,7 @@ try {
     const log = window.__v3.log();
     return { v: log.v, acts: log.commands.filter((c) => c[1] === 'a').length, game: log.game, armory: log.armory };
   });
-  check(logged.v === 71 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
+  check(logged.v === 73 && logged.acts === 0 && logged.game === 'v3' && logged.armory.warhead === 2 && logged.armory.pointdef === 1 && logged.armory.magazine === 2, `log v${logged.v}: taps only, the armory recorded`);
 
   // ---- Defend to the draft ----
   await equip(page, []);
@@ -571,6 +571,7 @@ try {
     await tp.waitForSelector('.playing');
     let most = 0;
     let samples = 0;
+    let hiddenSamples = 0;
     for (let k = 0; k < 70; k++) {
       const r = await tp.evaluate(() => {
         const g = window.__v3.game();
@@ -589,10 +590,25 @@ try {
           // field's right edge and the screen's foot; its cards stay in the
           // right half, below the top third (two first-sight hints stand
           // tallest on the smallest phone).
+          // Log v73: where a silo, rig, truck or gun would be under the stack
+          // it rises (or goes to the other corner): then its cards only have
+          // to stay in the field and on the screen.
           corner: (() => {
-            const st = document.querySelector('.v2-alerts').getBoundingClientRect();
+            const box = document.querySelector('.v2-alerts');
+            const st = box.getBoundingClientRect();
+            if (Number(box.dataset.rise || 0) > 0 || box.dataset.side === 'left' || getComputedStyle(box).transform !== 'none') return st.left >= tl.x - 2 && st.right <= br.x + 1 && st.top >= 0;
             return st.right <= br.x && br.x - st.right < 12 && innerHeight - st.bottom < 12 && cards.every((p) => p.left > (tl.x + br.x) / 2 && p.top > innerHeight / 3);
           })(),
+          // The enemy's fixed launchers (every shore pad, rig, cove and chute) under a card.
+          hidden: (() => {
+            const pads = g.map.bases.filter((b) => !b.generator).map((b) => {
+              const lo = window.__v3.toClient(b.x - (b.rig || b.core ? 40 : 30), b.y - (b.rig || b.core ? 40 : 25));
+              const hi = window.__v3.toClient(b.x + (b.rig || b.core ? 40 : 30), b.y + (b.rig || b.core ? 40 : 25));
+              return { left: lo.x, top: lo.y, right: hi.x, bottom: hi.y };
+            });
+            return cards.some((p) => pads.some((q) => hit(p, q)));
+          })(),
+          moved: getComputedStyle(document.querySelector('.v2-alerts')).transform !== 'none',
           overlap: cards.some((p, i) => cards.some((q, j) => j > i && hit(p, q))),
           onCarrier: cards.some((p) => hit(p, carrier)),
           off: cards.some((p) => p.bottom > innerHeight + 0.5 || p.top < 0 || p.left < 0 || p.right > innerWidth),
@@ -605,14 +621,18 @@ try {
       const bad = [
         r.n > r.max && `${r.n} notices up (limit ${r.max})`,
         r.overlap && 'notices overlap each other',
-        r.onCarrier && 'a notice covers the carrier',
+        r.onCarrier && !r.moved && 'a notice covers the carrier',
         !r.corner && 'a notice is outside the bottom-right corner',
         r.off && 'a notice runs off the screen',
       ].filter(Boolean);
       for (const b of bad) fail(`${map} ${w}×${h}: ${b}`);
       if (bad.length) break;
+      if (r.hidden || (r.onCarrier && r.moved)) hiddenSamples++;
       await tp.waitForTimeout(120);
     }
+    // Log v73: a card is not left over a launcher (a few frames while the stack
+    // moves off one that has just come under it are allowed).
+    if (hiddenSamples > samples * 0.1) fail(`${map} ${w}×${h}: a notice was over an enemy launcher in ${hiddenSamples} of ${samples} samples`);
     if (most === 0) fail(`${map}: no notices seen in a busy wave`);
     if (samples < 20) fail(`${map}: only ${samples} samples before the wave ended`);
     console.log(`ok: call-outs on ${map} ${w}×${h}: ${samples} samples, up to ${most} cards at once, in the corner, no overlaps`);
@@ -1270,7 +1290,7 @@ try {
       const e = p.results.diveBomber?.at(-1);
       return { verdict: e?.verdict, note: e?.note, round: e?.round, rev: e?.rev, logVerdict: log?.labResult?.verdict, logRound: log?.labResult?.round, v: log?.v, old: !!document.querySelector('[data-card="diveBomber"]') };
     });
-    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 71 && !saved.old, `the verdict is kept on the device, with its round and the card's version, and rides in the test's log; back on the hub, which lists no old card (${JSON.stringify(saved)})`);
+    check(saved.verdict === 'keep' && saved.note === 'reads fine' && saved.round === 13 && saved.rev === 5 && saved.logVerdict === 'keep' && saved.logRound === 13 && saved.v === 73 && !saved.old, `the verdict is kept on the device, with its round and the card's version, and rides in the test's log; back on the hub, which lists no old card (${JSON.stringify(saved)})`);
     // An event card starts straight into its event on its own map, its card
     // shown; Run it again (in place of Bring one) starts it over.
     await tp.goto(`${BASE_URL}/v3.html?lab=ev-drone-storm`, { waitUntil: 'networkidle' });

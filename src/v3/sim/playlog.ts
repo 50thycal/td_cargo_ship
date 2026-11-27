@@ -617,11 +617,26 @@ import type { EncounterSetup } from '../data/encounters';
  *      bot's loss in the three rounds, usual Armory, goes from 0.9 / 1.4 /
  *      2.0 to 0.5 / 1.0 / 1.4 (ripples of 5 at 0.4 s in round 1, a denser
  *      round 2, one stray in round 3; encounters.ts SALTGATE_BOSS_ROUNDS). A Saltgate log before v71 no
- *      longer replays to the same game; the other maps play as they did. */
-export const LOG_VERSION = 71;
+ *      longer replays to the same game; the other maps play as they did.
+ *  73: trucks keep off each other, and the call-outs keep off the enemy's
+ *      launchers (the player, on The Coves: "Trucks should not overlap each
+ *      other ... the rocket truck and ballistic missile truck were just on
+ *      top of each other ... the other truck [can] come in from a different
+ *      way"; "make sure [the notifications] do not go in a place that is on
+ *      top of enemy launchers so it isn't hidden"; docs/design/
+ *      v3-playtest-fixes.md, "Trucks that overlap"). A truck (a pop-up, a
+ *      runner or a Rocket Truck, in a wave or an event) is not put down on
+ *      another: a wave's pop-up whose road is taken at the start comes in by
+ *      another road, any truck waits at the start until its road is clear,
+ *      and a truck about to sink into another one on the road takes the
+ *      lane beside it or waits (sim/trucks.ts driveStep; sim/overlap.ts
+ *      measures it). Every map has trucks, so a log before v73 no longer
+ *      replays to the same game. (The call-outs' place is the screen's, not
+ *      the game's: ui/alerts.ts.) */
+export const LOG_VERSION = 73;
 /** The log versions this build replays exactly. Tools that replay logs
  *  (Map Analytics, the map lab) take any of these. */
-export const LOG_REPLAYS: readonly number[] = [71];
+export const LOG_REPLAYS: readonly number[] = [73];
 
 /** Does this build replay a log of this version exactly? */
 export function replaysHere(v: number): boolean {

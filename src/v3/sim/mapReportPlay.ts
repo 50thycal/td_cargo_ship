@@ -11,6 +11,7 @@ import { VERSION_DEFAULT, type EncounterVersion } from '../data/encounters';
 import { labCard, mapCardId } from '../data/lab';
 import { MAPS, type MapId } from '../data/maps';
 import { defaultSetup, labRunPlan, parseLabProgress } from '../ui/lab';
+import type { Game } from './game';
 import { ThreatWatch, digestRun, type RunDigest } from './mapReport';
 import { BotRun, PERSONAS } from './mimic';
 import type { PilotSkill } from './convoyPilot';
@@ -34,6 +35,8 @@ export interface ReportPlayOpts {
   /** Who gives the convoy's command (Sowers' Reach's Hold; sim/convoyPilot.ts):
    *  absent, no one (the bot report's own runs). */
   pilot?: PilotSkill;
+  /** Called with the game after every sim step (the overlap audit). */
+  onStep?: (g: Game) => void;
 }
 
 export interface ReportPlay {
@@ -68,6 +71,7 @@ export function playReportRun(map: MapId, seed: number, o: ReportPlayOpts = {}):
   while (!run.done) {
     run.advance(1);
     watch.observe(g);
+    o.onStep?.(g);
   }
   const sc = g.tel!.sidecar(g);
   const digest = digestRun(MAPS[map], seed, sc, watch.data(), { won: g.phase === 'won', wave: g.wave });

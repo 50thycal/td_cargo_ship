@@ -22,6 +22,76 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''):
 
 export type AlertTone = 'info' | 'raid' | 'danger';
 
+/** A box in screen pixels. */
+export interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Air kept between a card and a launcher (px). */
+export const DODGE_MARGIN = 10;
+/** The steps the stack rises in looking for a clear place (px). */
+export const DODGE_STEP = 8;
+
+/** Do two boxes overlap (`pad` px of air counted as overlap)? */
+export function boxesHit(a: Box, b: Box, pad = 0): boolean {
+  return a.x0 < b.x1 + pad && b.x0 < a.x1 + pad && a.y0 < b.y1 + pad && b.y0 < a.y1 + pad;
+}
+
+/** Where the stack stands: in the corner (`left` 0, `rise` 0), raised above
+ *  it, or over in the other corner (`left` 1). */
+export interface Stand {
+  left: 0 | 1;
+  rise: number;
+}
+
+/** What standing in the other corner costs, in px of rise. */
+export const LEFT_COST = 120;
+
+/** How many (card, launcher) pairs overlap with the stack at `st`. */
+export function standHits(cards: Box[], avoid: Box[], st: Stand, across: number): number {
+  let n = 0;
+  const dx = st.left ? -across : 0;
+  for (const c of cards) {
+    const moved = { x0: c.x0 + dx, x1: c.x1 + dx, y0: c.y0 - st.rise, y1: c.y1 - st.rise };
+    for (const a of avoid) if (boxesHit(moved, a, DODGE_MARGIN)) n++;
+  }
+  return n;
+}
+
+/** Where the stack stands so that no card is over a launcher (log v73; the
+ *  player: "make sure they do not go in a place that is on top of enemy
+ *  launchers so it isn't hidden"). `cards` are the boxes the cards would
+ *  fill in the corner, `avoid` the launchers (and the carrier), `cur` where
+ *  the stack stands now, `max` the most it may rise and `across` how far
+ *  the other corner is to the left. A stack that is clear where it stands
+ *  stays (it does not hop about); one covering a launcher goes to the
+ *  cheapest place that is clear (a step up costs its px, the other corner
+ *  LEFT_COST), and if there is none, to the place that covers the fewest. */
+export function stackStand(cards: Box[], avoid: Box[], cur: Stand, max: number, across: number): Stand {
+  const hits = (st: Stand): number => standHits(cards, avoid, st, across);
+  const now: Stand = { left: cur.left, rise: Math.min(cur.rise, max) };
+  if (!cards.length || !avoid.length || hits(now) === 0) return now;
+  let best = now;
+  let fewest = hits(now);
+  let cost = Infinity;
+  for (const left of [0, 1] as const) {
+    for (let rise = 0; rise <= max; rise += DODGE_STEP) {
+      const st: Stand = { left, rise };
+      const n = hits(st);
+      const c = rise + left * LEFT_COST;
+      if (n < fewest || (n === fewest && n === 0 && c < cost)) {
+        fewest = n;
+        best = st;
+        cost = c;
+      }
+    }
+  }
+  return best;
+}
+
 /** What a card is for: decides who sees it (the setting) and for how long.
  *  - alarm: one more loss ends the run (last ship, carrier critical). Always.
  *  - warn: something to react to now (a raid, a dreadnought, a supertanker).
@@ -203,7 +273,7 @@ export class Alerts {
       }
     }
     const urgent = o.tone === 'raid' || o.tone === 'danger' || !!o.now;
-    if (this.shown.length >= this.max && urgent) {
+    if (this.shown.length >= this.limit && urgent) {
       // Make room: the oldest ordinary card goes, once it has been read.
       const victim = this.shown.find((c) => c.tone === 'info');
       if (victim) {
@@ -212,7 +282,7 @@ export class Alerts {
       }
     }
     const p = { title, sub, opts: o, n };
-    if (this.shown.length < this.max) this.show(p);
+    if (this.shown.length < this.limit) this.show(p);
     else if (urgent) this.waiting.unshift(p);
     else this.waiting.push(p);
   }
@@ -231,7 +301,7 @@ export class Alerts {
     const head = this.waiting[0]?.opts;
     if (head && (head.now || (head.tone !== undefined && head.tone !== 'info')))
       for (const c of this.shown) if (c.tone === 'info') c.left = Math.min(c.left, Math.max(0, MIN_READ - c.age));
-    while (this.waiting.length && this.shown.length < this.max) {
+    while (this.waiting.length && this.shown.length < this.limit) {
       const w = this.waiting.shift()!;
       // A raid whose moment has passed while it waited is old news.
       if (w.opts.alive && !w.opts.alive()) continue;
@@ -262,6 +332,62 @@ export class Alerts {
     const top = r.bottom - (CARD_H * MAX_SHOWN + GAP);
     const hits = !!carrier && carrier.x1 > r.left && carrier.x0 < r.right && carrier.y1 > top && carrier.y0 < r.bottom;
     this.max = hits ? 1 : MAX_SHOWN;
+  }
+
+  /** Where the stack stands now, and how long the corner has been clear (it
+   *  goes back to the corner once that has been clear for a second). */
+  private stand: Stand = { left: 0, rise: 0 };
+  private cornerClear = 0;
+  private movedAt = -9;
+
+  /** Log v73: keep every card off the enemy's launchers. `avoid` are the
+   *  launchers' boxes (screen px), `top` the highest the stack may go and
+   *  `left` the field's left edge. Per frame, with real seconds elapsed. */
+  dodge(avoid: Box[], top: number, left: number, real: number): void {
+    const r = this.el.getBoundingClientRect();
+    // Where the stack is drawn right now (it slides to a new stand), so the
+    // cards can be put back in the corner whatever moment this is read.
+    const m = new DOMMatrix(getComputedStyle(this.el).transform);
+    const dx = -m.m41;
+    const rise = -m.m42;
+    const kids = [...this.el.children].filter((e) => !e.classList.contains('leaving')) as HTMLElement[];
+    // The cards as they would stand in the corner; with none up, the stack's
+    // own corner stands in for the next one.
+    const cards: Box[] = kids.map((e) => {
+      const b = e.getBoundingClientRect();
+      return { x0: b.left + dx, x1: b.right + dx, y0: b.top + rise, y1: b.bottom + rise };
+    });
+    if (!cards.length) cards.push({ x0: r.left + dx, x1: r.right + dx, y0: r.bottom + rise - 56, y1: r.bottom + rise });
+    const max = Math.max(0, Math.min(...cards.map((c) => c.y0)) - top);
+    // The other corner: the stack's left edge on the field's.
+    this.across = Math.max(0, r.left + dx - left - 8);
+    this.clock2 += real;
+    let next = stackStand(cards, avoid, this.stand, max, this.across);
+    // Nowhere to stand clear of every launcher with the cards up: one card at
+    // a time (the smallest phone, a map with launchers all round).
+    this.crowded = standHits(cards, avoid, next, this.across) > 0 && cards.length > 1;
+    if (next.left === this.stand.left && next.rise === this.stand.rise && (next.rise > 0 || next.left)) {
+      const home = stackStand(cards, avoid, { left: 0, rise: 0 }, max, this.across);
+      this.cornerClear = home.rise === 0 && home.left === 0 ? this.cornerClear + real : 0;
+      if (this.cornerClear > 1) next = home;
+    } else this.cornerClear = 0;
+    if ((next.left !== this.stand.left || next.rise !== this.stand.rise) && this.clock2 - this.movedAt > 0.25) {
+      this.stand = next;
+      this.movedAt = this.clock2;
+      const x = next.left ? -this.across : 0;
+      this.el.style.transform = next.rise || next.left ? `translate(${x}px, ${-next.rise}px)` : '';
+      this.el.dataset.rise = String(Math.round(next.rise));
+      this.el.dataset.side = next.left ? 'left' : 'right';
+    }
+  }
+
+  private across = 0;
+  /** No clear place for the whole stack: show one card at a time. */
+  private crowded = false;
+  private clock2 = 0;
+
+  private get limit(): number {
+    return this.crowded ? 1 : this.max;
   }
 
   private ttl(o: AlertOpts): number {

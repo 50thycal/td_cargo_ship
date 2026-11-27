@@ -713,6 +713,8 @@ export interface ReadyToTest {
 }
 
 export const READY_TO_TEST: ReadyToTest[] = [
+  { map: 'harbor', log: 73, tag: 'Polished', note: 'Trucks never pile up now (another road or lane); call-outs rise off the silos. Clean?' },
+  { map: 'gauntlet', log: 73, tag: 'Polished', note: 'The Rocket Convoy backs out in its own lane, not through the column. Any overlaps left?' },
   { map: 'saltgate', log: 71, tag: 'Polished', note: 'Boss parade of normal trucks (no shooting them, shoot the missiles), and easier. Better?' },
   { map: 'sowers', log: 70, tag: 'Polished', note: 'Still automatic, but sown mines land closer and bombers shoot back. Stops cost. Fair?' },
   { map: 'delta', log: 69, tag: 'Polished', note: 'One river 3x as long, no lanes to switch: under fire all the way, trucks on the banks.' },

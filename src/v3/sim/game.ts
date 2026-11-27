@@ -84,6 +84,8 @@ import { LAB_SET } from '../data/lab';
 import { OLD_THREATS, enemyPair, isOldThreat, memberKind, type LabPair, type PairMember } from '../data/pairs';
 import { labBusy, labCame, labFoes, labHarm, labKilled, labOpener, labShotAt, labWave, labWaveCleared, newSet, setUpLab, type LabSet, type LabSetup, type LabState } from './lab';
 import { absorbs, burstCloud, crossingPair, foeEta, foeWorthShooting, guardFor, lureIn, lured, paintTarget, pickupLocked, foeCount, foeDown, foesBusy, fromBase, isFoe, launchFoe, movesItself, newFoeState, nukeFoes, planFoes, updateFoe, updateParadeTruck, updateFoeMarks, updateFoeShots, type FoeData, type FoeState, foeData, onLand } from './foes';
+import { TRUCK_RETRY, driveStep, roadPose, startClear } from './trucks';
+import { RAIDER_SCALE } from './overlap';
 import type { Cue, CueId } from '../audio/cues';
 import { bonusDue, endEvent, eventBusy, eventCargo, eventDropWeights, eventFoeDown, isEventWave, lastWave, nextRunDue, rerunEvent, restoreConvoy, startBonus, startEvent, updateEvent, type EventRecord, type EventRun } from './events';
 import { ENDING, EVENT_WAVE, type EventId, type EventOutcome } from '../data/events';
@@ -555,6 +557,10 @@ export interface Raider {
   /** Whole units left (a runner fires one unit per stop). */
   units: Unit[];
   fireT: number;
+  /** Log v73: how far it is out in the lane beside its road (px), and how
+   *  long it has waited for the way to clear (s). */
+  lat?: number;
+  held?: number;
   /** An authored encounter's launcher: its id and its aim. */
   enc?: string;
   aim?: BeatAim;
@@ -5357,7 +5363,23 @@ function stepSim(g: Game, dt: number): void {
   while (g.queue.length && g.queue[0].at <= g.waveT) launch(g, g.queue.shift()!);
   updateLabSets(g);
   updateEncCalls(g);
-  while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) spawnRaider(g, g.raiderQueue.shift()!);
+  while (g.raiderQueue.length && g.raiderQueue[0].at <= g.waveT) {
+    const sp = g.raiderQueue.shift()!;
+    // Log v73: a truck is not put down on top of another: a wave's pop-up
+    // comes in by another road if its own is taken at the start, and any
+    // truck waits for the road to clear.
+    if (sp.kind !== 'sub' && sp.kind !== 'parade' && !startClear(g, sp.path, false)) {
+      const other = sp.enc || sp.kind !== 'popup' ? undefined : g.map.roads.popups.find((r) => startClear(g, [r.from, r.to], false));
+      if (!other) {
+        sp.at = g.waveT + TRUCK_RETRY;
+        g.raiderQueue.push(sp);
+        g.raiderQueue.sort((a, b) => a.at - b.at);
+        continue;
+      }
+      sp.path = [other.from, other.to];
+    }
+    spawnRaider(g, sp);
+  }
   for (const r of g.raiders) updateRaider(g, r, dt);
   g.raiders = g.raiders.filter((r) => r.state !== 'reverse' || r.dist > 0);
   // Focus: the rack reloads in real time, so slow motion buys shots (the
@@ -7298,7 +7320,7 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
   const speed = r.kind === 'runner' ? TRUCK.runnerSpeed : TRUCK.speed;
   if (r.state === 'drive') {
     const next = r.kind === 'runner' ? r.stops[0] : r.length;
-    r.dist = Math.min(r.dist + speed * dt, next ?? r.length);
+    r.dist = driveStep(g, r.id, r.kind, r.path, r.dist, Math.min(r.dist + speed * dt, next ?? r.length), r, RAIDER_SCALE, dt);
     if (next !== undefined && r.dist >= next) {
       if (r.kind === 'runner') r.stops.shift();
       setState(r, 'raise');
@@ -7318,9 +7340,9 @@ function updateRaider(g: Game, r: Raider, dt: number): void {
     if (r.kind === 'popup') setState(r, 'reverse');
     else setState(r, 'drive');
   } else if (r.state === 'reverse') {
-    r.dist = Math.max(0, r.dist - speed * dt);
+    r.dist = driveStep(g, r.id, r.kind, r.path, r.dist, Math.max(0, r.dist - speed * dt), r, RAIDER_SCALE, dt);
   }
-  const p = alongPath(r.path, r.dist);
+  const p = roadPose(r.path, r.dist, r.lat ?? 0);
   r.x = p.x;
   r.y = p.y;
   r.heading = p.heading;

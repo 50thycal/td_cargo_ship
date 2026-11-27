@@ -659,3 +659,101 @@ taps fired.
 **Fixed.** `BotIO` gets `press` / `move` / `release` (the Recorder's, so the log carries them as `d` / `v` / `r` and replays exactly); a persona with `gestures` (the "you" persona and what it spreads to: 0.9; Novice 0) plays a held gesture weapon as a person does. The Lance: pressed on the toughest threat in the sky (else the line that holds three or more, else the urgent one) with time enough to charge, the finger following it, let go a beat after the charge it wanted shows (the full lance when the target can wait and little else is coming, the half when not; level 2-3 charge 1.33 times as fast), while the other thumb keeps tapping at the rest. The Cutter: a swipe through the urgent threat along the line that crosses the most others, aimed a little off as the thumb is. The older fits (`you-v1`, `you-p2`, `you-r12`) have no `gestures` and tap as they did. `BOT_REV` 4.
 
 **Verified.** Battery card, the kit of the lost run held from the start (Charge Lance 3, Laser Cutter 1), the latest Armory, 48 seeds, the same seeds: taps only **0 of 48 won** (lost waves 4-9, 6.0 ships a run), with gestures **15 of 48 won** (mean wave 11.1; 105 presses and 403 shots a run against 167 shots). `tools/v3/bot-lance/kit.ts`; `tests/v3/botGestures.test.ts`.
+
+## Log v73: trucks that overlap, and call-outs over launchers (The Coves, Watch run)
+
+**What the player said:**
+
+> "Trucks should not overlap each other as well, the rocket truck and ballistic missile truck were just on top of each other. We should audit all maps too to make sure those overlaps do not happen. When that does happen I say one way to solve that is to just have the other truck come in from a different way."
+>
+> "Also with the notification make sure they do not go in a place that is on top of enemy launchers so it isn't hidden."
+
+(The enemy boats on the cargo ships is the Coves boats build, log 72: not touched here.)
+
+**The audit.** `tools/v3/overlap-audit/audit.ts` plays every map (its Test Lab card on the production setup, the "you" bot, the player's Armory, seeds 900-907, as the bot report does) and every sim step compares the drawn bodies of every ground launcher: pop-up, runner, parade and Rocket Trucks as the oriented 51 x 26 rectangles they are drawn as (scale 1.3, Rocket Truck 1.25), and, in a second column, trucks against fixed launchers (shore pads 28 x 23, siege guns). An overlap counts from 4 px of sinking in, and "sustained" is more than 0.5 s. `tools/v3/overlap-audit/cards.mjs` does the notification half in a browser (874 x 402 @2x, wave 6 watched at 3x, 70 samples a map): the call-out cards laid over every shore pad, rig, cove, truck and siege gun.
+
+What it found before the fix:
+
+- Two trucks on the same road, or a runner and a pop-up at a crossing, sinking into each other: kesh, marrow, harbor, battery, crossing, tide, needle, strait, saltgate and more.
+- The Rocket Convoy (Gauntlet, the Breakout on Harbor Mouth): the column stands on one road, and each truck, finished, reverses *through* the ones behind it (24 sustained overlaps on the Gauntlet's 8 runs, up to 10 s each).
+- A runner that caught up with the runner ahead, which stops to fire, drove into it and stayed there.
+- Call-outs: the corner stack sat over a silo, rig or cove in 12 of 20 maps (the callouts doc had listed six "that has a base" there), in 50-95% of the samples.
+
+**Fix, in the sim (`sim/trucks.ts`, `sim/overlap.ts`).** Seeded and with no new dice:
+
+1. A truck is not put on a road whose start is taken (`startClear`). A wave's pop-up tries the map's other roads first, in the road list's order ("come in from a different way"), and a truck with no free road waits at the start, off screen, 0.25 s at a time.
+2. A truck that drives (`driveStep`, a pop-up, a runner or a Rocket Truck, driving in or reversing out) never moves into another truck's body (6 px of air). It tries its road's centre, the lane it is in, then a lane one truck-width to either side that is land and on screen, in that order, and slides across at 90 px/s; with no clear lane it waits, at most 10 s (then it goes on rather than stall a wave). A truck already sunk into a younger one (it came on behind) is not held by it. So the Convoy's finished truck backs out in the lane beside the column, and a runner stops behind a runner at its stop.
+3. Parade trucks are not moved (they never stop and are a column by design) but are obstacles to the rest.
+
+`LANES.on = false` plays the game as before (the audit's `--off`, and the test).
+
+**Fix, in the screen (`ui/alerts.ts`, `Alerts.dodge`).** Every frame the call-out cards are tested against the launchers' boxes (shore pads, rigs and coves, ground trucks, siege guns, surfaced subs, the carrier). A stack over one rises in 8 px steps to the nearest place that is clear, or goes to the field's other corner (costing as much as a 120 px rise) if the whole right edge is taken; a stack clear where it stands stays, and goes back down to the corner once that has been clear for a second; where no place is clear for two cards (the smallest phone, a Delta) it shows one at a time. The aircraft warnings' "STRAFING RUN" / "BOMBER" labels step aside from launchers the same way (`labelSpot`). Screenshots (874 x 402 @2x), the stack in the bottom-right corner before and after: `img/overlap/coves-before.png` and `coves-after.png` (a silo hidden behind AIR STRIKE INBOUND, then in the clear), `harbor-before.png` and `harbor-after.png` (two silos under WAVE 6 and BARRAGE INBOUND, then clear).
+
+**Result: the audit, 8 runs a map** (seeds 900-907; "on a shore pad" is a truck's body 10 px or more into a pad for more than 0.5 s, not changed: see below):
+
+| Map | Trucks seen (8 runs) | Truck-on-truck overlaps before: count, seconds, deepest px, runs hit | After | Truck on a shore pad (after) | Cards over a launcher before | After |
+| --- | --- | --- | --- | --- | --- | --- |
+| strait | 122 | 3, 5.4 s, 47 px, 3/8 | 0 | 0 | 0/70 | 0/70 |
+| kesh | 236 | 16, 31.3 s, 53 px, 6/8 | 0 | 74 | 45/70 | 4/70 |
+| marrow | 238 | 12, 21.6 s, 36 px, 7/8 | 0 | 0 | 0/70 | 0/70 |
+| gauntlet | 202 | 24, 66.7 s, 34 px, 3/8 | 0 | 0 | 55/70 | 1/70 |
+| harbor | 301 | 27, 45.1 s, 49 px, 7/8 | 0 | 3 | 66/70 | 1/70 |
+| island | 115 | 0, 0.0 s, 0 px, 0/8 | 0 | 0 | 0/70 | 0/70 |
+| behemoth | 173 | 0, 0.0 s, 0 px, 0/8 | 0 | 0 | 64/70 | 0/70 |
+| needle | 68 | 4, 3.3 s, 34 px, 4/8 | 0 | 18 | 33/70 | 4/70 |
+| archipelago | 145 | 0, 0.0 s, 0 px, 0/8 | 0 | 0 | 0/70 | 1/70 |
+| saltgate | 409 | 4, 3.5 s, 40 px, 3/8 | 0 | 1 | 0/70 | 0/70 |
+| battery | 223 | 7, 4.9 s, 45 px, 4/8 | 0 | 3 | 0/70 | 0/70 |
+| sowers | 157 | 1, 1.0 s, 34 px, 1/8 | 0 | 0 | 61/70 | 0/70 |
+| rigs | 116 | 2, 1.7 s, 45 px, 2/8 | 0 | 0 | 0/70 | 0/70 |
+| lantern | 180 | 0, 0.0 s, 0 px, 0/8 | 0 | 2 | 63/70 | 0/70 |
+| dreadnought | 95 | 0, 0.0 s, 0 px, 0/8 | 0 | 0 | 0/70 | 0/70 |
+| coves | 110 | 0, 0.0 s, 0 px, 0/8 | 0 | 0 | 62/70 | 0/70 |
+| delta | 312 | 3, 11.2 s, 43 px, 3/8 | 0 | 39 | 67/70 | 2/70 |
+| crossing | 189 | 6, 26.2 s, 50 px, 3/8 | 0 | 1 | 35/70 | 0/70 |
+| tide | 128 | 3, 9.9 s, 44 px, 3/8 | 0 | 0 | 0/70 | 0/70 |
+| citadel | 197 | 2, 3.8 s, 34 px, 2/8 | 0 | 0 | 0/70 | 0/70 |
+
+**Win rates**, the "you" bot, the usual Armory (the player's), 96 seeds from 900, every map, before (log v71) and after:
+
+| Map | Win before | Win after | Change (pts) | Ships lost a run, before to after |
+| --- | --- | --- | --- | --- |
+| strait | 44.8% | 45.8% | +1.0 | 7.04 -> 6.93 |
+| gauntlet | 43.8% | 41.7% | -2.1 | 5.77 -> 5.67 |
+| island | 52.1% | 51.0% | -1.0 | 6.54 -> 6.60 |
+| archipelago | 51.0% | 47.9% | -3.1 | 6.11 -> 6.21 |
+| harbor | 31.2% | 24.0% | -7.3 | 6.50 -> 6.59 |
+| kesh | 40.6% | 37.5% | -3.1 | 7.10 -> 7.06 |
+| marrow | 90.6% | 91.7% | +1.0 | 4.24 -> 4.26 |
+| behemoth | 65.6% | 60.4% | -5.2 | 5.24 -> 5.66 |
+| needle | 64.6% | 61.5% | -3.1 | 6.40 -> 6.32 |
+| saltgate | 80.2% | 78.1% | -2.1 | 4.79 -> 4.59 |
+| battery | 68.8% | 66.7% | -2.1 | 5.46 -> 5.66 |
+| sowers | 57.3% | 57.3% | +0.0 | 6.55 -> 6.56 |
+| rigs | 62.5% | 58.3% | -4.2 | 6.41 -> 6.54 |
+| lantern | 69.8% | 75.0% | +5.2 | 5.56 -> 5.58 |
+| dreadnought | 71.9% | 69.8% | -2.1 | 5.80 -> 5.94 |
+| coves | 61.5% | 65.6% | +4.2 | 6.53 -> 6.47 |
+| delta | 53.1% | 52.1% | -1.0 | 7.26 -> 7.50 |
+| crossing | 55.2% | 57.3% | +2.1 | 6.36 -> 6.33 |
+| tide | 63.5% | 63.5% | +0.0 | 5.51 -> 5.47 |
+| citadel | 68.8% | 69.8% | +1.0 | 6.44 -> 6.36 |
+
+96 seeds move a rate by about 5 points either way: the same build's seeds 900-995 and 1000-1095 differ by up to 10 on one map. So the eight maps that moved most were played again over 192 seeds each (900-1095):
+
+| Map | Before, 192 seeds | After, 192 seeds | Change |
+| --- | --- | --- | --- |
+| harbor | 27.6% | 24.5% | -3.1 |
+| behemoth | 65.6% | 62.0% | -3.6 |
+| rigs | 62.5% | 61.5% | -1.0 |
+| archipelago | 52.1% | 51.0% | -1.0 |
+| kesh | 41.7% | 39.6% | -2.1 |
+| coves | 63.5% | 63.0% | -0.5 |
+| lantern | 64.6% | 64.1% | -0.5 |
+| strait | 43.2% | 43.2% | +0.0 |
+
+The ships lost a run, which is steadier, moved 0.4 at the most (behemoth 5.24 to 5.66). The maps outside 50-70% (strait, gauntlet, kesh, harbor, marrow, saltgate) were outside it before: not changed here.
+
+**Not done.** (1) Trucks over fixed pads: the Sharra Delta's two islet pop-up roads start at the silo (the truck comes out of it) and its Rocket Trucks stand on it, and runners graze the pads' corners on a few maps (10 px or so): left as drawn. Three siege-gun spots on Battery Point and Lantern Light sit on a runner road. (2) The Coves bot runs show no truck pile-up in 8 seeds (the player's was a hand-held Watch run); the rule is general, and Coves is in the test. (3) The call-out stack still shares the screen with the ships: it is clear of launchers and the carrier, not of the lanes. In 4 to 5% of samples on kesh, needle and delta a card is over a launcher for a few frames while it moves off one that has just come under it.
+
+**Tests.** `tests/v3/overlap.test.ts`: the body geometry; the card placement; every map's bot run (and the seeds that piled up most) with no sustained truck-on-truck overlap; with `LANES.on` off five maps' runs do pile up (it fails without the fix). `e2e/v3.mjs`'s call-out check follows the stack to where it rises and adds "no card over a launcher in more than 10% of samples". `tests/v3/fixtures/map-lab` rewritten with `--write`: every baseline run differs now (the log version, and trucks that wait or take another lane change the whole run from there), and each replays to itself exactly with telemetry on and off.
