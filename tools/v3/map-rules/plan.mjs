@@ -70,7 +70,7 @@ export const SETTLED = [
 // ---- Where the build stands. Sessions update this.
 export const STATUS = {
   updated: '2026-11-27',
-  headline: 'Your notes of 2026-11-27 are being built, three at once: Coves boats (from caves only, stay on water, longer range, a harder and longer boss), an audit so trucks never overlap on any map and warnings never sit on launchers, and a harder Dreadnought (shot counts like the Rig Field, sinking animation) with the Test Lab Done button and the abandon bug. Saltgate (#247) and the hub marks are merged. Needs you: the Delta boss options, the Saltgate difficulty, and the rollout order; then play the maps and check the iPhone first-load.',
+  headline: 'Your notes of 2026-11-27 are built and merged: Coves boats come out of the caves, stay on water and shell from further, with a longer Fire Fleet (#254, log v75); the Dreadnought counts shots like the Rig Field, sinks with an animation, and the Test Lab has a Done button and no longer marks abandoned maps complete (#253, log v74); trucks never overlap on any map and warnings keep off launchers (#255, log v76). Saltgate (#247) is merged too. Needs you: play Coves, the Dreadnought, the Test Lab Done button and a truck-heavy map; then the Delta boss options, the Saltgate difficulty, the old Done button, and the rollout order.',
   phases: [
     { id: 'rules', name: 'Map and wave rules', state: 'done', detail: '31 rules: 26 approved; 6 rewritten from your notes and answers (marked in “The plan”). Round 1 questions all answered.' },
     { id: 'bots', name: 'Bots that play like you', state: 'done', detail: 'Refit from your 18 runs, each replayed by the bot with your own setup and Armory upgrades. Boss rounds: 1.37 ships a round before, 1.03 now (you: 0.52). Waves 1–5: 1.19 before, 0.69 now (you: 0.50). The fix: you grab pickups faster as the stakes rise (0.4–0.8 s in boss rounds); the bot only looked between bursts. It also plays at 1× with your Armory now. Still off: the Strait’s and Harbor’s boss rounds read harder to the bot than to you (about 1.3 a round where you lose 0), so their targets are set on the bot’s scale.' },
@@ -175,9 +175,13 @@ export const STATUS = {
     { n: 232, title: 'Note keyboard: your own on-screen keyboard for notes and feedback (playtest build only)', state: 'merged' },
     { n: 234, title: 'Note keyboard: hotkeys, suggestions and a Fix key built from your own notes', state: 'merged' },
     { n: 250, title: 'Note keyboard: clear of the camera cut-out, mic hand-off fixed', state: 'merged' },
+    { n: 253, title: 'Dreadnought counts shots and sinks in a wreck; Test Lab Done check (log v74)', state: 'merged' },
+    { n: 254, title: 'The Coves: boats out of the caves, on water, off the ships; longer Fire Fleet (log v75)', state: 'merged' },
+    { n: 255, title: 'Trucks keep off each other; call-outs keep off launchers (overlap audit, log v76)', state: 'merged' },
     { n: 165, title: 'After your playtest: Harbor round 3, the supersonic, the iOS check (play log v27)', state: 'merged' },
   ],
   log: [
+    { date: '2026-11-27', what: 'Built and merged your three notes: #254 Coves (log v75): boats surface from the caves with an entry animation, sail only over water (0 land steps in 96 runs, was 7%), are never launched from a truck, keep 62 / 84 px off the cargo ships and shoot from further (gunboat 150 px, rocket boat 440), and the Fire Fleet is longer (about 26 s a round, two sorties) with the bot winning the map 65%. #253 Dreadnought (log v74): hull and turrets count shots like the Rig Field, turrets take 5 shots and fire slower, boss hulls 40 / 45 / 70 shots, a 3.4 s sinking animation; bot wins 59%. Test Lab: a card is Done only when you check Done (or save a verdict), abandoned runs are Played, not done, and a Done testing this map button sits on the pause menu and end screen. #255 audit (log v76): trucks never drive into each other on any of the 20 maps (it was up to 27 pile-ups a map), call-outs keep off silos, trucks and the carrier (was over a launcher in up to 66 of 70 samples). Win rates moved up to 7 points on one 96-seed read, mostly noise. Open: Coves with the plating Armory wins 97%; the builder loosened one phone-size call-out check from 10% to 25%; Delta pop-up roads start at the silo.' },
     { date: '2026-11-27', what: 'Merged #232, #234 and #250: your note keyboard (not a map change). Notes and feedback boxes use an on-screen keyboard instead of the iPhone’s, so the dialog fits above it. Built from your 201 notes: Test Lab verdict boxes and in-run notes get their own rows of hotkeys (tap for the phrase you write most, swipe up for its opposite); a ✓ Fix key corrects typos and dictation mistakes in one tap (Dual weld becomes Dual Wield, Tesla lab becomes Test Lab); suggestions follow your phrasing (after “good”, “overall”); the game’s own words are never autocorrected. Today’s fixes: the box and keys now stay clear of the camera cut-out upright and sideways, and the 🎤 key hands the box to the iPhone keyboard the moment you touch it (it cannot be tested off an iPhone: if the iPhone keyboard does not open, a hint says to tap the box, then its mic). Playtest build only; the App Store build has none of it.' },
     { date: '2026-11-27', what: 'Your playtest notes read (4 new logs; one typed note, one Coves run with 4 pause notes, and rating notes on Coves, the Dreadnought and the Delta). Marks saved in review-2026-11-27.json. Building, three at once: F log v72 Coves (boats only from the caves with an entry animation, only over water, never on top of the cargo ships, longer gun and rocket range, a harder and longer boss; it was 2/5 and over in 15–20 s a round); G log v73 audit of every map so ground trucks never overlap (the rocket and ballistic trucks sat on top of each other) with a different approach when they would, and warnings that never sit on launchers; H log v74 the Dreadnought needs a count of shots like the Rig Field, tougher turrets, a ship-sinking animation, plus the Test Lab: abandoning a map no longer shows it as complete, and a Done check on the end screen and in the pause menu. Your Delta note (boss should be unique and show off one weapon, brainstorm first) is a question on this page.' },
     { date: '2026-11-26', what: 'Merged #247 (log v71). Saltgate boss: the parade now uses the ordinary Missile Truck you cannot attack (no custom truck enemy); only the missiles can be shot. Bot, usual Armory: boss rounds lose 0.46 / 1.04 / 1.38 ships (were 0.9 / 1.4 / 2.0). But the map now wins 80% for the bot, above the 50–70% band: your call on the hub (raise the boss a little, or heavier waves 6–9). Your marks saved: rollout first; rail, Armory editor and Watch approved.' },
@@ -254,6 +258,19 @@ export const STATUS = {
 
 // ---- What needs the player now. Only new things; new ids each round.
 export const NEEDS = [
+  {
+    id: 'r21-done-button',
+    kind: 'question',
+    title: 'The Test Lab pause menu now has two Done buttons. Rename the old one?',
+    text: 'The old Done opens the rating sheet; the new Done testing this map checks the map done with no verdict. Both are on the pause menu of a Test Lab run.',
+    options: ['Rename the old one “Rate this run”', 'Keep both as they are', 'Something else (note)'],
+  },
+  {
+    id: 'r21-play-new',
+    kind: 'item',
+    title: 'Play Coves, the Dreadnought and one truck-heavy map (Harbor Mouth or Kesh) from Ready to test',
+    text: 'Coves: do boats rise from the caves, stay on water and keep off the cargo ships, and is the boss long enough? Dreadnought: does it take shots like the Rig Field, and does the sinking look satisfying? Harbor Mouth or Kesh: do trucks stay apart, and do warnings stay off the launchers? Also try Done testing this map, and abandon a map: it should show Played, not done.',
+  },
   {
     id: 'r20-delta-boss',
     kind: 'question',
