@@ -267,3 +267,23 @@ The fun check flags "flat" saves on every wave for every Armory (0.1 a run on wa
 A battleship steams down the deep channel above the lane, against your ships, firing as it goes. Fifty hits sink it; or shoot down what it fires. From wave 4 spotter planes circle and paint a ship for its guns: shoot the plane before it calls, because the shells that come cannot be stopped. The east, where it comes in, and the middle are where it gets busiest. Wave 10 should be the hardest wave but not a wall. In the boss the battleship itself comes to fight: it stops broadside-on to your convoy, its spotters call its main guns, and sinking it silences them. The questions: does sinking it feel worth it, is the boss the biggest moment of the chapter, and do the three rounds rise?
 
 (This section names no weapon to try: the counter kit above is a design note for the bots, never shown in the game or on the hub.)
+
+## Log v74: it counts shots, and it sinks (2026-11-27)
+
+**The player, after winning boss 4 ("a bit easy"):** "The Dreadnought was a bit too easy, I think we should make it the same as the Oil rigs, where it needs x amount of ammo to take it out. Turrets are a bit too easy to kill as well. Also can you make an animation of the ship sinking so it is more satisfying for the player."
+
+**Shots, not damage.** The Rig Field's rule (`SHOT_RIGS`, `rigShot`): a shot is one, whatever its damage; an area weapon counts once a step; the Nuke still does `PICKUPS.nukeStructure`. The Dreadnought map joins the list, so the hull (a pass's `hp`, now shots) and each gun turret count shots under the layer; the number left is over the hull and over a turret (a bar and a number once it takes more than six). The campaign battleship and a rev 3 log are as before.
+
+**Numbers** (bot, usual Armory, 96 seeds from 900, `tools/v3/dreadnought/read.py`). The change on its own (hull and turrets counting shots, nothing else): 65%. Turrets at 5 shots (4 before) did most of the harm: 38% at 5, 9% at 8, because a live turret keeps shelling. So the turrets take 5 and fire at 1.5 x the broadside gap (was 1.2), and the boss rounds are re-tuned so they climb (the old ones did not: 0.79 / 1.74 / 1.08):
+
+| | hull | broadside | gap |
+|---|---|---|---|
+| round 1 | 40 shots | ballistic, guided | 9 s (8) |
+| round 2 | 45 (50) | ballistic only (no guided) | 8 s (6.5) |
+| round 3 | 70 (60) | ballistic, guided (two ballistic before) | 7 s |
+
+Result: wins **59%** (72% before), waves 1-5 0.48 ships, boss rounds **0.95 / 1.13 / 2.21** (aimed 0.7 / 1.3 / 2.0). The guided missile is the lever in round 2: with it 1.6-1.8, without it 1.1-1.2.
+
+**The sinking** (`ui/sinking.ts`, the 'wreck' effect, 3.4 s; `Fx.size` scales it for a smaller ship): blasts walk down the hull, it lists (the beam narrows, the bilge shows), burns under black smoke, breaks in two at the waist (fire in the gap), the stern slips first and the bow rears and follows, the sea closing over the decks from the broken end, then a splash with foam rings, bubbles and an oil slick. Drawn with the same canvas vectors as the live ship. Frames: `docs/design/img/v3-dread-lab/`.
+
+**Wave 1 stays easy.** The first wave's glimpse (it shows itself and turns away) took more than the old numbers allowed (the "no ship lost on wave 1" test failed for a casual bot on a shell), so the glimpse's hull is 15 shots, its turrets 3 (`DreadPass.turretHp`) and they fire 4.5 x the broadside gap apart (was 3 x).

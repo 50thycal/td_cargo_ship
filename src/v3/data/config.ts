@@ -169,7 +169,7 @@ export const THREATS: Record<
   citadel: { speed: 0, hp: 40, damage: 0, dropChance: 1, label: 'The Citadel' },
   dreadnought: { speed: 24, hp: 50, damage: 0, dropChance: 1, label: 'Dreadnought' },
   /** Log v67: a gun turret on the Dreadnought's deck (TURRET). */
-  turret: { speed: 0, hp: 4, damage: 0, dropChance: 0.6, label: 'Gun turret' },
+  turret: { speed: 0, hp: 5, damage: 0, dropChance: 0.6, label: 'Gun turret' },
   // The enemy build (data/foes.ts has their other numbers).
   sprinter: { speed: 70, hp: 1, damage: 1, dropChance: 0.1, label: 'Sprint drone' },
   // Round 7 ("about 25% slower before the split"): 150 → 112.5, 0.75×. The
@@ -351,8 +351,8 @@ export const FIRESHIP = { hp: 3, speed: 0.8, burn: 2.5, ram: 1 } as const;
  *  (px forward of the hull's middle), `silo` the silo's; `turn` how fast a
  *  turret trains (rad/s); `len` and `beam` the hull's own. */
 export const TURRET = {
-  hp: 4,
-  slow: 1.2,
+  hp: 5,
+  slow: 1.5,
   /** A boss round's battleship (it heaves to) fires this much faster. */
   bossQuick: 0.75,
   turn: 1.6,

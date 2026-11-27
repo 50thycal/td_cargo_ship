@@ -11,7 +11,7 @@
 // ring. The local frame is the hull's: the bow is +x, the beam y.
 
 import { THREATS, TURRET } from '../data/config';
-import type { Game, Threat } from '../sim/game';
+import { shotRigs, type Game, type Threat } from '../sim/game';
 
 const RIM = '#ff7d62';
 const HALF = TURRET.len / 2;
@@ -51,6 +51,20 @@ export function hatchOpen(g: Game, th: Threat): number {
   if (since < 0.5) return 1;
   if (since < 1.1) return 1 - (since - 0.5) / 0.6;
   return 0;
+}
+
+/** The hull's outline in its own frame (bow +x), as the live ship and the
+ *  sinking wreck (ui/sinking.ts) both draw it. */
+export function hullPath(ctx: CanvasRenderingContext2D): void {
+  ctx.beginPath();
+  ctx.moveTo(-HALF, -BEAM * 0.78);
+  ctx.lineTo(-HALF + 16, -BEAM);
+  ctx.lineTo(HALF - 96, -BEAM);
+  ctx.quadraticCurveTo(HALF - 36, -BEAM, HALF, 0);
+  ctx.quadraticCurveTo(HALF - 36, BEAM, HALF - 96, BEAM);
+  ctx.lineTo(-HALF + 16, BEAM);
+  ctx.lineTo(-HALF, BEAM * 0.78);
+  ctx.closePath();
 }
 
 export function drawDreadnought(ctx: CanvasRenderingContext2D, g: Game, th: Threat): void {
@@ -108,17 +122,7 @@ export function drawDreadnought(ctx: CanvasRenderingContext2D, g: Game, th: Thre
   ctx.beginPath();
   ctx.ellipse(0, 6, HALF + 6, BEAM + 6, 0, 0, Math.PI * 2);
   ctx.fill();
-  const hull = () => {
-    ctx.beginPath();
-    ctx.moveTo(-HALF, -BEAM * 0.78);
-    ctx.lineTo(-HALF + 16, -BEAM);
-    ctx.lineTo(HALF - 96, -BEAM);
-    ctx.quadraticCurveTo(HALF - 36, -BEAM, HALF, 0);
-    ctx.quadraticCurveTo(HALF - 36, BEAM, HALF - 96, BEAM);
-    ctx.lineTo(-HALF + 16, BEAM);
-    ctx.lineTo(-HALF, BEAM * 0.78);
-    ctx.closePath();
-  };
+  const hull = () => hullPath(ctx);
   const steel = ctx.createLinearGradient(0, -BEAM, 0, BEAM);
   steel.addColorStop(0, '#4a3531');
   steel.addColorStop(0.5, '#68514b');
@@ -317,7 +321,9 @@ export function drawDreadnought(ctx: CanvasRenderingContext2D, g: Game, th: Thre
   }
   ctx.restore();
   hbar(ctx, th.x, th.y - 62, 170, hp, '#ff8a7a');
-  lab(ctx, 'DREADNOUGHT', th.x, th.y - 70, '#ffb2a3', 18);
+  // Log v74: it counts shots (as the Rig Field's rigs): the number left.
+  const left = Math.max(0, Math.ceil(th.hp - 1e-6));
+  lab(ctx, shotRigs(g) ? `DREADNOUGHT · ${left}` : 'DREADNOUGHT', th.x, th.y - 70, '#ffb2a3', 18);
 
   // The campaign's battleship has no turrets of its own: its three guns sit
   // idle on their rings, pointing ahead.
@@ -411,10 +417,16 @@ function gun(ctx: CanvasRenderingContext2D, g: Game, x: number, y: number, rot: 
     smoke(ctx, 52 + k * 30, 5 * k, k, 7, 0.4);
   }
   ctx.restore();
-  // The hit points: a pip each.
-  for (let i = 0; i < max; i++) {
-    ctx.fillStyle = i < hp ? '#ff8a7a' : 'rgba(255,255,255,0.18)';
-    ctx.fillRect(x - max * 4.5 + i * 9, y - 34, 7, 5);
+  // The hit points: a pip each, or (log v74: a turret takes more than a
+  // handful of shots) a bar with the number left.
+  if (max <= 6) {
+    for (let i = 0; i < max; i++) {
+      ctx.fillStyle = i < hp ? '#ff8a7a' : 'rgba(255,255,255,0.18)';
+      ctx.fillRect(x - max * 4.5 + i * 9, y - 34, 7, 5);
+    }
+  } else {
+    hbar(ctx, x, y - 36, 44, hp / max, '#ff8a7a');
+    lab(ctx, String(Math.max(0, Math.ceil(hp - 1e-6))), x, y - 42, '#ffd0c6', 13);
   }
   // Hurt: smoke.
   if (hp <= max / 2) {
