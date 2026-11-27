@@ -1,0 +1,22 @@
+{
+  "v3-note-20261127130118": {
+    "at": "2026-11-27T13:01:18Z",
+    "verdict": "change",
+    "note": "Test Lab: make me check “done” when I finish the run or when I am in the pause menu. When I abandon the map it shows it as complete in the Test Lab. (Building, log v74.)"
+  },
+  "coves-56705": {
+    "at": "2026-11-27T13:18:54Z",
+    "verdict": "change",
+    "note": "Watch run, won; fun 4, intensity 4, boss 2. Boats come out of caves with a cleaner entry, only over water, never launched from a truck, never on top of the cargo ships; longer range for the gun and rocket ships; the boss was much too easy and over too fast. Trucks overlapped (rocket and ballistic truck): audit all maps; send the other truck a different way. Notifications must not sit on top of launchers. (Building, logs v72 and v73.)"
+  },
+  "dreadnought-56703": {
+    "at": "2026-11-27T12:58:35Z",
+    "verdict": "change",
+    "note": "Won, fun 4, boss 4, a bit easy: needs a number of shots like the Oil Rigs; turrets a bit too easy to kill; add a ship-sinking animation. (Building, log v74.)"
+  },
+  "delta-64669": {
+    "at": "2026-11-24T21:13:36Z",
+    "verdict": "change",
+    "note": "Lost at wave 13, boss 3: the boss round should be unique and showcase a specific weapon; brainstorm some better options before building again. (Question r20-delta-boss on the hub.)"
+  }
+}
